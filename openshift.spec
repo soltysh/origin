@@ -8,19 +8,19 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the rel-eng directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit e506a4b46ead8c227e7ab3b138ea752df0735e56
+%global commit 1a40a19a773703c0e1b0b4703ffbaf1216897b5a
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # OpenShift specific ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 0 -X github.com/openshift/origin/pkg/version.minorFromGit 6+ -X github.com/openshift/origin/pkg/version.versionFromGit v0.6.1.0-111-ge506a4b -X github.com/openshift/origin/pkg/version.commitFromGit e506a4b -X github.com/GoogleCloudPlatform/kubernetes/pkg/version.gitCommit 496be63 -X github.com/GoogleCloudPlatform/kubernetes/pkg/version.gitVersion v0.17.1-804-g496be63
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 0+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.0.0.0-35-g1a40a19 -X github.com/openshift/origin/pkg/version.commitFromGit 1a40a19 -X github.com/GoogleCloudPlatform/kubernetes/pkg/version.gitCommit 496be63 -X github.com/GoogleCloudPlatform/kubernetes/pkg/version.gitVersion v0.17.1-804-g496be63
 }
 
 Name:           openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the rel-eng directory of this project
-Version:        3.0.0.0
-Release:        0%{?dist}
+Version:        3.0.0.1
+Release:        1%{?dist}
 Summary:        Open Source Platform as a Service by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -273,6 +273,44 @@ fi
 %{_bindir}/pod
 
 %changelog
+* Fri Jun 26 2015 Brenton Leanhardt <bleanhar@redhat.com> 3.0.0.1
+- Merge remote-tracking branch 'origin/master' into enterprise-3.0
+  (bleanhar@redhat.com)
+- Correct Docker image Config type (agoldste@redhat.com)
+- Make ose/scripts a symlink to origin/scripts (sdodson@redhat.com)
+- fixed bash error (mturansk@redhat.com)
+- fixed typo in script name (mturansk@redhat.com)
+- fixed plugin init (mturansk@redhat.com)
+- Copy recycler script to ose image (sdodson@redhat.com)
+- Merge branch 'master' into enterprise-3.0 (sdodson@redhat.com)
+- Merge remote-tracking branch 'upstream/master' (sdodson@redhat.com)
+- bump(github.com/openshift/openshift-
+  sdn/ovssubnet):cdd9955dc602abe8ef2d934a3c39417375c486c6 (rchopra@redhat.com)
+- Merge branch 'master' into enterprise-3.0 (sdodson@redhat.com)
+- UPSTREAM: Ensure service account does not exist before deleting added/updated
+  tokens (jliggitt@redhat.com)
+- UPSTREAM: Add logging for invalid JWT tokens (jliggitt@redhat.com)
+- use cookies for sticky sessions on http based routes (pweil@redhat.com)
+- bump(github.com/openshift/openshift-
+  sdn/ovssubnet):2bf8606dd9e0d5c164464f896e2223431f4b5099 (rchopra@redhat.com)
+- Minor fixup to profiling instructions (ccoleman@redhat.com)
+- Chmod hack/release.sh (ccoleman@redhat.com)
+- Merge branch 'master' into enterprise-3.0 (sdodson@redhat.com)
+- Merge remote-tracking branch 'upstream/master' (sdodson@redhat.com)
+- Update logo and page title in JVM console for OSE (slewis@fusesource.com)
+- Merge pull request #3301 from liggitt/debug_tokens
+  (dmcphers+openshiftbot@redhat.com)
+- UPSTREAM: Ensure service account does not exist before deleting added/updated
+  tokens (jliggitt@redhat.com)
+- UPSTREAM: Add logging for invalid JWT tokens (jliggitt@redhat.com)
+- Merge pull request #3300 from pweil-/router-cookies
+  (dmcphers+openshiftbot@redhat.com)
+- use cookies for sticky sessions on http based routes (pweil@redhat.com)
+- bump(github.com/openshift/openshift-
+  sdn/ovssubnet):2bf8606dd9e0d5c164464f896e2223431f4b5099 (rchopra@redhat.com)
+- Minor fixup to profiling instructions (ccoleman@redhat.com)
+- Chmod hack/release.sh (ccoleman@redhat.com)
+
 * Wed Jun 17 2015 Scott Dodson <sdodson@redhat.com> 3.0.0.0
 - Merge remote-tracking branch 'upstream/master' (sdodson@redhat.com)
 - Merge pull request #3284 from pmorie/emptydir-security-context
