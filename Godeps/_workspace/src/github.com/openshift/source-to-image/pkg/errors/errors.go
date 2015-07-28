@@ -19,6 +19,7 @@ const (
 	InstallErrorRequired
 	URLHandlerError
 	STIContainerError
+	SourcePathError
 )
 
 // Error represents an error thrown during STI execution
@@ -155,18 +156,18 @@ func NewInstallError(script string) error {
 		Message:    fmt.Sprintf("failed to install %v", script),
 		Details:    nil,
 		ErrorCode:  InstallError,
-		Suggestion: "provide URL with Source-To-Image scripts with -s flag or check the image if it contains io.s2i.scripts-url label set",
+		Suggestion: "provide URL with Source-To-Image scripts with -s flag or check the image if it contains %q label set",
 	}
 }
 
 // NewInstallRequiredError returns a new error which indicates there was a problem
 // when downloading a required script
-func NewInstallRequiredError(scripts []string) error {
+func NewInstallRequiredError(scripts []string, label string) error {
 	return Error{
 		Message:    fmt.Sprintf("failed to install %v", scripts),
 		Details:    nil,
 		ErrorCode:  InstallErrorRequired,
-		Suggestion: "provide URL with Source-To-Image scripts with -s flag or check the image if it contains io.s2i.scripts-url label set",
+		Suggestion: "provide URL with Source-To-Image scripts with -s flag or check the image if it contains " + label + " label set",
 	}
 }
 
@@ -190,5 +191,16 @@ func NewContainerError(name string, code int, output string) error {
 		ErrorCode:  STIContainerError,
 		Suggestion: "check the container logs for more information on the failure",
 		ExitCode:   code,
+	}
+}
+
+// NewSourcePathError returns a new error which indicates there was a problem
+// when accessing the source code from the local filesystem
+func NewSourcePathError(path string) error {
+	return Error{
+		Message:    fmt.Sprintf("Local filesystem source path does not exist: %s", path),
+		Details:    nil,
+		ErrorCode:  SourcePathError,
+		Suggestion: "check the source code path on the local filesystem",
 	}
 }

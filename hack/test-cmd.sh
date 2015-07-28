@@ -47,7 +47,15 @@ set -e
 # Prevent user environment from colliding with the test setup
 unset KUBECONFIG
 
-USE_LOCAL_IMAGES=${USE_LOCAL_IMAGES:-true}
+# Use either the latest release built images, or latest.
+if [[ -z "${USE_IMAGES-}" ]]; then
+  tag="latest"
+  if [[ -e "${OS_ROOT}/_output/local/releases/.commit" ]]; then
+    COMMIT="$(cat "${OS_ROOT}/_output/local/releases/.commit")"
+    tag="${COMMIT}"
+  fi
+  USE_IMAGES="openshift/origin-\${component}:${tag}"
+fi
 
 ETCD_HOST=${ETCD_HOST:-127.0.0.1}
 ETCD_PORT=${ETCD_PORT:-4001}
@@ -60,7 +68,7 @@ KUBELET_SCHEME=${KUBELET_SCHEME:-https}
 KUBELET_HOST=${KUBELET_HOST:-127.0.0.1}
 KUBELET_PORT=${KUBELET_PORT:-10250}
 
-TEMP_DIR=${USE_TEMP:-$(mktemp -d /tmp/openshift-cmd.XXXX)}
+TEMP_DIR=${USE_TEMP:-$(mkdir -p /tmp/openshift-cmd && mktemp -d /tmp/openshift-cmd/XXXX)}
 ETCD_DATA_DIR="${TEMP_DIR}/etcd"
 VOLUME_DIR="${TEMP_DIR}/volumes"
 FAKE_HOME_DIR="${TEMP_DIR}/openshift.local.home"
@@ -97,14 +105,9 @@ export OPENSHIFT_PROFILE="${WEB_PROFILE-}"
 # Specify the scheme and port for the listen address, but let the IP auto-discover. Set --public-master to localhost, for a stable link to the console.
 echo "[INFO] Create certificates for the OpenShift server to ${MASTER_CONFIG_DIR}"
 # find the same IP that openshift start will bind to.  This allows access from pods that have to talk back to master
-ALL_IP_ADDRESSES=`ifconfig | grep "inet " | sed 's/adr://' | awk '{print $2}'`
-SERVER_HOSTNAME_LIST="${PUBLIC_MASTER_HOST},localhost"
-while read -r IP_ADDRESS
-do
-    SERVER_HOSTNAME_LIST="${SERVER_HOSTNAME_LIST},${IP_ADDRESS}"
-done <<< "${ALL_IP_ADDRESSES}"
+SERVER_HOSTNAME_LIST="${PUBLIC_MASTER_HOST},$(openshift start --print-ip),localhost"
 
-openshift admin create-master-certs \
+openshift admin ca create-master-certs \
   --overwrite=false \
   --cert-dir="${MASTER_CONFIG_DIR}" \
   --hostnames="${SERVER_HOSTNAME_LIST}" \
@@ -133,7 +136,8 @@ openshift start \
   --listen="${API_SCHEME}://${API_HOST}:${API_PORT}" \
   --hostname="${KUBELET_HOST}" \
   --volume-dir="${VOLUME_DIR}" \
-  --etcd-dir="${ETCD_DATA_DIR}"
+  --etcd-dir="${ETCD_DATA_DIR}" \
+  --images="${USE_IMAGES}"
 
 
 # Start openshift
@@ -240,6 +244,17 @@ oc get templates
 # TODO: create directly from template
 echo "templates: ok"
 
+
+# Test resource builder filtering of files with expected extensions inside directories, and individual files without expected extensions
+[ "$(oc create -f test/resource-builder/directory -f test/resource-builder/json-no-extension -f test/resource-builder/yml-no-extension 2>&1)" ]
+# Explicitly specified extensionless files
+oc get secret json-no-extension yml-no-extension
+# Scanned files with extensions inside directories
+oc get secret json-with-extension yml-with-extension
+# Ensure extensionless files inside directories are not processed by resource-builder
+[ "$(oc get secret json-no-extension-in-directory 2>&1 | grep 'not found')" ]
+echo "resource-builder: ok"
+
 # verify some default commands
 [ "$(openshift 2>&1)" ]
 [ "$(openshift cli)" ]
@@ -274,7 +289,15 @@ echo "templates: ok"
 [ "$(openshift kubectl 2>&1 | grep 'Kubernetes cluster')" ]
 [ "$(oadm 2>&1 | grep 'OpenShift Administrative Commands')" ]
 [ "$(openshift admin 2>&1 | grep 'OpenShift Administrative Commands')" ]
+[ "$(oadm | grep 'Basic Commands:')" ]
+[ "$(oadm | grep 'Install Commands:')" ]
+[ "$(oadm ca | grep 'Manage certificates')" ]
 [ "$(openshift start kubernetes 2>&1 | grep 'Kubernetes server components')" ]
+# check deprecated admin cmds for backward compatibility
+[ "$(oadm create-master-certs -h 2>&1 | grep 'Create keys and certificates')" ]
+[ "$(oadm create-key-pair -h 2>&1 | grep 'Create an RSA key pair')" ]
+[ "$(oadm create-server-cert -h 2>&1 | grep 'Create a key and server certificate')" ]
+[ "$(oadm create-signer-cert -h 2>&1 | grep 'Create a self-signed CA')" ]
 
 # help for root commands with --help flag must be consistent
 [ "$(openshift --help 2>&1 | grep 'OpenShift Application Platform')" ]
@@ -309,11 +332,13 @@ echo "templates: ok"
 [ "$(openshift help start master 2>&1 | grep 'Start an OpenShift master')" ]
 [ "$(openshift help start node 2>&1 | grep 'Start an OpenShift node')" ]
 [ "$(openshift cli help update 2>&1 | grep 'openshift')" ]
+[ "$(openshift cli help replace 2>&1 | grep 'openshift')" ]
+[ "$(openshift cli help patch 2>&1 | grep 'openshift')" ]
 
 # runnable commands with required flags must error consistently
-[ "$(oc get 2>&1 | grep 'you must provide one or more resources')" ]
-[ "$(openshift cli get 2>&1 | grep 'you must provide one or more resources')" ]
-[ "$(openshift kubectl get 2>&1 | grep 'you must provide one or more resources')" ]
+[ "$(oc get 2>&1 | grep 'Required resource not specified')" ]
+[ "$(openshift cli get 2>&1 | grep 'Required resource not specified')" ]
+[ "$(openshift kubectl get 2>&1 | grep 'Required resource not specified')" ]
 
 # commands that expect file paths must validate and error out correctly
 [ "$(oc login --certificate-authority=/path/to/invalid 2>&1 | grep 'no such file or directory')" ]
@@ -346,6 +371,8 @@ oc secrets add serviceaccounts/deployer secrets/dockercfg
 oc secrets add serviceaccounts/deployer secrets/dockercfg secrets/from-file
 # make sure we can add as as pull secret
 oc secrets add serviceaccounts/deployer secrets/dockercfg secrets/from-file --for=pull
+# make sure we can add as as pull secret and mount secret at once
+oc secrets add serviceaccounts/deployer secrets/dockercfg secrets/from-file --for=pull,mount
 echo "secrets: ok"
 
 
@@ -373,7 +400,7 @@ oc create -f test/integration/fixtures/test-image-stream.json
 # make sure stream.status.dockerImageRepository isn't set (no registry)
 [ -z "$(oc get imageStreams test -t "{{.status.dockerImageRepository}}")" ]
 # create the registry
-oadm registry --create --credentials="${KUBECONFIG}"
+oadm registry --credentials="${KUBECONFIG}" --images="${USE_IMAGES}"
 # make sure stream.status.dockerImageRepository IS set
 [ -n "$(oc get imageStreams test -t "{{.status.dockerImageRepository}}")" ]
 # ensure the registry rc has been created
@@ -394,7 +421,7 @@ oc create -f examples/image-streams/image-streams-centos7.json
 [ -n "$(oc get imageStreams postgresql -t "{{.status.dockerImageRepository}}")" ]
 [ -n "$(oc get imageStreams mongodb -t "{{.status.dockerImageRepository}}")" ]
 # verify the image repository had its tags populated
-[ -n "$(oc get imageStreams wildfly -t "{{.status.tags.latest}}")" ]
+wait_for_command 'oc get imagestreamtags wildfly:latest' "${TIME_MIN}"
 [ -n "$(oc get imageStreams wildfly -t "{{ index .metadata.annotations \"openshift.io/image.dockerRepositoryCheck\"}}")" ]
 oc delete imageStreams ruby
 oc delete imageStreams nodejs
@@ -408,7 +435,7 @@ oc delete imageStreams mongodb
 [ -z "$(oc get imageStreams mongodb -t "{{.status.dockerImageRepository}}")" ]
 [ -z "$(oc get imageStreams wildfly -t "{{.status.dockerImageRepository}}")" ]
 wait_for_command 'oc get imagestreamTags mysql:latest' "${TIME_MIN}"
-[ -n "$(oc get imagestreams mysql -t '{{ index .metadata.annotations "openshift.io/image.dockerRepositoryCheck"}}')" ]
+[ -n "$(oc get imagestreams mysql -t "{{ index .metadata.annotations \"openshift.io/image.dockerRepositoryCheck\"}}")" ]
 oc describe istag/mysql:latest
 [ "$(oc describe istag/mysql:latest | grep "Environment:")" ]
 [ "$(oc describe istag/mysql:latest | grep "Image Created:")" ]
@@ -480,6 +507,41 @@ oc get template ruby-helloworld-sample
 [ "$(oc new-app ruby-helloworld-sample -o yaml | grep MYSQL_PASSWORD)" ]
 [ "$(oc new-app ruby-helloworld-sample -o yaml | grep ADMIN_USERNAME)" ]
 [ "$(oc new-app ruby-helloworld-sample -o yaml | grep ADMIN_PASSWORD)" ]
+# check search
+oc create -f examples/image-streams/image-streams-centos7.json
+[ "$(oc new-app --search mysql | grep mysql-55-centos7)" ]
+[ "$(oc new-app --search ruby-helloworld-sample | grep ruby-helloworld-sample)" ]
+# check search - partial matches
+[ "$(oc new-app --search ruby-hellow | grep ruby-helloworld-sample)" ]
+[ "$(oc new-app --search --template=ruby-hel | grep ruby-helloworld-sample)" ]
+[ "$(oc new-app --search --template=ruby-helloworld-sam -o yaml | grep ruby-helloworld-sample)" ]
+[ "$(oc new-app --search rub | grep openshift/ruby-20-centos7)" ]
+[ "$(oc new-app --search --image-stream=rub | grep openshift/ruby-20-centos7)" ]
+# check search - check correct usage of filters
+[ ! "$(oc new-app --search --image-stream=ruby-heloworld-sample | grep application-template-stibuild)" ]
+[ ! "$(oc new-app --search --template=mongodb)" ]
+[ ! "$(oc new-app --search --template=php)" ]
+[ ! "$(oc new-app -S --template=nodejs)" ]
+[ ! "$(oc new-app -S --template=perl)" ]
+# check search - filtered, exact matches
+[ "$(oc new-app --search --image-stream=mongodb | grep openshift/mongodb-24-centos7)" ]
+[ "$(oc new-app --search --image-stream=mysql | grep openshift/mysql-55-centos7)" ]
+[ "$(oc new-app --search --image-stream=nodejs | grep openshift/nodejs-010-centos7)" ]
+[ "$(oc new-app --search --image-stream=perl | grep openshift/perl-516-centos7)" ]
+[ "$(oc new-app --search --image-stream=php | grep openshift/php-55-centos7)" ]
+[ "$(oc new-app --search --image-stream=postgresql | grep openshift/postgresql-92-centos7)" ]
+[ "$(oc new-app -S --image-stream=python | grep openshift/python-33-centos7)" ]
+[ "$(oc new-app -S --image-stream=ruby | grep openshift/ruby-20-centos7)" ]
+[ "$(oc new-app -S --image-stream=wildfly | grep openshift/wildfly-8-centos)" ]
+[ "$(oc new-app --search --template=ruby-helloworld-sample | grep ruby-helloworld-sample)" ]
+# check search - no matches
+[ "$(oc new-app -S foo-the-bar 2>&1 | grep 'no matches found')" ]
+[ "$(oc new-app --search winter-is-coming 2>&1 | grep 'no matches found')" ]
+# check search - mutually exclusive flags
+[ "$(oc new-app -S mysql --env=FOO=BAR 2>&1 | grep "can't be used")" ]
+[ "$(oc new-app --search mysql --code=https://github.com/openshift/ruby-hello-world 2>&1 | grep "can't be used")" ]
+[ "$(oc new-app --search mysql --param=FOO=BAR 2>&1 | grep "can't be used")" ]
+oc delete imageStreams --all
 # check that we can create from the template without errors
 oc new-app ruby-helloworld-sample -l app=helloworld
 oc delete all -l app=helloworld
@@ -514,17 +576,32 @@ oc describe deploymentConfigs test-deployment-config
 [ "$(echo "OTHER=foo" | oc env dc/test-deployment-config -e - --list | grep OTHER=foo)" ]
 [ ! "$(echo "#OTHER=foo" | oc env dc/test-deployment-config -e - --list | grep OTHER=foo)" ]
 [ "$(oc env dc/test-deployment-config TEST=bar OTHER=baz BAR-)" ]
+
+[ "$(oc volume dc/test-deployment-config --list | grep vol1)" ]
+[ "$(oc volume dc/test-deployment-config --add --name=vol2 -m /opt)" ]
+[ "$(oc volume dc/test-deployment-config --add --name=vol1 --type=secret --secret-name='$ecret' -m /data | grep overwrite)" ]
+[ "$(oc volume dc/test-deployment-config --add --name=vol1 --type=emptyDir -m /data --overwrite)" ]
+[ "$(oc volume dc/test-deployment-config --add -m /opt | grep exists)" ]
+[ "$(oc volume dc/test-deployment-config --add --name=vol2 -m /etc -c 'ruby' --overwrite | grep warning)" ]
+[ "$(oc volume dc/test-deployment-config --add --name=vol2 -m /etc -c 'ruby*' --overwrite)" ]
+[ "$(oc volume dc/test-deployment-config --list --name=vol2 | grep /etc)" ]
+[ "$(oc volume dc/test-deployment-config --add --name=vol3 -o yaml | grep vol3)" ]
+[ "$(oc volume dc/test-deployment-config --list --name=vol3 | grep 'not found')" ]
+[ "$(oc volume dc/test-deployment-config --remove 2>&1 | grep confirm)" ]
+[ "$(oc volume dc/test-deployment-config --remove --name=vol2)" ]
+[ ! "$(oc volume dc/test-deployment-config --list | grep vol2)" ]
+[ "$(oc volume dc/test-deployment-config --remove --confirm)" ]
+[ ! "$(oc volume dc/test-deployment-config --list | grep vol1)" ]
 oc deploy test-deployment-config
 oc delete deploymentConfigs test-deployment-config
 echo "deploymentConfigs: ok"
 
-oc process -f test/templates/fixtures/guestbook.json --parameters --value="ADMIN_USERNAME=admin"
 oc process -f test/templates/fixtures/guestbook.json -l app=guestbook | oc create -f -
 oc status
 [ "$(oc status | grep frontend-service)" ]
 echo "template+config: ok"
-[ "$(OSC_EDITOR='cat' oc edit svc/kubernetes 2>&1 | grep 'Edit cancelled')" ]
-[ "$(OSC_EDITOR='cat' oc edit svc/kubernetes | grep 'provider: kubernetes')" ]
+[ "$(OC_EDITOR='cat' oc edit svc/kubernetes 2>&1 | grep 'Edit cancelled')" ]
+[ "$(OC_EDITOR='cat' oc edit svc/kubernetes | grep 'provider: kubernetes')" ]
 oc delete all -l app=guestbook
 echo "edit: ok"
 
@@ -535,22 +612,34 @@ wait_for_command 'oc get rc/test-deployment-config-1' "${TIME_MIN}"
 # scale rc via deployment configuration
 oc scale dc test-deployment-config --replicas=1
 # scale directly
-oc scale rc test-deployment-config-1 --current-replicas=1 --replicas=5
-[ "$(oc get rc/test-deployment-config-1 | grep 5)" ]
+oc scale rc test-deployment-config-1 --replicas=5
 oc delete all --all
 echo "scale: ok"
 
 oc process -f examples/sample-app/application-template-dockerbuild.json -l app=dockerbuild | oc create -f -
 wait_for_command 'oc get rc/database-1' "${TIME_MIN}"
+
+oc rollback database --to-version=1 -o=yaml
+oc rollback dc/database --to-version=1 -o=yaml
+oc rollback dc/database --to-version=1 --dry-run
+oc rollback database-1 -o=yaml
+oc rollback rc/database-1 -o=yaml
+# should fail because there's no previous deployment
+[ ! "$(oc rollback database -o yaml)" ]
+echo "rollback: ok"
+
 oc get dc/database
 oc stop dc/database
 [ ! "$(oc get dc/database)" ]
 [ ! "$(oc get rc/database-1)" ]
 echo "stop: ok"
+
 oc label bc ruby-sample-build acustom=label
 [ "$(oc describe bc/ruby-sample-build | grep 'acustom=label')" ]
-oc delete all -l app=dockerbuild
 echo "label: ok"
+
+oc delete all -l app=dockerbuild
+echo "delete: ok"
 
 oc process -f examples/sample-app/application-template-dockerbuild.json -l build=docker | oc create -f -
 oc get buildConfigs
@@ -586,7 +675,7 @@ oc delete bc/ruby-sample-build-validtag
 oc delete bc/ruby-sample-build-invalidtag
 
 # Test admin manage-node operations
-[ "$(openshift admin manage-node --help 2>&1 | grep 'Manage node operations')" ]
+[ "$(openshift admin manage-node --help 2>&1 | grep 'Manage nodes')" ]
 [ "$(oadm manage-node --selector='' --schedulable=true | grep --text 'Ready' | grep -v 'Sched')" ]
 oc create -f examples/hello-openshift/hello-pod.json
 #[ "$(oadm manage-node --list-pods | grep 'hello-openshift' | grep -E '(unassigned|assigned)')" ]
@@ -598,6 +687,10 @@ oc create -f examples/hello-openshift/hello-pod.json
 oc delete pods hello-openshift
 echo "manage-node: ok"
 
+oadm policy who-can get pods
+oadm policy who-can get pods -n default
+oadm policy who-can get pods --all-namespaces
+
 oadm policy add-role-to-group cluster-admin system:unauthenticated
 oadm policy add-role-to-user cluster-admin system:no-user
 oadm policy remove-role-from-group cluster-admin system:unauthenticated
@@ -608,6 +701,12 @@ oadm policy add-cluster-role-to-group cluster-admin system:unauthenticated
 oadm policy remove-cluster-role-from-group cluster-admin system:unauthenticated
 oadm policy add-cluster-role-to-user cluster-admin system:no-user
 oadm policy remove-cluster-role-from-user cluster-admin system:no-user
+oc delete clusterrole/cluster-status
+[ ! "$(oc get clusterrole/cluster-status)" ]
+oadm policy reconcile-cluster-roles
+[ ! "$(oc get clusterrole/cluster-status)" ]
+oadm policy reconcile-cluster-roles --confirm
+oc get clusterrole/cluster-status
 
 oc policy add-role-to-group cluster-admin system:unauthenticated
 oc policy add-role-to-user cluster-admin system:no-user
@@ -629,7 +728,6 @@ sleep 2 && [ "$(oc get projects | grep 'ui-test-project')" ]
 echo "ui-project-commands: ok"
 
 # Expose service as a route
-oc delete svc/frontend
 oc create -f test/integration/fixtures/test-service.json
 [ ! "$(oc expose service frontend --create-external-load-balancer)" ]
 [ ! "$(oc expose service frontend --port=40 --type=NodePort)" ]
@@ -648,21 +746,23 @@ echo "new-project: ok"
 
 # Test running a router
 [ ! "$(oadm router --dry-run | grep 'does not exist')" ]
-[ "$(oadm router -o yaml --credentials="${KUBECONFIG}" | grep 'openshift/origin-haproxy-')" ]
-oadm router --create --credentials="${KUBECONFIG}"
+echo '{"kind":"ServiceAccount","apiVersion":"v1","metadata":{"name":"router"}}' | oc create -f -
+oc get scc privileged -o json | sed '/\"users\"/a \"system:serviceaccount:default:router\",' | oc replace scc privileged -f -
+[ "$(oadm router -o yaml --credentials="${KUBECONFIG}" --service-account=router | grep 'openshift/origin-haproxy-')" ]
+oadm router --credentials="${KUBECONFIG}" --images="${USE_IMAGES}" --service-account=router
 [ "$(oadm router | grep 'service exists')" ]
 echo "router: ok"
 
 # Test running a registry
 [ ! "$(oadm registry --dry-run | grep 'does not exist')"]
 [ "$(oadm registry -o yaml --credentials="${KUBECONFIG}" | grep 'openshift/origin-docker-registry')" ]
-oadm registry --create --credentials="${KUBECONFIG}"
+oadm registry --credentials="${KUBECONFIG}" --images="${USE_IMAGES}"
 [ "$(oadm registry | grep 'service exists')" ]
 echo "registry: ok"
 
 # Test building a dependency tree
 oc process -f examples/sample-app/application-template-stibuild.json -l build=sti | oc create -f -
-[ "$(openshift ex build-chain --all -o dot | grep 'graph')" ]
+[ "$(oadm build-chain ruby-20-centos7 -o dot | grep 'graph')" ]
 oc delete all -l build=sti
 echo "ex build-chain: ok"
 
@@ -671,13 +771,14 @@ oc project example
 wait_for_command 'oc get serviceaccount default' "${TIME_MIN}"
 oc create -f test/fixtures/app-scenarios
 oc status
+oc status -o dot
 echo "complex-scenarios: ok"
 
 [ "$(oc export svc --all -t '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}' | wc -l)" -ne 0 ]
-[ "$(oc export svc --all | grep 'portalIP: ""')" ]
 [ "$(oc export svc --all --as-template=template | grep 'kind: Template')" ]
-[ ! "$(oc export svc --all --exact | grep 'portalIP: ""')" ]
-[ ! "$(oc export svc --all --raw | grep 'portalIP: ""')" ]
+[ ! "$(oc export svc --all | grep 'clusterIP')" ]
+[ ! "$(oc export svc --all --exact | grep 'clusterIP: ""')" ]
+[ ! "$(oc export svc --all --raw | grep 'clusterIP: ""')" ]
 [ ! "$(oc export svc --all --raw --exact)" ]
 [ ! "$(oc export svc -l a=b)" ] # return error if no items match selector
 [ "$(oc export svc -l a=b 2>&1 | grep 'no resources found')" ]

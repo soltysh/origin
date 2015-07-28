@@ -18,6 +18,7 @@ import (
 	route "github.com/openshift/origin/pkg/route/api"
 )
 
+// Pipeline holds components
 type Pipeline struct {
 	From string
 
@@ -25,6 +26,7 @@ type Pipeline struct {
 	Build      *BuildRef
 	Image      *ImageRef
 	Deployment *DeploymentConfigRef
+	Labels     map[string]string
 }
 
 // NewImagePipeline creates a new pipeline with components that are not
@@ -75,7 +77,7 @@ func NewBuildPipeline(from string, input *ImageRef, outputDocker bool, strategy 
 }
 
 // NeedsDeployment sets the pipeline for deployment
-func (p *Pipeline) NeedsDeployment(env Environment, name string) error {
+func (p *Pipeline) NeedsDeployment(env Environment, labels map[string]string, name string) error {
 	if p.Deployment != nil {
 		return nil
 	}
@@ -84,7 +86,8 @@ func (p *Pipeline) NeedsDeployment(env Environment, name string) error {
 		Images: []*ImageRef{
 			p.Image,
 		},
-		Env: env,
+		Env:    env,
+		Labels: labels,
 	}
 	return nil
 }
@@ -190,8 +193,16 @@ func (s sortablePorts) Swap(i, j int) {
 	s[j] = p
 }
 
+// portName returns a unique key for the given port and protocol which can be used as a service port name
+func portName(port int, protocol kapi.Protocol) string {
+	if protocol == "" {
+		protocol = kapi.ProtocolTCP
+	}
+	return strings.ToLower(fmt.Sprintf("%d-%s", port, protocol))
+}
+
 // AddServices sets up services for the provided objects
-func AddServices(objects Objects) Objects {
+func AddServices(objects Objects, firstPortOnly bool) Objects {
 	svcs := []runtime.Object{}
 	for _, o := range objects {
 		switch t := o.(type) {
@@ -208,17 +219,26 @@ func AddServices(objects Objects) Objects {
 				},
 			}
 
+			svcPorts := map[string]struct{}{}
 			for _, container := range t.Template.ControllerTemplate.Template.Spec.Containers {
 				ports := sortablePorts(container.Ports)
 				sort.Sort(&ports)
 				for _, p := range ports {
+					name := portName(p.ContainerPort, p.Protocol)
+					_, exists := svcPorts[name]
+					if exists {
+						continue
+					}
+					svcPorts[name] = struct{}{}
 					svc.Spec.Ports = append(svc.Spec.Ports, kapi.ServicePort{
-						Name:       p.Name,
+						Name:       name,
 						Port:       p.ContainerPort,
 						Protocol:   p.Protocol,
 						TargetPort: kutil.NewIntOrStringFromInt(p.ContainerPort),
 					})
-					break
+					if firstPortOnly {
+						break
+					}
 				}
 			}
 			if len(svc.Spec.Ports) == 0 {

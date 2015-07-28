@@ -14,14 +14,9 @@ import (
 	"github.com/openshift/origin/pkg/deploy/util"
 )
 
-// ReaperFor returns the appropriate Reaper client depending on the provided
-// kind of resource (Replication controllers, pods, services, and deploymentConfigs
-// supported)
-func ReaperFor(kind string, oc *client.Client, kc *kclient.Client) (kubectl.Reaper, error) {
-	if kind != "DeploymentConfig" {
-		return kubectl.ReaperFor(kind, kc)
-	}
-	return &DeploymentConfigReaper{oc: oc, kc: kc, pollInterval: kubectl.Interval, timeout: kubectl.Timeout}, nil
+// NewDeploymentConfigReaper returns a new reaper for deploymentConfigs
+func NewDeploymentConfigReaper(oc *client.Client, kc *kclient.Client) kubectl.Reaper {
+	return &DeploymentConfigReaper{oc: oc, kc: kc, pollInterval: kubectl.Interval, timeout: kubectl.Timeout}
 }
 
 // DeploymentConfigReaper implements the Reaper interface for deploymentConfigs
@@ -34,7 +29,7 @@ type DeploymentConfigReaper struct {
 // Stop scales a replication controller via its deployment configuration down to
 // zero replicas, waits for all of them to get deleted and then deletes both the
 // replication controller and its deployment configuration.
-func (reaper *DeploymentConfigReaper) Stop(namespace, name string, gracePeriod *kapi.DeleteOptions) (string, error) {
+func (reaper *DeploymentConfigReaper) Stop(namespace, name string, timeout time.Duration, gracePeriod *kapi.DeleteOptions) (string, error) {
 	// If the config is already deleted, it may still have associated
 	// deployments which didn't get cleaned up during prior calls to Stop. If
 	// the config can't be found, still make an attempt to clean up the
@@ -66,7 +61,7 @@ func (reaper *DeploymentConfigReaper) Stop(namespace, name string, gracePeriod *
 		return "", kerrors.NewNotFound("DeploymentConfig", name)
 	}
 	for _, rc := range deployments {
-		if _, err = rcReaper.Stop(rc.Namespace, rc.Name, gracePeriod); err != nil {
+		if _, err = rcReaper.Stop(rc.Namespace, rc.Name, timeout, gracePeriod); err != nil {
 			// Better not error out here...
 			glog.Infof("Cannot delete ReplicationController %s/%s: %v", rc.Namespace, rc.Name, err)
 		}

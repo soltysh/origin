@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 
 	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	ctl "github.com/GoogleCloudPlatform/kubernetes/pkg/kubectl"
 	cmdutil "github.com/GoogleCloudPlatform/kubernetes/pkg/kubectl/cmd/util"
+	kutil "github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util/errors"
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
@@ -17,6 +19,7 @@ import (
 	"github.com/openshift/origin/pkg/cmd/util/clientcmd"
 	dockerutil "github.com/openshift/origin/pkg/cmd/util/docker"
 	configcmd "github.com/openshift/origin/pkg/config/cmd"
+	newapp "github.com/openshift/origin/pkg/generate/app"
 	newcmd "github.com/openshift/origin/pkg/generate/app/cmd"
 	imageapi "github.com/openshift/origin/pkg/image/api"
 	"github.com/openshift/origin/pkg/util"
@@ -29,7 +32,8 @@ type usage interface {
 var errExit = fmt.Errorf("exit directly")
 
 const (
-	newAppLong = `Create a new application in OpenShift by specifying source code, templates, and/or images.
+	newAppLong = `
+Create a new application in OpenShift by specifying source code, templates, and/or images
 
 This command will try to build up the components of an application using images, templates,
 or code that has a public repository. It will lookup the images on the local Docker installation
@@ -66,7 +70,17 @@ application is created.`
   $ %[1]s new-app https://github.com/youruser/yourgitrepo --context-dir=src/build
  
   // Create an application based on a template file, explicitly setting a parameter value
-  $ %[1]s new-app --file=./example/myapp/template.json --param=MYSQL_USER=admin`
+  $ %[1]s new-app --file=./example/myapp/template.json --param=MYSQL_USER=admin
+
+  // Search for "mysql" in all image repositories and stored templates
+  $ %[1]s new-app --search mysql
+
+  // Search for "ruby", but only in stored templates (--template, --image and --docker-image
+  // can be used to filter search results)
+  $ %[1]s new-app --search --template=ruby
+
+  // Search for "ruby" in stored templates and print the output as an YAML
+  $ %[1]s new-app --search --template=ruby --output=yaml`
 )
 
 // NewCmdNewApplication implements the OpenShift cli new-app command
@@ -91,7 +105,8 @@ func NewCmdNewApplication(fullName string, f *clientcmd.Factory, out io.Writer) 
 
 	cmd.Flags().Var(&config.SourceRepositories, "code", "Source code to use to build this application.")
 	cmd.Flags().StringVar(&config.ContextDir, "context-dir", "", "Context directory to be used for the build.")
-	cmd.Flags().VarP(&config.ImageStreams, "image", "i", "Name of an OpenShift image stream to use in the app.")
+	cmd.Flags().VarP(&config.ImageStreams, "image", "", "Name of an OpenShift image stream to use in the app. (deprecated)")
+	cmd.Flags().VarP(&config.ImageStreams, "image-stream", "i", "Name of an OpenShift image stream to use in the app.")
 	cmd.Flags().Var(&config.DockerImages, "docker-image", "Name of a Docker image to include in the app.")
 	cmd.Flags().Var(&config.Templates, "template", "Name of an OpenShift stored template to use in the app.")
 	cmd.Flags().VarP(&config.TemplateFiles, "file", "f", "Path to a template file to use for the app.")
@@ -102,6 +117,7 @@ func NewCmdNewApplication(fullName string, f *clientcmd.Factory, out io.Writer) 
 	cmd.Flags().StringVar(&config.Strategy, "strategy", "", "Specify the build strategy to use if you don't want to detect (docker|source).")
 	cmd.Flags().StringP("labels", "l", "", "Label to set in all resources for this application.")
 	cmd.Flags().BoolVar(&config.InsecureRegistry, "insecure-registry", false, "If true, indicates that the referenced Docker images are on insecure registries and should bypass certificate checking")
+	cmd.Flags().BoolVarP(&config.AsSearch, "search", "S", false, "Search for components that match the arguments provided and print the results.")
 
 	// TODO AddPrinterFlags disabled so that it doesn't conflict with our own "template" flag.
 	// Need a better solution.
@@ -120,21 +136,26 @@ func RunNewApplication(fullName string, f *clientcmd.Factory, out io.Writer, c *
 		return err
 	}
 
-	result, err := config.RunAll(out)
-	if err != nil {
-		if errs, ok := err.(errors.Aggregate); ok {
-			if len(errs.Errors()) == 1 {
-				err = errs.Errors()[0]
-			}
+	if config.AsSearch {
+		result, err := config.RunSearch(out, c.Out())
+		if err != nil {
+			return handleRunError(c, err)
 		}
-		if err == newcmd.ErrNoInputs {
-			// TODO: suggest things to the user
-			return cmdutil.UsageError(c, "You must specify one or more images, image streams, templates or source code locations to create an application.")
+
+		if len(cmdutil.GetFlagString(c, "output")) != 0 {
+			return f.Factory.PrintObject(c, result.List, out)
 		}
+
+		return printHumanReadableSearchResult(result, out, fullName)
+	}
+	if err := setAppConfigLabels(c, config); err != nil {
 		return err
 	}
-
-	if err := setLabels(c, result); err != nil {
+	result, err := config.RunAll(out, c.Out())
+	if err != nil {
+		return handleRunError(c, err)
+	}
+	if err := setLabels(config.Labels, result); err != nil {
 		return err
 	}
 	if len(cmdutil.GetFlagString(c, "output")) != 0 {
@@ -152,7 +173,7 @@ func RunNewApplication(fullName string, f *clientcmd.Factory, out io.Writer, c *
 			if len(t.Spec.Ports) > 0 {
 				portMappings = fmt.Sprintf(" with port mappings %s.", describeServicePorts(t.Spec))
 			}
-			fmt.Fprintf(c.Out(), "Service %q created at %s%s\n", t.Name, t.Spec.PortalIP, portMappings)
+			fmt.Fprintf(c.Out(), "Service %q created at %s%s\n", t.Name, t.Spec.ClusterIP, portMappings)
 		case *buildapi.BuildConfig:
 			fmt.Fprintf(c.Out(), "A build was created - you can run `%s start-build %s` to start it.\n", fullName, t.Name)
 		case *imageapi.ImageStream:
@@ -165,11 +186,25 @@ func RunNewApplication(fullName string, f *clientcmd.Factory, out io.Writer, c *
 			}
 		}
 	}
+	fmt.Fprintf(c.Out(), "Run '%s status' to view your app.\n", fullName)
+
+	return nil
+}
+
+func setAppConfigLabels(c *cobra.Command, config *newcmd.AppConfig) error {
+	labelStr := cmdutil.GetFlagString(c, "labels")
+	if len(labelStr) != 0 {
+		var err error
+		config.Labels, err = ctl.ParseLabels(labelStr)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func setupAppConfig(f *clientcmd.Factory, c *cobra.Command, args []string, config *newcmd.AppConfig) error {
-	namespace, err := f.DefaultNamespace()
+	namespace, _, err := f.DefaultNamespace()
 	if err != nil {
 		return err
 	}
@@ -198,21 +233,18 @@ func setupAppConfig(f *clientcmd.Factory, c *cobra.Command, args []string, confi
 	return nil
 }
 
-func setLabels(c *cobra.Command, result *newcmd.AppResult) error {
-	label := cmdutil.GetFlagString(c, "labels")
-	if len(label) != 0 {
-		lbl, err := ctl.ParseLabels(label)
+func setLabels(labels map[string]string, result *newcmd.AppResult) error {
+	if len(labels) == 0 {
+		if len(result.Name) > 0 {
+			labels = map[string]string{"app": result.Name}
+		}
+	}
+	for _, object := range result.List.Items {
+		err := util.AddObjectLabels(object, labels)
 		if err != nil {
 			return err
 		}
-		for _, object := range result.List.Items {
-			err = util.AddObjectLabels(object, lbl)
-			if err != nil {
-				return err
-			}
-		}
 	}
-
 	return nil
 }
 
@@ -236,14 +268,14 @@ func createObjects(f *clientcmd.Factory, out io.Writer, result *newcmd.AppResult
 func describeServicePorts(spec kapi.ServiceSpec) string {
 	switch len(spec.Ports) {
 	case 1:
-		if spec.Ports[0].TargetPort.String() == "0" || spec.PortalIP == kapi.PortalIPNone || spec.Ports[0].Port == spec.Ports[0].TargetPort.IntVal {
+		if spec.Ports[0].TargetPort.String() == "0" || spec.ClusterIP == kapi.ClusterIPNone || spec.Ports[0].Port == spec.Ports[0].TargetPort.IntVal {
 			return fmt.Sprintf("%d", spec.Ports[0].Port)
 		}
 		return fmt.Sprintf("%d->%s", spec.Ports[0].Port, spec.Ports[0].TargetPort.String())
 	default:
 		pairs := []string{}
 		for _, port := range spec.Ports {
-			if port.TargetPort.String() == "0" || spec.PortalIP == kapi.PortalIPNone {
+			if port.TargetPort.String() == "0" || spec.ClusterIP == kapi.ClusterIPNone {
 				pairs = append(pairs, fmt.Sprintf("%d", port.Port))
 				continue
 			}
@@ -251,4 +283,112 @@ func describeServicePorts(spec kapi.ServiceSpec) string {
 		}
 		return strings.Join(pairs, ", ")
 	}
+}
+
+func handleRunError(c *cobra.Command, err error) error {
+	if err == nil {
+		return nil
+	}
+	if errs, ok := err.(errors.Aggregate); ok {
+		if len(errs.Errors()) == 1 {
+			err = errs.Errors()[0]
+		}
+	}
+	if err == newcmd.ErrNoInputs {
+		// TODO: suggest things to the user
+		return cmdutil.UsageError(c, "You must specify one or more images, image streams, templates or source code locations to create an application.")
+	}
+	return err
+}
+
+func printHumanReadableSearchResult(r *newcmd.SearchResult, out io.Writer, fullName string) error {
+	if len(r.Matches) == 0 {
+		return fmt.Errorf("no matches found")
+	}
+
+	templates := newapp.ComponentMatches{}
+	imageStreams := newapp.ComponentMatches{}
+	dockerImages := newapp.ComponentMatches{}
+
+	for _, match := range r.Matches {
+		switch {
+		case match.IsTemplate():
+			templates = append(templates, match)
+		case match.IsImage() && match.ImageStream != nil:
+			imageStreams = append(imageStreams, match)
+		case match.IsImage() && match.Image != nil:
+			dockerImages = append(dockerImages, match)
+		}
+	}
+
+	sort.Sort(newapp.ScoredComponentMatches(templates))
+	sort.Sort(newapp.ScoredComponentMatches(imageStreams))
+	sort.Sort(newapp.ScoredComponentMatches(dockerImages))
+
+	if len(templates) > 0 {
+		fmt.Fprintln(out, "Templates (oc new-app --template=<template>)")
+		fmt.Fprintln(out, "-----")
+		for _, match := range templates {
+			template := match.Template
+			description := template.ObjectMeta.Annotations["description"]
+
+			fmt.Fprintln(out, template.Name)
+			fmt.Fprintf(out, "  Project: %v\n", template.Namespace)
+			if len(description) > 0 {
+				fmt.Fprintf(out, "  %v\n", description)
+			}
+		}
+		fmt.Fprintln(out)
+	}
+
+	if len(imageStreams) > 0 {
+		fmt.Fprintln(out, "Image streams (oc new-app --image-stream=<image-stream> [--code=<source>])")
+		fmt.Fprintln(out, "-----")
+		for _, match := range imageStreams {
+			imageStream := match.ImageStream
+			description := imageStream.ObjectMeta.Annotations["description"]
+			tags := "<none>"
+			if len(imageStream.Status.Tags) > 0 {
+				set := kutil.NewStringSet()
+				for tag := range imageStream.Status.Tags {
+					set.Insert(tag)
+				}
+				tags = strings.Join(set.List(), ",")
+			}
+
+			fmt.Fprintln(out, imageStream.Name)
+			fmt.Fprintf(out, "  Project: %v\n", imageStream.Namespace)
+			fmt.Fprintf(out, "  Tracks:  %v\n", imageStream.Status.DockerImageRepository)
+			fmt.Fprintf(out, "  Tags:    %v\n", tags)
+			if len(description) > 0 {
+				fmt.Fprintf(out, "  %v\n", description)
+			}
+		}
+		fmt.Fprintln(out)
+	}
+
+	if len(dockerImages) > 0 {
+		fmt.Fprintln(out, "Docker images (oc new-app --docker-image=<docker-image> [--code=<source>])")
+		fmt.Fprintln(out, "-----")
+		for _, match := range dockerImages {
+			image := match.Image
+
+			name, tag, ok := imageapi.SplitImageStreamTag(match.Name)
+			if !ok {
+				name = match.Name
+				tag = match.ImageTag
+			}
+
+			fmt.Fprintln(out, name)
+			fmt.Fprintf(out, "  Registry: %v\n", match.Meta["registry"])
+			fmt.Fprintf(out, "  Tags:     %v\n", tag)
+
+			if len(image.Comment) > 0 {
+				fmt.Fprintf(out, "  %v\n", image.Comment)
+			}
+		}
+		fmt.Fprintln(out)
+	}
+
+	return nil
 }

@@ -52,10 +52,10 @@ angular.module("openshiftConsole")
           if(parts.length === 1){
             parts.push("tcp");
           }
+
           ports.push(
             {
-              containerPort: parseInt(parts[0]), 
-              name: input.name + "-" + parts[1] + "-" + parts[0],
+              containerPort: parseInt(parts[0]),
               protocol: parts[1].toUpperCase()
             });
         });
@@ -73,8 +73,9 @@ angular.module("openshiftConsole")
       var imageSpec;
       if(input.buildConfig.sourceUrl !== null){
         imageSpec = {
-          name: input.name, 
+          name: input.name,
           tag: "latest",
+          kind: "ImageStreamTag",
           toString: function(){
             return this.name + ":" + this.tag;
           }
@@ -92,7 +93,9 @@ angular.module("openshiftConsole")
     };
 
     scope._generateRoute = function(input, name, serviceName){
-      if(!input.routing.include) return null;
+      if(!input.routing.include) {
+        return null;
+      }
       return {
         kind: "Route",
         apiVersion: osApiVersion,
@@ -125,9 +128,6 @@ angular.module("openshiftConsole")
           labels: labels
         },
         spec: {
-          strategy: {
-              type: "Recreate"
-          },
           replicas: input.scaling.replicas,
           selector: {
             deploymentconfig: input.name
@@ -160,7 +160,7 @@ angular.module("openshiftConsole")
                 input.name
               ],
               from: {
-                kind: "ImageStreamTag",
+                kind: imageSpec.kind,
                 name: imageSpec.toString()
               }
             }
@@ -207,7 +207,8 @@ angular.module("openshiftConsole")
         spec: {
           output: {
             to: {
-              name: imageSpec.name
+              name: imageSpec.toString(),
+              kind: imageSpec.kind
             }
           },
           source: {
@@ -244,7 +245,9 @@ angular.module("openshiftConsole")
     };
 
     scope._generateService  = function(input, serviceName, port){
-      if(port === 'None') return null;
+      if(port === 'None') {
+        return null;
+      }
       var service = {
         kind: "Service",
         apiVersion: k8sApiVersion,

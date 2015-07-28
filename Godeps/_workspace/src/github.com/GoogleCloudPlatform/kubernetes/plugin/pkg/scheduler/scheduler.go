@@ -16,6 +16,9 @@ limitations under the License.
 
 package scheduler
 
+// Note: if you change code in this file, you might need to change code in
+// contrib/mesos/pkg/scheduler/.
+
 import (
 	"time"
 
@@ -122,7 +125,7 @@ func (s *Scheduler) scheduleOne() {
 	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInMicroseconds(start))
 	if err != nil {
 		glog.V(1).Infof("Failed to schedule: %v", pod)
-		s.config.Recorder.Eventf(pod, "failedScheduling", "Error scheduling: %v", err)
+		s.config.Recorder.Eventf(pod, "failedScheduling", "%v", err)
 		s.config.Error(pod, err)
 		return
 	}
@@ -135,7 +138,7 @@ func (s *Scheduler) scheduleOne() {
 	}
 
 	// We want to add the pod to the model iff the bind succeeds, but we don't want to race
-	// with any deletions, which happen asyncronously.
+	// with any deletions, which happen asynchronously.
 	s.config.Modeler.LockedAction(func() {
 		bindingStart := time.Now()
 		err := s.config.Binder.Bind(b)
@@ -149,7 +152,7 @@ func (s *Scheduler) scheduleOne() {
 		s.config.Recorder.Eventf(pod, "scheduled", "Successfully assigned %v to %v", pod.Name, dest)
 		// tell the model to assume that this binding took effect.
 		assumed := *pod
-		assumed.Spec.Host = dest
+		assumed.Spec.NodeName = dest
 		s.config.Modeler.AssumePod(&assumed)
 	})
 }

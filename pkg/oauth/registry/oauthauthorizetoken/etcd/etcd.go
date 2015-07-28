@@ -11,6 +11,7 @@ import (
 
 	"github.com/openshift/origin/pkg/oauth/api"
 	"github.com/openshift/origin/pkg/oauth/registry/oauthauthorizetoken"
+	"github.com/openshift/origin/pkg/util"
 )
 
 // rest implements a RESTStorage for authorize tokens against etcd
@@ -30,7 +31,7 @@ func NewREST(h tools.EtcdHelper) *REST {
 			return EtcdPrefix
 		},
 		KeyFunc: func(ctx kapi.Context, name string) (string, error) {
-			return etcdgeneric.NoNamespaceKeyFunc(ctx, EtcdPrefix, name)
+			return util.NoNamespaceKeyFunc(ctx, EtcdPrefix, name)
 		},
 		ObjectNameFunc: func(obj runtime.Object) (string, error) {
 			return obj.(*api.OAuthAuthorizeToken).Name, nil
@@ -38,7 +39,7 @@ func NewREST(h tools.EtcdHelper) *REST {
 		PredicateFunc: func(label labels.Selector, field fields.Selector) generic.Matcher {
 			return oauthauthorizetoken.Matcher(label, field)
 		},
-		TTLFunc: func(obj runtime.Object, update bool) (uint64, error) {
+		TTLFunc: func(obj runtime.Object, existing uint64, update bool) (uint64, error) {
 			token := obj.(*api.OAuthAuthorizeToken)
 			expires := uint64(token.ExpiresIn)
 			return expires, nil

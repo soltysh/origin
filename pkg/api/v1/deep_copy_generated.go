@@ -950,14 +950,10 @@ func deepCopy_v1_BuildTriggerPolicy(in buildapiv1.BuildTriggerPolicy, out *build
 }
 
 func deepCopy_v1_CustomBuildStrategy(in buildapiv1.CustomBuildStrategy, out *buildapiv1.CustomBuildStrategy, c *conversion.Cloner) error {
-	if in.From != nil {
-		if newVal, err := c.DeepCopy(in.From); err != nil {
-			return err
-		} else {
-			out.From = newVal.(*v1.ObjectReference)
-		}
+	if newVal, err := c.DeepCopy(in.From); err != nil {
+		return err
 	} else {
-		out.From = nil
+		out.From = newVal.(v1.ObjectReference)
 	}
 	if in.PullSecret != nil {
 		if newVal, err := c.DeepCopy(in.PullSecret); err != nil {
@@ -1016,6 +1012,7 @@ func deepCopy_v1_DockerBuildStrategy(in buildapiv1.DockerBuildStrategy, out *bui
 	} else {
 		out.Env = nil
 	}
+	out.ForcePull = in.ForcePull
 	return nil
 }
 
@@ -1045,14 +1042,10 @@ func deepCopy_v1_ImageChangeTrigger(in buildapiv1.ImageChangeTrigger, out *build
 }
 
 func deepCopy_v1_SourceBuildStrategy(in buildapiv1.SourceBuildStrategy, out *buildapiv1.SourceBuildStrategy, c *conversion.Cloner) error {
-	if in.From != nil {
-		if newVal, err := c.DeepCopy(in.From); err != nil {
-			return err
-		} else {
-			out.From = newVal.(*v1.ObjectReference)
-		}
+	if newVal, err := c.DeepCopy(in.From); err != nil {
+		return err
 	} else {
-		out.From = nil
+		out.From = newVal.(v1.ObjectReference)
 	}
 	if in.PullSecret != nil {
 		if newVal, err := c.DeepCopy(in.PullSecret); err != nil {
@@ -1077,6 +1070,7 @@ func deepCopy_v1_SourceBuildStrategy(in buildapiv1.SourceBuildStrategy, out *bui
 	}
 	out.Scripts = in.Scripts
 	out.Incremental = in.Incremental
+	out.ForcePull = in.ForcePull
 	return nil
 }
 
@@ -1242,15 +1236,6 @@ func deepCopy_v1_DeploymentConfigSpec(in deployapiv1.DeploymentConfigSpec, out *
 		}
 	} else {
 		out.Selector = nil
-	}
-	if in.TemplateRef != nil {
-		if newVal, err := c.DeepCopy(in.TemplateRef); err != nil {
-			return err
-		} else {
-			out.TemplateRef = newVal.(*v1.ObjectReference)
-		}
-	} else {
-		out.TemplateRef = nil
 	}
 	if in.Template != nil {
 		if newVal, err := c.DeepCopy(in.Template); err != nil {
@@ -1436,6 +1421,12 @@ func deepCopy_v1_RollingDeploymentStrategyParams(in deployapiv1.RollingDeploymen
 		*out.TimeoutSeconds = *in.TimeoutSeconds
 	} else {
 		out.TimeoutSeconds = nil
+	}
+	if in.UpdatePercent != nil {
+		out.UpdatePercent = new(int)
+		*out.UpdatePercent = *in.UpdatePercent
+	} else {
+		out.UpdatePercent = nil
 	}
 	if in.Pre != nil {
 		out.Pre = new(deployapiv1.LifecycleHook)

@@ -1,4 +1,5 @@
 'use strict';
+/* jshint unused: false */
 
 /**
  * @ngdoc function
@@ -11,16 +12,8 @@ angular.module('openshiftConsole')
   .controller('NewFromTemplateController', function ($scope, $http, $routeParams, DataService, $q, $location, TaskList, $parse, Navigate, $filter, imageObjectRefFilter, failureObjectNameFilter) {
     var displayNameFilter = $filter('displayName');
 
-
-    function errorPage(message) {
-      var redirect = URI('error').query({
-        "error_description": message
-      }).toString();
-      $location.url(redirect);
-    }
-
     var dcContainers = $parse('spec.template.spec.containers');
-    var stiBuilderImage = $parse('spec.strategy.sourceStrategy.from');
+    var builderImage = $parse('spec.strategy.sourceStrategy.from || spec.strategy.dockerStrategy.from || spec.strategy.customStrategy.from');
     var outputImage = $parse('spec.output.to');
 
     function deploymentConfigImages(dc) {
@@ -40,7 +33,7 @@ angular.module('openshiftConsole')
       var outputImages = {};
       angular.forEach(data.objects, function(item) {
         if (item.kind === "BuildConfig") {
-          var builder = imageObjectRefFilter(stiBuilderImage(item), $scope.projectName);
+          var builder = imageObjectRefFilter(builderImage(item), $scope.projectName);
           if(builder) {
             images.push({ name: builder });
           }

@@ -2,11 +2,13 @@ package delegated
 
 import (
 	"errors"
+	"fmt"
 
 	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	kapierror "github.com/GoogleCloudPlatform/kubernetes/pkg/api/errors"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/meta"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/rest"
+	kclient "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/fields"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/kubectl/resource"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
@@ -24,19 +26,21 @@ import (
 )
 
 type REST struct {
-	message            string
-	openshiftNamespace string
-	templateName       string
+	message           string
+	templateNamespace string
+	templateName      string
 
 	openshiftClient *client.Client
+	kubeClient      *kclient.Client
 }
 
-func NewREST(message, openshiftNamespace, templateName string, openshiftClient *client.Client) *REST {
+func NewREST(message, templateNamespace, templateName string, openshiftClient *client.Client, kubeClient *kclient.Client) *REST {
 	return &REST{
-		message:            message,
-		openshiftNamespace: openshiftNamespace,
-		templateName:       templateName,
-		openshiftClient:    openshiftClient,
+		message:           message,
+		templateNamespace: templateNamespace,
+		templateName:      templateName,
+		openshiftClient:   openshiftClient,
+		kubeClient:        kubeClient,
 	}
 }
 
@@ -89,6 +93,30 @@ func (r *REST) Create(ctx kapi.Context, obj runtime.Object) (runtime.Object, err
 		return nil, err
 	}
 	if err := utilerrors.NewAggregate(runtime.DecodeList(list.Objects, kapi.Scheme)); err != nil {
+		return nil, kapierror.NewInternalError(err)
+	}
+
+	// one of the items in this list should be the project.  We are going to locate it, remove it from the list, create it separately
+	var projectFromTemplate *projectapi.Project
+	objectsToCreate := &kapi.List{}
+	for i := range list.Objects {
+		if templateProject, ok := list.Objects[i].(*projectapi.Project); ok {
+			projectFromTemplate = templateProject
+
+			if len(list.Objects) > (i + 1) {
+				objectsToCreate.Items = append(objectsToCreate.Items, list.Objects[i+1:]...)
+			}
+			break
+		}
+
+		objectsToCreate.Items = append(objectsToCreate.Items, list.Objects[i])
+	}
+	if projectFromTemplate == nil {
+		return nil, kapierror.NewInternalError(fmt.Errorf("the project template (%s/%s) is not correctly configured: must contain a project resource", r.templateNamespace, r.templateName))
+	}
+
+	// we split out project creation separately so that in a case of racers for the same project, only one will win and create the rest of their template objects
+	if _, err := r.openshiftClient.Projects().Create(projectFromTemplate); err != nil {
 		return nil, err
 	}
 
@@ -96,22 +124,25 @@ func (r *REST) Create(ctx kapi.Context, obj runtime.Object) (runtime.Object, err
 		Mapper: latest.RESTMapper,
 		Typer:  kapi.Scheme,
 		RESTClientFactory: func(mapping *meta.RESTMapping) (resource.RESTClient, error) {
-			return r.openshiftClient, nil
+			if latest.OriginKind(mapping.Kind, mapping.APIVersion) {
+				return r.openshiftClient, nil
+			}
+			return r.kubeClient, nil
 		},
 	}
-	if err := utilerrors.NewAggregate(bulk.Create(&kapi.List{Items: list.Objects}, projectName)); err != nil {
-		return nil, err
+	if err := utilerrors.NewAggregate(bulk.Create(objectsToCreate, projectName)); err != nil {
+		return nil, kapierror.NewInternalError(err)
 	}
 
 	return r.openshiftClient.Projects().Get(projectName)
 }
 
 func (r *REST) getTemplate() (*templateapi.Template, error) {
-	if len(r.openshiftNamespace) == 0 || len(r.templateName) == 0 {
+	if len(r.templateNamespace) == 0 || len(r.templateName) == 0 {
 		return DefaultTemplate(), nil
 	}
 
-	return r.openshiftClient.Templates(r.openshiftNamespace).Get(r.templateName)
+	return r.openshiftClient.Templates(r.templateNamespace).Get(r.templateName)
 }
 
 func (r *REST) List(ctx kapi.Context, label labels.Selector, field fields.Selector) (runtime.Object, error) {

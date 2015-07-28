@@ -21,17 +21,58 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
+
 	"code.google.com/p/google-api-go-client/googleapi"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
 
+const (
+	// Max QPS to allow through to the token URL.
+	tokenURLQPS = .05 // back off to once every 20 seconds when failing
+	// Maximum burst of requests to token URL before limiting.
+	tokenURLBurst = 3
+)
+
+var (
+	getTokenCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "get_token_count",
+			Help: "Counter of total Token() requests to the alternate token source",
+		},
+	)
+	getTokenFailCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "get_token_fail_count",
+			Help: "Counter of failed Token() requests to the alternate token source",
+		},
+	)
+)
+
+func init() {
+	prometheus.MustRegister(getTokenCounter)
+	prometheus.MustRegister(getTokenFailCounter)
+}
+
 type altTokenSource struct {
 	oauthClient *http.Client
 	tokenURL    string
+	throttle    util.RateLimiter
 }
 
 func (a *altTokenSource) Token() (*oauth2.Token, error) {
+	a.throttle.Accept()
+	getTokenCounter.Inc()
+	t, err := a.token()
+	if err != nil {
+		getTokenFailCounter.Inc()
+	}
+	return t, err
+}
+
+func (a *altTokenSource) token() (*oauth2.Token, error) {
 	req, err := http.NewRequest("GET", a.tokenURL, nil)
 	if err != nil {
 		return nil, err
@@ -62,6 +103,7 @@ func newAltTokenSource(tokenURL string) oauth2.TokenSource {
 	a := &altTokenSource{
 		oauthClient: client,
 		tokenURL:    tokenURL,
+		throttle:    util.NewTokenBucketRateLimiter(tokenURLQPS, tokenURLBurst),
 	}
 	return oauth2.ReuseTokenSource(nil, a)
 }

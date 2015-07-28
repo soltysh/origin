@@ -39,6 +39,7 @@ func run(builderFactory factoryFunc, scmAuths []scmauth.SCMAuth) {
 		glog.Fatalf("Error obtaining docker client: %v", err)
 	}
 	buildStr := os.Getenv("BUILD")
+	glog.V(4).Infof("$BUILD env var is %s \n", buildStr)
 	build := api.Build{}
 	if err := latest.Codec.DecodeInto([]byte(buildStr), &build); err != nil {
 		glog.Fatalf("Unable to parse build: %v", err)
@@ -47,21 +48,15 @@ func run(builderFactory factoryFunc, scmAuths []scmauth.SCMAuth) {
 		authcfg     docker.AuthConfiguration
 		authPresent bool
 	)
-	output := true
-	if len(build.Parameters.Output.DockerImageReference) == 0 {
-		if build.Parameters.Output.To != nil {
-			glog.Fatalf("Cannot determine an output image reference. Make sure a registry service is running.")
-		}
-		output = false
-	}
+	output := build.Spec.Output.To != nil && len(build.Spec.Output.To.Name) != 0
 	if output {
 		authcfg, authPresent = dockercfg.NewHelper().GetDockerAuth(
-			build.Parameters.Output.DockerImageReference,
+			build.Spec.Output.To.Name,
 			dockercfg.PullAuthType,
 		)
 	}
-	if build.Parameters.Source.SourceSecret != nil {
-		if err := setupSourceSecret(build.Parameters.Source.SourceSecret.Name, scmAuths); err != nil {
+	if build.Spec.Source.SourceSecret != nil {
+		if err := setupSourceSecret(build.Spec.Source.SourceSecret.Name, scmAuths); err != nil {
 			glog.Fatalf("Cannot setup secret file for accessing private repository: %v", err)
 		}
 	}

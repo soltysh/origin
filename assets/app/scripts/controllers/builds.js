@@ -29,9 +29,11 @@ angular.module('openshiftConsole')
       associateBuildsToBuildConfig();
       updateFilterWarning();
 
+      var buildConfigName;
+      var buildName;
       if (build) {
-        var buildConfigName = build.metadata.labels.buildconfig;
-        var buildName = build.metadata.name;
+        buildConfigName = build.metadata.labels.buildconfig;
+        buildName = build.metadata.name;
       }
       if (!action) {
         // Loading of the page that will create buildConfigBuildsInProgress structure, which will associate running build to his buildConfig.
@@ -80,7 +82,7 @@ angular.module('openshiftConsole')
         });
       });
       return buildConfigBuildsInProgress;
-    };
+    }
 
     function updateFilterWarning() {
       if (!LabelFilter.getLabelSelector().isEmpty() && $.isEmptyObject($scope.builds) && !$.isEmptyObject($scope.unfilteredBuilds)) {
@@ -92,11 +94,17 @@ angular.module('openshiftConsole')
       else {
         delete $scope.alerts["builds"];
       }
-    };
+    }
 
     // Function which will 'instantiate' new build from given buildConfigName
     $scope.startBuild = function(buildConfigName) {
-      var req = {metadata:{name:buildConfigName}};
+      var req = {
+        kind: "BuildRequest",
+        apiVersion: "v1beta3",
+        metadata: {
+          name: buildConfigName
+        }
+      };
       DataService.create("buildconfigs/instantiate", buildConfigName, req, $scope).then(
         function(build) { //success
             $scope.alerts = [
@@ -120,7 +128,13 @@ angular.module('openshiftConsole')
 
     // Function which will 'clone' build from given buildName
     $scope.cloneBuild = function(buildName) {
-      var req = {metadata:{name:buildName}};
+      var req = {
+        kind: "BuildRequest",
+        apiVersion: "v1beta3",
+        metadata: {
+          name: buildName
+        }
+      };
       DataService.create("builds/clone", buildName, req, $scope).then(
         function(build) { //success
             $scope.alerts = [

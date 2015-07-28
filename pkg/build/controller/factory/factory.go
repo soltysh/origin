@@ -32,16 +32,17 @@ const maxRetries = 60
 // limitedLogAndRetry stops retrying after maxTimeout, failing the build.
 func limitedLogAndRetry(buildupdater buildclient.BuildUpdater, maxTimeout time.Duration) controller.RetryFunc {
 	return func(obj interface{}, err error, retries controller.Retry) bool {
-		kutil.HandleError(err)
+		build := obj.(*buildapi.Build)
 		if time.Since(retries.StartTimestamp.Time) < maxTimeout {
+			glog.V(4).Infof("Retrying Build %s/%s with error: %v", build.Namespace, build.Name, err)
 			return true
 		}
-		build := obj.(*buildapi.Build)
-		build.Status = buildapi.BuildStatusFailed
-		build.Message = err.Error()
+		build.Status.Phase = buildapi.BuildPhaseFailed
+		build.Status.Message = err.Error()
 		now := kutil.Now()
-		build.CompletionTimestamp = &now
+		build.Status.CompletionTimestamp = &now
 		glog.V(3).Infof("Giving up retrying Build %s/%s: %v", build.Namespace, build.Name, err)
+		kutil.HandleError(err)
 		if err := buildupdater.Update(build.Namespace, build); err != nil {
 			// retry update, but only on error other than NotFound
 			return !kerrors.IsNotFound(err)
@@ -158,8 +159,14 @@ func (factory *BuildPodControllerFactory) Create() controller.RunnableController
 			queue,
 			cache.MetaNamespaceKeyFunc,
 			func(obj interface{}, err error, retries controller.Retry) bool {
+				pod := obj.(*kapi.Pod)
+				if retries.Count < maxRetries {
+					glog.V(3).Infof("Retrying BuildPod update event %s/%s: %v", pod.Namespace, pod.Name, err)
+					return true
+				}
+				glog.V(3).Infof("Giving up retrying BuildPod update event %s/%s: %v", pod.Namespace, pod.Name, err)
 				kutil.HandleError(err)
-				return retries.Count < maxRetries
+				return false
 			},
 			kutil.NewTokenBucketRateLimiter(1, 10)),
 		Handle: func(obj interface{}) error {
@@ -230,11 +237,20 @@ func (factory *ImageChangeControllerFactory) Create() controller.RunnableControl
 			queue,
 			cache.MetaNamespaceKeyFunc,
 			func(obj interface{}, err error, retries controller.Retry) bool {
-				kutil.HandleError(err)
+				imageStream := obj.(*imageapi.ImageStream)
 				if _, isFatal := err.(buildcontroller.ImageChangeControllerFatalError); isFatal {
+					glog.V(3).Infof("Will not retry fatal error for ImageStream update event %s/%s: %v", imageStream.Namespace, imageStream.Name, err)
+					kutil.HandleError(err)
 					return false
 				}
-				return retries.Count < maxRetries
+				if maxRetries > retries.Count {
+					glog.V(3).Infof("Giving up retrying ImageStream update event %s/%s: %v", imageStream.Namespace, imageStream.Name, err)
+					kutil.HandleError(err)
+					return false
+				}
+				glog.V(4).Infof("Retrying ImageStream update event %s/%s: %v", imageStream.Namespace, imageStream.Name, err)
+				return true
+
 			},
 			kutil.NewTokenBucketRateLimiter(1, 10),
 		),
@@ -272,7 +288,7 @@ type typeBasedFactoryStrategy struct {
 func (f *typeBasedFactoryStrategy) CreateBuildPod(build *buildapi.Build) (*kapi.Pod, error) {
 	var pod *kapi.Pod
 	var err error
-	switch build.Parameters.Strategy.Type {
+	switch build.Spec.Strategy.Type {
 	case buildapi.DockerBuildStrategyType:
 		pod, err = f.DockerBuildStrategy.CreateBuildPod(build)
 	case buildapi.SourceBuildStrategyType:
@@ -280,7 +296,7 @@ func (f *typeBasedFactoryStrategy) CreateBuildPod(build *buildapi.Build) (*kapi.
 	case buildapi.CustomBuildStrategyType:
 		pod, err = f.CustomBuildStrategy.CreateBuildPod(build)
 	default:
-		return nil, fmt.Errorf("no supported build strategy defined for Build %s/%s with type %s", build.Namespace, build.Name, build.Parameters.Strategy.Type)
+		return nil, fmt.Errorf("no supported build strategy defined for Build %s/%s with type %s", build.Namespace, build.Name, build.Spec.Strategy.Type)
 	}
 	if pod != nil {
 		if pod.Annotations == nil {
@@ -305,14 +321,56 @@ type podLW struct {
 	client kclient.Interface
 }
 
-// List lists all Pods.
+// List lists all Pods that have a build label.
 func (lw *podLW) List() (runtime.Object, error) {
-	return lw.client.Pods(kapi.NamespaceAll).List(labels.Everything(), fields.Everything())
+	return listPods(lw.client)
 }
 
-// Watch watches all Pods.
+func listPods(client kclient.Interface) (*kapi.PodList, error) {
+	// get builds with new label
+	sel, err := labels.Parse(buildapi.BuildLabel)
+	if err != nil {
+		return nil, err
+	}
+	listNew, err := client.Pods(kapi.NamespaceAll).List(sel, fields.Everything())
+	if err != nil {
+		return nil, err
+	}
+	// FIXME: get builds with old label - remove this when depracated label will be removed
+	selOld, err := labels.Parse(buildapi.DeprecatedBuildLabel)
+	if err != nil {
+		return nil, err
+	}
+	listOld, err := client.Pods(kapi.NamespaceAll).List(selOld, fields.Everything())
+	if err != nil {
+		return nil, err
+	}
+	listNew.Items = mergeWithoutDuplicates(listNew.Items, listOld.Items)
+	return listNew, nil
+}
+
+func mergeWithoutDuplicates(arrays ...[]kapi.Pod) []kapi.Pod {
+	tmpMap := make(map[string]kapi.Pod)
+	for _, array := range arrays {
+		for _, v := range array {
+			tmpMap[fmt.Sprintf("%s/%s", v.Namespace, v.Name)] = v
+		}
+	}
+	var result []kapi.Pod
+	for _, v := range tmpMap {
+		result = append(result, v)
+	}
+	return result
+}
+
+// Watch watches all Pods that have a build label.
 func (lw *podLW) Watch(resourceVersion string) (watch.Interface, error) {
-	return lw.client.Pods(kapi.NamespaceAll).Watch(labels.Everything(), fields.Everything(), resourceVersion)
+	// FIXME: since we cannot have OR on label name we'll just get builds with new label
+	sel, err := labels.Parse(buildapi.BuildLabel)
+	if err != nil {
+		return nil, err
+	}
+	return lw.client.Pods(kapi.NamespaceAll).Watch(sel, fields.Everything(), resourceVersion)
 }
 
 // buildLW is a ListWatcher implementation for Builds.
@@ -339,30 +397,32 @@ type buildDeleteLW struct {
 // List returns an empty list but adds delete events to the store for all Builds that have been deleted but still have pods.
 func (lw *buildDeleteLW) List() (runtime.Object, error) {
 	glog.V(5).Info("Checking for deleted builds")
-	podList, err := lw.KubeClient.Pods(kapi.NamespaceAll).List(labels.Everything(), fields.Everything())
+	podList, err := listPods(lw.KubeClient)
 	if err != nil {
 		glog.V(4).Infof("Failed to find any pods due to error %v", err)
 		return nil, err
 	}
+
 	for _, pod := range podList.Items {
-		if len(pod.Labels[buildapi.BuildLabel]) == 0 {
+		buildName, exists := buildutil.GetBuildLabel(&pod)
+		if !exists {
 			continue
 		}
 		glog.V(5).Infof("Found build pod %s/%s", pod.Namespace, pod.Name)
 
-		build, err := lw.Client.Builds(pod.Namespace).Get(pod.Labels[buildapi.BuildLabel])
+		build, err := lw.Client.Builds(pod.Namespace).Get(buildName)
 		if err != nil && !kerrors.IsNotFound(err) {
 			glog.V(4).Infof("Error getting build for pod %s/%s: %v", pod.Namespace, pod.Name, err)
 			return nil, err
 		}
 		if err != nil && kerrors.IsNotFound(err) {
 			build = nil
-		}
 
+		}
 		if build == nil {
 			deletedBuild := &buildapi.Build{
 				ObjectMeta: kapi.ObjectMeta{
-					Name:      pod.Labels[buildapi.BuildLabel],
+					Name:      buildName,
 					Namespace: pod.Namespace,
 				},
 			}
@@ -380,7 +440,6 @@ func (lw *buildDeleteLW) List() (runtime.Object, error) {
 
 // Watch watches all Builds.
 func (lw *buildDeleteLW) Watch(resourceVersion string) (watch.Interface, error) {
-	//return lw.client.Client.Builds(kapi.NamespaceAll).Watch(labels.Everything(), fields.Everything(), resourceVersion)
 	return lw.Client.Builds(kapi.NamespaceAll).Watch(labels.Everything(), fields.Everything(), resourceVersion)
 }
 
@@ -435,12 +494,17 @@ func (lw *buildPodDeleteLW) List() (runtime.Object, error) {
 			continue
 		}
 		pod, err := lw.KubeClient.Pods(build.Namespace).Get(buildutil.GetBuildPodName(&build))
-		if err != nil && !kerrors.IsNotFound(err) {
-			glog.V(4).Infof("Error getting pod for build %s/%s: %v", build.Namespace, build.Name, err)
-			return nil, err
-		}
-		if (err != nil && kerrors.IsNotFound(err)) || pod.Labels[buildapi.BuildLabel] != build.Name {
-			pod = nil
+		if err != nil {
+			if !kerrors.IsNotFound(err) {
+				glog.V(4).Infof("Error getting pod for build %s/%s: %v", build.Namespace, build.Name, err)
+				return nil, err
+			} else {
+				pod = nil
+			}
+		} else {
+			if buildName, _ := buildutil.GetBuildLabel(pod); buildName != build.Name {
+				pod = nil
+			}
 		}
 		if pod == nil {
 			deletedPod := &kapi.Pod{
@@ -461,9 +525,14 @@ func (lw *buildPodDeleteLW) List() (runtime.Object, error) {
 	return &kapi.PodList{}, nil
 }
 
-// Watch watches all Pods for deletion
+// Watch watches all Pods that have a build label, for deletion
 func (lw *buildPodDeleteLW) Watch(resourceVersion string) (watch.Interface, error) {
-	return lw.KubeClient.Pods(kapi.NamespaceAll).Watch(labels.Everything(), fields.Everything(), resourceVersion)
+	// FIXME: since we cannot have OR on label name we'll just get builds with new label
+	sel, err := labels.Parse(buildapi.BuildLabel)
+	if err != nil {
+		return nil, err
+	}
+	return lw.KubeClient.Pods(kapi.NamespaceAll).Watch(sel, fields.Everything(), resourceVersion)
 }
 
 // ControllerClient implements the common interfaces needed for build controllers

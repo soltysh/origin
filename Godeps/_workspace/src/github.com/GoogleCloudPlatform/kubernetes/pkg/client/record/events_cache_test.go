@@ -67,7 +67,7 @@ func TestAddOrUpdateEventExisting(t *testing.T) {
 			Name:       "anOkName",
 			Namespace:  "someNamespace",
 			UID:        "C934D3234CD0242",
-			APIVersion: "v1beta2",
+			APIVersion: "version",
 		},
 		Source: api.EventSource{
 			Component: "kubelet",
@@ -88,7 +88,7 @@ func TestAddOrUpdateEventExisting(t *testing.T) {
 			Name:       "anOkName",
 			Namespace:  "someNamespace",
 			UID:        "C934D3234CD0242",
-			APIVersion: "v1beta2",
+			APIVersion: "version",
 		},
 		Source: api.EventSource{
 			Component: "kubelet",
@@ -119,7 +119,7 @@ func TestGetEventNoExisting(t *testing.T) {
 			Name:       "iAmAController",
 			Namespace:  "IHaveANamespace",
 			UID:        "9039D34AFBCDA42",
-			APIVersion: "v1beta3",
+			APIVersion: "version",
 		},
 		Source: api.EventSource{
 			Component: "kubelet",
@@ -173,7 +173,7 @@ func compareEventWithHistoryEntry(expected *api.Event, actual *history, t *testi
 		t.Fatalf("There should be one existing instance of this event in the hash table.")
 	}
 
-	if !actual.FirstTimestamp.Equal(expected.FirstTimestamp.Time) {
+	if !actual.FirstTimestamp.Equal(expected.FirstTimestamp) {
 		t.Fatalf("Unexpected FirstTimestamp. Expected: <%v> Actual: <%v>", expected.FirstTimestamp, actual.FirstTimestamp)
 	}
 

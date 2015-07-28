@@ -17,6 +17,7 @@ import (
 	"github.com/openshift/origin/pkg/cmd/server/admin"
 	configapi "github.com/openshift/origin/pkg/cmd/server/api"
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
+	"github.com/spf13/cobra"
 )
 
 // NodeArgs is a struct that the command stores flag values into.  It holds a partially complete set of parameters for starting the master
@@ -52,6 +53,9 @@ func BindNodeArgs(args *NodeArgs, flags *pflag.FlagSet, prefix string) {
 	// TODO rename this node-name and recommend uname -n
 	flags.StringVar(&args.NodeName, prefix+"hostname", args.NodeName, "The hostname to identify this node with the master.")
 	flags.StringVar(&args.NetworkPluginName, prefix+"network-plugin", args.NetworkPluginName, "The network plugin to be called for configuring networking for pods.")
+
+	// autocompletion hints
+	cobra.MarkFlagFilename(flags, prefix+"volume-dir")
 }
 
 // NewDefaultNodeArgs creates NodeArgs with sub-objects created and default values set.

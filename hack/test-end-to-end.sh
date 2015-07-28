@@ -91,10 +91,7 @@ function cleanup()
 	echo
 
 	set +e
-	echo "[INFO] Dumping container logs to ${LOG_DIR}"
-	for container in $(docker ps -aq); do
-		docker logs "$container" >&"${LOG_DIR}/container-$container.log"
-	done
+	dump_container_logs
 
 	echo "[INFO] Dumping build log to ${LOG_DIR}"
 
@@ -108,6 +105,9 @@ function cleanup()
 	echo
 
 	if [[ -z "${SKIP_TEARDOWN-}" ]]; then
+		echo "[INFO] Switch back to 'default' project with 'admin' user for cleanup"
+		oc project ${CLUSTER_ADMIN_CONTEXT}
+
 		echo "[INFO] Deleting test constructs"
 		oc delete -n test all --all
 		oc delete -n docker all --all
@@ -129,11 +129,7 @@ function cleanup()
 	fi
 	set -e
 
-	# clean up zero byte log files
-	# Clean up large log files so they don't end up on jenkins
-	find ${ARTIFACT_DIR} -name *.log -size +20M -exec echo Deleting {} because it is too big. \; -exec rm -f {} \;
-	find ${LOG_DIR} -name *.log -size +20M -exec echo Deleting {} because it is too big. \; -exec rm -f {} \;
-	find ${LOG_DIR} -name *.log -size 0 -exec echo Deleting {} because it is empty. \; -exec rm -f {} \;
+	delete_large_and_empty_logs
 
 	echo "[INFO] Exiting"
 	exit $out
@@ -201,7 +197,7 @@ do
 	SERVER_HOSTNAME_LIST="${SERVER_HOSTNAME_LIST},${IP_ADDRESS}"
 done <<< "${ALL_IP_ADDRESSES}"
 
-openshift admin create-master-certs \
+openshift admin ca create-master-certs \
 	--overwrite=false \
 	--cert-dir="${MASTER_CONFIG_DIR}" \
 	--hostnames="${SERVER_HOSTNAME_LIST}" \
@@ -280,7 +276,9 @@ echo "Log in as 'e2e-user' to see the 'test' project."
 
 # install the router
 echo "[INFO] Installing the router"
-openshift admin router --create --credentials="${MASTER_CONFIG_DIR}/openshift-router.kubeconfig" --images="${USE_IMAGES}"
+echo '{"kind":"ServiceAccount","apiVersion":"v1","metadata":{"name":"router"}}' | oc create -f -
+oc get scc privileged -o json | sed '/\"users\"/a \"system:serviceaccount:default:router\",' | oc replace scc privileged -f -
+openshift admin router --create --credentials="${MASTER_CONFIG_DIR}/openshift-router.kubeconfig" --images="${USE_IMAGES}" --service-account=router
 
 # install the registry. The --mount-host option is provided to reuse local storage.
 echo "[INFO] Installing the registry"
@@ -310,6 +308,10 @@ wait_for_url_timed "http://${DOCKER_REGISTRY}/healthz" "[INFO] Docker registry s
 echo "[INFO] Logging in as a regular user (e2e-user:pass) with project 'test'..."
 oc login -u e2e-user -p pass
 [ "$(oc whoami | grep 'e2e-user')" ]
+ 
+# make sure viewers can see oc status
+oc status -n default
+
 oc project cache
 token=$(oc config view --flatten -o template -t '{{with index .users 0}}{{.user.token}}{{end}}')
 [[ -n ${token} ]]
@@ -339,7 +341,9 @@ oc process -n docker -f examples/sample-app/application-template-dockerbuild.jso
 oc process -n custom -f examples/sample-app/application-template-custombuild.json > "${CUSTOM_CONFIG_FILE}"
 
 echo "[INFO] Back to 'test' context with 'e2e-user' user"
+oc login -u e2e-user
 oc project test
+oc whoami
 
 echo "[INFO] Applying STI application config"
 oc create -f "${STI_CONFIG_FILE}"
@@ -349,6 +353,20 @@ echo "[INFO] Starting build from ${STI_CONFIG_FILE} and streaming its logs..."
 #oc start-build -n test ruby-sample-build --follow
 wait_for_build "test"
 wait_for_app "test"
+
+# Remote command execution
+echo "[INFO] Validating exec"
+frontend_pod=$(oc get pod -l deploymentconfig=frontend -t '{{(index .items 0).metadata.name}}')
+# when running as a restricted pod the registry will run with a pre-allocated
+# user in the neighborhood of 1000000+.  Look for a substring of the pre-allocated uid range
+oc exec -p ${frontend_pod} id | grep 10
+
+# Port forwarding
+echo "[INFO] Validating port-forward"
+oc port-forward -p ${frontend_pod} 10080:8080  &> "${LOG_DIR}/port-forward.log" &
+wait_for_url_timed "http://localhost:10080" "[INFO] Frontend says: " $((10*TIME_SEC))
+
+
 
 #echo "[INFO] Applying Docker application config"
 #oc create -n docker -f "${DOCKER_CONFIG_FILE}"
@@ -374,17 +392,54 @@ wait_for_command '[[ "$(oc get endpoints router --output-version=v1beta3 -t "{{ 
 echo "[INFO] Validating routed app response..."
 validate_response "-s -k --resolve www.example.com:443:${CONTAINER_ACCESSIBLE_API_HOST} https://www.example.com" "Hello from OpenShift" 0.2 50
 
-# Remote command execution
-echo "[INFO] Validating exec"
-registry_pod=$(oc get pod -l deploymentconfig=docker-registry -t '{{(index .items 0).metadata.name}}')
-# when running as a restricted pod the registry will run with a pre-allocated
-# user in the neighborhood of 1000000+.  Look for a substring of the pre-allocated uid range
-oc exec -p ${registry_pod} id | grep 10
 
-# Port forwarding
-echo "[INFO] Validating port-forward"
-oc port-forward -p ${registry_pod} 5001:5000  &> "${LOG_DIR}/port-forward.log" &
-wait_for_url_timed "http://localhost:5001/healthz" "[INFO] Docker registry says: " $((10*TIME_SEC))
+# Pod node selection
+echo "[INFO] Validating pod.spec.nodeSelector rejections"
+# Create a project that enforces an impossible to satisfy nodeSelector, and two pods, one of which has an explicit node name
+openshift admin new-project node-selector --description="This is an example project to test node selection prevents deployment" --admin="e2e-user" --node-selector="impossible-label=true"
+oc process -n node-selector -v NODE_NAME="${KUBELET_HOST}" -f test/node-selector/pods.json | oc create -n node-selector -f -
+# The pod without a node name should fail to schedule
+wait_for_command "oc get events -n node-selector | grep pod-without-node-name | grep failedScheduling"        $((20*TIME_SEC))
+# The pod with a node name should be rejected by the kubelet
+wait_for_command "oc get events -n node-selector | grep pod-with-node-name    | grep NodeSelectorMismatching" $((20*TIME_SEC))
+
+
+# Image pruning
+echo "[INFO] Validating image pruning"
+docker pull busybox
+docker pull gcr.io/google_containers/pause
+docker pull openshift/hello-openshift
+
+# tag and push 1st image - layers unique to this image will be pruned
+docker tag -f busybox ${DOCKER_REGISTRY}/cache/prune
+docker push ${DOCKER_REGISTRY}/cache/prune
+
+# tag and push 2nd image - layers unique to this image will be pruned
+docker tag -f openshift/hello-openshift ${DOCKER_REGISTRY}/cache/prune
+docker push ${DOCKER_REGISTRY}/cache/prune
+
+# tag and push 3rd image - it won't be pruned
+docker tag -f gcr.io/google_containers/pause ${DOCKER_REGISTRY}/cache/prune
+docker push ${DOCKER_REGISTRY}/cache/prune
+
+# record the storage before pruning
+registry_pod=$(oc get pod -l deploymentconfig=docker-registry -t '{{(index .items 0).metadata.name}}')
+oc exec -p ${registry_pod} du /registry > ${LOG_DIR}/prune-images.before.txt
+
+# set up pruner user
+oadm policy add-cluster-role-to-user system:image-pruner e2e-pruner
+oc login -u e2e-pruner -p pass
+
+# run image pruning
+oadm prune images --keep-younger-than=0 --keep-tag-revisions=1 --confirm &> ${LOG_DIR}/prune-images.log
+! grep error ${LOG_DIR}/prune-images.log
+
+oc project ${CLUSTER_ADMIN_CONTEXT}
+# record the storage after pruning
+oc exec -p ${registry_pod} du /registry > ${LOG_DIR}/prune-images.after.txt
+
+# make sure there were changes to the registry's storage
+[ -n "$(diff ${LOG_DIR}/prune-images.before.txt ${LOG_DIR}/prune-images.after.txt)" ]
 
 # Image pruning
 echo "[INFO] Validating image pruning"

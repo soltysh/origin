@@ -17,12 +17,14 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	apierrors "github.com/GoogleCloudPlatform/kubernetes/pkg/api/errors"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client/remotecommand"
 	cmdutil "github.com/GoogleCloudPlatform/kubernetes/pkg/kubectl/cmd/util"
@@ -32,91 +34,155 @@ import (
 )
 
 const (
-	exec_example = `// get output from running 'date' in ruby-container from pod 123456-7890
-$ kubectl exec -p 123456-7890 -c ruby-container date
+	exec_example = `// get output from running 'date' from pod 123456-7890, using the first container by default
+$ kubectl exec 123456-7890 date
+	
+// get output from running 'date' in ruby-container from pod 123456-7890
+$ kubectl exec 123456-7890 -c ruby-container date
 
-//switch to raw terminal mode, sends stdin to 'bash' in ruby-container from pod 123456-780 and sends stdout/stderr from 'bash' back to the client
-$ kubectl exec -p 123456-7890 -c ruby-container -i -t -- bash -il`
+// switch to raw terminal mode, sends stdin to 'bash' in ruby-container from pod 123456-780
+// and sends stdout/stderr from 'bash' back to the client
+$ kubectl exec 123456-7890 -c ruby-container -i -t -- bash -il`
 )
 
 func NewCmdExec(f *cmdutil.Factory, cmdIn io.Reader, cmdOut, cmdErr io.Writer) *cobra.Command {
-	params := &execParams{}
+	options := &ExecOptions{
+		In:  cmdIn,
+		Out: cmdOut,
+		Err: cmdErr,
+
+		Executor: &DefaultRemoteExecutor{},
+	}
 	cmd := &cobra.Command{
-		Use:     "exec -p POD -c CONTAINER -- COMMAND [args...]",
+		Use:     "exec POD -c CONTAINER -- COMMAND [args...]",
 		Short:   "Execute a command in a container.",
 		Long:    "Execute a command in a container.",
 		Example: exec_example,
 		Run: func(cmd *cobra.Command, args []string) {
-			err := RunExec(f, cmd, cmdIn, cmdOut, cmdErr, params, args, &defaultRemoteExecutor{})
-			cmdutil.CheckErr(err)
+			cmdutil.CheckErr(options.Complete(f, cmd, args))
+			cmdutil.CheckErr(options.Validate())
+			cmdutil.CheckErr(options.Run())
 		},
 	}
-	cmd.Flags().StringVarP(&params.podName, "pod", "p", "", "Pod name")
-	cmd.MarkFlagRequired("pod")
+	cmd.Flags().StringVarP(&options.PodName, "pod", "p", "", "Pod name")
 	// TODO support UID
-	cmd.Flags().StringVarP(&params.containerName, "container", "c", "", "Container name")
-	cmd.MarkFlagRequired("container")
-	cmd.Flags().BoolVarP(&params.stdin, "stdin", "i", false, "Pass stdin to the container")
-	cmd.Flags().BoolVarP(&params.tty, "tty", "t", false, "Stdin is a TTY")
+	cmd.Flags().StringVarP(&options.ContainerName, "container", "c", "", "Container name")
+	cmd.Flags().BoolVarP(&options.Stdin, "stdin", "i", false, "Pass stdin to the container")
+	cmd.Flags().BoolVarP(&options.TTY, "tty", "t", false, "Stdin is a TTY")
 	return cmd
 }
 
-type remoteExecutor interface {
+// RemoteExecutor defines the interface accepted by the Exec command - provided for test stubbing
+type RemoteExecutor interface {
 	Execute(req *client.Request, config *client.Config, command []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) error
 }
 
-type defaultRemoteExecutor struct{}
+// DefaultRemoteExecutor is the standard implementation of remote command execution
+type DefaultRemoteExecutor struct{}
 
-func (*defaultRemoteExecutor) Execute(req *client.Request, config *client.Config, command []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) error {
+func (*DefaultRemoteExecutor) Execute(req *client.Request, config *client.Config, command []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) error {
 	executor := remotecommand.New(req, config, command, stdin, stdout, stderr, tty)
 	return executor.Execute()
 }
 
-type execParams struct {
-	podName       string
-	containerName string
-	stdin         bool
-	tty           bool
+// ExecOptions declare the arguments accepted by the Exec command
+type ExecOptions struct {
+	Namespace     string
+	PodName       string
+	ContainerName string
+	Stdin         bool
+	TTY           bool
+	Args          []string
+
+	In  io.Reader
+	Out io.Writer
+	Err io.Writer
+
+	Executor RemoteExecutor
+	Client   *client.Client
+	Config   *client.Config
 }
 
-func RunExec(f *cmdutil.Factory, cmd *cobra.Command, cmdIn io.Reader, cmdOut, cmdErr io.Writer, p *execParams, args []string, re remoteExecutor) error {
-	if len(p.podName) == 0 {
+// Complete verifies command line arguments and loads data from the command environment
+func (p *ExecOptions) Complete(f *cmdutil.Factory, cmd *cobra.Command, argsIn []string) error {
+	if len(p.PodName) == 0 && len(argsIn) == 0 {
 		return cmdutil.UsageError(cmd, "POD is required for exec")
 	}
-
-	if len(args) < 1 {
-		return cmdutil.UsageError(cmd, "COMMAND is required for exec")
+	if len(p.PodName) != 0 {
+		printDeprecationWarning("exec POD", "-p POD")
+		if len(argsIn) < 1 {
+			return cmdutil.UsageError(cmd, "COMMAND is required for exec")
+		}
+		p.Args = argsIn
+	} else {
+		p.PodName = argsIn[0]
+		p.Args = argsIn[1:]
+		if len(p.Args) < 1 {
+			return cmdutil.UsageError(cmd, "COMMAND is required for exec")
+		}
 	}
-	namespace, err := f.DefaultNamespace()
+
+	namespace, _, err := f.DefaultNamespace()
 	if err != nil {
 		return err
 	}
+	p.Namespace = namespace
+
+	config, err := f.ClientConfig()
+	if err != nil {
+		return err
+	}
+	p.Config = config
 
 	client, err := f.Client()
 	if err != nil {
 		return err
 	}
+	p.Client = client
 
-	pod, err := client.Pods(namespace).Get(p.podName)
+	return nil
+}
+
+// Validate checks that the provided exec options are specified.
+func (p *ExecOptions) Validate() error {
+	if len(p.PodName) == 0 {
+		return fmt.Errorf("pod name must be specified")
+	}
+	if len(p.Args) == 0 {
+		return fmt.Errorf("you must specify at least one command for the container")
+	}
+	if p.Out == nil || p.Err == nil {
+		return fmt.Errorf("both output and error output must be provided")
+	}
+	if p.Executor == nil || p.Client == nil || p.Config == nil {
+		return fmt.Errorf("client, client config, and executor must be provided")
+	}
+	return nil
+}
+
+// Run executes a validated remote execution against a pod.
+func (p *ExecOptions) Run() error {
+	pod, err := p.Client.Pods(p.Namespace).Get(p.PodName)
 	if err != nil {
 		return err
 	}
 
 	if pod.Status.Phase != api.PodRunning {
-		glog.Fatalf("Unable to execute command because pod is not running. Current status=%v", pod.Status.Phase)
+		return fmt.Errorf("pod %s is not running and cannot execute commands; current phase is %s", p.PodName, pod.Status.Phase)
 	}
 
-	containerName := p.containerName
-	if len(containerName) == 0 {
-		containerName = pod.Spec.Containers[0].Name
+	if len(p.ContainerName) == 0 {
+		glog.V(4).Infof("defaulting container name to %s", pod.Spec.Containers[0].Name)
+		p.ContainerName = pod.Spec.Containers[0].Name
 	}
 
+	// TODO: refactor with terminal helpers from the edit utility once that is merged
 	var stdin io.Reader
-	tty := p.tty
-	if p.stdin {
-		stdin = cmdIn
+	tty := p.TTY
+	if p.Stdin {
+		stdin = p.In
 		if tty {
-			if file, ok := cmdIn.(*os.File); ok {
+			if file, ok := stdin.(*os.File); ok {
 				inFd := file.Fd()
 				if term.IsTerminal(inFd) {
 					oldState, err := term.SetRawTerminal(inFd)
@@ -138,26 +204,47 @@ func RunExec(f *cmdutil.Factory, cmd *cobra.Command, cmdIn io.Reader, cmdOut, cm
 						os.Exit(0)
 					}()
 				} else {
-					glog.Warning("Stdin is not a terminal")
+					fmt.Fprintln(p.Err, "STDIN is not a terminal")
 				}
 			} else {
 				tty = false
-				glog.Warning("Unable to use a TTY")
+				fmt.Fprintln(p.Err, "Unable to use a TTY - input is not the right kind of file")
 			}
 		}
 	}
 
-	config, err := f.ClientConfig()
-	if err != nil {
-		return err
-	}
-
-	req := client.RESTClient.Get().
+	// TODO: consider abstracting into a client invocation or client helper
+	req := p.Client.RESTClient.Post().
 		Resource("pods").
 		Name(pod.Name).
-		Namespace(namespace).
+		Namespace(pod.Namespace).
 		SubResource("exec").
-		Param("container", containerName)
+		Param("container", p.ContainerName)
 
-	return re.Execute(req, config, args, stdin, cmdOut, cmdErr, tty)
+	postErr := p.Executor.Execute(req, p.Config, p.Args, stdin, p.Out, p.Err, tty)
+
+	// if we don't have an error, return.  If we did get an error, try a GET because v3.0.0 shipped with exec running as a GET.
+	if postErr == nil {
+		return nil
+	}
+
+	// only try the get if the error is either a forbidden or method not supported, otherwise trying with a GET probably won't help
+	if !apierrors.IsForbidden(postErr) && !apierrors.IsMethodNotSupported(postErr) {
+		return postErr
+	}
+
+	// TODO: consider abstracting into a client invocation or client helper
+	getReq := p.Client.RESTClient.Get().
+		Resource("pods").
+		Name(pod.Name).
+		Namespace(pod.Namespace).
+		SubResource("exec").
+		Param("container", p.ContainerName)
+	getErr := p.Executor.Execute(getReq, p.Config, p.Args, stdin, p.Out, p.Err, tty)
+	if getErr == nil {
+		return nil
+	}
+
+	// if we got a getErr, return the postErr because it's more likely to be correct.  GET is legacy
+	return postErr
 }

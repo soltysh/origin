@@ -84,7 +84,7 @@ func clientFromConfig(path string) (*kclient.Config, string, error) {
 	if err != nil {
 		return nil, "", fmt.Errorf("the provided credentials %q could not be used: %v", path, err)
 	}
-	namespace, _ := cfg.Namespace()
+	namespace, _, _ := cfg.Namespace()
 	return config, namespace, nil
 }
 
@@ -120,7 +120,7 @@ func (a *AutoLinkBuilds) Link() (map[string]gitserver.Clone, error) {
 
 	clones := make(map[string]gitserver.Clone)
 	for _, builder := range builders {
-		source := builder.Parameters.Source.Git
+		source := builder.Spec.Source.Git
 		if source == nil {
 			continue
 		}

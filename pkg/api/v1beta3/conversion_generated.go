@@ -3,6 +3,7 @@ package v1beta3
 // AUTO-GENERATED FUNCTIONS START HERE
 import (
 	api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	resource "github.com/GoogleCloudPlatform/kubernetes/pkg/api/resource"
 	v1beta3 "github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta3"
 	conversion "github.com/GoogleCloudPlatform/kubernetes/pkg/conversion"
 	authorizationapi "github.com/openshift/origin/pkg/authorization/api"
@@ -28,12 +29,61 @@ import (
 	reflect "reflect"
 )
 
+func convert_api_EnvVar_To_v1beta3_EnvVar(in *api.EnvVar, out *v1beta3.EnvVar, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*api.EnvVar))(in)
+	}
+	out.Name = in.Name
+	out.Value = in.Value
+	if in.ValueFrom != nil {
+		out.ValueFrom = new(v1beta3.EnvVarSource)
+		if err := convert_api_EnvVarSource_To_v1beta3_EnvVarSource(in.ValueFrom, out.ValueFrom, s); err != nil {
+			return err
+		}
+	} else {
+		out.ValueFrom = nil
+	}
+	return nil
+}
+
+func convert_api_EnvVarSource_To_v1beta3_EnvVarSource(in *api.EnvVarSource, out *v1beta3.EnvVarSource, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*api.EnvVarSource))(in)
+	}
+	if in.FieldRef != nil {
+		out.FieldRef = new(v1beta3.ObjectFieldSelector)
+		if err := convert_api_ObjectFieldSelector_To_v1beta3_ObjectFieldSelector(in.FieldRef, out.FieldRef, s); err != nil {
+			return err
+		}
+	} else {
+		out.FieldRef = nil
+	}
+	return nil
+}
+
 func convert_api_ListMeta_To_v1beta3_ListMeta(in *api.ListMeta, out *v1beta3.ListMeta, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*api.ListMeta))(in)
 	}
 	out.SelfLink = in.SelfLink
 	out.ResourceVersion = in.ResourceVersion
+	return nil
+}
+
+func convert_api_LocalObjectReference_To_v1beta3_LocalObjectReference(in *api.LocalObjectReference, out *v1beta3.LocalObjectReference, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*api.LocalObjectReference))(in)
+	}
+	out.Name = in.Name
+	return nil
+}
+
+func convert_api_ObjectFieldSelector_To_v1beta3_ObjectFieldSelector(in *api.ObjectFieldSelector, out *v1beta3.ObjectFieldSelector, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*api.ObjectFieldSelector))(in)
+	}
+	out.APIVersion = in.APIVersion
+	out.FieldPath = in.FieldPath
 	return nil
 }
 
@@ -47,6 +97,7 @@ func convert_api_ObjectMeta_To_v1beta3_ObjectMeta(in *api.ObjectMeta, out *v1bet
 	out.SelfLink = in.SelfLink
 	out.UID = in.UID
 	out.ResourceVersion = in.ResourceVersion
+	out.Generation = in.Generation
 	if err := s.Convert(&in.CreationTimestamp, &out.CreationTimestamp, 0); err != nil {
 		return err
 	}
@@ -90,6 +141,37 @@ func convert_api_ObjectReference_To_v1beta3_ObjectReference(in *api.ObjectRefere
 	return nil
 }
 
+func convert_api_ResourceRequirements_To_v1beta3_ResourceRequirements(in *api.ResourceRequirements, out *v1beta3.ResourceRequirements, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*api.ResourceRequirements))(in)
+	}
+	if in.Limits != nil {
+		out.Limits = make(v1beta3.ResourceList)
+		for key, val := range in.Limits {
+			newVal := resource.Quantity{}
+			if err := s.Convert(&val, &newVal, 0); err != nil {
+				return err
+			}
+			out.Limits[v1beta3.ResourceName(key)] = newVal
+		}
+	} else {
+		out.Limits = nil
+	}
+	if in.Requests != nil {
+		out.Requests = make(v1beta3.ResourceList)
+		for key, val := range in.Requests {
+			newVal := resource.Quantity{}
+			if err := s.Convert(&val, &newVal, 0); err != nil {
+				return err
+			}
+			out.Requests[v1beta3.ResourceName(key)] = newVal
+		}
+	} else {
+		out.Requests = nil
+	}
+	return nil
+}
+
 func convert_api_TypeMeta_To_v1beta3_TypeMeta(in *api.TypeMeta, out *v1beta3.TypeMeta, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*api.TypeMeta))(in)
@@ -99,12 +181,61 @@ func convert_api_TypeMeta_To_v1beta3_TypeMeta(in *api.TypeMeta, out *v1beta3.Typ
 	return nil
 }
 
+func convert_v1beta3_EnvVar_To_api_EnvVar(in *v1beta3.EnvVar, out *api.EnvVar, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*v1beta3.EnvVar))(in)
+	}
+	out.Name = in.Name
+	out.Value = in.Value
+	if in.ValueFrom != nil {
+		out.ValueFrom = new(api.EnvVarSource)
+		if err := convert_v1beta3_EnvVarSource_To_api_EnvVarSource(in.ValueFrom, out.ValueFrom, s); err != nil {
+			return err
+		}
+	} else {
+		out.ValueFrom = nil
+	}
+	return nil
+}
+
+func convert_v1beta3_EnvVarSource_To_api_EnvVarSource(in *v1beta3.EnvVarSource, out *api.EnvVarSource, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*v1beta3.EnvVarSource))(in)
+	}
+	if in.FieldRef != nil {
+		out.FieldRef = new(api.ObjectFieldSelector)
+		if err := convert_v1beta3_ObjectFieldSelector_To_api_ObjectFieldSelector(in.FieldRef, out.FieldRef, s); err != nil {
+			return err
+		}
+	} else {
+		out.FieldRef = nil
+	}
+	return nil
+}
+
 func convert_v1beta3_ListMeta_To_api_ListMeta(in *v1beta3.ListMeta, out *api.ListMeta, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*v1beta3.ListMeta))(in)
 	}
 	out.SelfLink = in.SelfLink
 	out.ResourceVersion = in.ResourceVersion
+	return nil
+}
+
+func convert_v1beta3_LocalObjectReference_To_api_LocalObjectReference(in *v1beta3.LocalObjectReference, out *api.LocalObjectReference, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*v1beta3.LocalObjectReference))(in)
+	}
+	out.Name = in.Name
+	return nil
+}
+
+func convert_v1beta3_ObjectFieldSelector_To_api_ObjectFieldSelector(in *v1beta3.ObjectFieldSelector, out *api.ObjectFieldSelector, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*v1beta3.ObjectFieldSelector))(in)
+	}
+	out.APIVersion = in.APIVersion
+	out.FieldPath = in.FieldPath
 	return nil
 }
 
@@ -118,6 +249,7 @@ func convert_v1beta3_ObjectMeta_To_api_ObjectMeta(in *v1beta3.ObjectMeta, out *a
 	out.SelfLink = in.SelfLink
 	out.UID = in.UID
 	out.ResourceVersion = in.ResourceVersion
+	out.Generation = in.Generation
 	if err := s.Convert(&in.CreationTimestamp, &out.CreationTimestamp, 0); err != nil {
 		return err
 	}
@@ -158,6 +290,37 @@ func convert_v1beta3_ObjectReference_To_api_ObjectReference(in *v1beta3.ObjectRe
 	out.APIVersion = in.APIVersion
 	out.ResourceVersion = in.ResourceVersion
 	out.FieldPath = in.FieldPath
+	return nil
+}
+
+func convert_v1beta3_ResourceRequirements_To_api_ResourceRequirements(in *v1beta3.ResourceRequirements, out *api.ResourceRequirements, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*v1beta3.ResourceRequirements))(in)
+	}
+	if in.Limits != nil {
+		out.Limits = make(api.ResourceList)
+		for key, val := range in.Limits {
+			newVal := resource.Quantity{}
+			if err := s.Convert(&val, &newVal, 0); err != nil {
+				return err
+			}
+			out.Limits[api.ResourceName(key)] = newVal
+		}
+	} else {
+		out.Limits = nil
+	}
+	if in.Requests != nil {
+		out.Requests = make(api.ResourceList)
+		for key, val := range in.Requests {
+			newVal := resource.Quantity{}
+			if err := s.Convert(&val, &newVal, 0); err != nil {
+				return err
+			}
+			out.Requests[api.ResourceName(key)] = newVal
+		}
+	} else {
+		out.Requests = nil
+	}
 	return nil
 }
 
@@ -746,6 +909,44 @@ func convert_v1beta3_SubjectAccessReviewResponse_To_api_SubjectAccessReviewRespo
 	return nil
 }
 
+func convert_api_Build_To_v1beta3_Build(in *buildapi.Build, out *buildapiv1beta3.Build, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapi.Build))(in)
+	}
+	if err := convert_api_TypeMeta_To_v1beta3_TypeMeta(&in.TypeMeta, &out.TypeMeta, s); err != nil {
+		return err
+	}
+	if err := convert_api_ObjectMeta_To_v1beta3_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, s); err != nil {
+		return err
+	}
+	if err := convert_api_BuildSpec_To_v1beta3_BuildSpec(&in.Spec, &out.Spec, s); err != nil {
+		return err
+	}
+	if err := convert_api_BuildStatus_To_v1beta3_BuildStatus(&in.Status, &out.Status, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+func convert_api_BuildConfig_To_v1beta3_BuildConfig(in *buildapi.BuildConfig, out *buildapiv1beta3.BuildConfig, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapi.BuildConfig))(in)
+	}
+	if err := convert_api_TypeMeta_To_v1beta3_TypeMeta(&in.TypeMeta, &out.TypeMeta, s); err != nil {
+		return err
+	}
+	if err := convert_api_ObjectMeta_To_v1beta3_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, s); err != nil {
+		return err
+	}
+	if err := convert_api_BuildConfigSpec_To_v1beta3_BuildConfigSpec(&in.Spec, &out.Spec, s); err != nil {
+		return err
+	}
+	if err := convert_api_BuildConfigStatus_To_v1beta3_BuildConfigStatus(&in.Status, &out.Status, s); err != nil {
+		return err
+	}
+	return nil
+}
+
 func convert_api_BuildConfigList_To_v1beta3_BuildConfigList(in *buildapi.BuildConfigList, out *buildapiv1beta3.BuildConfigList, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*buildapi.BuildConfigList))(in)
@@ -759,13 +960,41 @@ func convert_api_BuildConfigList_To_v1beta3_BuildConfigList(in *buildapi.BuildCo
 	if in.Items != nil {
 		out.Items = make([]buildapiv1beta3.BuildConfig, len(in.Items))
 		for i := range in.Items {
-			if err := s.Convert(&in.Items[i], &out.Items[i], 0); err != nil {
+			if err := convert_api_BuildConfig_To_v1beta3_BuildConfig(&in.Items[i], &out.Items[i], s); err != nil {
 				return err
 			}
 		}
 	} else {
 		out.Items = nil
 	}
+	return nil
+}
+
+func convert_api_BuildConfigSpec_To_v1beta3_BuildConfigSpec(in *buildapi.BuildConfigSpec, out *buildapiv1beta3.BuildConfigSpec, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapi.BuildConfigSpec))(in)
+	}
+	if in.Triggers != nil {
+		out.Triggers = make([]buildapiv1beta3.BuildTriggerPolicy, len(in.Triggers))
+		for i := range in.Triggers {
+			if err := s.Convert(&in.Triggers[i], &out.Triggers[i], 0); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Triggers = nil
+	}
+	if err := convert_api_BuildSpec_To_v1beta3_BuildSpec(&in.BuildSpec, &out.BuildSpec, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+func convert_api_BuildConfigStatus_To_v1beta3_BuildConfigStatus(in *buildapi.BuildConfigStatus, out *buildapiv1beta3.BuildConfigStatus, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapi.BuildConfigStatus))(in)
+	}
+	out.LastVersion = in.LastVersion
 	return nil
 }
 
@@ -782,7 +1011,7 @@ func convert_api_BuildList_To_v1beta3_BuildList(in *buildapi.BuildList, out *bui
 	if in.Items != nil {
 		out.Items = make([]buildapiv1beta3.Build, len(in.Items))
 		for i := range in.Items {
-			if err := s.Convert(&in.Items[i], &out.Items[i], 0); err != nil {
+			if err := convert_api_Build_To_v1beta3_Build(&in.Items[i], &out.Items[i], s); err != nil {
 				return err
 			}
 		}
@@ -846,6 +1075,132 @@ func convert_api_BuildRequest_To_v1beta3_BuildRequest(in *buildapi.BuildRequest,
 	return nil
 }
 
+func convert_api_BuildSource_To_v1beta3_BuildSource(in *buildapi.BuildSource, out *buildapiv1beta3.BuildSource, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapi.BuildSource))(in)
+	}
+	out.Type = buildapiv1beta3.BuildSourceType(in.Type)
+	if in.Git != nil {
+		out.Git = new(buildapiv1beta3.GitBuildSource)
+		if err := convert_api_GitBuildSource_To_v1beta3_GitBuildSource(in.Git, out.Git, s); err != nil {
+			return err
+		}
+	} else {
+		out.Git = nil
+	}
+	out.ContextDir = in.ContextDir
+	if in.SourceSecret != nil {
+		out.SourceSecret = new(v1beta3.LocalObjectReference)
+		if err := convert_api_LocalObjectReference_To_v1beta3_LocalObjectReference(in.SourceSecret, out.SourceSecret, s); err != nil {
+			return err
+		}
+	} else {
+		out.SourceSecret = nil
+	}
+	return nil
+}
+
+func convert_api_BuildSpec_To_v1beta3_BuildSpec(in *buildapi.BuildSpec, out *buildapiv1beta3.BuildSpec, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapi.BuildSpec))(in)
+	}
+	out.ServiceAccount = in.ServiceAccount
+	if err := convert_api_BuildSource_To_v1beta3_BuildSource(&in.Source, &out.Source, s); err != nil {
+		return err
+	}
+	if in.Revision != nil {
+		out.Revision = new(buildapiv1beta3.SourceRevision)
+		if err := convert_api_SourceRevision_To_v1beta3_SourceRevision(in.Revision, out.Revision, s); err != nil {
+			return err
+		}
+	} else {
+		out.Revision = nil
+	}
+	if err := convert_api_BuildStrategy_To_v1beta3_BuildStrategy(&in.Strategy, &out.Strategy, s); err != nil {
+		return err
+	}
+	if err := s.Convert(&in.Output, &out.Output, 0); err != nil {
+		return err
+	}
+	if err := convert_api_ResourceRequirements_To_v1beta3_ResourceRequirements(&in.Resources, &out.Resources, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+func convert_api_BuildStatus_To_v1beta3_BuildStatus(in *buildapi.BuildStatus, out *buildapiv1beta3.BuildStatus, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapi.BuildStatus))(in)
+	}
+	out.Phase = buildapiv1beta3.BuildPhase(in.Phase)
+	out.Cancelled = in.Cancelled
+	out.Message = in.Message
+	if in.StartTimestamp != nil {
+		if err := s.Convert(&in.StartTimestamp, &out.StartTimestamp, 0); err != nil {
+			return err
+		}
+	} else {
+		out.StartTimestamp = nil
+	}
+	if in.CompletionTimestamp != nil {
+		if err := s.Convert(&in.CompletionTimestamp, &out.CompletionTimestamp, 0); err != nil {
+			return err
+		}
+	} else {
+		out.CompletionTimestamp = nil
+	}
+	out.Duration = in.Duration
+	if in.Config != nil {
+		out.Config = new(v1beta3.ObjectReference)
+		if err := convert_api_ObjectReference_To_v1beta3_ObjectReference(in.Config, out.Config, s); err != nil {
+			return err
+		}
+	} else {
+		out.Config = nil
+	}
+	return nil
+}
+
+func convert_api_BuildStrategy_To_v1beta3_BuildStrategy(in *buildapi.BuildStrategy, out *buildapiv1beta3.BuildStrategy, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapi.BuildStrategy))(in)
+	}
+	out.Type = buildapiv1beta3.BuildStrategyType(in.Type)
+	if in.DockerStrategy != nil {
+		if err := s.Convert(&in.DockerStrategy, &out.DockerStrategy, 0); err != nil {
+			return err
+		}
+	} else {
+		out.DockerStrategy = nil
+	}
+	if in.SourceStrategy != nil {
+		if err := s.Convert(&in.SourceStrategy, &out.SourceStrategy, 0); err != nil {
+			return err
+		}
+	} else {
+		out.SourceStrategy = nil
+	}
+	if in.CustomStrategy != nil {
+		if err := s.Convert(&in.CustomStrategy, &out.CustomStrategy, 0); err != nil {
+			return err
+		}
+	} else {
+		out.CustomStrategy = nil
+	}
+	return nil
+}
+
+func convert_api_GitBuildSource_To_v1beta3_GitBuildSource(in *buildapi.GitBuildSource, out *buildapiv1beta3.GitBuildSource, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapi.GitBuildSource))(in)
+	}
+	out.URI = in.URI
+	out.Ref = in.Ref
+	out.HTTPProxy = in.HTTPProxy
+	out.HTTPSProxy = in.HTTPSProxy
+	return nil
+}
+
 func convert_api_GitSourceRevision_To_v1beta3_GitSourceRevision(in *buildapi.GitSourceRevision, out *buildapiv1beta3.GitSourceRevision, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*buildapi.GitSourceRevision))(in)
@@ -858,6 +1213,14 @@ func convert_api_GitSourceRevision_To_v1beta3_GitSourceRevision(in *buildapi.Git
 		return err
 	}
 	out.Message = in.Message
+	return nil
+}
+
+func convert_api_ImageChangeTrigger_To_v1beta3_ImageChangeTrigger(in *buildapi.ImageChangeTrigger, out *buildapiv1beta3.ImageChangeTrigger, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapi.ImageChangeTrigger))(in)
+	}
+	out.LastTriggeredImageID = in.LastTriggeredImageID
 	return nil
 }
 
@@ -886,6 +1249,52 @@ func convert_api_SourceRevision_To_v1beta3_SourceRevision(in *buildapi.SourceRev
 	return nil
 }
 
+func convert_api_WebHookTrigger_To_v1beta3_WebHookTrigger(in *buildapi.WebHookTrigger, out *buildapiv1beta3.WebHookTrigger, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapi.WebHookTrigger))(in)
+	}
+	out.Secret = in.Secret
+	return nil
+}
+
+func convert_v1beta3_Build_To_api_Build(in *buildapiv1beta3.Build, out *buildapi.Build, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapiv1beta3.Build))(in)
+	}
+	if err := convert_v1beta3_TypeMeta_To_api_TypeMeta(&in.TypeMeta, &out.TypeMeta, s); err != nil {
+		return err
+	}
+	if err := convert_v1beta3_ObjectMeta_To_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, s); err != nil {
+		return err
+	}
+	if err := convert_v1beta3_BuildSpec_To_api_BuildSpec(&in.Spec, &out.Spec, s); err != nil {
+		return err
+	}
+	if err := convert_v1beta3_BuildStatus_To_api_BuildStatus(&in.Status, &out.Status, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+func convert_v1beta3_BuildConfig_To_api_BuildConfig(in *buildapiv1beta3.BuildConfig, out *buildapi.BuildConfig, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapiv1beta3.BuildConfig))(in)
+	}
+	if err := convert_v1beta3_TypeMeta_To_api_TypeMeta(&in.TypeMeta, &out.TypeMeta, s); err != nil {
+		return err
+	}
+	if err := convert_v1beta3_ObjectMeta_To_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, s); err != nil {
+		return err
+	}
+	if err := convert_v1beta3_BuildConfigSpec_To_api_BuildConfigSpec(&in.Spec, &out.Spec, s); err != nil {
+		return err
+	}
+	if err := convert_v1beta3_BuildConfigStatus_To_api_BuildConfigStatus(&in.Status, &out.Status, s); err != nil {
+		return err
+	}
+	return nil
+}
+
 func convert_v1beta3_BuildConfigList_To_api_BuildConfigList(in *buildapiv1beta3.BuildConfigList, out *buildapi.BuildConfigList, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*buildapiv1beta3.BuildConfigList))(in)
@@ -899,13 +1308,41 @@ func convert_v1beta3_BuildConfigList_To_api_BuildConfigList(in *buildapiv1beta3.
 	if in.Items != nil {
 		out.Items = make([]buildapi.BuildConfig, len(in.Items))
 		for i := range in.Items {
-			if err := s.Convert(&in.Items[i], &out.Items[i], 0); err != nil {
+			if err := convert_v1beta3_BuildConfig_To_api_BuildConfig(&in.Items[i], &out.Items[i], s); err != nil {
 				return err
 			}
 		}
 	} else {
 		out.Items = nil
 	}
+	return nil
+}
+
+func convert_v1beta3_BuildConfigSpec_To_api_BuildConfigSpec(in *buildapiv1beta3.BuildConfigSpec, out *buildapi.BuildConfigSpec, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapiv1beta3.BuildConfigSpec))(in)
+	}
+	if in.Triggers != nil {
+		out.Triggers = make([]buildapi.BuildTriggerPolicy, len(in.Triggers))
+		for i := range in.Triggers {
+			if err := s.Convert(&in.Triggers[i], &out.Triggers[i], 0); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Triggers = nil
+	}
+	if err := convert_v1beta3_BuildSpec_To_api_BuildSpec(&in.BuildSpec, &out.BuildSpec, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+func convert_v1beta3_BuildConfigStatus_To_api_BuildConfigStatus(in *buildapiv1beta3.BuildConfigStatus, out *buildapi.BuildConfigStatus, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapiv1beta3.BuildConfigStatus))(in)
+	}
+	out.LastVersion = in.LastVersion
 	return nil
 }
 
@@ -922,7 +1359,7 @@ func convert_v1beta3_BuildList_To_api_BuildList(in *buildapiv1beta3.BuildList, o
 	if in.Items != nil {
 		out.Items = make([]buildapi.Build, len(in.Items))
 		for i := range in.Items {
-			if err := s.Convert(&in.Items[i], &out.Items[i], 0); err != nil {
+			if err := convert_v1beta3_Build_To_api_Build(&in.Items[i], &out.Items[i], s); err != nil {
 				return err
 			}
 		}
@@ -986,6 +1423,132 @@ func convert_v1beta3_BuildRequest_To_api_BuildRequest(in *buildapiv1beta3.BuildR
 	return nil
 }
 
+func convert_v1beta3_BuildSource_To_api_BuildSource(in *buildapiv1beta3.BuildSource, out *buildapi.BuildSource, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapiv1beta3.BuildSource))(in)
+	}
+	out.Type = buildapi.BuildSourceType(in.Type)
+	if in.Git != nil {
+		out.Git = new(buildapi.GitBuildSource)
+		if err := convert_v1beta3_GitBuildSource_To_api_GitBuildSource(in.Git, out.Git, s); err != nil {
+			return err
+		}
+	} else {
+		out.Git = nil
+	}
+	out.ContextDir = in.ContextDir
+	if in.SourceSecret != nil {
+		out.SourceSecret = new(api.LocalObjectReference)
+		if err := convert_v1beta3_LocalObjectReference_To_api_LocalObjectReference(in.SourceSecret, out.SourceSecret, s); err != nil {
+			return err
+		}
+	} else {
+		out.SourceSecret = nil
+	}
+	return nil
+}
+
+func convert_v1beta3_BuildSpec_To_api_BuildSpec(in *buildapiv1beta3.BuildSpec, out *buildapi.BuildSpec, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapiv1beta3.BuildSpec))(in)
+	}
+	out.ServiceAccount = in.ServiceAccount
+	if err := convert_v1beta3_BuildSource_To_api_BuildSource(&in.Source, &out.Source, s); err != nil {
+		return err
+	}
+	if in.Revision != nil {
+		out.Revision = new(buildapi.SourceRevision)
+		if err := convert_v1beta3_SourceRevision_To_api_SourceRevision(in.Revision, out.Revision, s); err != nil {
+			return err
+		}
+	} else {
+		out.Revision = nil
+	}
+	if err := convert_v1beta3_BuildStrategy_To_api_BuildStrategy(&in.Strategy, &out.Strategy, s); err != nil {
+		return err
+	}
+	if err := s.Convert(&in.Output, &out.Output, 0); err != nil {
+		return err
+	}
+	if err := convert_v1beta3_ResourceRequirements_To_api_ResourceRequirements(&in.Resources, &out.Resources, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+func convert_v1beta3_BuildStatus_To_api_BuildStatus(in *buildapiv1beta3.BuildStatus, out *buildapi.BuildStatus, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapiv1beta3.BuildStatus))(in)
+	}
+	out.Phase = buildapi.BuildPhase(in.Phase)
+	out.Cancelled = in.Cancelled
+	out.Message = in.Message
+	if in.StartTimestamp != nil {
+		if err := s.Convert(&in.StartTimestamp, &out.StartTimestamp, 0); err != nil {
+			return err
+		}
+	} else {
+		out.StartTimestamp = nil
+	}
+	if in.CompletionTimestamp != nil {
+		if err := s.Convert(&in.CompletionTimestamp, &out.CompletionTimestamp, 0); err != nil {
+			return err
+		}
+	} else {
+		out.CompletionTimestamp = nil
+	}
+	out.Duration = in.Duration
+	if in.Config != nil {
+		out.Config = new(api.ObjectReference)
+		if err := convert_v1beta3_ObjectReference_To_api_ObjectReference(in.Config, out.Config, s); err != nil {
+			return err
+		}
+	} else {
+		out.Config = nil
+	}
+	return nil
+}
+
+func convert_v1beta3_BuildStrategy_To_api_BuildStrategy(in *buildapiv1beta3.BuildStrategy, out *buildapi.BuildStrategy, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapiv1beta3.BuildStrategy))(in)
+	}
+	out.Type = buildapi.BuildStrategyType(in.Type)
+	if in.DockerStrategy != nil {
+		if err := s.Convert(&in.DockerStrategy, &out.DockerStrategy, 0); err != nil {
+			return err
+		}
+	} else {
+		out.DockerStrategy = nil
+	}
+	if in.SourceStrategy != nil {
+		if err := s.Convert(&in.SourceStrategy, &out.SourceStrategy, 0); err != nil {
+			return err
+		}
+	} else {
+		out.SourceStrategy = nil
+	}
+	if in.CustomStrategy != nil {
+		if err := s.Convert(&in.CustomStrategy, &out.CustomStrategy, 0); err != nil {
+			return err
+		}
+	} else {
+		out.CustomStrategy = nil
+	}
+	return nil
+}
+
+func convert_v1beta3_GitBuildSource_To_api_GitBuildSource(in *buildapiv1beta3.GitBuildSource, out *buildapi.GitBuildSource, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapiv1beta3.GitBuildSource))(in)
+	}
+	out.URI = in.URI
+	out.Ref = in.Ref
+	out.HTTPProxy = in.HTTPProxy
+	out.HTTPSProxy = in.HTTPSProxy
+	return nil
+}
+
 func convert_v1beta3_GitSourceRevision_To_api_GitSourceRevision(in *buildapiv1beta3.GitSourceRevision, out *buildapi.GitSourceRevision, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*buildapiv1beta3.GitSourceRevision))(in)
@@ -998,6 +1561,14 @@ func convert_v1beta3_GitSourceRevision_To_api_GitSourceRevision(in *buildapiv1be
 		return err
 	}
 	out.Message = in.Message
+	return nil
+}
+
+func convert_v1beta3_ImageChangeTrigger_To_api_ImageChangeTrigger(in *buildapiv1beta3.ImageChangeTrigger, out *buildapi.ImageChangeTrigger, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapiv1beta3.ImageChangeTrigger))(in)
+	}
+	out.LastTriggeredImageID = in.LastTriggeredImageID
 	return nil
 }
 
@@ -1023,6 +1594,14 @@ func convert_v1beta3_SourceRevision_To_api_SourceRevision(in *buildapiv1beta3.So
 	} else {
 		out.Git = nil
 	}
+	return nil
+}
+
+func convert_v1beta3_WebHookTrigger_To_api_WebHookTrigger(in *buildapiv1beta3.WebHookTrigger, out *buildapi.WebHookTrigger, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*buildapiv1beta3.WebHookTrigger))(in)
+	}
+	out.Secret = in.Secret
 	return nil
 }
 
@@ -2281,10 +2860,18 @@ func convert_v1beta3_UserList_To_api_UserList(in *userapiv1beta3.UserList, out *
 func init() {
 	err := api.Scheme.AddGeneratedConversionFuncs(
 		convert_api_BuildConfigList_To_v1beta3_BuildConfigList,
+		convert_api_BuildConfigSpec_To_v1beta3_BuildConfigSpec,
+		convert_api_BuildConfigStatus_To_v1beta3_BuildConfigStatus,
+		convert_api_BuildConfig_To_v1beta3_BuildConfig,
 		convert_api_BuildList_To_v1beta3_BuildList,
 		convert_api_BuildLogOptions_To_v1beta3_BuildLogOptions,
 		convert_api_BuildLog_To_v1beta3_BuildLog,
 		convert_api_BuildRequest_To_v1beta3_BuildRequest,
+		convert_api_BuildSource_To_v1beta3_BuildSource,
+		convert_api_BuildSpec_To_v1beta3_BuildSpec,
+		convert_api_BuildStatus_To_v1beta3_BuildStatus,
+		convert_api_BuildStrategy_To_v1beta3_BuildStrategy,
+		convert_api_Build_To_v1beta3_Build,
 		convert_api_ClusterNetworkList_To_v1beta3_ClusterNetworkList,
 		convert_api_ClusterNetwork_To_v1beta3_ClusterNetwork,
 		convert_api_ClusterPolicyBindingList_To_v1beta3_ClusterPolicyBindingList,
@@ -2296,15 +2883,20 @@ func init() {
 		convert_api_DeploymentConfigList_To_v1beta3_DeploymentConfigList,
 		convert_api_DeploymentConfigRollbackSpec_To_v1beta3_DeploymentConfigRollbackSpec,
 		convert_api_DeploymentConfigRollback_To_v1beta3_DeploymentConfigRollback,
+		convert_api_EnvVarSource_To_v1beta3_EnvVarSource,
+		convert_api_EnvVar_To_v1beta3_EnvVar,
+		convert_api_GitBuildSource_To_v1beta3_GitBuildSource,
 		convert_api_GitSourceRevision_To_v1beta3_GitSourceRevision,
 		convert_api_HostSubnetList_To_v1beta3_HostSubnetList,
 		convert_api_HostSubnet_To_v1beta3_HostSubnet,
 		convert_api_IdentityList_To_v1beta3_IdentityList,
 		convert_api_Identity_To_v1beta3_Identity,
+		convert_api_ImageChangeTrigger_To_v1beta3_ImageChangeTrigger,
 		convert_api_ImageList_To_v1beta3_ImageList,
 		convert_api_ImageStreamList_To_v1beta3_ImageStreamList,
 		convert_api_IsPersonalSubjectAccessReview_To_v1beta3_IsPersonalSubjectAccessReview,
 		convert_api_ListMeta_To_v1beta3_ListMeta,
+		convert_api_LocalObjectReference_To_v1beta3_LocalObjectReference,
 		convert_api_OAuthAccessTokenList_To_v1beta3_OAuthAccessTokenList,
 		convert_api_OAuthAccessToken_To_v1beta3_OAuthAccessToken,
 		convert_api_OAuthAuthorizeTokenList_To_v1beta3_OAuthAuthorizeTokenList,
@@ -2313,6 +2905,7 @@ func init() {
 		convert_api_OAuthClientAuthorization_To_v1beta3_OAuthClientAuthorization,
 		convert_api_OAuthClientList_To_v1beta3_OAuthClientList,
 		convert_api_OAuthClient_To_v1beta3_OAuthClient,
+		convert_api_ObjectFieldSelector_To_v1beta3_ObjectFieldSelector,
 		convert_api_ObjectMeta_To_v1beta3_ObjectMeta,
 		convert_api_ObjectReference_To_v1beta3_ObjectReference,
 		convert_api_Parameter_To_v1beta3_Parameter,
@@ -2324,6 +2917,7 @@ func init() {
 		convert_api_ProjectStatus_To_v1beta3_ProjectStatus,
 		convert_api_Project_To_v1beta3_Project,
 		convert_api_ResourceAccessReview_To_v1beta3_ResourceAccessReview,
+		convert_api_ResourceRequirements_To_v1beta3_ResourceRequirements,
 		convert_api_RoleBindingList_To_v1beta3_RoleBindingList,
 		convert_api_RoleList_To_v1beta3_RoleList,
 		convert_api_Role_To_v1beta3_Role,
@@ -2336,11 +2930,20 @@ func init() {
 		convert_api_UserIdentityMapping_To_v1beta3_UserIdentityMapping,
 		convert_api_UserList_To_v1beta3_UserList,
 		convert_api_User_To_v1beta3_User,
+		convert_api_WebHookTrigger_To_v1beta3_WebHookTrigger,
 		convert_v1beta3_BuildConfigList_To_api_BuildConfigList,
+		convert_v1beta3_BuildConfigSpec_To_api_BuildConfigSpec,
+		convert_v1beta3_BuildConfigStatus_To_api_BuildConfigStatus,
+		convert_v1beta3_BuildConfig_To_api_BuildConfig,
 		convert_v1beta3_BuildList_To_api_BuildList,
 		convert_v1beta3_BuildLogOptions_To_api_BuildLogOptions,
 		convert_v1beta3_BuildLog_To_api_BuildLog,
 		convert_v1beta3_BuildRequest_To_api_BuildRequest,
+		convert_v1beta3_BuildSource_To_api_BuildSource,
+		convert_v1beta3_BuildSpec_To_api_BuildSpec,
+		convert_v1beta3_BuildStatus_To_api_BuildStatus,
+		convert_v1beta3_BuildStrategy_To_api_BuildStrategy,
+		convert_v1beta3_Build_To_api_Build,
 		convert_v1beta3_ClusterNetworkList_To_api_ClusterNetworkList,
 		convert_v1beta3_ClusterNetwork_To_api_ClusterNetwork,
 		convert_v1beta3_ClusterPolicyBindingList_To_api_ClusterPolicyBindingList,
@@ -2352,15 +2955,20 @@ func init() {
 		convert_v1beta3_DeploymentConfigList_To_api_DeploymentConfigList,
 		convert_v1beta3_DeploymentConfigRollbackSpec_To_api_DeploymentConfigRollbackSpec,
 		convert_v1beta3_DeploymentConfigRollback_To_api_DeploymentConfigRollback,
+		convert_v1beta3_EnvVarSource_To_api_EnvVarSource,
+		convert_v1beta3_EnvVar_To_api_EnvVar,
+		convert_v1beta3_GitBuildSource_To_api_GitBuildSource,
 		convert_v1beta3_GitSourceRevision_To_api_GitSourceRevision,
 		convert_v1beta3_HostSubnetList_To_api_HostSubnetList,
 		convert_v1beta3_HostSubnet_To_api_HostSubnet,
 		convert_v1beta3_IdentityList_To_api_IdentityList,
 		convert_v1beta3_Identity_To_api_Identity,
+		convert_v1beta3_ImageChangeTrigger_To_api_ImageChangeTrigger,
 		convert_v1beta3_ImageList_To_api_ImageList,
 		convert_v1beta3_ImageStreamList_To_api_ImageStreamList,
 		convert_v1beta3_IsPersonalSubjectAccessReview_To_api_IsPersonalSubjectAccessReview,
 		convert_v1beta3_ListMeta_To_api_ListMeta,
+		convert_v1beta3_LocalObjectReference_To_api_LocalObjectReference,
 		convert_v1beta3_OAuthAccessTokenList_To_api_OAuthAccessTokenList,
 		convert_v1beta3_OAuthAccessToken_To_api_OAuthAccessToken,
 		convert_v1beta3_OAuthAuthorizeTokenList_To_api_OAuthAuthorizeTokenList,
@@ -2369,6 +2977,7 @@ func init() {
 		convert_v1beta3_OAuthClientAuthorization_To_api_OAuthClientAuthorization,
 		convert_v1beta3_OAuthClientList_To_api_OAuthClientList,
 		convert_v1beta3_OAuthClient_To_api_OAuthClient,
+		convert_v1beta3_ObjectFieldSelector_To_api_ObjectFieldSelector,
 		convert_v1beta3_ObjectMeta_To_api_ObjectMeta,
 		convert_v1beta3_ObjectReference_To_api_ObjectReference,
 		convert_v1beta3_Parameter_To_api_Parameter,
@@ -2380,6 +2989,7 @@ func init() {
 		convert_v1beta3_ProjectStatus_To_api_ProjectStatus,
 		convert_v1beta3_Project_To_api_Project,
 		convert_v1beta3_ResourceAccessReview_To_api_ResourceAccessReview,
+		convert_v1beta3_ResourceRequirements_To_api_ResourceRequirements,
 		convert_v1beta3_RoleBindingList_To_api_RoleBindingList,
 		convert_v1beta3_RoleList_To_api_RoleList,
 		convert_v1beta3_Role_To_api_Role,
@@ -2392,6 +3002,7 @@ func init() {
 		convert_v1beta3_UserIdentityMapping_To_api_UserIdentityMapping,
 		convert_v1beta3_UserList_To_api_UserList,
 		convert_v1beta3_User_To_api_User,
+		convert_v1beta3_WebHookTrigger_To_api_WebHookTrigger,
 	)
 	if err != nil {
 		// If one of the conversion functions is malformed, detect it immediately.

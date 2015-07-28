@@ -115,6 +115,10 @@ type RollingDeploymentStrategyParams struct {
 	// TimeoutSeconds is the time to wait for updates before giving up. If the
 	// value is nil, a default will be used.
 	TimeoutSeconds *int64 `json:"timeoutSeconds,omitempty" description:"the time to wait for updates before giving up"`
+	// UpdatePercent is the percentage of replicas to scale up or down each
+	// interval. If nil, one replica will be scaled up and down each interval.
+	// If negative, the scale order will be down/up instead of up/down.
+	UpdatePercent *int `json:"updatePercent,omitempty" description:"the percentage of replicas to scale up or down each interval (negative value switches scale order to down/up instead of up/down)"`
 	// Pre is a lifecycle hook which is executed before the deployment process
 	// begins. All LifecycleHookFailurePolicy values are supported.
 	Pre *LifecycleHook `json:"pre,omitempty" description:"a hook executed before the strategy starts the deployment"`
@@ -200,10 +204,11 @@ type DeploymentConfigSpec struct {
 	// Selector is a label query over pods that should match the Replicas count.
 	Selector map[string]string `json:"selector" description:"a label query over pods that should match the replicas count"`
 
+	// TODO removed from RCSpec, so this shouldn't exist
 	// TemplateRef is a reference to an object that describes the pod that will be created if
 	// insufficient replicas are detected. This reference is ignored if a Template is set.
 	// Must be set before converting to a v1 API object
-	TemplateRef *kapi.ObjectReference `json:"templateRef,omitempty" description:"a reference to an object that describes the pod that will be created if insufficient replicas are detected; ignored if template is set"`
+	// TemplateRef *kapi.ObjectReference `json:"templateRef,omitempty" description:"a reference to an object that describes the pod that will be created if insufficient replicas are detected; ignored if template is set"`
 
 	// Template is the object that describes the pod that will be created if
 	// insufficient replicas are detected. Internally, this takes precedence over a

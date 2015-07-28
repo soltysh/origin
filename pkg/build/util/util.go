@@ -9,8 +9,12 @@ import (
 	"github.com/openshift/origin/pkg/util/namer"
 )
 
-// BuildPodSuffix is the suffix used to append to a build pod name given a build name
-const BuildPodSuffix = "build"
+const (
+	// BuildPodSuffix is the suffix used to append to a build pod name given a build name
+	BuildPodSuffix = "build"
+	// NoBuildLogsMessage reports that no build logs are available
+	NoBuildLogsMessage = "No logs are available."
+)
 
 // GetBuildPodName returns name of the build pod.
 func GetBuildPodName(build *buildapi.Build) string {
@@ -30,11 +34,11 @@ func GetBuildName(pod *kapi.Pod) string {
 func GetImageStreamForStrategy(strategy buildapi.BuildStrategy) *kapi.ObjectReference {
 	switch strategy.Type {
 	case buildapi.SourceBuildStrategyType:
-		return strategy.SourceStrategy.From
+		return &strategy.SourceStrategy.From
 	case buildapi.DockerBuildStrategyType:
 		return strategy.DockerStrategy.From
 	case buildapi.CustomBuildStrategyType:
-		return strategy.CustomStrategy.From
+		return &strategy.CustomStrategy.From
 	default:
 		return nil
 	}
@@ -59,8 +63,15 @@ func NameFromImageStream(namespace string, ref *kapi.ObjectReference, tag string
 
 // IsBuildComplete returns whether the provided build is complete or not
 func IsBuildComplete(build *buildapi.Build) bool {
-	if build.Status != buildapi.BuildStatusRunning && build.Status != buildapi.BuildStatusPending && build.Status != buildapi.BuildStatusNew {
-		return true
+	return build.Status.Phase != buildapi.BuildPhaseRunning && build.Status.Phase != buildapi.BuildPhasePending && build.Status.Phase != buildapi.BuildPhaseNew
+}
+
+// GetBuildLabel retrieves build label from a Pod returning its value and
+// a boolean value informing whether the value was found
+func GetBuildLabel(pod *kapi.Pod) (string, bool) {
+	value, exists := pod.Labels[buildapi.BuildLabel]
+	if !exists {
+		value, exists = pod.Labels[buildapi.DeprecatedBuildLabel]
 	}
-	return false
+	return value, exists
 }

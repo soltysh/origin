@@ -20,6 +20,7 @@ import (
 	configapilatest "github.com/openshift/origin/pkg/cmd/server/api/latest"
 	"github.com/openshift/origin/pkg/cmd/server/api/validation"
 	"github.com/openshift/origin/pkg/cmd/util/docker"
+	"github.com/openshift/origin/pkg/version"
 )
 
 type NodeOptions struct {
@@ -29,7 +30,9 @@ type NodeOptions struct {
 	Output     io.Writer
 }
 
-const nodeLong = `Start an OpenShift node.
+const nodeLong = `
+Start an OpenShift node
+
 This command helps you launch an OpenShift node.  Running
 
   $ openshift start node --master=<masterIP>
@@ -62,9 +65,9 @@ func NewCommandStartNode(out io.Writer) (*cobra.Command, *NodeOptions) {
 			if err := options.StartNode(); err != nil {
 				if kerrors.IsInvalid(err) {
 					if details := err.(*kerrors.StatusError).ErrStatus.Details; details != nil {
-						fmt.Fprintf(out, "Invalid %s %s\n", details.Kind, details.ID)
+						fmt.Fprintf(out, "Invalid %s %s\n", details.Kind, details.Name)
 						for _, cause := range details.Causes {
-							fmt.Fprintln(out, cause.Message)
+							fmt.Fprintf(out, "  %s: %s\n", cause.Field, cause.Message)
 						}
 						os.Exit(255)
 					}
@@ -84,6 +87,9 @@ func NewCommandStartNode(out io.Writer) (*cobra.Command, *NodeOptions) {
 	BindListenArg(options.NodeArgs.ListenArg, flags, "")
 	BindImageFormatArgs(options.NodeArgs.ImageFormatArgs, flags, "")
 	BindKubeConnectionArgs(options.NodeArgs.KubeConnectionArgs, flags, "")
+
+	// autocompletion hints
+	cmd.MarkFlagFilename("config", "yaml", "yml")
 
 	return cmd, options
 }
@@ -178,7 +184,7 @@ func (o NodeOptions) RunNode() error {
 }
 
 func (o NodeOptions) CreateNodeConfig() error {
-	getSignerOptions := &admin.GetSignerCertOptions{
+	getSignerOptions := &admin.SignerCertOptions{
 		CertFile:   admin.DefaultCertFilename(o.NodeArgs.MasterCertDir, "ca"),
 		KeyFile:    admin.DefaultKeyFilename(o.NodeArgs.MasterCertDir, "ca"),
 		SerialFile: admin.DefaultSerialFilename(o.NodeArgs.MasterCertDir, "ca"),
@@ -196,7 +202,7 @@ func (o NodeOptions) CreateNodeConfig() error {
 
 	nodeConfigDir := o.NodeArgs.ConfigDir.Value()
 	createNodeConfigOptions := admin.CreateNodeConfigOptions{
-		GetSignerCertOptions: getSignerOptions,
+		SignerCertOptions: getSignerOptions,
 
 		NodeConfigDir: nodeConfigDir,
 
@@ -254,6 +260,7 @@ func StartNode(nodeConfig configapi.NodeConfig) error {
 	if err != nil {
 		return err
 	}
+	glog.Infof("Starting OpenShift node %s (%s)", config.KubeletServer.HostnameOverride, version.Get().String())
 
 	RunSDNController(config, nodeConfig)
 	config.EnsureVolumeDir()

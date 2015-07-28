@@ -20,9 +20,12 @@ func TestCloneWithContext(t *testing.T) {
 		ContextDir: "subdir",
 		Ref:        "ref1",
 	}
-	err := c.Download(fakeConfig)
+	info, err := c.Download(fakeConfig)
 	if err != nil {
 		t.Errorf("%v", err)
+	}
+	if info == nil {
+		t.Fatalf("Expected info to be not nil")
 	}
 	if fs.CopySource != "upload/tmp/subdir/." {
 		t.Errorf("The source directory should be 'upload/tmp/subdir', it is %v", fs.CopySource)
@@ -42,7 +45,7 @@ func TestCloneLocalWithContext(t *testing.T) {
 	gh := New().(*stiGit)
 	cr := &test.FakeCmdRunner{}
 	gh.runner = cr
-	fs := &test.FakeFileSystem{}
+	fs := &test.FakeFileSystem{ExistsResult: map[string]bool{"source/subdir/.": true}}
 	c := &Clone{gh, fs}
 
 	fakeConfig := &api.Config{
@@ -50,7 +53,7 @@ func TestCloneLocalWithContext(t *testing.T) {
 		ContextDir: "subdir",
 		Ref:        "ref1",
 	}
-	err := c.Download(fakeConfig)
+	_, err := c.Download(fakeConfig)
 	if err != nil {
 		t.Errorf("%v", err)
 	}

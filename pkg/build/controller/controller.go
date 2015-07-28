@@ -2,8 +2,8 @@ package controller
 
 import (
 	"fmt"
-
 	"github.com/golang/glog"
+	"strings"
 
 	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	errors "github.com/GoogleCloudPlatform/kubernetes/pkg/api/errors"
@@ -41,17 +41,56 @@ type imageStreamClient interface {
 	GetImageStream(namespace, name string) (*imageapi.ImageStream, error)
 }
 
-// HandleBuild takes new builds and puts them in the pending state after
-// creating a corresponding pod
-func (bc *BuildController) HandleBuild(build *buildapi.Build) error {
-	glog.V(4).Infof("Handling Build %s/%s", build.Namespace, build.Name)
-
-	// We only deal with new builds here
-	if build.Status != buildapi.BuildStatusNew {
+// CancelBuild updates a build status to Cancelled, after its associated pod is deleted.
+func (bc *BuildController) CancelBuild(build *buildapi.Build) error {
+	if !isBuildCancellable(build) {
+		glog.V(4).Infof("Build %s/%s can be cancelled only if it has pending/running status, not %s.", build.Namespace, build.Name, build.Status.Phase)
 		return nil
 	}
 
-	if err := bc.nextBuildStatus(build); err != nil {
+	glog.V(4).Infof("Cancelling Build %s/%s.", build.Namespace, build.Name)
+
+	pod, err := bc.PodManager.GetPod(build.Namespace, buildutil.GetBuildPodName(build))
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("Failed to get Pod for build %s/%s: %v", build.Namespace, build.Name, err)
+		}
+	} else {
+		err := bc.PodManager.DeletePod(build.Namespace, pod)
+		if err != nil && !errors.IsNotFound(err) {
+			return fmt.Errorf("Couldn't delete Build Pod %s/%s: %v", build.Namespace, pod.Name, err)
+		}
+	}
+
+	build.Status.Phase = buildapi.BuildPhaseCancelled
+	now := util.Now()
+	build.Status.CompletionTimestamp = &now
+	if err := bc.BuildUpdater.Update(build.Namespace, build); err != nil {
+		return fmt.Errorf("Failed to update Build %s/%s: %v", build.Namespace, build.Name, err)
+	}
+
+	glog.V(4).Infof("Build %s/%s was successfully cancelled.", build.Namespace, build.Name)
+	return nil
+}
+
+// HandleBuild deletes pods for canceled builds and takes new builds and puts
+// them in the pending state after creating a corresponding pod
+func (bc *BuildController) HandleBuild(build *buildapi.Build) error {
+	glog.V(4).Infof("Handling Build %s/%s", build.Namespace, build.Name)
+
+	// A cancelling event was triggered for the build, delete its pod and update build status.
+	if build.Status.Cancelled && build.Status.Phase != buildapi.BuildPhaseCancelled {
+		if err := bc.CancelBuild(build); err != nil {
+			return fmt.Errorf("Failed to cancel build %s/%s: %v, will retry", build.Namespace, build.Name, err)
+		}
+	}
+
+	// Handle new builds
+	if build.Status.Phase != buildapi.BuildPhaseNew {
+		return nil
+	}
+
+	if err := bc.nextBuildPhase(build); err != nil {
 		return fmt.Errorf("Build failed with error %s/%s: %v", build.Namespace, build.Name, err)
 	}
 
@@ -65,41 +104,55 @@ func (bc *BuildController) HandleBuild(build *buildapi.Build) error {
 	return nil
 }
 
-// nextBuildStatus updates build with any appropriate changes, or returns an error if
+// nextBuildPhase updates build with any appropriate changes, or returns an error if
 // the change cannot occur. When returning nil, be sure to set build.Status and optionally
 // build.Message.
-func (bc *BuildController) nextBuildStatus(build *buildapi.Build) error {
+func (bc *BuildController) nextBuildPhase(build *buildapi.Build) error {
 	// If a cancelling event was triggered for the build, update build status.
-	if build.Cancelled {
+	if build.Status.Cancelled {
 		glog.V(4).Infof("Cancelling Build %s/%s.", build.Namespace, build.Name)
-		build.Status = buildapi.BuildStatusCancelled
+		build.Status.Phase = buildapi.BuildPhaseCancelled
 		return nil
 	}
 
 	// lookup the destination from the referenced image repository
-	spec := build.Parameters.Output.DockerImageReference
-	if ref := build.Parameters.Output.To; ref != nil {
-		// TODO: security, ensure that the reference image stream is actually visible
-		namespace := ref.Namespace
-		if len(namespace) == 0 {
-			namespace = build.Namespace
-		}
-
-		repo, err := bc.ImageStreamClient.GetImageStream(namespace, ref.Name)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return fmt.Errorf("the referenced output ImageStream %s/%s does not exist", namespace, ref.Name)
+	var spec string
+	if ref := build.Spec.Output.To; ref != nil && len(ref.Name) != 0 {
+		switch {
+		case ref.Kind == "DockerImage":
+			spec = ref.Name
+		case ref.Kind == "ImageStream" || ref.Kind == "ImageStreamTag":
+			// TODO: security, ensure that the reference image stream is actually visible
+			namespace := ref.Namespace
+			if len(namespace) == 0 {
+				namespace = build.Namespace
 			}
-			return fmt.Errorf("the referenced output ImageStream %s/%s could not be found by Build %s/%s: %v", namespace, ref.Name, build.Namespace, build.Name, err)
+
+			var tag string
+			streamName := ref.Name
+			if ref.Kind == "ImageStreamTag" {
+				bits := strings.Split(ref.Name, ":")
+				streamName = bits[0]
+				tag = ":" + bits[1]
+			}
+			stream, err := bc.ImageStreamClient.GetImageStream(namespace, streamName)
+			if err != nil {
+				if errors.IsNotFound(err) {
+					return fmt.Errorf("the referenced output ImageStream %s/%s does not exist", namespace, streamName)
+				}
+				return fmt.Errorf("the referenced output ImageStream %s/%s could not be found by Build %s/%s: %v", namespace, streamName, build.Namespace, build.Name, err)
+			}
+			if len(stream.Status.DockerImageRepository) == 0 {
+				e := fmt.Errorf("the ImageStream %s/%s cannot be used as the output for Build %s/%s because the integrated Docker registry is not configured, or the user forgot to set a valid external registry", namespace, ref.Name, build.Namespace, build.Name)
+				bc.Recorder.Eventf(build, "invalidOutput", "Error starting build: %v", e)
+				return e
+			}
+			spec = fmt.Sprintf("%s%s", stream.Status.DockerImageRepository, tag)
 		}
-		if len(repo.Status.DockerImageRepository) == 0 {
-			return fmt.Errorf("the ImageStream %s/%s cannot be used as the output for Build %s/%s because the integrated Docker registry is not configured, or the user forgot to set a valid external registry", namespace, ref.Name, build.Namespace, build.Name)
-		}
-		spec = repo.Status.DockerImageRepository
 	}
 
 	// set the expected build parameters, which will be saved if no error occurs
-	build.Status = buildapi.BuildStatusPending
+	build.Status.Phase = buildapi.BuildPhasePending
 
 	// Make a copy to avoid mutating the build from this point on
 	copy, err := kapi.Scheme.Copy(build)
@@ -108,9 +161,13 @@ func (bc *BuildController) nextBuildStatus(build *buildapi.Build) error {
 	}
 	buildCopy := copy.(*buildapi.Build)
 
-	// override DockerImageReference in the strategy for the copy we send to the build pod
-	buildCopy.Parameters.Output.DockerImageReference = spec
-	buildCopy.Parameters.Output.To = nil
+	// override the Output to be a DockerImage type in the strategy for the copy we send to the build pod
+	if build.Spec.Output.To != nil && len(build.Spec.Output.To.Name) != 0 {
+		buildCopy.Spec.Output.To = &kapi.ObjectReference{
+			Kind: "DockerImage",
+			Name: spec,
+		}
+	}
 
 	// invoke the strategy to get a build pod
 	podSpec, err := bc.BuildStrategy.CreateBuildPod(buildCopy)
@@ -154,79 +211,44 @@ func (bc *BuildPodController) HandlePod(pod *kapi.Pod) error {
 
 	build := obj.(*buildapi.Build)
 
-	// A cancelling event was triggered for the build, delete its pod and update build status.
-	if build.Cancelled {
-		glog.V(4).Infof("Cancelling Build %s/%s.", build.Namespace, build.Name)
-
-		if err := bc.CancelBuild(build, pod); err != nil {
-			return fmt.Errorf("failed to cancel Build %s/%s: %v, will retry", build.Namespace, build.Name, err)
-		}
-		return nil
-	}
-
-	nextStatus := build.Status
-
+	nextStatus := build.Status.Phase
 	switch pod.Status.Phase {
 	case kapi.PodRunning:
 		// The pod's still running
-		nextStatus = buildapi.BuildStatusRunning
+		nextStatus = buildapi.BuildPhaseRunning
 	case kapi.PodSucceeded, kapi.PodFailed:
 		// Check the exit codes of all the containers in the pod
-		nextStatus = buildapi.BuildStatusComplete
+		nextStatus = buildapi.BuildPhaseComplete
 		for _, info := range pod.Status.ContainerStatuses {
-			if info.State.Termination != nil && info.State.Termination.ExitCode != 0 {
-				nextStatus = buildapi.BuildStatusFailed
+			if info.State.Terminated != nil && info.State.Terminated.ExitCode != 0 {
+				nextStatus = buildapi.BuildPhaseFailed
 				break
 			}
 		}
 	}
 
-	if build.Status != nextStatus {
-		glog.V(4).Infof("Updating Build %s/%s status %s -> %s", build.Namespace, build.Name, build.Status, nextStatus)
-		build.Status = nextStatus
+	if build.Status.Phase != nextStatus {
+		glog.V(4).Infof("Updating Build %s/%s status %s -> %s", build.Namespace, build.Name, build.Status.Phase, nextStatus)
+		build.Status.Phase = nextStatus
 		if buildutil.IsBuildComplete(build) {
 			now := util.Now()
-			build.CompletionTimestamp = &now
+			build.Status.CompletionTimestamp = &now
 		}
-		if build.Status == buildapi.BuildStatusRunning {
+		if build.Status.Phase == buildapi.BuildPhaseRunning {
 			now := util.Now()
-			build.StartTimestamp = &now
+			build.Status.StartTimestamp = &now
 		}
 		if err := bc.BuildUpdater.Update(build.Namespace, build); err != nil {
 			return fmt.Errorf("failed to update Build %s/%s: %v", build.Namespace, build.Name, err)
 		}
-		glog.V(4).Infof("Build %s/%s status was updated %s -> %s", build.Namespace, build.Name, build.Status, nextStatus)
+		glog.V(4).Infof("Build %s/%s status was updated %s -> %s", build.Namespace, build.Name, build.Status.Phase, nextStatus)
 	}
-	return nil
-}
-
-// CancelBuild updates a build status to Cancelled, after its associated pod is deleted.
-func (bc *BuildPodController) CancelBuild(build *buildapi.Build, pod *kapi.Pod) error {
-	if !isBuildCancellable(build) {
-		glog.V(4).Infof("Build %s/%s can be cancelled only if it has pending/running status, not %s.", build.Namespace, build.Name, build.Status)
-		return nil
-	}
-
-	err := bc.PodManager.DeletePod(build.Namespace, pod)
-	if err != nil && !errors.IsNotFound(err) {
-		return err
-	}
-
-	glog.V(4).Infof("Build %s/%s is about to be cancelled", build.Namespace, build.Name)
-	build.Status = buildapi.BuildStatusCancelled
-	now := util.Now()
-	build.CompletionTimestamp = &now
-	if err := bc.BuildUpdater.Update(build.Namespace, build); err != nil {
-		return err
-	}
-
-	glog.V(4).Infof("Build %s/%s was successfully cancelled.", build.Namespace, build.Name)
 	return nil
 }
 
 // isBuildCancellable checks for build status and returns true if the condition is checked.
 func isBuildCancellable(build *buildapi.Build) bool {
-	return build.Status == buildapi.BuildStatusNew || build.Status == buildapi.BuildStatusPending || build.Status == buildapi.BuildStatusRunning
+	return build.Status.Phase == buildapi.BuildPhaseNew || build.Status.Phase == buildapi.BuildPhasePending || build.Status.Phase == buildapi.BuildPhaseRunning
 }
 
 // BuildPodDeleteController watches pods running builds and updates the build if the pod is deleted
@@ -249,18 +271,24 @@ func (bc *BuildPodDeleteController) HandleBuildPodDeletion(pod *kapi.Pod) error 
 	}
 	build := obj.(*buildapi.Build)
 
+	// If build was cancelled, we'll leave HandleBuild to update the build
+	if build.Status.Cancelled {
+		glog.V(4).Infof("Cancelation for build was already triggered, ignoring")
+		return nil
+	}
+
 	if buildutil.IsBuildComplete(build) {
 		glog.V(4).Infof("Pod was deleted but Build %s/%s is already completed, so no need to update it.", build.Namespace, build.Name)
 		return nil
 	}
 
-	nextStatus := buildapi.BuildStatusError
-	if build.Status != nextStatus {
-		glog.V(4).Infof("Updating build %s/%s status %s -> %s", build.Namespace, build.Name, build.Status, nextStatus)
-		build.Status = nextStatus
-		build.Message = "The Pod for this Build was deleted before the Build completed."
+	nextStatus := buildapi.BuildPhaseError
+	if build.Status.Phase != nextStatus {
+		glog.V(4).Infof("Updating build %s/%s status %s -> %s", build.Namespace, build.Name, build.Status.Phase, nextStatus)
+		build.Status.Phase = nextStatus
+		build.Status.Message = "The Pod for this Build was deleted before the Build completed."
 		now := util.Now()
-		build.CompletionTimestamp = &now
+		build.Status.CompletionTimestamp = &now
 		if err := bc.BuildUpdater.Update(build.Namespace, build); err != nil {
 			return fmt.Errorf("Failed to update Build %s/%s: %v", build.Namespace, build.Name, err)
 		}
@@ -286,8 +314,8 @@ func (bc *BuildDeleteController) HandleBuildDeletion(build *buildapi.Build) erro
 		glog.V(2).Infof("Did not find pod with name %s for Build %s in namespace %s", podName, build.Name, build.Namespace)
 		return nil
 	}
-	if pod.Labels[buildapi.BuildLabel] != build.Name {
-		glog.V(2).Infof("Not deleting pod %s/%s because the build label %s does not match the build name %s", pod.Namespace, podName, pod.Labels[buildapi.BuildLabel], build.Name)
+	if buildName, _ := buildutil.GetBuildLabel(pod); buildName != build.Name {
+		glog.V(2).Infof("Not deleting pod %s/%s because the build label %s does not match the build name %s", pod.Namespace, podName, buildName, build.Name)
 		return nil
 	}
 	err = bc.PodManager.DeletePod(build.Namespace, pod)

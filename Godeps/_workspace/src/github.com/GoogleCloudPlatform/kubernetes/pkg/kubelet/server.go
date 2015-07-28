@@ -24,6 +24,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"net/url"
 	"path"
 	"strconv"
@@ -64,8 +65,8 @@ func ListenAndServeKubeletServer(host HostInterface, address net.IP, port uint, 
 	s := &http.Server{
 		Addr:           net.JoinHostPort(address.String(), strconv.FormatUint(uint64(port), 10)),
 		Handler:        &handler,
-		ReadTimeout:    5 * time.Minute,
-		WriteTimeout:   5 * time.Minute,
+		ReadTimeout:    60 * time.Minute,
+		WriteTimeout:   60 * time.Minute,
 		MaxHeaderBytes: 1 << 20,
 	}
 	if tlsOptions != nil {
@@ -79,14 +80,12 @@ func ListenAndServeKubeletServer(host HostInterface, address net.IP, port uint, 
 // ListenAndServeKubeletReadOnlyServer initializes a server to respond to HTTP network requests on the Kubelet.
 func ListenAndServeKubeletReadOnlyServer(host HostInterface, address net.IP, port uint) {
 	glog.V(1).Infof("Starting to listen read-only on %s:%d", address, port)
-	s := &Server{host, http.NewServeMux()}
-	healthz.InstallHandler(s.mux)
-	s.mux.HandleFunc("/stats/", s.handleStats)
+	s := NewServer(host, false)
 	s.mux.Handle("/metrics", prometheus.Handler())
 
 	server := &http.Server{
 		Addr:           net.JoinHostPort(address.String(), strconv.FormatUint(uint64(port), 10)),
-		Handler:        s,
+		Handler:        &s,
 		ReadTimeout:    5 * time.Minute,
 		WriteTimeout:   5 * time.Minute,
 		MaxHeaderBytes: 1 << 20,
@@ -102,6 +101,7 @@ type HostInterface interface {
 	GetRawContainerInfo(containerName string, req *cadvisorApi.ContainerInfoRequest, subcontainers bool) (map[string]*cadvisorApi.ContainerInfo, error)
 	GetCachedMachineInfo() (*cadvisorApi.MachineInfo, error)
 	GetPods() []*api.Pod
+	GetRunningPods() ([]*api.Pod, error)
 	GetPodByName(namespace, name string) (*api.Pod, bool)
 	RunInContainer(name string, uid types.UID, container string, cmd []string) ([]byte, error)
 	ExecInContainer(name string, uid types.UID, container string, cmd []string, in io.Reader, out, err io.WriteCloser, tty bool) error
@@ -109,7 +109,9 @@ type HostInterface interface {
 	ServeLogs(w http.ResponseWriter, req *http.Request)
 	PortForward(name string, uid types.UID, port uint16, stream io.ReadWriteCloser) error
 	StreamingConnectionIdleTimeout() time.Duration
+	ResyncInterval() time.Duration
 	GetHostname() string
+	LatestLoopEntryTime() time.Time
 }
 
 // NewServer initializes and configures a kubelet.Server object to handle HTTP requests.
@@ -131,6 +133,7 @@ func (s *Server) InstallDefaultHandlers() {
 		healthz.PingHealthz,
 		healthz.NamedCheck("docker", s.dockerHealthCheck),
 		healthz.NamedCheck("hostname", s.hostnameHealthCheck),
+		healthz.NamedCheck("syncloop", s.syncLoopHealthCheck),
 	)
 	s.mux.HandleFunc("/pods", s.handlePods)
 	s.mux.HandleFunc("/stats/", s.handleStats)
@@ -146,6 +149,12 @@ func (s *Server) InstallDebuggingHandlers() {
 	s.mux.HandleFunc("/logs/", s.handleLogs)
 	s.mux.HandleFunc("/containerLogs/", s.handleContainerLogs)
 	s.mux.Handle("/metrics", prometheus.Handler())
+	// The /runningpods endpoint is used for testing only.
+	s.mux.HandleFunc("/runningpods", s.handleRunningPods)
+
+	s.mux.HandleFunc("/debug/pprof/", pprof.Index)
+	s.mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	s.mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 }
 
 // error serializes an error object into an HTTP response.
@@ -186,6 +195,20 @@ func (s *Server) hostnameHealthCheck(req *http.Request) error {
 	hostname := s.host.GetHostname()
 	if masterHostname != hostname && masterHostname != "127.0.0.1" && masterHostname != "localhost" {
 		return fmt.Errorf("Kubelet hostname \"%v\" does not match the hostname expected by the master \"%v\"", hostname, masterHostname)
+	}
+	return nil
+}
+
+// Checks if kubelet's sync loop  that updates containers is working.
+func (s *Server) syncLoopHealthCheck(req *http.Request) error {
+	duration := s.host.ResyncInterval() * 2
+	minDuration := time.Minute * 5
+	if duration < minDuration {
+		duration = minDuration
+	}
+	enterLoopTime := s.host.LatestLoopEntryTime()
+	if !enterLoopTime.IsZero() && time.Now().After(enterLoopTime.Add(duration)) {
+		return fmt.Errorf("Sync Loop took longer than expected.")
 	}
 	return nil
 }
@@ -260,14 +283,38 @@ func (s *Server) handleContainerLogs(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// handlePods returns a list of pod bound to the Kubelet and their spec
-func (s *Server) handlePods(w http.ResponseWriter, req *http.Request) {
-	pods := s.host.GetPods()
+// encodePods creates an api.PodList object from pods and returns the encoded
+// PodList.
+func encodePods(pods []*api.Pod) (data []byte, err error) {
 	podList := new(api.PodList)
 	for _, pod := range pods {
 		podList.Items = append(podList.Items, *pod)
 	}
-	data, err := latest.Codec.Encode(podList)
+	return latest.Codec.Encode(podList)
+}
+
+// handlePods returns a list of pods bound to the Kubelet and their spec.
+func (s *Server) handlePods(w http.ResponseWriter, req *http.Request) {
+	pods := s.host.GetPods()
+	data, err := encodePods(pods)
+	if err != nil {
+		s.error(w, err)
+		return
+	}
+	w.Header().Add("Content-type", "application/json")
+	w.Write(data)
+}
+
+// handleRunningPods returns a list of pods running on Kubelet. The list is
+// provided by the container runtime, and is different from the list returned
+// by handlePods, which is a set of desired pods to run.
+func (s *Server) handleRunningPods(w http.ResponseWriter, req *http.Request) {
+	pods, err := s.host.GetRunningPods()
+	if err != nil {
+		s.error(w, err)
+		return
+	}
+	data, err := encodePods(pods)
 	if err != nil {
 		s.error(w, err)
 		return

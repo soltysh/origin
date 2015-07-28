@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
+	"strings"
 
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
@@ -14,13 +16,15 @@ import (
 	"github.com/openshift/origin/pkg/cmd/cli/cmd"
 	"github.com/openshift/origin/pkg/cmd/cli/policy"
 	"github.com/openshift/origin/pkg/cmd/cli/secrets"
+	"github.com/openshift/origin/pkg/cmd/flagtypes"
 	"github.com/openshift/origin/pkg/cmd/templates"
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
 	"github.com/openshift/origin/pkg/cmd/util/clientcmd"
 	"github.com/openshift/origin/pkg/version"
 )
 
-const cliLong = `OpenShift Client.
+const cliLong = `
+OpenShift Client
 
 The OpenShift client exposes commands for managing your applications, as well as lower level
 tools to interact with each component of your system.
@@ -51,6 +55,7 @@ You can easily switch between multiple projects using '%[1]s project <projectnam
 func NewCommandCLI(name, fullName string) *cobra.Command {
 	in := os.Stdin
 	out := os.Stdout
+	errout := os.Stderr
 
 	// Main command
 	cmds := &cobra.Command{
@@ -72,7 +77,7 @@ func NewCommandCLI(name, fullName string) *cobra.Command {
 				loginCmd,
 				cmd.NewCmdRequestProject("new-project", fullName+" new-project", fullName+" login", fullName+" project", f, out),
 				cmd.NewCmdNewApplication(fullName, f, out),
-				cmd.NewCmdStatus(fullName, f, out),
+				cmd.NewCmdStatus(cmd.StatusRecommendedName, fullName+" "+cmd.StatusRecommendedName, f, out),
 				cmd.NewCmdProject(fullName+" project", f, out),
 			},
 		},
@@ -96,7 +101,7 @@ func NewCommandCLI(name, fullName string) *cobra.Command {
 				cmd.NewCmdGet(fullName, f, out),
 				cmd.NewCmdDescribe(fullName, f, out),
 				cmd.NewCmdEdit(fullName, f, out),
-				cmd.NewCmdEnv(fullName, f, os.Stdin, out),
+				cmd.NewCmdEnv(fullName, f, in, out),
 				cmd.NewCmdVolume(fullName, f, out),
 				cmd.NewCmdLabel(fullName, f, out),
 				cmd.NewCmdExpose(fullName, f, out),
@@ -108,7 +113,8 @@ func NewCommandCLI(name, fullName string) *cobra.Command {
 			Message: "Troubleshooting and Debugging Commands:",
 			Commands: []*cobra.Command{
 				cmd.NewCmdLogs(fullName, f, out),
-				cmd.NewCmdExec(fullName, f, os.Stdin, out, os.Stderr),
+				cmd.NewCmdRsh(fullName, f, in, out, errout),
+				cmd.NewCmdExec(fullName, f, in, out, errout),
 				cmd.NewCmdPortForward(fullName, f),
 				cmd.NewCmdProxy(fullName, f, out),
 			},
@@ -117,9 +123,10 @@ func NewCommandCLI(name, fullName string) *cobra.Command {
 			Message: "Advanced Commands:",
 			Commands: []*cobra.Command{
 				cmd.NewCmdCreate(fullName, f, out),
-				cmd.NewCmdUpdate(fullName, f, out),
+				cmd.NewCmdReplace(fullName, f, out),
+				cmd.NewCmdPatch(fullName, f, out),
 				cmd.NewCmdProcess(fullName, f, out),
-				cmd.NewCmdExport(fullName, f, os.Stdin, out),
+				cmd.NewCmdExport(fullName, f, in, out),
 				policy.NewCmdPolicy(policy.PolicyRecommendedName, fullName+" "+policy.PolicyRecommendedName, f, out),
 				secrets.NewCmdSecrets(secrets.SecretsRecommendedName, fullName+" "+secrets.SecretsRecommendedName, f, out, fullName+" edit"),
 			},
@@ -165,6 +172,34 @@ func NewCmdKubectl(name string, out io.Writer) *cobra.Command {
 	templates.ActsAsRootCommand(cmds)
 	cmds.AddCommand(cmd.NewCmdOptions(out))
 	return cmds
+}
+
+// CommandFor returns the appropriate command for this base name,
+// or the OpenShift CLI command.
+func CommandFor(basename string) *cobra.Command {
+	var cmd *cobra.Command
+
+	out := os.Stdout
+
+	// Make case-insensitive and strip executable suffix if present
+	if runtime.GOOS == "windows" {
+		basename = strings.ToLower(basename)
+		basename = strings.TrimSuffix(basename, ".exe")
+	}
+
+	switch basename {
+	case "kubectl":
+		cmd = NewCmdKubectl(basename, out)
+	default:
+		cmd = NewCommandCLI(basename, basename)
+	}
+
+	if cmd.UsageFunc() == nil {
+		templates.ActsAsRootCommand(cmd)
+	}
+	flagtypes.GLog(cmd.PersistentFlags())
+
+	return cmd
 }
 
 // applyToCreate injects the deprecation notice about for 'apply' command into

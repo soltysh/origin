@@ -22,11 +22,12 @@ import (
 const (
 	NewSecretRecommendedCommandName = "new"
 
-	newLong = `Create a new secret based on a key file or on files within a directory.
+	newLong = `
+Create a new secret based on a file or directory
 
-	Key files can be specified using their file path, in which case a default name will be given to them, or optionally 
-	with a name and file path, in which case the given name will be used. Specifying a directory will create a secret 
-	using with all valid keys in that directory.
+Key files can be specified using their file path, in which case a default name will be given to them, or optionally 
+with a name and file path, in which case the given name will be used. Specifying a directory will create a secret 
+using with all valid keys in that directory.
 `
 
 	newExamples = `  // Create a new secret named my-secret with a key named ssh-privatekey
@@ -36,8 +37,7 @@ const (
   $ %[1]s my-secret ssh-privatekey=~/.ssh/id_rsa ssh-publickey=~/.ssh/id_rsa.pub
 
   // Create a new secret named my-secret with keys for each file in the folder "bar"
-  $ %[1]s my-secret path/to/bar
-`
+  $ %[1]s my-secret path/to/bar`
 )
 
 type CreateSecretOptions struct {
@@ -72,9 +72,13 @@ func NewCmdCreateSecret(name, fullName string, f *clientcmd.Factory, out io.Writ
 		Long:    newLong,
 		Example: fmt.Sprintf(newExamples, fullName),
 		Run: func(c *cobra.Command, args []string) {
-			cmdutil.CheckErr(options.Complete(args, f))
+			if err := options.Complete(args, f); err != nil {
+				cmdutil.CheckErr(cmdutil.UsageError(c, err.Error()))
+			}
 
-			cmdutil.CheckErr(options.Validate())
+			if err := options.Validate(); err != nil {
+				cmdutil.CheckErr(cmdutil.UsageError(c, err.Error()))
+			}
 
 			if len(cmdutil.GetFlagString(c, "output")) != 0 {
 				secret, err := options.BundleSecret()
@@ -83,6 +87,7 @@ func NewCmdCreateSecret(name, fullName string, f *clientcmd.Factory, out io.Writ
 				cmdutil.CheckErr(f.Factory.PrintObject(c, secret, out))
 				return
 			}
+
 			_, err := options.CreateSecret()
 			cmdutil.CheckErr(err)
 		},
@@ -118,7 +123,7 @@ func (o *CreateSecretOptions) Complete(args []string, f *clientcmd.Factory) erro
 		if err != nil {
 			return err
 		}
-		namespace, err := f.Factory.DefaultNamespace()
+		namespace, _, err := f.Factory.DefaultNamespace()
 		if err != nil {
 			return err
 		}
@@ -130,10 +135,10 @@ func (o *CreateSecretOptions) Complete(args []string, f *clientcmd.Factory) erro
 
 func (o *CreateSecretOptions) Validate() error {
 	if len(o.Name) == 0 {
-		return errors.New("Secret name is required")
+		return errors.New("secret name is required")
 	}
 	if len(o.Sources) == 0 {
-		return errors.New("At least one source file or directory must be specified")
+		return errors.New("at least one source file or directory must be specified")
 	}
 
 nameCheck:

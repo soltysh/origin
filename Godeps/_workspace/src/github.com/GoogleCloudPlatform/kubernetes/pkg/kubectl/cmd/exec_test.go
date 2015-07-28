@@ -21,11 +21,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"testing"
 
 	"github.com/spf13/cobra"
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/testapi"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 )
 
@@ -39,38 +41,114 @@ func (f *fakeRemoteExecutor) Execute(req *client.Request, config *client.Config,
 	return f.execErr
 }
 
-func TestExec(t *testing.T) {
+func TestPodAndContainer(t *testing.T) {
+	tests := []struct {
+		args              []string
+		p                 *ExecOptions
+		name              string
+		expectError       bool
+		expectedPod       string
+		expectedContainer string
+		expectedArgs      []string
+	}{
+		{
+			p:           &ExecOptions{},
+			expectError: true,
+			name:        "empty",
+		},
+		{
+			p:           &ExecOptions{PodName: "foo"},
+			expectError: true,
+			name:        "no cmd",
+		},
+		{
+			p:           &ExecOptions{PodName: "foo", ContainerName: "bar"},
+			expectError: true,
+			name:        "no cmd, w/ container",
+		},
+		{
+			p:            &ExecOptions{PodName: "foo"},
+			args:         []string{"cmd"},
+			expectedPod:  "foo",
+			expectedArgs: []string{"cmd"},
+			name:         "pod in flags",
+		},
+		{
+			p:           &ExecOptions{},
+			args:        []string{"foo"},
+			expectError: true,
+			name:        "no cmd, w/o flags",
+		},
+		{
+			p:            &ExecOptions{},
+			args:         []string{"foo", "cmd"},
+			expectedPod:  "foo",
+			expectedArgs: []string{"cmd"},
+			name:         "cmd, w/o flags",
+		},
+		{
+			p:                 &ExecOptions{ContainerName: "bar"},
+			args:              []string{"foo", "cmd"},
+			expectedPod:       "foo",
+			expectedContainer: "bar",
+			expectedArgs:      []string{"cmd"},
+			name:              "cmd, container in flag",
+		},
+	}
+	for _, test := range tests {
+		f, tf, codec := NewAPIFactory()
+		tf.Client = &client.FakeRESTClient{
+			Codec:  codec,
+			Client: client.HTTPClientFunc(func(req *http.Request) (*http.Response, error) { return nil, nil }),
+		}
+		tf.Namespace = "test"
+		tf.ClientConfig = &client.Config{}
 
+		cmd := &cobra.Command{}
+		options := test.p
+		err := options.Complete(f, cmd, test.args)
+		if test.expectError && err == nil {
+			t.Errorf("unexpected non-error (%s)", test.name)
+		}
+		if !test.expectError && err != nil {
+			t.Errorf("unexpected error: %v (%s)", err, test.name)
+		}
+		if err != nil {
+			continue
+		}
+		if options.PodName != test.expectedPod {
+			t.Errorf("expected: %s, got: %s (%s)", test.expectedPod, options.PodName, test.name)
+		}
+		if options.ContainerName != test.expectedContainer {
+			t.Errorf("expected: %s, got: %s (%s)", test.expectedContainer, options.ContainerName, test.name)
+		}
+		if !reflect.DeepEqual(test.expectedArgs, options.Args) {
+			t.Errorf("expected: %v, got %v (%s)", test.expectedArgs, options.Args, test.name)
+		}
+	}
+}
+
+func TestExec(t *testing.T) {
+	version := testapi.Version()
 	tests := []struct {
 		name, version, podPath, execPath, container string
-		nsInQuery                                   bool
 		pod                                         *api.Pod
 		execErr                                     bool
 	}{
 		{
-			name:      "v1beta1 - pod exec",
-			version:   "v1beta1",
-			podPath:   "/api/v1beta1/pods/foo",
-			execPath:  "/api/v1beta1/pods/foo/exec",
-			nsInQuery: true,
-			pod:       execPod(),
+			name:     "pod exec",
+			version:  version,
+			podPath:  "/api/" + version + "/namespaces/test/pods/foo",
+			execPath: "/api/" + version + "/namespaces/test/pods/foo/exec",
+			pod:      execPod(),
 		},
 		{
-			name:      "v1beta3 - pod exec",
-			version:   "v1beta3",
-			podPath:   "/api/v1beta3/namespaces/test/pods/foo",
-			execPath:  "/api/v1beta3/namespaces/test/pods/foo/exec",
-			nsInQuery: false,
-			pod:       execPod(),
-		},
-		{
-			name:      "v1beta3 - pod exec error",
-			version:   "v1beta3",
-			podPath:   "/api/v1beta3/namespaces/test/pods/foo",
-			execPath:  "/api/v1beta3/namespaces/test/pods/foo/exec",
-			nsInQuery: false,
-			pod:       execPod(),
-			execErr:   true,
+			name:     "pod exec error",
+			version:  version,
+			podPath:  "/api/" + version + "/namespaces/test/pods/foo",
+			execPath: "/api/" + version + "/namespaces/test/pods/foo/exec",
+			pod:      execPod(),
+			execErr:  true,
 		},
 	}
 	for _, test := range tests {
@@ -80,17 +158,12 @@ func TestExec(t *testing.T) {
 			Client: client.HTTPClientFunc(func(req *http.Request) (*http.Response, error) {
 				switch p, m := req.URL.Path, req.Method; {
 				case p == test.podPath && m == "GET":
-					if test.nsInQuery {
-						if ns := req.URL.Query().Get("namespace"); ns != "test" {
-							t.Errorf("%s: did not get expected namespace: %s\n", test.name, ns)
-						}
-					}
 					body := objBody(codec, test.pod)
 					return &http.Response{StatusCode: 200, Body: body}, nil
 				default:
 					// Ensures no GET is performed when deleting by name
-					t.Errorf("%s: unexpected request: %#v\n%#v", test.name, req.URL, req)
-					return nil, nil
+					t.Errorf("%s: unexpected request: %s %#v\n%#v", test.name, req.Method, req.URL, req)
+					return nil, fmt.Errorf("unexpected request")
 				}
 			}),
 		}
@@ -103,20 +176,30 @@ func TestExec(t *testing.T) {
 		if test.execErr {
 			ex.execErr = fmt.Errorf("exec error")
 		}
-		params := &execParams{
-			podName:       "foo",
-			containerName: "bar",
+		params := &ExecOptions{
+			PodName:       "foo",
+			ContainerName: "bar",
+			In:            bufIn,
+			Out:           bufOut,
+			Err:           bufErr,
+			Executor:      ex,
 		}
 		cmd := &cobra.Command{}
-		err := RunExec(f, cmd, bufIn, bufOut, bufErr, params, []string{"test", "command"}, ex)
+		if err := params.Complete(f, cmd, []string{"test", "command"}); err != nil {
+			t.Fatal(err)
+		}
+		err := params.Run()
 		if test.execErr && err != ex.execErr {
 			t.Errorf("%s: Unexpected exec error: %v", test.name, err)
-		}
-		if !test.execErr && ex.req.URL().Path != test.execPath {
-			t.Errorf("%s: Did not get expected path for exec request", test.name)
+			continue
 		}
 		if !test.execErr && err != nil {
 			t.Errorf("%s: Unexpected error: %v", test.name, err)
+			continue
+		}
+		if !test.execErr && ex.req.URL().Path != test.execPath {
+			t.Errorf("%s: Did not get expected path for exec request", test.name)
+			continue
 		}
 	}
 }

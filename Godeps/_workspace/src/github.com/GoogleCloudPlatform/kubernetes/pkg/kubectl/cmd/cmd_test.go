@@ -22,7 +22,9 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"testing"
+	"time"
 
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/latest"
@@ -34,6 +36,7 @@ import (
 	cmdutil "github.com/GoogleCloudPlatform/kubernetes/pkg/kubectl/cmd/util"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/kubectl/resource"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 )
 
 type internalType struct {
@@ -65,7 +68,8 @@ func newExternalScheme() (*runtime.Scheme, meta.RESTMapper, runtime.Codec) {
 	scheme := runtime.NewScheme()
 	scheme.AddKnownTypeWithName("", "Type", &internalType{})
 	scheme.AddKnownTypeWithName("unlikelyversion", "Type", &externalType{})
-	scheme.AddKnownTypeWithName("v1beta1", "Type", &ExternalType2{})
+	//This tests that kubectl will not confuse the external scheme with the internal scheme, even when they accidentally have versions of the same name.
+	scheme.AddKnownTypeWithName(testapi.Version(), "Type", &ExternalType2{})
 
 	codec := runtime.CodecFor(scheme, "unlikelyversion")
 	validVersion := testapi.Version()
@@ -138,14 +142,14 @@ func NewTestFactory() (*cmdutil.Factory, *testFactory, runtime.Codec) {
 		Describer: func(*meta.RESTMapping) (kubectl.Describer, error) {
 			return t.Describer, t.Err
 		},
-		Printer: func(mapping *meta.RESTMapping, noHeaders, withNamespace bool) (kubectl.ResourcePrinter, error) {
+		Printer: func(mapping *meta.RESTMapping, noHeaders, withNamespace bool, wide bool, columnLabels []string) (kubectl.ResourcePrinter, error) {
 			return t.Printer, t.Err
 		},
 		Validator: func() (validation.Schema, error) {
 			return t.Validator, t.Err
 		},
-		DefaultNamespace: func() (string, error) {
-			return t.Namespace, t.Err
+		DefaultNamespace: func() (string, bool, error) {
+			return t.Namespace, false, t.Err
 		},
 		ClientConfig: func() (*client.Config, error) {
 			return t.ClientConfig, t.Err
@@ -172,8 +176,8 @@ func NewAPIFactory() (*cmdutil.Factory, *testFactory, runtime.Codec) {
 		Validator: validation.NullSchema{},
 	}
 	generators := map[string]kubectl.Generator{
-		"run-container/v1": kubectl.BasicReplicationController{},
-		"service/v1":       kubectl.ServiceGenerator{},
+		"run/v1":     kubectl.BasicReplicationController{},
+		"service/v1": kubectl.ServiceGenerator{},
 	}
 	return &cmdutil.Factory{
 		Object: func() (meta.RESTMapper, runtime.ObjectTyper) {
@@ -192,14 +196,14 @@ func NewAPIFactory() (*cmdutil.Factory, *testFactory, runtime.Codec) {
 		Describer: func(*meta.RESTMapping) (kubectl.Describer, error) {
 			return t.Describer, t.Err
 		},
-		Printer: func(mapping *meta.RESTMapping, noHeaders, withNamespace bool) (kubectl.ResourcePrinter, error) {
+		Printer: func(mapping *meta.RESTMapping, noHeaders, withNamespace bool, wide bool, columnLabels []string) (kubectl.ResourcePrinter, error) {
 			return t.Printer, t.Err
 		},
 		Validator: func() (validation.Schema, error) {
 			return t.Validator, t.Err
 		},
-		DefaultNamespace: func() (string, error) {
-			return t.Namespace, t.Err
+		DefaultNamespace: func() (string, bool, error) {
+			return t.Namespace, false, t.Err
 		},
 		ClientConfig: func() (*client.Config, error) {
 			return t.ClientConfig, t.Err
@@ -219,36 +223,39 @@ func stringBody(body string) io.ReadCloser {
 	return ioutil.NopCloser(bytes.NewReader([]byte(body)))
 }
 
+// TODO(jlowdermilk): refactor the Factory so we can test client versions properly,
+// with different client/server version skew scenarios.
 // Verify that resource.RESTClients constructed from a factory respect mapping.APIVersion
-func TestClientVersions(t *testing.T) {
-	f := cmdutil.NewFactory(nil)
+//func TestClientVersions(t *testing.T) {
+//	f := cmdutil.NewFactory(nil)
+//
+//	version := testapi.Version()
+//	mapping := &meta.RESTMapping{
+//		APIVersion: version,
+//	}
+//	c, err := f.RESTClient(mapping)
+//	if err != nil {
+//		t.Errorf("unexpected error: %v", err)
+//	}
+//	client := c.(*client.RESTClient)
+//	if client.APIVersion() != version {
+//		t.Errorf("unexpected Client APIVersion: %s %v", client.APIVersion, client)
+//	}
+//}
 
-	version := testapi.Version()
-	mapping := &meta.RESTMapping{
-		APIVersion: version,
-	}
-	c, err := f.RESTClient(mapping)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-	client := c.(*client.RESTClient)
-	if client.APIVersion() != version {
-		t.Errorf("unexpected Client APIVersion: %s %v", client.APIVersion, client)
-	}
-}
-
-func ExamplePrintReplicationController() {
+func ExamplePrintReplicationControllerWithNamespace() {
 	f, tf, codec := NewAPIFactory()
-	tf.Printer = kubectl.NewHumanReadablePrinter(false, false)
+	tf.Printer = kubectl.NewHumanReadablePrinter(false, true, false, []string{})
 	tf.Client = &client.FakeRESTClient{
 		Codec:  codec,
 		Client: nil,
 	}
-	cmd := NewCmdRunContainer(f, os.Stdout)
+	cmd := NewCmdRun(f, os.Stdout)
 	ctrl := &api.ReplicationController{
 		ObjectMeta: api.ObjectMeta{
-			Name:   "foo",
-			Labels: map[string]string{"foo": "bar"},
+			Name:      "foo",
+			Namespace: "beep",
+			Labels:    map[string]string{"foo": "bar"},
 		},
 		Spec: api.ReplicationControllerSpec{
 			Replicas: 1,
@@ -273,6 +280,133 @@ func ExamplePrintReplicationController() {
 		fmt.Printf("Unexpected error: %v", err)
 	}
 	// Output:
-	// CONTROLLER   CONTAINER(S)   IMAGE(S)    SELECTOR   REPLICAS
-	// foo          foo            someimage   foo=bar    1
+	// NAMESPACE   CONTROLLER   CONTAINER(S)   IMAGE(S)    SELECTOR   REPLICAS
+	// beep        foo          foo            someimage   foo=bar    1
+}
+
+func ExamplePrintPodWithWideFormat() {
+	f, tf, codec := NewAPIFactory()
+	tf.Printer = kubectl.NewHumanReadablePrinter(false, false, true, []string{})
+	tf.Client = &client.FakeRESTClient{
+		Codec:  codec,
+		Client: nil,
+	}
+	nodeName := "kubernetes-minion-abcd"
+	cmd := NewCmdRun(f, os.Stdout)
+	pod := &api.Pod{
+		ObjectMeta: api.ObjectMeta{
+			Name:              "test1",
+			CreationTimestamp: util.Time{time.Now().AddDate(-10, 0, 0)},
+		},
+		Spec: api.PodSpec{
+			Containers: make([]api.Container, 2),
+			NodeName:   nodeName,
+		},
+		Status: api.PodStatus{
+			Phase: "podPhase",
+			ContainerStatuses: []api.ContainerStatus{
+				{Ready: true, RestartCount: 3, State: api.ContainerState{Running: &api.ContainerStateRunning{}}},
+				{RestartCount: 3},
+			},
+		},
+	}
+	err := f.PrintObject(cmd, pod, os.Stdout)
+	if err != nil {
+		fmt.Printf("Unexpected error: %v", err)
+	}
+	// Output:
+	// NAME      READY     STATUS     RESTARTS   AGE       NODE
+	// test1     1/2       podPhase   6          10y       kubernetes-minion-abcd
+}
+
+func ExamplePrintServiceWithNamespacesAndLabels() {
+	f, tf, codec := NewAPIFactory()
+	tf.Printer = kubectl.NewHumanReadablePrinter(false, true, false, []string{"l1"})
+	tf.Client = &client.FakeRESTClient{
+		Codec:  codec,
+		Client: nil,
+	}
+	cmd := NewCmdRun(f, os.Stdout)
+	svc := &api.ServiceList{
+		Items: []api.Service{
+			{
+				ObjectMeta: api.ObjectMeta{
+					Name:      "svc1",
+					Namespace: "ns1",
+					Labels: map[string]string{
+						"l1": "value",
+					},
+				},
+				Spec: api.ServiceSpec{
+					Ports: []api.ServicePort{
+						{Protocol: "UDP", Port: 53},
+						{Protocol: "TCP", Port: 53},
+					},
+					Selector: map[string]string{
+						"s": "magic",
+					},
+					ClusterIP: "10.1.1.1",
+				},
+				Status: api.ServiceStatus{},
+			},
+			{
+				ObjectMeta: api.ObjectMeta{
+					Name:      "svc2",
+					Namespace: "ns2",
+					Labels: map[string]string{
+						"l1": "dolla-bill-yall",
+					},
+				},
+				Spec: api.ServiceSpec{
+					Ports: []api.ServicePort{
+						{Protocol: "TCP", Port: 80},
+						{Protocol: "TCP", Port: 8080},
+					},
+					Selector: map[string]string{
+						"s": "kazam",
+					},
+					ClusterIP: "10.1.1.2",
+				},
+				Status: api.ServiceStatus{},
+			}},
+	}
+	ld := util.NewLineDelimiter(os.Stdout, "|")
+	defer ld.Flush()
+	err := f.PrintObject(cmd, svc, ld)
+	if err != nil {
+		fmt.Printf("Unexpected error: %v", err)
+	}
+	// Output:
+	// |NAMESPACE   NAME      LABELS               SELECTOR   IP(S)      PORT(S)    L1|
+	// |ns1         svc1      l1=value             s=magic    10.1.1.1   53/UDP     value|
+	// |                                                                 53/TCP     |
+	// |ns2         svc2      l1=dolla-bill-yall   s=kazam    10.1.1.2   80/TCP     dolla-bill-yall|
+	// |                                                                 8080/TCP   |
+	// ||
+}
+
+func TestNormalizationFuncGlobalExistance(t *testing.T) {
+	// This test can be safely deleted when we will not support multiple flag formats
+	root := NewKubectlCommand(cmdutil.NewFactory(nil), os.Stdin, os.Stdout, os.Stderr)
+
+	if root.Parent() != nil {
+		t.Fatal("We expect the root command to be returned")
+	}
+	if root.GlobalNormalizationFunc() == nil {
+		t.Fatal("We expect that root command has a global normalization function")
+	}
+
+	if reflect.ValueOf(root.GlobalNormalizationFunc()).Pointer() != reflect.ValueOf(root.Flags().GetNormalizeFunc()).Pointer() {
+		t.Fatal("root command seems to have a wrong normalization function")
+	}
+
+	sub := root
+	for sub.HasSubCommands() {
+		sub = sub.Commands()[0]
+	}
+
+	// In case of failure of this test check this PR: spf13/cobra#110
+	if reflect.ValueOf(sub.Flags().GetNormalizeFunc()).Pointer() != reflect.ValueOf(root.Flags().GetNormalizeFunc()).Pointer() {
+		t.Fatal("child and root commands should have the same normalization functions")
+	}
 }

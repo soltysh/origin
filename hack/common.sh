@@ -30,9 +30,11 @@ readonly OS_IMAGE_COMPILE_PLATFORMS=(
 readonly OS_IMAGE_COMPILE_TARGETS=(
   images/pod
   cmd/dockerregistry
+  cmd/gitserver
 )
 readonly OS_SCRATCH_IMAGE_COMPILE_TARGETS=(
   examples/hello-openshift
+  examples/deployment
 )
 readonly OS_IMAGE_COMPILE_BINARIES=("${OS_SCRATCH_IMAGE_COMPILE_TARGETS[@]##*/}" "${OS_IMAGE_COMPILE_TARGETS[@]##*/}")
 
@@ -43,6 +45,7 @@ readonly OS_CROSS_COMPILE_PLATFORMS=(
 )
 readonly OS_CROSS_COMPILE_TARGETS=(
   cmd/openshift
+  cmd/oc
 )
 readonly OS_CROSS_COMPILE_BINARIES=("${OS_CROSS_COMPILE_TARGETS[@]##*/}")
 
@@ -57,9 +60,7 @@ readonly OPENSHIFT_BINARY_SYMLINKS=(
   openshift-deploy
   openshift-sti-build
   openshift-docker-build
-  openshift-gitserver
   origin
-  oc
   osc
   oadm
   osadm
@@ -72,7 +73,6 @@ readonly OPENSHIFT_BINARY_SYMLINKS=(
   kube-scheduler
 )
 readonly OPENSHIFT_BINARY_COPY=(
-  oc
   oadm
 )
 
@@ -467,14 +467,14 @@ os::build::ldflags() {
   )
 }
 
-os::build::gen-doc() {
+os::build::gen-docs() {
   local cmd="$1"
   local dest="$2"
   local skipprefix="${3:-}"
 
   # We do this in a tmpdir in case the dest has other non-autogenned files
   # We don't want to include them in the list of gen'd files
-  local tmpdir="${OS_ROOT}/doc_tmp"
+  local tmpdir="${OS_ROOT}/_tmp/gen_doc"
   mkdir "${tmpdir}"
   # generate the new files
   ${cmd} "${tmpdir}"
@@ -500,4 +500,6 @@ os::build::gen-doc() {
   find "${tmpdir}" -exec rsync -pt {} "${dest}" \; >/dev/null
   #cleanup
   rm -rf "${tmpdir}"
+
+  echo "Assets generated in ${dest}"
 }

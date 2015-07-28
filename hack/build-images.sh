@@ -3,6 +3,10 @@
 # This script builds all images locally except the base and release images,
 # which are handled by hack/build-base-images.sh.
 
+# NOTE:  you only need to run this script if your code changes are part of
+# any images OpenShift runs internally such as origin-sti-builder, origin-docker-builder,
+# origin-deployer, etc.
+
 set -o errexit
 set -o nounset
 set -o pipefail
@@ -40,7 +44,8 @@ cp -f "${imagedir}/openshift" images/ipfailover/keepalived/bin
 # Copy image binaries to the appropriate locations.
 cp -f "${imagedir}/pod" images/pod/bin
 cp -f "${imagedir}/hello-openshift" examples/hello-openshift/bin
-cp -f "${imagedir}/dockerregistry" images/dockerregistry/bin
+cp -f "${imagedir}/deployment"      examples/deployment/bin
+cp -f "${imagedir}/dockerregistry"  images/dockerregistry/bin
 
 # builds an image and tags it two ways - with latest, and with the release tag
 function image {
@@ -61,11 +66,14 @@ image openshift/origin-deployer              images/deployer
 image openshift/origin-docker-builder        images/builder/docker/docker-builder
 image openshift/origin-gitserver             examples/gitserver
 image openshift/origin-sti-builder           images/builder/docker/sti-builder
-# extra images (not part of infrastructure)
-image openshift/hello-openshift              examples/hello-openshift
 # unpublished images
 image openshift/origin-custom-docker-builder images/builder/docker/custom-docker-builder
 image openshift/sti-image-builder            images/builder/docker/sti-image-builder
+
+# extra images (not part of infrastructure)
+image openshift/hello-openshift              examples/hello-openshift
+docker build --no-cache -t openshift/deployment-example:v1 examples/deployment
+docker build --no-cache -t openshift/deployment-example:v2 -f examples/deployment/Dockerfile.v2 examples/deployment
 
 echo "++ Active images"
 docker images | grep openshift/

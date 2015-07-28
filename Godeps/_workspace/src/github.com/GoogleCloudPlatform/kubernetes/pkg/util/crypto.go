@@ -35,10 +35,11 @@ import (
 
 // GenerateSelfSignedCert creates a self-signed certificate and key for the given host.
 // Host may be an IP or a DNS name
+// You may also specify additional subject alt names (either ip or dns names) for the certificate
 // The certificate will be created with file mode 0644. The key will be created with file mode 0600.
 // If the certificate or key files already exist, they will be overwritten.
 // Any parent directories of the certPath or keyPath will be created as needed with file mode 0755.
-func GenerateSelfSignedCert(host, certPath, keyPath string) error {
+func GenerateSelfSignedCert(host, certPath, keyPath string, alternateIPs []net.IP, alternateDNS []string) error {
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return err
@@ -62,6 +63,9 @@ func GenerateSelfSignedCert(host, certPath, keyPath string) error {
 	} else {
 		template.DNSNames = append(template.DNSNames, host)
 	}
+
+	template.IPAddresses = append(template.IPAddresses, alternateIPs...)
+	template.DNSNames = append(template.DNSNames, alternateDNS...)
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
 	if err != nil {
@@ -123,16 +127,16 @@ func certificatesFromFile(file string) ([]*x509.Certificate, error) {
 	if err != nil {
 		return nil, err
 	}
-	certs, err := certsFromPEM(pemBlock)
+	certs, err := CertsFromPEM(pemBlock)
 	if err != nil {
 		return nil, fmt.Errorf("error reading %s: %s", file, err)
 	}
 	return certs, nil
 }
 
-// certsFromPEM returns the x509.Certificates contained in the given PEM-encoded byte array
+// CertsFromPEM returns the x509.Certificates contained in the given PEM-encoded byte array
 // Returns an error if a certificate could not be parsed, or if the data does not contain any certificates
-func certsFromPEM(pemCerts []byte) ([]*x509.Certificate, error) {
+func CertsFromPEM(pemCerts []byte) ([]*x509.Certificate, error) {
 	ok := false
 	certs := []*x509.Certificate{}
 	for len(pemCerts) > 0 {

@@ -12,7 +12,9 @@ angular.module('openshiftConsole')
   })
   .filter("defaultIfBlank", function(){
     return function(input, defaultValue){
-      if(input === null) return defaultValue;
+      if(input === null) {
+        return defaultValue;
+      }
       if(typeof input !== "string"){
         input = String(input);
       }
@@ -40,10 +42,10 @@ angular.module('openshiftConsole')
       }
       var number = split[1];
       if (number.indexOf(".") >= 0) {
-        var number = parseFloat(number);
+        number = parseFloat(number);
       }
       else {
-        var number =  parseInt(split[1]);
+        number =  parseInt(split[1]);
       }
       var siSuffix = split[2];
       var multiplier = 1;
@@ -123,13 +125,13 @@ angular.module('openshiftConsole')
     return function(type) {
       switch(type) {
         case "webhooks":
-          return "http://docs.openshift.org/latest/dev_guide/builds.html#webhook-triggers";
+          return "http://docs.openshift.com/enterprise/3.0/dev_guide/builds.html#webhook-triggers";
         case "start-build":
-          return "http://docs.openshift.org/latest/dev_guide/builds.html#starting-a-build";
+          return "http://docs.openshift.com/enterprise/3.0/dev_guide/builds.html#starting-a-build";
         case "deployment-operations":
-          return "http://docs.openshift.org/latest/cli_reference/basic_cli_operations.html#deployment-operations";
+          return "http://docs.openshift.com/enterprise/3.0/cli_reference/basic_cli_operations.html#build-and-deployment-cli-operations";
         default:
-          return "http://docs.openshift.org/latest/welcome/index.html";
+          return "http://docs.openshift.com/enterprise/3.0/welcome/index.html";
       }
     };
   })
@@ -172,7 +174,7 @@ angular.module('openshiftConsole')
   })
   /**
    * Filter a hash of values
-   * 
+   *
    * @param {Hash} entries  A Hash to filter
    * @param {String} keys    A comma delimited string of keys to evaluate against
    * @returns {Hash} A filtered set where the keys of those in keys
@@ -191,7 +193,7 @@ angular.module('openshiftConsole')
   })
     /**
    * Filter a hash of values
-   * 
+   *
    * @param {Hash} entries  A Hash to filter
    * @param {String} keys    A comma delimited string of keys to evaluate against
    * @returns {Hash} A filtered set where the keys of those not in keys

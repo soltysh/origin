@@ -9,12 +9,19 @@ import (
 	"text/tabwriter"
 
 	"github.com/openshift/source-to-image/pkg/api"
+	"github.com/openshift/source-to-image/pkg/build"
 )
 
 // Config returns the Config object in nice readable, tabbed format.
 func DescribeConfig(config *api.Config) string {
 	out, err := tabbedString(func(out io.Writer) error {
-		fmt.Fprintf(out, "Builder Image:\t%s\n", config.BuilderImage)
+		if len(config.DisplayName) > 0 {
+			fmt.Fprintf(out, "Application Name:\t%s\n", config.DisplayName)
+		}
+		if len(config.Description) > 0 {
+			fmt.Fprintf(out, "Description:\t%s\n", config.Description)
+		}
+		describeBuilderImage(config, config.BuilderImage, out)
 		fmt.Fprintf(out, "Source:\t%s\n", config.Source)
 		if len(config.Ref) > 0 {
 			fmt.Fprintf(out, "Source Ref:\t%s\n", config.Ref)
@@ -56,6 +63,27 @@ func DescribeConfig(config *api.Config) string {
 		fmt.Printf("ERROR: %v", err)
 	}
 	return out
+}
+
+func describeBuilderImage(config *api.Config, image string, out io.Writer) {
+	c := &api.Config{
+		DockerConfig:       config.DockerConfig,
+		PullAuthentication: config.PullAuthentication,
+		BuilderImage:       config.BuilderImage,
+		ForcePull:          config.ForcePull,
+		Tag:                config.Tag,
+	}
+	build.GenerateConfigFromLabels(image, c)
+	if len(c.DisplayName) > 0 {
+		fmt.Fprintf(out, "Builder Name:\t%s\n", c.DisplayName)
+	}
+	fmt.Fprintf(out, "Builder Image:\t%s\n", config.BuilderImage)
+	if len(c.BuilderImageVersion) > 0 {
+		fmt.Fprintf(out, "Builder Image Version:\t%s\n", c.BuilderImageVersion)
+	}
+	if len(c.BuilderBaseImageVersion) > 0 {
+		fmt.Fprintf(out, "Builder Base Version:\t%s\n", c.BuilderBaseImageVersion)
+	}
 }
 
 func printEnv(out io.Writer, env map[string]string) {

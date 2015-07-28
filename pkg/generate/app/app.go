@@ -14,13 +14,18 @@ import (
 	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/conversion"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
+	kutil "github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/fsouza/go-dockerclient"
 
 	buildapi "github.com/openshift/origin/pkg/build/api"
 	deployapi "github.com/openshift/origin/pkg/deploy/api"
 	"github.com/openshift/origin/pkg/generate/git"
 	imageapi "github.com/openshift/origin/pkg/image/api"
+	"github.com/openshift/origin/pkg/util"
+	"github.com/openshift/origin/pkg/util/namer"
 )
+
+const volumeNameInfix = "volume"
 
 // NameSuggester is an object that can suggest a name for itself
 type NameSuggester interface {
@@ -141,10 +146,11 @@ type BuildStrategyRef struct {
 // BuildStrategy builds an OpenShift BuildStrategy from a BuildStrategyRef
 func (s *BuildStrategyRef) BuildStrategy() (*buildapi.BuildStrategy, []buildapi.BuildTriggerPolicy) {
 	if s.IsDockerBuild {
+		dockerFrom := s.Base.ObjectReference()
 		return &buildapi.BuildStrategy{
 			Type: buildapi.DockerBuildStrategyType,
 			DockerStrategy: &buildapi.DockerBuildStrategy{
-				From: s.Base.ObjectReference(),
+				From: &dockerFrom,
 			},
 		}, s.Base.BuildTriggers()
 	}
@@ -163,6 +169,7 @@ type ImageRef struct {
 	AsImageStream bool
 	OutputImage   bool
 	Insecure      bool
+	HasEmptyDir   bool
 
 	// ObjectName overrides the name of the ImageStream produced
 	// but does not affect the DockerImageReference
@@ -172,37 +179,22 @@ type ImageRef struct {
 	Info   *imageapi.DockerImage
 }
 
-/*
-// NameReference returns the name that other OpenShift objects may refer to this
-// image as.  Deployment Configs and Build Configs may look an image up
-// in an image repository before creating other objects that use the name.
-func (r *ImageRef) NameReference() string {
-	if len(r.Registry) == 0 && len(r.Namespace) == 0 {
-		if len(r.Tag) != 0 {
-			return fmt.Sprintf("%s:%s", r.Name, r.Tag)
-		}
-		return r.Name
-	}
-	return r.pullSpec()
-}
-*/
-
 // ObjectReference returns an object reference from the image reference
-func (r *ImageRef) ObjectReference() *kapi.ObjectReference {
+func (r *ImageRef) ObjectReference() kapi.ObjectReference {
 	switch {
 	case r.Stream != nil:
-		return &kapi.ObjectReference{
+		return kapi.ObjectReference{
 			Kind:      "ImageStreamTag",
 			Name:      imageapi.NameAndTag(r.Stream.Name, r.Tag),
 			Namespace: r.Stream.Namespace,
 		}
 	case r.AsImageStream:
-		return &kapi.ObjectReference{
+		return kapi.ObjectReference{
 			Kind: "ImageStreamTag",
 			Name: imageapi.NameAndTag(r.Name, r.Tag),
 		}
 	default:
-		return &kapi.ObjectReference{
+		return kapi.ObjectReference{
 			Kind: "DockerImage",
 			Name: r.String(),
 		}
@@ -248,12 +240,14 @@ func (r *ImageRef) BuildOutput() (*buildapi.BuildOutput, error) {
 			Kind: kind,
 			Name: imageapi.NameAndTag(imageRepo.Name, r.Tag),
 		},
-		Tag: r.Tag,
 	}, nil
 }
 
 // BuildTriggers sets up build triggers for the base image
 func (r *ImageRef) BuildTriggers() []buildapi.BuildTriggerPolicy {
+	if r.Stream == nil && !r.AsImageStream {
+		return nil
+	}
 	return []buildapi.BuildTriggerPolicy{
 		{
 			Type:        buildapi.ImageChangeBuildTriggerType,
@@ -277,20 +271,9 @@ func (r *ImageRef) ImageStream() (*imageapi.ImageStream, error) {
 		ObjectMeta: kapi.ObjectMeta{
 			Name: name,
 		},
-		Spec: imageapi.ImageStreamSpec{
-			Tags: map[string]imageapi.TagReference{
-				imageapi.DefaultImageTag: {
-					From: &kapi.ObjectReference{
-						Kind: "DockerImage",
-						Name: r.DockerImageReference.String(),
-					},
-				},
-			},
-		},
 	}
 	if !r.OutputImage {
 		stream.Spec.DockerImageRepository = r.String()
-		stream.Spec.Tags = map[string]imageapi.TagReference{}
 		if r.Insecure {
 			stream.ObjectMeta.Annotations = map[string]string{
 				imageapi.InsecureRepositoryAnnotation: "true",
@@ -326,7 +309,7 @@ func (r *ImageRef) DeployableContainer() (container *kapi.Container, triggers []
 		} else {
 			imageChangeParams.From = kapi.ObjectReference{
 				Kind: "ImageStream",
-				Name: r.Name,
+				Name: name,
 			}
 		}
 		triggers = []deployapi.DeploymentTriggerPolicy{
@@ -356,13 +339,27 @@ func (r *ImageRef) DeployableContainer() (container *kapi.Container, triggers []
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to parse port %q: %v", p.Port(), err)
 			}
+
 			container.Ports = append(container.Ports, kapi.ContainerPort{
-				Name:          strings.Join([]string{name, p.Proto(), p.Port()}, "-"),
 				ContainerPort: port,
 				Protocol:      kapi.Protocol(strings.ToUpper(p.Proto())),
 			})
 		}
-		// TODO: Append volume information and environment variables
+
+		// Create volume mounts with names based on container name
+		maxDigits := len(fmt.Sprintf("%d", len(r.Info.Config.Volumes)))
+		baseName := namer.GetName(container.Name, volumeNameInfix, kutil.LabelValueMaxLength-maxDigits-1)
+		i := 1
+		for volume := range r.Info.Config.Volumes {
+			r.HasEmptyDir = true
+			container.VolumeMounts = append(container.VolumeMounts, kapi.VolumeMount{
+				Name:      fmt.Sprintf("%s-%d", baseName, i),
+				ReadOnly:  false,
+				MountPath: volume,
+			})
+			i++
+		}
+		// TODO: Append environment variables
 	}
 
 	return container, triggers, nil
@@ -401,11 +398,13 @@ func (r *BuildRef) BuildConfig() (*buildapi.BuildConfig, error) {
 		ObjectMeta: kapi.ObjectMeta{
 			Name: name,
 		},
-		Triggers: append(sourceTriggers, strategyTriggers...),
-		Parameters: buildapi.BuildParameters{
-			Source:   *source,
-			Strategy: *strategy,
-			Output:   *output,
+		Spec: buildapi.BuildConfigSpec{
+			Triggers: append(sourceTriggers, strategyTriggers...),
+			BuildSpec: buildapi.BuildSpec{
+				Source:   *source,
+				Strategy: *strategy,
+				Output:   *output,
+			},
 		},
 	}, nil
 }
@@ -415,6 +414,7 @@ type DeploymentConfigRef struct {
 	Name   string
 	Images []*ImageRef
 	Env    Environment
+	Labels map[string]string
 }
 
 // DeploymentConfig creates a deploymentConfig resource from the deployment configuration reference
@@ -436,6 +436,11 @@ func (r *DeploymentConfigRef) DeploymentConfig() (*deployapi.DeploymentConfig, e
 	selector := map[string]string{
 		"deploymentconfig": r.Name,
 	}
+	if len(r.Labels) > 0 {
+		if err := util.MergeInto(selector, r.Labels, 0); err != nil {
+			return nil, err
+		}
+	}
 
 	triggers := []deployapi.DeploymentTriggerPolicy{
 		// By default, always deploy on change
@@ -453,7 +458,18 @@ func (r *DeploymentConfigRef) DeploymentConfig() (*deployapi.DeploymentConfig, e
 		triggers = append(triggers, containerTriggers...)
 		template.Containers = append(template.Containers, *c)
 	}
-	// TODO: populate volumes
+
+	// Create EmptyDir volumes for all container volume mounts
+	for _, c := range template.Containers {
+		for _, v := range c.VolumeMounts {
+			template.Volumes = append(template.Volumes, kapi.Volume{
+				Name: v.Name,
+				VolumeSource: kapi.VolumeSource{
+					EmptyDir: &kapi.EmptyDirVolumeSource{Medium: kapi.StorageMediumDefault},
+				},
+			})
+		}
+	}
 
 	for i := range template.Containers {
 		template.Containers[i].Env = append(template.Containers[i].Env, r.Env.List()...)
@@ -464,9 +480,6 @@ func (r *DeploymentConfigRef) DeploymentConfig() (*deployapi.DeploymentConfig, e
 			Name: r.Name,
 		},
 		Template: deployapi.DeploymentTemplate{
-			Strategy: deployapi.DeploymentStrategy{
-				Type: deployapi.DeploymentStrategyTypeRecreate,
-			},
 			ControllerTemplate: kapi.ReplicationControllerSpec{
 				Replicas: 1,
 				Selector: selector,

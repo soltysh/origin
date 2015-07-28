@@ -7,9 +7,6 @@ import (
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 )
 
-// BuildLabel is the key of a Pod label whose value is the Name of a Build which is run.
-const BuildLabel = "build"
-
 // Build encapsulates the inputs needed to produce a new deployable image, as well as
 // the status of the execution and a reference to the Pod which executed the build.
 type Build struct {
@@ -115,7 +112,7 @@ const (
 
 // BuildSource is the SCM used for the build
 type BuildSource struct {
-	Type BuildSourceType `json:"type,omitempty"`
+	Type BuildSourceType `json:"type"`
 	Git  *GitBuildSource `json:"git,omitempty"`
 
 	// Specify the sub-directory where the source code for the application exists.
@@ -133,7 +130,7 @@ type BuildSource struct {
 
 // SourceRevision is the revision or commit information from the source for the build
 type SourceRevision struct {
-	Type BuildSourceType    `json:"type,omitempty"`
+	Type BuildSourceType    `json:"type"`
 	Git  *GitSourceRevision `json:"git,omitempty"`
 }
 
@@ -156,7 +153,7 @@ type GitSourceRevision struct {
 type GitBuildSource struct {
 	// URI points to the source that will be built. The structure of the source
 	// will depend on the type of build to run
-	URI string `json:"uri,omitempty"`
+	URI string `json:"uri"`
 
 	// Ref is the branch/tag/ref to build.
 	Ref string `json:"ref,omitempty"`
@@ -207,9 +204,9 @@ const (
 
 // CustomBuildStrategy defines input parameters specific to Custom build.
 type CustomBuildStrategy struct {
-	// From is reference to an ImageStream, ImageStreamTag, or ImageStreamImage from which
+	// From is reference to an ImageStreamTag, or ImageStreamImage from which
 	// the docker image should be pulled
-	From *kapi.ObjectReference `json:"from,omitempty"`
+	From kapi.ObjectReference `json:"from"`
 
 	// PullSecret is the name of a Secret that would be used for setting up
 	// the authentication for pulling the Docker images from the private Docker
@@ -227,7 +224,7 @@ type CustomBuildStrategy struct {
 
 // DockerBuildStrategy defines input parameters specific to Docker build.
 type DockerBuildStrategy struct {
-	// From is reference to an ImageStream, ImageStreamTag, or ImageStreamImage from which
+	// From is reference to an ImageStreamTag, or ImageStreamImage from which
 	// the docker image should be pulled
 	// the resulting image will be used in the FROM line of the Dockerfile for this build.
 	From *kapi.ObjectReference `json:"from,omitempty"`
@@ -243,13 +240,16 @@ type DockerBuildStrategy struct {
 
 	// Env contains additional environment variables you want to pass into a builder container
 	Env []kapi.EnvVar `json:"env,omitempty" description:"additional environment variables you want to pass into a builder container"`
+
+	// ForcePull describes if the builder should pull the images from registry prior to building.
+	ForcePull bool `json:"forcePull,omitempty" description:"forces the source build to pull the image if true"`
 }
 
 // SourceBuildStrategy defines input parameters specific to an Source build.
 type SourceBuildStrategy struct {
-	// From is reference to an ImageStream, ImageStreamTag, or ImageStreamImage from which
+	// From is reference to an ImageStreamTag, or ImageStreamImage from which
 	// the docker image should be pulled
-	From *kapi.ObjectReference `json:"from,omitempty"`
+	From kapi.ObjectReference `json:"from"`
 
 	// PullSecret is the name of a Secret that would be used for setting up
 	// the authentication for pulling the Docker images from the private Docker
@@ -264,6 +264,9 @@ type SourceBuildStrategy struct {
 
 	// Incremental flag forces the Source build to do incremental builds if true.
 	Incremental bool `json:"incremental,omitempty"`
+
+	// ForcePull describes if the builder should pull the images from registry prior to building.
+	ForcePull bool `json:"forcePull,omitempty" description:"forces the source build to pull the image if true"`
 }
 
 // BuildOutput is input to a build strategy and describes the Docker image that the strategy
@@ -328,7 +331,7 @@ type ImageChangeTrigger struct {
 // BuildTriggerPolicy describes a policy for a single trigger that results in a new Build.
 type BuildTriggerPolicy struct {
 	// Type is the type of build trigger
-	Type BuildTriggerType `json:"type,omitempty"`
+	Type BuildTriggerType `json:"type"`
 
 	// GitHubWebHook contains the parameters for a GitHub webhook type of trigger
 	GitHubWebHook *WebHookTrigger `json:"github,omitempty"`

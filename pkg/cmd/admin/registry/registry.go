@@ -22,7 +22,8 @@ import (
 )
 
 const (
-	registryLong = `Install or configure a Docker registry for OpenShift
+	registryLong = `
+Install or configure a Docker registry for OpenShift
 
 This command sets up a Docker registry integrated with OpenShift to provide notifications when
 images are pushed. With no arguments, the command will check for the existing registry service
@@ -114,6 +115,9 @@ func NewCmdRegistry(f *clientcmd.Factory, parentName, name string, out io.Writer
 	cmd.Flags().StringVar(&cfg.ServiceAccount, "service-account", cfg.ServiceAccount, "Name of the service account to use to run the registry pod.")
 	cmd.Flags().StringVar(&cfg.Selector, "selector", cfg.Selector, "Selector used to filter nodes on deployment. Used to run registries on a specific set of nodes.")
 
+	// autocompletion hints
+	cmd.MarkFlagFilename("credentials", "kubeconfig")
+
 	cmdutil.AddPrinterFlags(cmd)
 
 	return cmd
@@ -162,7 +166,7 @@ func RunCmdRegistry(f *clientcmd.Factory, cmd *cobra.Command, out io.Writer, cfg
 
 	image := cfg.ImageTemplate.ExpandOrDie(cfg.Type)
 
-	namespace, err := f.OpenShiftClientConfig.Namespace()
+	namespace, _, err := f.OpenShiftClientConfig.Namespace()
 	if err != nil {
 		return fmt.Errorf("error getting client: %v", err)
 	}
@@ -229,8 +233,8 @@ func RunCmdRegistry(f *clientcmd.Factory, cmd *cobra.Command, out io.Writer, cfg
 		podTemplate := &kapi.PodTemplateSpec{
 			ObjectMeta: kapi.ObjectMeta{Labels: label},
 			Spec: kapi.PodSpec{
-				ServiceAccount: cfg.ServiceAccount,
-				NodeSelector:   nodeSelector,
+				ServiceAccountName: cfg.ServiceAccount,
+				NodeSelector:       nodeSelector,
 				Containers: []kapi.Container{
 					{
 						Name:  "registry",
@@ -293,7 +297,7 @@ func RunCmdRegistry(f *clientcmd.Factory, cmd *cobra.Command, out io.Writer, cfg
 				},
 			},
 		}
-		objects = app.AddServices(objects)
+		objects = app.AddServices(objects, true)
 		// TODO: label all created objects with the same label
 		list := &kapi.List{Items: objects}
 

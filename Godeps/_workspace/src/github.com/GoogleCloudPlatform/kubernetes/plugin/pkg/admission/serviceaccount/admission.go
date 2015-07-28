@@ -57,6 +57,8 @@ type serviceAccount struct {
 
 	// LimitSecretReferences rejects pods that reference secrets their service accounts do not reference
 	LimitSecretReferences bool
+	// RequireAPIToken determines whether pod creation attempts are rejected if no API token exists for the pod's service account
+	RequireAPIToken bool
 	// MountServiceAccountToken creates Volume and VolumeMounts for the first referenced ServiceAccountToken for the pod's service account
 	MountServiceAccountToken bool
 
@@ -110,6 +112,8 @@ func NewServiceAccount(cl client.Interface) *serviceAccount {
 		LimitSecretReferences: true,
 		// Auto mount service account API token secrets
 		MountServiceAccountToken: true,
+		// Reject pod creation until a service account token is available
+		RequireAPIToken: true,
 
 		client:                   cl,
 		serviceAccounts:          serviceAccountsIndexer,
@@ -150,7 +154,7 @@ func (s *serviceAccount) Admit(a admission.Attributes) (err error) {
 	// That makes the kubelet very angry and confused, and it immediately deletes the pod (because the spec doesn't match)
 	// That said, don't allow mirror pods to reference ServiceAccounts or SecretVolumeSources either
 	if _, isMirrorPod := pod.Annotations[kubelet.ConfigMirrorAnnotationKey]; isMirrorPod {
-		if len(pod.Spec.ServiceAccount) != 0 {
+		if len(pod.Spec.ServiceAccountName) != 0 {
 			return admission.NewForbidden(a, fmt.Errorf("A mirror pod may not reference service accounts"))
 		}
 		for _, volume := range pod.Spec.Volumes {
@@ -162,17 +166,18 @@ func (s *serviceAccount) Admit(a admission.Attributes) (err error) {
 	}
 
 	// Set the default service account if needed
-	if len(pod.Spec.ServiceAccount) == 0 {
-		pod.Spec.ServiceAccount = DefaultServiceAccountName
+	if len(pod.Spec.ServiceAccountName) == 0 {
+		pod.Spec.ServiceAccountName = DefaultServiceAccountName
 	}
 
 	// Ensure the referenced service account exists
-	serviceAccount, err := s.getServiceAccount(a.GetNamespace(), pod.Spec.ServiceAccount)
+	serviceAccount, err := s.getServiceAccount(a.GetNamespace(), pod.Spec.ServiceAccountName)
 	if err != nil {
-		return admission.NewForbidden(a, fmt.Errorf("Error looking up service account %s/%s: %v", a.GetNamespace(), pod.Spec.ServiceAccount, err))
+		return admission.NewForbidden(a, fmt.Errorf("Error looking up service account %s/%s: %v", a.GetNamespace(), pod.Spec.ServiceAccountName, err))
 	}
 	if serviceAccount == nil {
-		return admission.NewForbidden(a, fmt.Errorf("Missing service account %s/%s: %v", a.GetNamespace(), pod.Spec.ServiceAccount, err))
+		// TODO: convert to a ServerTimeout error (or other error that sends a Retry-After header)
+		return admission.NewForbidden(a, fmt.Errorf("service account %s/%s was not found, retry after the service account is created", a.GetNamespace(), pod.Spec.ServiceAccountName))
 	}
 
 	if s.LimitSecretReferences {
@@ -320,10 +325,15 @@ func (s *serviceAccount) mountServiceAccountToken(serviceAccount *api.ServiceAcc
 	// Find the name of a referenced ServiceAccountToken secret we can mount
 	serviceAccountToken, err := s.getReferencedServiceAccountToken(serviceAccount)
 	if err != nil {
-		fmt.Errorf("Error looking up service account token for %s/%s: %v", serviceAccount.Namespace, serviceAccount.Name, err)
+		return fmt.Errorf("Error looking up service account token for %s/%s: %v", serviceAccount.Namespace, serviceAccount.Name, err)
 	}
 	if len(serviceAccountToken) == 0 {
 		// We don't have an API token to mount, so return
+		if s.RequireAPIToken {
+			// If a token is required, this is considered an error
+			// TODO: convert to a ServerTimeout error (or other error that sends a Retry-After header)
+			return fmt.Errorf("no API token found for service account %s/%s, retry after the token is automatically created and added to the service account", serviceAccount.Namespace, serviceAccount.Name)
+		}
 		return nil
 	}
 

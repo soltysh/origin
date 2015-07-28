@@ -30,24 +30,29 @@ easy deployment and scaling, and long-term lifecycle maintenance for small and l
 
 For questions or feedback, reach us on [IRC on #openshift-dev](https://botbot.me/freenode/openshift-dev/) on Freenode or post to our [mailing list](https://lists.openshift.redhat.com/openshiftmm/listinfo/dev).
 
-NOTE: OpenShift release candidate 1 is available on the [releases page](https://github.com/openshift/origin/releases). Feedback, suggestions, and testing are all welcome!
+NOTE: OpenShift Origin 1.0 has been released [releases page](https://github.com/openshift/origin/releases). Feedback, suggestions, and testing are all welcome!
 
 
 Security!!!
 -------------------
-OpenShift is a system that runs Docker containers on your machine.  In some cases (build operations) it does so using privileged containers. Those containers access your host's Docker daemon and perform `docker build` and `docker push` operations.  As such, you should be aware of the inherent security risks associated with performing `docker build` operations on arbitrary images as they have effective root access.  This is particularly relevant when running the OpenShift as a node directly on your laptop or primary workstation.  Only build and run code you trust.
+OpenShift runs with the following security policy by default:
 
-For more information on the security of containers, see these articles:
+* Containers run as a non-root unique user that is separate from other system users
+  * They cannot access host resources, run privileged, or become root
+  * They are given CPU and memory limits defined by the system administrator
+  * Any persistent storage they access will be under a unique SELinux label, which prevents others from seeing their content
+  * These settings are per project, so containers in different projects cannot see each other by default
+* Regular users can run Docker, source, and custom builds
+  * By default, Docker builds can (and often do) run as root. You can control who can create Docker builds through the `builds/docker` and `builds/custom` policy resource.
+* Regular users and project admins cannot change their security quotas.
 
-* http://opensource.com/business/14/7/docker-security-selinux
-* https://docs.docker.com/articles/security/
-
-Consider using images from trusted parties, building them yourself on OpenShift, or only running containers that run as non-root users.
-
+See the [security documentation](https://docs.openshift.org/latest/admin_guide/manage_scc.html) for more on managing these restrictions.
 
 Getting Started
 ---------------
-The easiest way to run OpenShift Origin is in a Docker container (OpenShift requires Docker 1.6 or higher or 1.6.2 on CentOS/RHEL):
+The easiest way to run OpenShift Origin is in a Docker container (OpenShift requires Docker 1.6.2 or higher):
+
+**Important!**: Docker on non-RedHat distributions (Ubuntu, Debian, boot2docker) has mount propagation PRIVATE, which [breaks](https://github.com/openshift/origin/issues/3072) running OpenShift inside a container. Please use the [Vagrant](CONTRIBUTING.adoc#develop-on-virtual-machine-using-vagrant) or binary installation paths on those distributions.
 
     $ sudo docker run -d --name "origin" \
         --privileged --net=host \
@@ -55,7 +60,7 @@ The easiest way to run OpenShift Origin is in a Docker container (OpenShift requ
         -v /var/lib/openshift/openshift.local.volumes:/var/lib/openshift/openshift.local.volumes \
         openshift/origin start
 
-*Security!* Why do we need to mount your host, run privileged, and get access to your Docker directory? OpenShift runs as a host agent (like Docker)
+**Security!** Why do we need to mount your host, run privileged, and get access to your Docker directory? OpenShift runs as a host agent (like Docker)
 and starts and stops Docker containers, mounts remote volumes, and monitors the system (/sys) to report performance and health info. You can strip all of these options off and OpenShift will still start, but you won't be able to run pods (which is kind of the point).
 
 Once the container is started, you can jump into a console inside the container and run the CLI.
@@ -76,7 +81,7 @@ Once the container is started, you can jump into a console inside the container 
     # See everything you just created!
     $ oc status
 
-Any username and password are accepted by default (with no credential system configured).  You can view the webconsole at https://localhost:8443/ in your browser - login with the same credentials you used above and you'll see the application you just created.
+Any username and password are accepted by default (with no credential system configured).  You can view the webconsole at [https://localhost:8443/console](https://localhost:8443/console) in your browser - login with the same credentials you used above and you'll see the application you just created.
 
 ![Web console overview](docs/screenshots/console_overview.png?raw=true)
 
@@ -139,7 +144,7 @@ FAQ
 
 2. What can I run on OpenShift?
 
-    OpenShift is designed to run any existing Docker images.  In addition you can define builds that will produce new Docker images from a Dockerfile.  However the real magic of OpenShift can be seen when using [Source-To-Image](https://github.com/openshift/source-to-image) builds which allow you to simply supply an application source repository which will be combined with an existing Source-To-Image enabled Docker image to produce a new runnable image that runs your application.  We are continuing to grow the ecosystem of Source-To-Image enabled images and documenting them [here](http://docs.openshift.org/latest/using_images/sti_images/overview.html). Our available images are:
+    OpenShift is designed to run any existing Docker images.  In addition you can define builds that will produce new Docker images from a Dockerfile.  However the real magic of OpenShift can be seen when using [Source-To-Image](https://github.com/openshift/source-to-image) builds which allow you to simply supply an application source repository which will be combined with an existing Source-To-Image enabled Docker image to produce a new runnable image that runs your application.  We are continuing to grow the ecosystem of Source-To-Image enabled images and documenting them [here](http://docs.openshift.org/latest/using_images/s2i_images/overview.html). Our available images are:
 
     * [Ruby](https://github.com/openshift/sti-ruby)
     * [Python](https://github.com/openshift/sti-python)

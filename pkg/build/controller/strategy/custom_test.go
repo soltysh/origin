@@ -18,7 +18,7 @@ func TestCustomCreateBuildPod(t *testing.T) {
 	}
 
 	expectedBad := mockCustomBuild()
-	expectedBad.Parameters.Strategy.CustomStrategy.From = &kapi.ObjectReference{
+	expectedBad.Spec.Strategy.CustomStrategy.From = kapi.ObjectReference{
 		Kind: "DockerImage",
 		Name: "",
 	}
@@ -35,12 +35,7 @@ func TestCustomCreateBuildPod(t *testing.T) {
 	if expected, actual := buildutil.GetBuildPodName(expected), actual.ObjectMeta.Name; expected != actual {
 		t.Errorf("Expected %s, but got %s!", expected, actual)
 	}
-	expectedLabels := make(map[string]string)
-	for k, v := range expected.Labels {
-		expectedLabels[k] = v
-	}
-	expectedLabels[buildapi.BuildLabel] = expected.Name
-	if !reflect.DeepEqual(expectedLabels, actual.Labels) {
+	if !reflect.DeepEqual(map[string]string{buildapi.BuildLabel: expected.Name}, actual.Labels) {
 		t.Errorf("Pod Labels does not match Build Labels!")
 	}
 	container := actual.Spec.Containers[0]
@@ -61,8 +56,8 @@ func TestCustomCreateBuildPod(t *testing.T) {
 			t.Fatalf("Expected %s in VolumeMount[%d], got %s", expected, i, container.VolumeMounts[i].MountPath)
 		}
 	}
-	if !kapi.Semantic.DeepEqual(container.Resources, expected.Parameters.Resources) {
-		t.Fatalf("Expected actual=expected, %v != %v", container.Resources, expected.Parameters.Resources)
+	if !kapi.Semantic.DeepEqual(container.Resources, expected.Spec.Resources) {
+		t.Fatalf("Expected actual=expected, %v != %v", container.Resources, expected.Spec.Resources)
 	}
 	if len(actual.Spec.Volumes) != 3 {
 		t.Fatalf("Expected 3 volumes in Build pod, got %d", len(actual.Spec.Volumes))
@@ -98,7 +93,7 @@ func mockCustomBuild() *buildapi.Build {
 				"name": "customBuild",
 			},
 		},
-		Parameters: buildapi.BuildParameters{
+		Spec: buildapi.BuildSpec{
 			Revision: &buildapi.SourceRevision{
 				Git: &buildapi.GitSourceRevision{},
 			},
@@ -113,7 +108,7 @@ func mockCustomBuild() *buildapi.Build {
 			Strategy: buildapi.BuildStrategy{
 				Type: buildapi.CustomBuildStrategyType,
 				CustomStrategy: &buildapi.CustomBuildStrategy{
-					From: &kapi.ObjectReference{
+					From: kapi.ObjectReference{
 						Kind: "DockerImage",
 						Name: "builder-image",
 					},
@@ -124,8 +119,11 @@ func mockCustomBuild() *buildapi.Build {
 				},
 			},
 			Output: buildapi.BuildOutput{
-				DockerImageReference: "docker-registry/repository/customBuild",
-				PushSecret:           &kapi.LocalObjectReference{Name: "foo"},
+				To: &kapi.ObjectReference{
+					Kind: "DockerImage",
+					Name: "docker-registry/repository/customBuild",
+				},
+				PushSecret: &kapi.LocalObjectReference{Name: "foo"},
 			},
 			Resources: kapi.ResourceRequirements{
 				Limits: kapi.ResourceList{
@@ -134,6 +132,8 @@ func mockCustomBuild() *buildapi.Build {
 				},
 			},
 		},
-		Status: buildapi.BuildStatusNew,
+		Status: buildapi.BuildStatus{
+			Phase: buildapi.BuildPhaseNew,
+		},
 	}
 }

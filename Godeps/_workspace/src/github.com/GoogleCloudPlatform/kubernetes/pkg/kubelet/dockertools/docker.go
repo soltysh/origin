@@ -19,7 +19,9 @@ package dockertools
 import (
 	"fmt"
 	"math/rand"
+	"net/http"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 
@@ -31,6 +33,7 @@ import (
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/types"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	utilerrors "github.com/GoogleCloudPlatform/kubernetes/pkg/util/errors"
+	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/parsers"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/glog"
@@ -40,6 +43,7 @@ const (
 	PodInfraContainerName  = leaky.PodInfraContainerName
 	DockerPrefix           = "docker://"
 	PodInfraContainerImage = "gcr.io/google_containers/pause:0.8.0"
+	LogSuffix              = "log"
 )
 
 const (
@@ -113,6 +117,22 @@ func parseImageName(image string) (string, string) {
 	return parsers.ParseRepositoryTag(image)
 }
 
+func filterHTTPError(err error, image string) error {
+	// docker/docker/pull/11314 prints detailed error info for docker pull.
+	// When it hits 502, it returns a verbose html output including an inline svg,
+	// which makes the output of kubectl get pods much harder to parse.
+	// Here converts such verbose output to a concise one.
+	jerr, ok := err.(*jsonmessage.JSONError)
+	if ok && (jerr.Code == http.StatusBadGateway ||
+		jerr.Code == http.StatusServiceUnavailable ||
+		jerr.Code == http.StatusGatewayTimeout) {
+		glog.V(2).Infof("Pulling image %q failed: %v", image, err)
+		return fmt.Errorf("image pull failed for %s because the registry is temporarily unavailbe.", image)
+	} else {
+		return err
+	}
+}
+
 func (p dockerPuller) Pull(image string, secrets []api.Secret) error {
 	repoToPull, tag := parseImageName(image)
 
@@ -149,7 +169,7 @@ func (p dockerPuller) Pull(image string, secrets []api.Secret) error {
 			return fmt.Errorf("image pull failed for %s, this may be because there are no credentials on this request.  details: (%v)", image, err)
 		}
 
-		return err
+		return filterHTTPError(err, image)
 	}
 
 	var pullErrs []error
@@ -160,7 +180,7 @@ func (p dockerPuller) Pull(image string, secrets []api.Secret) error {
 			return nil
 		}
 
-		pullErrs = append(pullErrs, err)
+		pullErrs = append(pullErrs, filterHTTPError(err, image))
 	}
 
 	return utilerrors.NewAggregate(pullErrs)
@@ -258,6 +278,10 @@ func ParseDockerName(name string) (dockerName *KubeletContainerName, hash uint64
 	return &KubeletContainerName{podFullName, podUID, containerName}, hash, nil
 }
 
+func LogSymlink(containerLogsDir, podFullName, containerName, dockerId string) string {
+	return path.Join(containerLogsDir, fmt.Sprintf("%s_%s-%s.%s", podFullName, containerName, dockerId, LogSuffix))
+}
+
 // Get a docker endpoint, either from the string passed in, or $DOCKER_HOST environment variables
 func getDockerEndpoint(dockerEndpoint string) string {
 	var endpoint string
@@ -288,8 +312,10 @@ func ConnectToDockerOrDie(dockerEndpoint string) DockerInterface {
 
 func milliCPUToShares(milliCPU int64) int64 {
 	if milliCPU == 0 {
-		// zero milliCPU means unset. Use kernel default.
-		return 0
+		// Docker converts zero milliCPU to unset, which maps to kernel default
+		// for unset: 1024. Return 2 here to really match kernel default for
+		// zero milliCPU.
+		return minShares
 	}
 	// Conceptually (milliCPU / milliCPUToCPU) * sharesPerCPU, but factored to improve rounding.
 	shares := (milliCPU * sharesPerCPU) / milliCPUToCPU

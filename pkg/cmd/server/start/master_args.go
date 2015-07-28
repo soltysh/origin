@@ -19,6 +19,7 @@ import (
 	configapi "github.com/openshift/origin/pkg/cmd/server/api"
 	"github.com/openshift/origin/pkg/cmd/server/bootstrappolicy"
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
+	"github.com/spf13/cobra"
 )
 
 // MasterArgs is a struct that the command stores flag values into.  It holds a partially complete set of parameters for starting the master
@@ -83,6 +84,9 @@ func BindMasterArgs(args *MasterArgs, flags *pflag.FlagSet, prefix string) {
 
 	flags.Var(&args.NodeList, prefix+"nodes", "The hostnames of each node. This currently must be specified up front. Comma delimited list")
 	flags.Var(&args.CORSAllowedOrigins, prefix+"cors-allowed-origins", "List of allowed origins for CORS, comma separated.  An allowed origin can be a regular expression to support subdomain matching.  CORS is enabled for localhost, 127.0.0.1, and the asset server by default.")
+
+	// autocompletion hints
+	cobra.MarkFlagFilename(flags, prefix+"etcd-dir")
 }
 
 // NewDefaultMasterArgs creates MasterArgs with sub-objects created and default values set.
@@ -250,6 +254,7 @@ func (args MasterArgs) BuildSerializeableMasterConfig() (*configapi.MasterConfig
 		if builtInKubernetes {
 			config.KubeletClientInfo.CA = admin.DefaultRootCAFile(args.ConfigDir.Value())
 			config.KubeletClientInfo.ClientCert = kubeletClientInfo.CertLocation
+			config.ServiceAccountConfig.MasterCA = admin.DefaultRootCAFile(args.ConfigDir.Value())
 		}
 
 		// Only set up ca/cert info for etcd connections if we're self-hosting etcd

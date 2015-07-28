@@ -1,4 +1,5 @@
 'use strict';
+/* jshint unused: false */
 
 angular.module('openshiftConsole')
   // this filter is intended for use with the "track by" in an ng-repeat
@@ -11,7 +12,7 @@ angular.module('openshiftConsole')
       else {
         return resource;
       }
-    }
+    };
   })
   .filter('annotation', function() {
     // This maps an annotation key to all known synonymous keys to insulate
@@ -30,7 +31,7 @@ angular.module('openshiftConsole')
       if (resource && resource.metadata && resource.metadata.annotations) {
         // If the key's already in the annotation map, return it.
         if (resource.metadata.annotations[key] !== undefined) {
-          return resource.metadata.annotations[key]
+          return resource.metadata.annotations[key];
         }
         // Try and return a value for a mapped key.
         var mappings = annotationMap[key] || [];
@@ -157,7 +158,7 @@ angular.module('openshiftConsole')
       }
 
       return image.split(":")[1];
-    }
+    };
   })
   .filter('imageStreamName', function() {
     return function(image) {
@@ -167,7 +168,7 @@ angular.module('openshiftConsole')
       // TODO move this parsing method into a utility method
 
       // remove @sha256:....
-      var imageWithoutID = image.split("@")[0]
+      var imageWithoutID = image.split("@")[0];
 
       var slashSplit = imageWithoutID.split("/");
       var semiColonSplit;
@@ -197,7 +198,7 @@ angular.module('openshiftConsole')
       }
       return null;
     };
-  })  
+  })
   .filter('buildForImage', function() {
     return function(image, builds) {
       // TODO concerned that this gets called anytime any data is changed on the scope,
@@ -267,22 +268,12 @@ angular.module('openshiftConsole')
       }
     };
   })
-  .filter('provider', function(annotationFilter) {
-    return function(resource) {
-      return annotationFilter(resource, 'provider') ||
-        (resource && resource.metadata && resource.metadata.namespace);
-    };
-  })
-  .filter('imageStreamTagProvider', function(imageStreamTagAnnotationFilter) {
-    // Look up the provider in ImageStream.spec.tags[tag].annotations.
-    // Default to resource.metadata.namespace if no annotation.
-    return function(resource, /* optional */ tagName) {
-      return imageStreamTagAnnotationFilter(resource, 'provider', tagName) ||
-        (resource && resource.metadata && resource.metadata.namespace);
-    };
-  })
   .filter('imageObjectRef', function(){
     return function(objectRef, /* optional */ nsIfUnspecified, shortOutput){
+      if (!objectRef) {
+        return "";
+      }
+
       var ns = objectRef.namespace || nsIfUnspecified || "";
       if (ns.length > 0) {
         ns = ns + "/";
@@ -398,6 +389,43 @@ angular.module('openshiftConsole')
       return Navigate.projectOverviewURL(projectName);
     };
   })
+  .filter('createFromSourceURL', function() {
+    return function(projectName, sourceURL) {
+      var createURI = URI.expand("project/{project}/catalog/images{?q*}", {
+        project: projectName,
+        q: {
+          builderfor: sourceURL
+        }
+      });
+      return createURI.toString();
+    };
+  })
+  .filter('createFromImageURL', function() {
+    return function(imageStream, imageTag, projectName, sourceURL) {
+      var createURI = URI.expand("project/{project}/create/fromimage{?q*}", {
+        project: projectName,
+        q: {
+          imageName: imageStream.metadata.name,
+          imageTag: imageTag,
+          namespace: imageStream.metadata.namespace,
+          sourceURL: sourceURL
+        }
+      });
+      return createURI.toString();
+    };
+  })
+  .filter('createFromTemplateURL', function() {
+    return function(template, projectName) {
+      var createURI = URI.expand("project/{project}/create/fromtemplate{?q*}", {
+        project: projectName,
+        q: {
+          name: template.metadata.name,
+          namespace: template.metadata.namespace
+        }
+      });
+      return createURI.toString();
+    };
+  })
   .filter('failureObjectName', function() {
     return function(failure) {
       if (!failure.data || !failure.data.details) {
@@ -412,13 +440,52 @@ angular.module('openshiftConsole')
       return details.id;
     };
   })
+  .filter('isIncompleteBuild', function(ageLessThanFilter) {
+    return function(build) {
+      if (!build || !build.status || !build.status.phase) {
+        return false;
+      }
+
+      switch (build.status.phase) {
+        case 'New':
+        case 'Pending':
+        case 'Running':
+          return true;
+        default:
+          return false;
+      }
+    };
+  })
+  .filter('isRecentBuild', function(ageLessThanFilter, isIncompleteBuildFilter) {
+    return function(build) {
+      if (!build || !build.status || !build.status.phase || !build.metadata) {
+        return false;
+      }
+
+      if (isIncompleteBuildFilter(build)) {
+        return true;
+      }
+
+      var timestamp = build.status.completionTimestamp || build.metadata.creationTimestamp;
+      switch (build.status.phase) {
+        case 'Complete':
+        case 'Cancelled':
+          return ageLessThanFilter(timestamp, 1, 'minutes');
+        case 'Failed':
+        case 'Error':
+          /* falls through */
+        default:
+          return ageLessThanFilter(timestamp, 5, 'minutes');
+      }
+    };
+  })
   .filter('deploymentCauses', function(annotationFilter) {
     return function(deployment) {
       if (!deployment) {
         return [];
       }
 
-      var configJson = annotationFilter(deployment, 'encodedDeploymentConfig')
+      var configJson = annotationFilter(deployment, 'encodedDeploymentConfig');
       if (!configJson) {
         return [];
       }

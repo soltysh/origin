@@ -11,7 +11,8 @@ angular.module('openshiftConsole')
   .controller('DeploymentsController', function ($scope, DataService, $filter, LabelFilter, Logger, ImageStreamResolver) {
     $scope.deployments = {};
     $scope.unfilteredDeployments = {};
-    $scope.deploymentConfigs = {};
+    // leave undefined so we know when data is loaded
+    $scope.deploymentConfigs = undefined;
     $scope.deploymentsByDeploymentConfig = {};
     $scope.podTemplates = {};
     $scope.imageStreams = {};
@@ -27,7 +28,7 @@ angular.module('openshiftConsole')
       angular.forEach($scope.deployments, function(deployment, deploymentId){
         $scope.podTemplates[deploymentId] = deployment.spec.template;
       });
-    };
+    }
 
     watches.push(DataService.watch("replicationcontrollers", $scope, function(deployments) {
       $scope.unfilteredDeployments = deployments.by("metadata.name");
@@ -35,7 +36,7 @@ angular.module('openshiftConsole')
       LabelFilter.setLabelSuggestions($scope.labelSuggestions);
       $scope.deployments = LabelFilter.getLabelSelector().select($scope.unfilteredDeployments);
       extractPodTemplates();
-      ImageStreamResolver.fetchReferencedImageStreamImages($scope.podTemplates, $scope.imagesByDockerReference, $scope.imageStreamImageRefByDockerReference, $scope);      
+      ImageStreamResolver.fetchReferencedImageStreamImages($scope.podTemplates, $scope.imagesByDockerReference, $scope.imageStreamImageRefByDockerReference, $scope);
       $scope.emptyMessage = "No deployments to show";
       associateDeploymentsToDeploymentConfig();
       updateFilterWarning();
@@ -82,7 +83,7 @@ angular.module('openshiftConsole')
       else {
         delete $scope.alerts["deployments"];
       }
-    };
+    }
 
     LabelFilter.onActiveFiltersChanged(function(labelSelector) {
       // trigger a digest loop

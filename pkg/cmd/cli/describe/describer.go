@@ -120,25 +120,25 @@ func (d *BuildDescriber) Describe(namespace, name string) (string, error) {
 	}
 	return tabbedString(func(out *tabwriter.Writer) error {
 		formatMeta(out, build.ObjectMeta)
-		if build.Config != nil {
-			formatString(out, "Build Config", build.Config.Name)
+		if build.Status.Config != nil {
+			formatString(out, "Build Config", build.Status.Config.Name)
 		}
-		status := bold(build.Status)
-		if build.Status == buildapi.BuildStatusFailed {
-			status += " (" + build.Message + ")"
+		status := bold(build.Status.Phase)
+		if build.Status.Phase == buildapi.BuildPhaseFailed {
+			status += " (" + build.Status.Message + ")"
 		}
 		formatString(out, "Status", status)
-		if build.StartTimestamp != nil {
-			formatString(out, "Started", build.StartTimestamp.Time)
+		if build.Status.StartTimestamp != nil {
+			formatString(out, "Started", build.Status.StartTimestamp.Time)
 		}
-		if build.CompletionTimestamp != nil {
-			formatString(out, "Finished", build.CompletionTimestamp.Time)
+		if build.Status.CompletionTimestamp != nil {
+			formatString(out, "Finished", build.Status.CompletionTimestamp.Time)
 		}
 		// Create the time object with second-level precision so we don't get
 		// output like "duration: 1.2724395728934s"
 		formatString(out, "Duration", describeBuildDuration(build))
 		formatString(out, "Build Pod", buildutil.GetBuildPodName(build))
-		describeBuildParameters(build.Parameters, out)
+		describeBuildSpec(build.Spec, out)
 		kctl.DescribeEvents(events, out)
 
 		return nil
@@ -147,21 +147,21 @@ func (d *BuildDescriber) Describe(namespace, name string) (string, error) {
 
 func describeBuildDuration(build *buildapi.Build) string {
 	t := util.Now().Rfc3339Copy()
-	if build.StartTimestamp == nil &&
-		build.CompletionTimestamp != nil &&
-		(build.Status == buildapi.BuildStatusCancelled ||
-			build.Status == buildapi.BuildStatusFailed ||
-			build.Status == buildapi.BuildStatusError) {
+	if build.Status.StartTimestamp == nil &&
+		build.Status.CompletionTimestamp != nil &&
+		(build.Status.Phase == buildapi.BuildPhaseCancelled ||
+			build.Status.Phase == buildapi.BuildPhaseFailed ||
+			build.Status.Phase == buildapi.BuildPhaseError) {
 		// time a build waited for its pod before ultimately being canceled before that pod was created
-		return fmt.Sprintf("waited for %s", build.CompletionTimestamp.Rfc3339Copy().Time.Sub(build.CreationTimestamp.Rfc3339Copy().Time))
-	} else if build.StartTimestamp == nil && build.Status != buildapi.BuildStatusCancelled {
+		return fmt.Sprintf("waited for %s", build.Status.CompletionTimestamp.Rfc3339Copy().Time.Sub(build.CreationTimestamp.Rfc3339Copy().Time))
+	} else if build.Status.StartTimestamp == nil && build.Status.Phase != buildapi.BuildPhaseCancelled {
 		// time a new build has been waiting for its pod to be created so it can run
 		return fmt.Sprintf("waiting for %v", t.Sub(build.CreationTimestamp.Rfc3339Copy().Time))
-	} else if build.StartTimestamp != nil && build.CompletionTimestamp == nil {
+	} else if build.Status.StartTimestamp != nil && build.Status.CompletionTimestamp == nil {
 		// time a still running build has been running in a pod
-		return fmt.Sprintf("running for %v", build.Duration)
+		return fmt.Sprintf("running for %v", build.Status.Duration)
 	}
-	return fmt.Sprintf("%v", build.Duration)
+	return fmt.Sprintf("%v", build.Status.Duration)
 }
 
 // BuildConfigDescriber generates information about a buildConfig
@@ -178,7 +178,7 @@ func describeStrategy(strategyType buildapi.BuildStrategyType) buildapi.BuildStr
 	return strategyType
 }
 
-func describeBuildParameters(p buildapi.BuildParameters, out *tabwriter.Writer) {
+func describeBuildSpec(p buildapi.BuildSpec, out *tabwriter.Writer) {
 	formatString(out, "Strategy", describeStrategy(p.Strategy.Type))
 	switch p.Strategy.Type {
 	case buildapi.DockerBuildStrategyType:
@@ -200,20 +200,26 @@ func describeBuildParameters(p buildapi.BuildParameters, out *tabwriter.Writer) 
 		if p.Source.SourceSecret != nil {
 			formatString(out, "Source Secret", p.Source.SourceSecret.Name)
 		}
+		if p.Revision != nil && p.Revision.Git != nil {
+			rev := p.Revision.Git
+			formatString(out, "Commit", rev.Commit)
+			if len(rev.Author.Name) != 0 {
+				formatString(out, "Author", rev.Author.Name)
+			}
+			if len(rev.Committer.Name) != 0 {
+				formatString(out, "Committer", rev.Committer.Name)
+			}
+			formatString(out, "Message", rev.Message)
+		}
 	}
 	if p.Output.To != nil {
-		tag := imageapi.DefaultImageTag
-		if len(p.Output.Tag) != 0 {
-			tag = p.Output.Tag
-		}
 		if len(p.Output.To.Namespace) != 0 {
-			formatString(out, "Output to", fmt.Sprintf("%s/%s:%s", p.Output.To.Namespace, p.Output.To.Name, tag))
+			formatString(out, "Output to", fmt.Sprintf("%s %s/%s", p.Output.To.Kind, p.Output.To.Namespace, p.Output.To.Name))
 		} else {
-			formatString(out, "Output to", fmt.Sprintf("%s:%s", p.Output.To.Name, tag))
+			formatString(out, "Output to", fmt.Sprintf("%s %s", p.Output.To.Kind, p.Output.To.Name))
 		}
 	}
 
-	formatString(out, "Output Spec", p.Output.DockerImageReference)
 	if p.Output.PushSecret != nil {
 		formatString(out, "Push Secret", p.Output.PushSecret.Name)
 	}
@@ -231,7 +237,7 @@ func describeBuildParameters(p buildapi.BuildParameters, out *tabwriter.Writer) 
 }
 
 func describeSourceStrategy(s *buildapi.SourceBuildStrategy, out *tabwriter.Writer) {
-	if s.From != nil && len(s.From.Name) != 0 {
+	if len(s.From.Name) != 0 {
 		if len(s.From.Namespace) != 0 {
 			formatString(out, "Image Reference", fmt.Sprintf("%s %s/%s", s.From.Kind, s.From.Namespace, s.From.Name))
 		} else {
@@ -246,6 +252,9 @@ func describeSourceStrategy(s *buildapi.SourceBuildStrategy, out *tabwriter.Writ
 	}
 	if s.Incremental {
 		formatString(out, "Incremental Build", "yes")
+	}
+	if s.ForcePull {
+		formatString(out, "Force Pull", "yes")
 	}
 }
 
@@ -263,10 +272,13 @@ func describeDockerStrategy(s *buildapi.DockerBuildStrategy, out *tabwriter.Writ
 	if s.NoCache {
 		formatString(out, "No Cache", "true")
 	}
+	if s.ForcePull {
+		formatString(out, "Force Pull", "true")
+	}
 }
 
 func describeCustomStrategy(s *buildapi.CustomBuildStrategy, out *tabwriter.Writer) {
-	if s.From != nil && len(s.From.Name) != 0 {
+	if len(s.From.Name) != 0 {
 		if len(s.From.Namespace) != 0 {
 			formatString(out, "Image Reference", fmt.Sprintf("%s %s/%s", s.From.Kind, s.From.Namespace, s.From.Name))
 		} else {
@@ -295,7 +307,7 @@ func (d *BuildConfigDescriber) DescribeTriggers(bc *buildapi.BuildConfig, out *t
 		t := strings.Title(whType)
 		formatString(out, "Webhook "+t, whURL)
 	}
-	for _, trigger := range bc.Triggers {
+	for _, trigger := range bc.Spec.Triggers {
 		if trigger.Type != buildapi.ImageChangeBuildTriggerType {
 			continue
 		}
@@ -334,12 +346,12 @@ func (d *BuildConfigDescriber) Describe(namespace, name string) (string, error) 
 
 	return tabbedString(func(out *tabwriter.Writer) error {
 		formatMeta(out, buildConfig.ObjectMeta)
-		if buildConfig.LastVersion == 0 {
+		if buildConfig.Status.LastVersion == 0 {
 			formatString(out, "Latest Version", "Never built")
 		} else {
-			formatString(out, "Latest Version", strconv.Itoa(buildConfig.LastVersion))
+			formatString(out, "Latest Version", strconv.Itoa(buildConfig.Status.LastVersion))
 		}
-		describeBuildParameters(buildConfig.Parameters, out)
+		describeBuildSpec(buildConfig.Spec.BuildSpec, out)
 		d.DescribeTriggers(buildConfig, out)
 		if len(builds.Items) == 0 {
 			return nil
@@ -352,7 +364,7 @@ func (d *BuildConfigDescriber) Describe(namespace, name string) (string, error) 
 			build := sortedBuilds[len(sortedBuilds)-1-i]
 			fmt.Fprintf(out, "  %s \t%s \t%v \t%v\n",
 				build.Name,
-				strings.ToLower(string(build.Status)),
+				strings.ToLower(string(build.Status.Phase)),
 				describeBuildDuration(&build),
 				build.CreationTimestamp.Rfc3339Copy().Time)
 			// only print the 10 most recent builds.
@@ -527,6 +539,12 @@ func (d *RouteDescriber) Describe(namespace, name string) (string, error) {
 		formatString(out, "Host", route.Host)
 		formatString(out, "Path", route.Path)
 		formatString(out, "Service", route.ServiceName)
+
+		tlsTerm := ""
+		if route.TLS != nil {
+			tlsTerm = string(route.TLS.Termination)
+		}
+		formatString(out, "TLS Termination", tlsTerm)
 		return nil
 	})
 }
@@ -905,7 +923,7 @@ func describePolicyRule(out *tabwriter.Writer, rule authorizationapi.PolicyRule,
 		extensionString = fmt.Sprintf("%#v", rule.AttributeRestrictions.Object)
 
 		buffer := new(bytes.Buffer)
-		printer := NewHumanReadablePrinter(true, false)
+		printer := NewHumanReadablePrinter(true, false, false, []string{})
 		if err := printer.PrintObj(rule.AttributeRestrictions.Object, buffer); err == nil {
 			extensionString = strings.TrimSpace(buffer.String())
 		}

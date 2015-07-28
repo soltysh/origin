@@ -4,9 +4,11 @@ import (
 	"path/filepath"
 
 	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
+	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/golang/glog"
 	buildapi "github.com/openshift/origin/pkg/build/api"
 	imageapi "github.com/openshift/origin/pkg/image/api"
+	"github.com/openshift/origin/pkg/util/namer"
 )
 
 const (
@@ -47,21 +49,24 @@ func setupDockerSocket(podSpec *kapi.Pod) {
 func setupBuildEnv(build *buildapi.Build, pod *kapi.Pod) error {
 	vars := []kapi.EnvVar{}
 
-	switch build.Parameters.Source.Type {
+	switch build.Spec.Source.Type {
 	case buildapi.BuildSourceGit:
-		vars = append(vars, kapi.EnvVar{Name: "SOURCE_URI", Value: build.Parameters.Source.Git.URI})
-		vars = append(vars, kapi.EnvVar{Name: "SOURCE_REF", Value: build.Parameters.Source.Git.Ref})
+		vars = append(vars, kapi.EnvVar{Name: "SOURCE_URI", Value: build.Spec.Source.Git.URI})
+		vars = append(vars, kapi.EnvVar{Name: "SOURCE_REF", Value: build.Spec.Source.Git.Ref})
 	default:
 		// Do nothing for unknown source types
 	}
 
-	ref, err := imageapi.ParseDockerImageReference(build.Parameters.Output.DockerImageReference)
-	if err != nil {
-		return err
+	if build.Spec.Output.To != nil {
+		// output much always be a DockerImage type reference at this point.
+		ref, err := imageapi.ParseDockerImageReference(build.Spec.Output.To.Name)
+		if err != nil {
+			return err
+		}
+		vars = append(vars, kapi.EnvVar{Name: "OUTPUT_REGISTRY", Value: ref.Registry})
+		ref.Registry = ""
+		vars = append(vars, kapi.EnvVar{Name: "OUTPUT_IMAGE", Value: ref.String()})
 	}
-	vars = append(vars, kapi.EnvVar{Name: "OUTPUT_REGISTRY", Value: ref.Registry})
-	ref.Registry = ""
-	vars = append(vars, kapi.EnvVar{Name: "OUTPUT_IMAGE", Value: ref.String()})
 
 	if len(pod.Spec.Containers) > 0 {
 		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, vars...)
@@ -71,9 +76,10 @@ func setupBuildEnv(build *buildapi.Build, pod *kapi.Pod) error {
 
 // mountSecretVolume is a helper method responsible for actual mounting secret
 // volumes into a pod.
-func mountSecretVolume(pod *kapi.Pod, secretName, mountPath string) {
+func mountSecretVolume(pod *kapi.Pod, secretName, mountPath, volumePrefix string) {
+	volumeName := namer.GetName(secretName, volumePrefix, util.DNS1123SubdomainMaxLength)
 	volume := kapi.Volume{
-		Name: secretName,
+		Name: volumeName,
 		VolumeSource: kapi.VolumeSource{
 			Secret: &kapi.SecretVolumeSource{
 				SecretName: secretName,
@@ -81,7 +87,7 @@ func mountSecretVolume(pod *kapi.Pod, secretName, mountPath string) {
 		},
 	}
 	volumeMount := kapi.VolumeMount{
-		Name:      secretName,
+		Name:      volumeName,
 		MountPath: mountPath,
 		ReadOnly:  true,
 	}
@@ -93,7 +99,7 @@ func mountSecretVolume(pod *kapi.Pod, secretName, mountPath string) {
 // allowing Docker to authenticate against private registries or Docker Hub.
 func setupDockerSecrets(pod *kapi.Pod, pushSecret, pullSecret *kapi.LocalObjectReference) {
 	if pushSecret != nil {
-		mountSecretVolume(pod, pushSecret.Name, DockerPushSecretMountPath)
+		mountSecretVolume(pod, pushSecret.Name, DockerPushSecretMountPath, "push")
 		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, []kapi.EnvVar{
 			{Name: "PUSH_DOCKERCFG_PATH", Value: filepath.Join(DockerPushSecretMountPath, kapi.DockerConfigKey)},
 		}...)
@@ -101,7 +107,7 @@ func setupDockerSecrets(pod *kapi.Pod, pushSecret, pullSecret *kapi.LocalObjectR
 	}
 
 	if pullSecret != nil {
-		mountSecretVolume(pod, pullSecret.Name, DockerPullSecretMountPath)
+		mountSecretVolume(pod, pullSecret.Name, DockerPullSecretMountPath, "pull")
 		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, []kapi.EnvVar{
 			{Name: "PULL_DOCKERCFG_PATH", Value: filepath.Join(DockerPullSecretMountPath, kapi.DockerConfigKey)},
 		}...)
@@ -109,14 +115,14 @@ func setupDockerSecrets(pod *kapi.Pod, pushSecret, pullSecret *kapi.LocalObjectR
 	}
 }
 
-// setupSourceSecrets mounts SSH key used for accesing private SCM to clone
+// setupSourceSecrets mounts SSH key used for accessing private SCM to clone
 // application source code during build.
 func setupSourceSecrets(pod *kapi.Pod, sourceSecret *kapi.LocalObjectReference) {
 	if sourceSecret == nil {
 		return
 	}
 
-	mountSecretVolume(pod, sourceSecret.Name, sourceSecretMountPath)
+	mountSecretVolume(pod, sourceSecret.Name, sourceSecretMountPath, "source")
 	glog.V(3).Infof("Installed source secrets in %s, in Pod %s/%s", sourceSecretMountPath, pod.Namespace, pod.Name)
 	pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, []kapi.EnvVar{
 		{Name: "SOURCE_SECRET_PATH", Value: sourceSecretMountPath},
@@ -178,12 +184,7 @@ func getContainerVerbosity(containerEnv []kapi.EnvVar) (verbosity string) {
 	return
 }
 
-// getPodLabels copies build labels and adds additional one with build name itself
+// getPodLabels creates labels for the Build Pod
 func getPodLabels(build *buildapi.Build) map[string]string {
-	podLabels := make(map[string]string)
-	for k, v := range build.Labels {
-		podLabels[k] = v
-	}
-	podLabels[buildapi.BuildLabel] = build.Name
-	return podLabels
+	return map[string]string{buildapi.BuildLabel: build.Name}
 }

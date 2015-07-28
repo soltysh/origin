@@ -72,10 +72,10 @@
               </div>
 
               <div class="component meta-data">
-                <span ng-if="service.spec.portalIP != 'None'">
+                <span ng-if="service.spec.portalIP && service.spec.portalIP !== 'None'">
                   routing traffic on {{service.spec.portalIP}}
                 </span>
-                <span ng-if="numPorts">&#8211;
+                <div ng-if="numPorts">
                   <!--
                   Show only the first two ports if there are many since we don't have much space here.
                   The full list is visible elsewhere.
@@ -88,7 +88,7 @@
                   <span ng-if="numPorts > 2" ng-init="numRemaining = numPorts - 2">
                     and {{numRemaining}} {{numRemaining == 1 ? "other" : "others"}}
                   </span>
-                </span>
+                </div>
               </div>
             </div>
           </div>
@@ -169,13 +169,6 @@
           <div ng-repeat="(deploymentId, deployment) in deploymentsByServiceByDeploymentConfig[''][deploymentConfigId] track by (deployment | uid)"
                ng-if="(podsByDeployment[deployment.metadata.name] | hashSize) > 0">
 
-            <div class="components-panel service none">
-              <div class="service">
-                <span ng-if="(deployments | hashSize) > 1">There is no service for these deployments.</span>
-                <span ng-if="(deployments | hashSize) == 1">There is no service for this deployment.</span>
-              </div>
-            </div>
-
             <div ng-if="deploymentConfigs[deploymentConfigId] && deploymentConfigsByService[''][deploymentConfigId]">
               <!--
               Pods in deployments created from this deployment config will not be routed to by any service.
@@ -199,12 +192,6 @@
         </section>
 
         <section ng-repeat="pod in monopodsByService[''] track by (pod | uid)" class="components">
-
-          <div class="components-panel service none">
-            <div class="service">
-              There is no service for this pod.
-            </div>
-          </div>
 
           <overview-monopod pod="pod"></overview-monopod>
 

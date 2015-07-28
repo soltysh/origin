@@ -90,7 +90,7 @@ func TestAdmit(t *testing.T) {
 	goodPod := func() *kapi.Pod {
 		return &kapi.Pod{
 			Spec: kapi.PodSpec{
-				ServiceAccount: "default",
+				ServiceAccountName: "default",
 				Containers: []kapi.Container{
 					{
 						SecurityContext: &kapi.SecurityContext{},
@@ -124,6 +124,12 @@ func TestAdmit(t *testing.T) {
 		Level: "s0:c1,c0",
 	}
 
+	requestsHostNetwork := goodPod()
+	requestsHostNetwork.Spec.HostNetwork = true
+
+	requestsHostPorts := goodPod()
+	requestsHostPorts.Spec.Containers[0].Ports = []kapi.ContainerPort{{HostPort: 1}}
+
 	testCases := map[string]struct {
 		pod           *kapi.Pod
 		shouldAdmit   bool
@@ -155,10 +161,18 @@ func TestAdmit(t *testing.T) {
 			expectedUID:   1,
 			expectedLevel: specifyLabels.Spec.Containers[0].SecurityContext.SELinuxOptions.Level,
 		},
+		"requestsHostNetwork": {
+			pod:         requestsHostNetwork,
+			shouldAdmit: false,
+		},
+		"requestsHostPorts": {
+			pod:         requestsHostPorts,
+			shouldAdmit: false,
+		},
 	}
 
 	for k, v := range testCases {
-		attrs := kadmission.NewAttributesRecord(v.pod, "Pod", "", string(kapi.ResourcePods), kadmission.Create, &user.DefaultInfo{})
+		attrs := kadmission.NewAttributesRecord(v.pod, "Pod", "namespace", "", string(kapi.ResourcePods), "", kadmission.Create, &user.DefaultInfo{})
 		err := p.Admit(attrs)
 
 		if v.shouldAdmit && err != nil {
@@ -192,6 +206,8 @@ func TestAdmit(t *testing.T) {
 			Name: "scc-admin",
 		},
 		AllowPrivilegedContainer: true,
+		AllowHostNetwork:         true,
+		AllowHostPorts:           true,
 		RunAsUser: kapi.RunAsUserStrategyOptions{
 			Type: kapi.RunAsUserStrategyRunAsAny,
 		},
@@ -204,7 +220,7 @@ func TestAdmit(t *testing.T) {
 
 	for k, v := range testCases {
 		if !v.shouldAdmit {
-			attrs := kadmission.NewAttributesRecord(v.pod, "Pod", "", string(kapi.ResourcePods), kadmission.Create, &user.DefaultInfo{})
+			attrs := kadmission.NewAttributesRecord(v.pod, "Pod", "namespace", "", string(kapi.ResourcePods), "", kadmission.Create, &user.DefaultInfo{})
 			err := p.Admit(attrs)
 			if err != nil {
 				t.Errorf("Expected %s to pass with escalated scc but got error %v", k, err)
@@ -349,7 +365,7 @@ func TestCreateProvidersFromConstraints(t *testing.T) {
 		namespace   *kapi.Namespace
 		expectedErr string
 	}{
-		"valid non-preallocateed scc": {
+		"valid non-preallocated scc": {
 			scc: func() *kapi.SecurityContextConstraints {
 				return &kapi.SecurityContextConstraints{
 					ObjectMeta: kapi.ObjectMeta{
@@ -449,7 +465,7 @@ func TestCreateProvidersFromConstraints(t *testing.T) {
 		scc := v.scc()
 
 		// create the providers, this method only needs the namespace
-		attributes := kadmission.NewAttributesRecord(nil, "", v.namespace.Name, "", kadmission.Create, nil)
+		attributes := kadmission.NewAttributesRecord(nil, "", v.namespace.Name, "", "", "", kadmission.Create, nil)
 		_, errs := admit.createProvidersFromConstraints(attributes.GetNamespace(), []*kapi.SecurityContextConstraints{scc})
 
 		if !reflect.DeepEqual(scc, v.scc()) {

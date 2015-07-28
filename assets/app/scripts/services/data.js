@@ -1,4 +1,5 @@
 'use strict';
+/* jshint eqeqeq: false, unused: false */
 
 angular.module('openshiftConsole')
 .factory('DataService', function($http, $ws, $rootScope, $q, API_CFG, Notification, Logger) {
@@ -75,14 +76,16 @@ angular.module('openshiftConsole')
   };
 
   var normalizeType = function(type) {
-     if (!type) return type;
+     if (!type) {
+      return type;
+     }
      var lower = type.toLowerCase();
      if (type !== lower) {
        Logger.warn('Non-lower case type "' + type + '"');
      }
 
      return lower;
-  }
+  };
 
   function DataService() {
     this._listCallbacksMap = {};
@@ -94,11 +97,11 @@ angular.module('openshiftConsole')
     this._watchOptionsMap = {};
     this._watchWebsocketsMap = {};
     this._watchPollTimeoutsMap = {};
-    this._watchWebsocketRetriesMap = {};
+    this._websocketEventsMap = {};
 
     var self = this;
     $rootScope.$on( "$routeChangeStart", function(event, next, current) {
-      self._watchWebsocketRetriesMap = {};
+      self._websocketEventsMap = {};
     });
 
     this.osApiVersion = "v1beta3";
@@ -216,7 +219,19 @@ angular.module('openshiftConsole')
     }
 
     objects.forEach(function(object) {
-      self.create(self._objectType(object.kind), null, object, context, opts).then(
+      var type = self._objectType(object.kind);
+      if (!type) {
+        failureResults.push({
+          data: {
+            message: "Unrecognized type: " + object.kind + "."
+          }
+        });
+        remaining--;
+        _checkDone();
+        return;
+      }
+
+      self.create(type, null, object, context, opts).then(
         function (data) {
           successResults.push(data);
           remaining--;
@@ -298,7 +313,7 @@ angular.module('openshiftConsole')
           if (opts.errorNotification !== false) {
             var msg = "Failed to get " + type + "/" + name;
             if (status !== 0) {
-              msg += " (" + status + ")"
+              msg += " (" + status + ")";
             }
             Notification.error(msg);
           }
@@ -504,14 +519,69 @@ angular.module('openshiftConsole')
     }
   };
 
-  DataService.prototype._watchWebsocketRetries = function(type, context, retry) {
+  // Maximum number of websocket events to track per type/context in _websocketEventsMap.
+  var maxWebsocketEvents = 10;
+
+  DataService.prototype._addWebsocketEvent = function(type, context, eventType) {
     var key = this._uniqueKeyForTypeContext(type, context);
-    if (retry === undefined) {
-      return this._watchWebsocketRetriesMap[key];
+    var events = this._websocketEventsMap[key];
+    if (!events) {
+      events = this._websocketEventsMap[key] = [];
     }
-    else {
-      this._watchWebsocketRetriesMap[key] = retry;
+
+    // Add the event to the end of the array with the time in millis.
+    events.push({
+      type: eventType,
+      time: Date.now()
+    });
+
+    // Only keep 10 events. Shift the array to make room for the new event.
+    while (events.length > maxWebsocketEvents) { events.shift(); }
+  };
+
+  function isTooManyRecentEvents(events) {
+    // If we've had more than 10 events in 30 seconds, stop.
+    // The oldest event is at index 0.
+    var recentDuration = 1000 * 30;
+    return events.length >= maxWebsocketEvents && (Date.now() - events[0].time) < recentDuration;
+  }
+
+  function isTooManyConsecutiveCloses(events) {
+    var maxConsecutiveCloseEvents = 5;
+    if (events.length < maxConsecutiveCloseEvents) {
+      return false;
     }
+
+    // Make sure the last 5 events were not close events, which means the
+    // connection is not succeeding. This check is necessary if connection
+    // timeouts take longer than 6 seconds.
+    for (var i = events.length - maxConsecutiveCloseEvents; i < events.length; i++) {
+      if (events[i].type !== 'close') {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  DataService.prototype._isTooManyWebsocketRetries = function(type, context) {
+    var key = this._uniqueKeyForTypeContext(type, context);
+    var events = this._websocketEventsMap[key];
+    if (!events) {
+      return false;
+    }
+
+    if (isTooManyRecentEvents(events)) {
+      Logger.log("Too many websocket open or close events for type/context in a short period", type, context, events);
+      return true;
+    }
+
+    if (isTooManyConsecutiveCloses(events)) {
+      Logger.log("Too many consecutive websocket close events for type/context", type, context, events);
+      return true;
+    }
+
+    return false;
   };
 
   DataService.prototype._uniqueKeyForTypeContext = function(type, context) {
@@ -535,7 +605,7 @@ angular.module('openshiftConsole')
         }).error(function(data, status, headers, config) {
           var msg = "Failed to list " + type;
           if (status !== 0) {
-            msg += " (" + status + ")"
+            msg += " (" + status + ")";
           }
           // TODO would like to make this optional with an errorNotification option, see get for an example
           Notification.error(msg);
@@ -551,7 +621,7 @@ angular.module('openshiftConsole')
       }).error(function(data, status, headers, config) {
         var msg = "Failed to list " + type;
         if (status !== 0) {
-          msg += " (" + status + ")"
+          msg += " (" + status + ")";
         }
         // TODO would like to make this optional with an errorNotification option, see get for an example
         Notification.error(msg);
@@ -625,8 +695,8 @@ angular.module('openshiftConsole')
   };
 
   DataService.prototype._watchOpOnOpen = function(type, context, event) {
-    // If we opened the websocket cleanly, set retries to 0
-    this._watchWebsocketRetries(type, context, 0);
+    Logger.log('Websocket opened for type/context', type, context);
+    this._addWebsocketEvent(type, context, 'open');
   };
 
   DataService.prototype._watchOpOnMessage = function(type, context, event) {
@@ -652,7 +722,8 @@ angular.module('openshiftConsole')
       });
     }
     catch (e) {
-      // TODO report the JSON parsing exception
+      // TODO: surface in the UI?
+      Logger.error("Error processing message", type, event.data);
     }
   };
 
@@ -697,10 +768,8 @@ angular.module('openshiftConsole')
       return;
     }
 
-    // Don't reopen if we've failed this type/context 5+ times in a row
-    var retries = this._watchWebsocketRetries(type, context) || 0;
-    if (retries >= 5) {
-      Logger.log("Skipping reopen, already retried type/context 5+ times", type, context, retries);
+    // Don't reopen if we've failed this type/context too many times
+    if (this._isTooManyWebsocketRetries(type, context)) {
       Notification.error("Server connection interrupted.", {
         id: "websocket_retry_halted",
         mustDismiss: true,
@@ -711,25 +780,31 @@ angular.module('openshiftConsole')
       return;
     }
 
-    // Keep track of this failure
-    this._watchWebsocketRetries(type, context, retries + 1);
+    // Keep track of this event.
+    this._addWebsocketEvent(type, context, 'close');
 
     // If our watch window expired, we have to relist to get a new resource version to watch from
     if (eventWS.shouldRelist) {
       Logger.log("Relisting for type/context", type, context);
       // Restart a watch() from the beginning, which triggers a list/watch sequence
       // The watch() call is responsible for setting _watchInFlight back to true
-      this.watch(type, context);
+      // Add a short delay to avoid a scenario where we make non-stop requests
+      // When the timeout fires, if no callbacks are registered for this
+      //   type/context, or if a watch is already in flight, `watch()` is a no-op
+      var self = this;
+      setTimeout(function() {
+        self.watch(type, context);
+      }, 2000);
       return;
     }
 
-    // Attempt to re-establish the connection after a one second back-off
+    // Attempt to re-establish the connection after a two-second back-off
     // Re-mark ourselves as in-flight to prevent other callers from jumping in in the meantime
     Logger.log("Rewatching for type/context", type, context);
     this._watchInFlight(type, context, true);
     setTimeout(
       $.proxy(this, "_startWatchOp", type, context, this._resourceVersion(type, context)),
-      1000
+      2000
     );
   };
 
@@ -751,47 +826,71 @@ angular.module('openshiftConsole')
   // an introspection endpoint that would give us this mapping
   // https://github.com/openshift/origin/issues/230
   var SERVER_TYPE_MAP = {
-    builds:                    API_CFG.openshift,
     buildconfigs:              API_CFG.openshift,
+    builds:                    API_CFG.openshift,
+    clusternetworks:           API_CFG.openshift,
+    clusterpolicies:           API_CFG.openshift,
+    clusterpolicybindings:     API_CFG.openshift,
+    clusterrolebindings:       API_CFG.openshift,
+    clusterroles:              API_CFG.openshift,
+    deploymentconfigrollbacks: API_CFG.openshift,
     deploymentconfigs:         API_CFG.openshift,
-    imagestreams:              API_CFG.openshift,
+    hostsubnets:               API_CFG.openshift,
+    identities:                API_CFG.openshift,
+    images:                    API_CFG.openshift,
     imagestreamimages:         API_CFG.openshift,
+    imagestreammappings:       API_CFG.openshift,
+    imagestreams:              API_CFG.openshift,
     imagestreamtags:           API_CFG.openshift,
     oauthaccesstokens:         API_CFG.openshift,
     oauthauthorizetokens:      API_CFG.openshift,
-    oauthclients:              API_CFG.openshift,
     oauthclientauthorizations: API_CFG.openshift,
+    oauthclients:              API_CFG.openshift,
     policies:                  API_CFG.openshift,
     policybindings:            API_CFG.openshift,
     processedtemplates:        API_CFG.openshift,
-    projects:                  API_CFG.openshift,
     projectrequests:           API_CFG.openshift,
-    roles:                     API_CFG.openshift,
+    projects:                  API_CFG.openshift,
+    resourceaccessreviews:     API_CFG.openshift,
     rolebindings:              API_CFG.openshift,
+    roles:                     API_CFG.openshift,
     routes:                    API_CFG.openshift,
+    subjectaccessreviews:      API_CFG.openshift,
     templates:                 API_CFG.openshift,
+    useridentitymappings:      API_CFG.openshift,
     users:                     API_CFG.openshift,
 
+    bindings:                  API_CFG.k8s,
+    componentstatuses:         API_CFG.k8s,
+    endpoints:                 API_CFG.k8s,
     events:                    API_CFG.k8s,
+    limitranges:               API_CFG.k8s,
+    nodes:                     API_CFG.k8s,
+    persistentvolumeclaims:    API_CFG.k8s,
+    persistentvolumes:         API_CFG.k8s,
     pods:                      API_CFG.k8s,
+    podtemplates:              API_CFG.k8s,
     replicationcontrollers:    API_CFG.k8s,
-    services:                  API_CFG.k8s,
     resourcequotas:            API_CFG.k8s,
-    limitranges:               API_CFG.k8s
+    secrets:                   API_CFG.k8s,
+    serviceaccounts:           API_CFG.k8s,
+    services:                  API_CFG.k8s
   };
 
   DataService.prototype._urlForType = function(type, id, context, isWebsocket, params) {
 
+    var typeWithSubresource;
+    var subresource;
     // Parse the type parameter for type itself and subresource. Example: 'buildconfigs/instantiate'
     if(type.indexOf('/') !== -1){
-      var typeWithSubresource = type.split("/");
-      var type = typeWithSubresource[0];
-      var subresource = typeWithSubresource[1];
+      typeWithSubresource = type.split("/");
+      type = typeWithSubresource[0];
+      subresource = typeWithSubresource[1];
     }
 
     var typeInfo = SERVER_TYPE_MAP[type];
     if (!typeInfo) {
-    	Logger.error("_urlForType called with unknown type", type, arguments)
+    	Logger.error("_urlForType called with unknown type", type, arguments);
     	return null;
     }
 
@@ -871,8 +970,19 @@ angular.module('openshiftConsole')
   var OBJECT_KIND_MAP = {
     Build:                    "builds",
     BuildConfig:              "buildconfigs",
+    ClusterNetwork:           "clusternetworks",
+    ClusterPolicy:            "clusterpolicies",
+    ClusterPolicyBinding:     "clusterpolicybindings",
+    ClusterRole:              "clusterroles",
+    ClusterRoleBinding:       "clusterrolebindings",
     DeploymentConfig:         "deploymentconfigs",
+    DeploymentConfigRollback: "deploymentconfigrollbacks",
+    HostSubnet:               "hostsubnets",
+    Identity:                 "identities",
+    Image:                    "images",
     ImageStream:              "imagestreams",
+    ImageStreamImage:         "imagestreamimages",
+    ImageStreamMapping:       "imagestreammappings",
     OAuthAccessToken:         "oauthaccesstokens",
     OAuthAuthorizeToken:      "oauthauthorizetokens",
     OAuthClient:              "oauthclients",
@@ -880,16 +990,31 @@ angular.module('openshiftConsole')
     Policy:                   "policies",
     PolicyBinding:            "policybindings",
     Project:                  "projects",
+    ProjectRequest:           "projectrequests",
+    ResourceAccessReview:     "resourceaccessreviews",
     Role:                     "roles",
     RoleBinding:              "rolebindings",
     Route:                    "routes",
+    SubjectAccessReview:      "subjectaccessreviews",
+    Template:                 "templates",
     User:                     "users",
+    UserIdentityMapping:      "useridentitymappings",
 
+    Binding:                  "bindings",
+    ComponentStatus:          "componentstatuses",
+    Endpoints:                "endpoints",
+    Event:                    "events",
+    LimitRange:               "limitranges",
+    Node:                     "nodes",
+    PersistentVolume:         "persistentvolumes",
+    PersistentVolumeClaim:    "persistentvolumeclaims",
     Pod:                      "pods",
+    PodTemplate:              "podtemplates",
     ReplicationController:    "replicationcontrollers",
-    Service:                  "services",
     ResourceQuota:            "resourcequotas",
-    LimitRange:               "limitranges"
+    Secret:                   "secrets",
+    Service:                  "services",
+    ServiceAccount:           "serviceaccounts"
   };
 
   DataService.prototype._objectType = function(kind) {

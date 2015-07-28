@@ -65,14 +65,15 @@ func TestExampleObjectSchemas(t *testing.T) {
 			"hello-project": &projectapi.Project{},
 		},
 		"../examples/sample-app": {
-			"github-webhook-example":           nil, // Skip.
-			"application-template-stibuild":    &templateapi.Template{},
-			"application-template-dockerbuild": &templateapi.Template{},
-			"application-template-custombuild": &templateapi.Template{},
+			"github-webhook-example":             nil, // Skip.
+			"application-template-stibuild":      &templateapi.Template{},
+			"application-template-dockerbuild":   &templateapi.Template{},
+			"application-template-custombuild":   &templateapi.Template{},
+			"application-template-pullspecbuild": &templateapi.Template{},
 		},
 		"../examples/jenkins": {
-			"jenkins-config":       &kapi.List{},
-			"application-template": &templateapi.Template{},
+			"jenkins-ephemeral-template": &templateapi.Template{},
+			"application-template":       &templateapi.Template{},
 		},
 		"../examples/image-streams": {
 			"image-streams-centos7": &imageapi.ImageStreamList{},

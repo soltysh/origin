@@ -8,18 +8,18 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the rel-eng directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 1a40a19a773703c0e1b0b4703ffbaf1216897b5a
+%global commit 151be0df375f35539144881ec87b69869e177df3
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # OpenShift specific ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 0+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.0.0.0-35-g1a40a19 -X github.com/openshift/origin/pkg/version.commitFromGit 1a40a19 -X github.com/GoogleCloudPlatform/kubernetes/pkg/version.gitCommit 496be63 -X github.com/GoogleCloudPlatform/kubernetes/pkg/version.gitVersion v0.17.1-804-g496be63
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 1 -X github.com/openshift/origin/pkg/version.minorFromGit 0+ -X github.com/openshift/origin/pkg/version.versionFromGit v1.0.0-412-g151be0d -X github.com/openshift/origin/pkg/version.commitFromGit 151be0d -X github.com/GoogleCloudPlatform/kubernetes/pkg/version.gitCommit 496be63 -X github.com/GoogleCloudPlatform/kubernetes/pkg/version.gitVersion v0.17.1-804-g496be63
 }
 
 Name:           openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the rel-eng directory of this project
-Version:        3.0.0.1
+Version:        3.0.1.0
 Release:        1%{?dist}
 Summary:        Open Source Platform as a Service by Red Hat
 License:        ASL 2.0
@@ -51,6 +51,7 @@ Requires:       docker-io >= 1.6.2
 Requires:       tuned-profiles-openshift-node
 Requires:       util-linux
 Requires:       socat
+Requires:       nfs-utils
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
@@ -168,6 +169,7 @@ mkdir -p %{buildroot}%{_sharedstatedir}/%{name}
 
 ln -s %{_bindir}/openshift %{buildroot}%{_bindir}/oc
 ln -s %{_bindir}/openshift %{buildroot}%{_bindir}/oadm
+ln -s %{_bindir}/openshift %{buildroot}%{_bindir}/kubectl
 
 install -d -m 0755 %{buildroot}%{_prefix}/lib/tuned/openshift-node-{guest,host}
 install -m 0644 tuned/openshift-node-guest/tuned.conf %{buildroot}%{_prefix}/lib/tuned/openshift-node-guest/
@@ -196,6 +198,7 @@ install -p -m 644 rel-eng/completions/bash/* %{buildroot}/etc/bash_completion.d/
 %{_bindir}/openshift
 %{_bindir}/oc
 %{_bindir}/oadm
+%{_bindir}/kubectl
 %{_sharedstatedir}/%{name}
 /etc/bash_completion.d/*
 
@@ -273,20 +276,255 @@ fi
 %{_bindir}/pod
 
 %changelog
-* Fri Jun 26 2015 Brenton Leanhardt <bleanhar@redhat.com> 3.0.0.1
-- Merge remote-tracking branch 'origin/master' into enterprise-3.0
-  (bleanhar@redhat.com)
+* Tue Jun 30 2015 Scott Dodson <sdodson@redhat.com> 3.0.1.0
+- Merge remote-tracking branch 'upstream/master' (sdodson@redhat.com)
+- Merge pull request #47 from bparees/sti_path (sdodson@redhat.com)
+- Merge pull request #3343 from deads2k/add-old-config-test
+  (dmcphers+openshiftbot@redhat.com)
+- new-app: Don't swallow error (kargakis@users.noreply.github.com)
+- Merge pull request #3499 from deads2k/fix-example-rc
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3478 from spadgett/fromimage-url
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3490 from spadgett/deployment-flicker
+  (dmcphers+openshiftbot@redhat.com)
+- make test-cmd RCs non-conflicting (deads@redhat.com)
+- bump(github.com/openshift/source-to-
+  image):358cdb59db90b920e90a5f9a952ef7a3e11df3ad (bparees@redhat.com)
+- Merge pull request #3488 from ironcladlou/remove-beta1-deployment-mappings
+  (dmcphers+openshiftbot@redhat.com)
+- OSE help links (jliggitt@redhat.com)
+- Merge pull request #3443 from stevekuznetsov/skuznets/reorganize-master
+  (dmcphers+openshiftbot@redhat.com)
+- Avoid warning icon flicker on browse deployments page (spadgett@redhat.com)
+- Remove v1beta1 annotation/label mapping (ironcladlou@gmail.com)
+- Merge pull request #3473 from bparees/filter_pods
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3477 from mfojtik/fix-template
+  (dmcphers+openshiftbot@redhat.com)
+- Reorganized master code (steve.kuznetsov@gmail.com)
+- Merge pull request #3471 from spadgett/create-page-panels
+  (dmcphers+openshiftbot@redhat.com)
+- Use relative URIs in create flow links (spadgett@redhat.com)
+- filter the pods the build controller looks at (bparees@redhat.com)
+- Merge pull request #3472 from bparees/output_event
+  (dmcphers+openshiftbot@redhat.com)
+- Tweak headings and add separator on create page (spadgett@redhat.com)
+- Make \w special character in template expression behave like PCRE
+  (mfojtik@redhat.com)
+- Merge pull request #3200 from fabianofranz/bugs_1223252
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3469 from spadgett/show-project-name
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3454 from ncdc/fix-registry-auth-for-pruning
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3462 from ironcladlou/test-cmd-deployment-fix
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3378 from csrwng/newapp_multiple_service_ports
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3433 from spadgett/relist-delay
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3325 from fabianofranz/cli_by_example_script
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3465 from spadgett/start-build-fix
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3458 from smarterclayton/summit_demo
+  (dmcphers+openshiftbot@redhat.com)
+- log event for invalid output error (bparees@redhat.com)
+- Bug 1223252: UPSTREAM: label: Invalidate empty or invalid value labels
+  (kargakis@users.noreply.github.com)
+- Introduces auto-generation of CLI documents (contact@fabianofranz.com)
+- Show namespace on project settings page (spadgett@redhat.com)
+- Merge pull request #3401 from bparees/whitelist
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3348 from deads2k/build-omitempty-fields
+  (dmcphers+openshiftbot@redhat.com)
+- Newapp: expose multiple ports in generated services (cewong@redhat.com)
+- Add API version and kind to POST request content (spadgett@redhat.com)
+- Merge pull request #3455 from ironcladlou/reduce-logging
+  (dmcphers+openshiftbot@redhat.com)
+- Fix deployment scaling race in test-cmd.sh (ironcladlou@gmail.com)
+- allow http proxy env variables to be set in privileged sti container
+  (bparees@redhat.com)
+- More robust websocket error handling (spadgett@redhat.com)
+- Correct registry auth for pruning (agoldste@redhat.com)
+- Add image pruning e2e test (agoldste@redhat.com)
+- require required fields in build objects (deads@redhat.com)
+- remove dead build etcd package (deads@redhat.com)
+- Merge pull request #3456 from spadgett/safari-tiles
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3453 from soltysh/issue3391
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3265 from mfojtik/bz-1232694
+  (dmcphers+openshiftbot@redhat.com)
+- Allow private network to be used locally (ccoleman@redhat.com)
+- Adjust examples indentation (contact@fabianofranz.com)
+- Adjust 'kubectl config' examples to 'oc config' (contact@fabianofranz.com)
+- Updated bash completion files (contact@fabianofranz.com)
+- UPSTREAM: fixes kubectl config set-credentials examples
+  (contact@fabianofranz.com)
+- Merge pull request #3440 from ironcladlou/test-cmd-artifacts
+  (dmcphers+openshiftbot@redhat.com)
+- Remove `width: 100%%` from tile class (spadgett@redhat.com)
+- Merge pull request #3431 from deads2k/security-allocator-warning
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3430 from spadgett/long-words
+  (dmcphers+openshiftbot@redhat.com)
+- Remove some pointless deployment logging (ironcladlou@gmail.com)
+- Merge pull request #3439 from liggitt/verify_generated_content
+  (dmcphers+openshiftbot@redhat.com)
+- Issue 3391 - allow optional image output for custom builder.
+  (maszulik@redhat.com)
 - Correct Docker image Config type (agoldste@redhat.com)
-- Make ose/scripts a symlink to origin/scripts (sdodson@redhat.com)
+- Merge pull request #3312 from ironcladlou/always-canary
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3400 from deads2k/add-contains-relationships
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3419 from stevekuznetsov/skuznets/issue/3375
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3425 from pravisankar/fix-typos
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3445 from deads2k/kill-internal-json-tags
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3434 from ncdc/dockerimage-config-should-be-a-pointer
+  (dmcphers+openshiftbot@redhat.com)
+- Use a predictable tempdir naming convention (ironcladlou@gmail.com)
+- add pod and rc spec nodes (deads@redhat.com)
+- Fix typos in the repo (rpenta@redhat.com)
+- elminate internal json tags forever (deads@redhat.com)
+- Added support for multiple roles in oc secrets add
+  (steve.kuznetsov@gmail.com)
+- Correct Docker image Config type (agoldste@redhat.com)
+- Merge pull request #3397 from jhadvig/rhel_origin-base
+  (dmcphers+openshiftbot@redhat.com)
+- add warning for missing security allocator (deads@redhat.com)
+- Merge pull request #3429 from rhcarvalho/fix-typo
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3352 from smarterclayton/not_beta
+  (dmcphers+openshiftbot@redhat.com)
+- Add verification of generated content to make test (jliggitt@redhat.com)
+- Merge pull request #3340 from stevekuznetsov/fix-root-route
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3385 from liggitt/who_can_all_namespaces
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3437 from deads2k/loosen-conversions
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3428 from deads2k/fix-template
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3422 from deads2k/validate-extended-params
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3098 from mnagy/warn_on_emptydir
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3387 from bparees/godeps
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3350 from smarterclayton/more_documentation
+  (dmcphers+openshiftbot@redhat.com)
+- Fixed routes from root (steve.kuznetsov@gmail.com)
+- Merge pull request #3275 from deads2k/secret-usage-errors
+  (dmcphers+openshiftbot@redhat.com)
+- Deflake TestBasicGroupManipulation (jliggitt@redhat.com)
+- Allow who-can to check cluster-level access (jliggitt@redhat.com)
+- make conversions convert and validation validate (deads@redhat.com)
+- Always do a canary check during deployment (ironcladlou@gmail.com)
+- Merge pull request #3398 from ncdc/e2e-docker-selinux
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3412 from csrwng/newapp_dockerfileresolver
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3389 from liggitt/split_asset_package
+  (dmcphers+openshiftbot@redhat.com)
+- More e2e-docker fixes (agoldste@redhat.com)
+- Prevent long unbroken words from extending outside tile boundaries
+  (spadgett@redhat.com)
+- Fix typo (rhcarvalho@gmail.com)
+- wait for imagestreamtags before requesting them (deads@redhat.com)
+- validate extended args in config (deads@redhat.com)
+- Merge pull request #3293 from spadgett/template-catalog-updates
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3289 from pravisankar/volume-fixes
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3328 from pravisankar/env-fixes
+  (dmcphers+openshiftbot@redhat.com)
+- Warn user when using EmptyDir volumes (nagy.martin@gmail.com)
+- Add EmptyDir volumes for new-app containers (nagy.martin@gmail.com)
+- Clean up residual volume mounts from e2e-docker (agoldste@redhat.com)
+- Newapp: Allow Docker FROM in Dockerfile to point to an image stream or
+  invalid image (cewong@redhat.com)
+- Split java console into separate package (jliggitt@redhat.com)
+- bump(github.com/elazarl/go-bindata-assetfs):
+  3dcc96556217539f50599357fb481ac0dc7439b9 (jliggitt@redhat.com)
+- Merge pull request #3405 from deads2k/be-calm-on-failed-deletes
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3384 from pravisankar/whocan-fixes
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3201 from csrwng/newapp_dockerfile_ports
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3287 from kargakis/dont-create-spec-tags-on-output-stream
+  (dmcphers+openshiftbot@redhat.com)
+- Use correct images for test-cmd (agoldste@redhat.com)
+- Use correct images for e2e-docker (agoldste@redhat.com)
+- Fix volume dir label for e2e-docker (agoldste@redhat.com)
+- Merge pull request #3382 from deads2k/refactor-graph
+  (dmcphers+openshiftbot@redhat.com)
+- split graph package (deads@redhat.com)
+- Merge pull request #3379 from liggitt/bash_completion
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3349 from spadgett/build-completion-timestamp
+  (dmcphers+openshiftbot@redhat.com)
+- Adding rhel7 based origin-base Dockerfile (j.hadvig@gmail.com)
+- Merge pull request #3386 from bparees/doc (dmcphers+openshiftbot@redhat.com)
+- dockercfg secret controllers shouldn't fail on NotFound deletes
+  (deads@redhat.com)
+- Merge pull request #3369 from pmorie/selinux-disable
+  (dmcphers+openshiftbot@redhat.com)
+- Update bash autocompletions (jliggitt@redhat.com)
+- bump(github.com/spf13/cobra): a8f7f3dc25e03593330100563f6c392224221899
+  (jliggitt@redhat.com)
+- bump(github.com/spf13/pflag): 381cb823881391d5673cf2fc41e38feba8a8e49a
+  (jliggitt@redhat.com)
+- Merge pull request #3188 from mfojtik/fix-etcd
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3388 from liggitt/imagemin
+  (dmcphers+openshiftbot@redhat.com)
+- Remove imagemin step from asset build (jliggitt@redhat.com)
+- Merge pull request #3288 from liggitt/deflake
+  (dmcphers+openshiftbot@redhat.com)
+- bump(github.com/openshift/source-to-
+  image):358cdb59db90b920e90a5f9a952ef7a3e11df3ad (bparees@redhat.com)
+- sti to s2i (bparees@redhat.com)
+- Merge pull request #3373 from liggitt/test_assets
+  (dmcphers+openshiftbot@redhat.com)
+- Show namespace, verb, resource for 'oadm policy who-can' cmd
+  (rpenta@redhat.com)
+- 'oc volume' test cases and fixes (rpenta@redhat.com)
+- Updated 'oc env' help message (rpenta@redhat.com)
+- Merge pull request #3258 from liggitt/service_port_validation
+  (dmcphers+openshiftbot@redhat.com)
+- Add policy cache wait in build admission integration tests
+  (jliggitt@redhat.com)
+- Template and image catalog updates (spadgett@redhat.com)
+- Merge pull request #3380 from ncdc/gh3374 (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #3337 from deads2k/protect-request-project
+  (dmcphers+openshiftbot@redhat.com)
+- defend against new-project racers (deads@redhat.com)
+- Remove error when tracking tag target isn't found (agoldste@redhat.com)
+- New-app: Expose ports specified in source Dockerfile (cewong@redhat.com)
+- Add asset failure debugging (jliggitt@redhat.com)
+- Make emptyDir work when SELinux is disabled (pmorie@gmail.com)
+- Merge pull request #3341 from bparees/build_event
+  (dmcphers+openshiftbot@redhat.com)
+- Not beta! (ccoleman@redhat.com)
 - fixed bash error (mturansk@redhat.com)
 - fixed typo in script name (mturansk@redhat.com)
 - fixed plugin init (mturansk@redhat.com)
-- Copy recycler script to ose image (sdodson@redhat.com)
-- Merge branch 'master' into enterprise-3.0 (sdodson@redhat.com)
+- Add descriptions to our core objects and fix typos (ccoleman@redhat.com)
+- Filter builds by completion rather than creation time on overview page
+  (spadgett@redhat.com)
+- add test for old config compatibility (deads@redhat.com)
+- only handleErr on last retry failure (bparees@redhat.com)
+- Now at one dot oh (ccoleman@redhat.com)
 - Merge remote-tracking branch 'upstream/master' (sdodson@redhat.com)
 - bump(github.com/openshift/openshift-
   sdn/ovssubnet):cdd9955dc602abe8ef2d934a3c39417375c486c6 (rchopra@redhat.com)
-- Merge branch 'master' into enterprise-3.0 (sdodson@redhat.com)
 - UPSTREAM: Ensure service account does not exist before deleting added/updated
   tokens (jliggitt@redhat.com)
 - UPSTREAM: Add logging for invalid JWT tokens (jliggitt@redhat.com)
@@ -295,8 +533,6 @@ fi
   sdn/ovssubnet):2bf8606dd9e0d5c164464f896e2223431f4b5099 (rchopra@redhat.com)
 - Minor fixup to profiling instructions (ccoleman@redhat.com)
 - Chmod hack/release.sh (ccoleman@redhat.com)
-- Merge branch 'master' into enterprise-3.0 (sdodson@redhat.com)
-- Merge remote-tracking branch 'upstream/master' (sdodson@redhat.com)
 - Update logo and page title in JVM console for OSE (slewis@fusesource.com)
 - Merge pull request #3301 from liggitt/debug_tokens
   (dmcphers+openshiftbot@redhat.com)
@@ -305,13 +541,16 @@ fi
 - UPSTREAM: Add logging for invalid JWT tokens (jliggitt@redhat.com)
 - Merge pull request #3300 from pweil-/router-cookies
   (dmcphers+openshiftbot@redhat.com)
+- Make etcd example more resilient to failure (mfojtik@redhat.com)
+- new-app: Don't set spec.tags in output streams
+  (kargakis@users.noreply.github.com)
+- Bug 1232694 - Make the secret volume for push/pull secrets unique
+  (mfojtik@redhat.com)
 - use cookies for sticky sessions on http based routes (pweil@redhat.com)
 - bump(github.com/openshift/openshift-
   sdn/ovssubnet):2bf8606dd9e0d5c164464f896e2223431f4b5099 (rchopra@redhat.com)
 - Minor fixup to profiling instructions (ccoleman@redhat.com)
 - Chmod hack/release.sh (ccoleman@redhat.com)
-
-* Wed Jun 17 2015 Scott Dodson <sdodson@redhat.com> 3.0.0.0
 - Merge remote-tracking branch 'upstream/master' (sdodson@redhat.com)
 - Merge pull request #3284 from pmorie/emptydir-security-context
   (dmcphers@redhat.com)
@@ -341,6 +580,7 @@ fi
 - changed Recycler config for OS and added custom script for scrubbing in
   origin image (mturansk@redhat.com)
 - Remove cached docker client repo on error (agoldste@redhat.com)
+- update secret commands to give usage errors (deads@redhat.com)
 - eliminate extra policy casting (deads@redhat.com)
 - make policy interfaces (deads@redhat.com)
 - switch policy types to map to pointers (deads@redhat.com)
@@ -364,6 +604,7 @@ fi
   (pmorie@gmail.com)
 - Merge remote-tracking branch 'upstream/master' (sdodson@redhat.com)
 - UPSTREAM: add client field mappings for v1 (jliggitt@redhat.com)
+- UPSTREAM: Validate port protocol case strictly (jliggitt@redhat.com)
 - Merge pull request #3251 from deads2k/suppress-check-errs
   (dmcphers+openshiftbot@redhat.com)
 - Merge pull request #3252 from rajatchopra/master

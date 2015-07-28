@@ -19,7 +19,8 @@ import (
 const (
 	CreateDockerConfigSecretRecommendedName = "new-dockercfg"
 
-	createDockercfgLong = `Create a new dockercfg secret
+	createDockercfgLong = `
+Create a new dockercfg secret
 
 Dockercfg secrets are used to authenticate against Docker registries.
 
@@ -64,11 +65,11 @@ func NewCmdCreateDockerConfigSecret(name, fullName string, f *cmdutil.Factory, o
 		Long:  fmt.Sprintf(createDockercfgLong, fullName, newSecretFullName, ocEditFullName),
 		Run: func(c *cobra.Command, args []string) {
 			if err := o.Complete(f, args); err != nil {
-				cmdutil.CheckErr(err)
+				cmdutil.CheckErr(cmdutil.UsageError(c, err.Error()))
 			}
 
 			if err := o.Validate(); err != nil {
-				cmdutil.CheckErr(err)
+				cmdutil.CheckErr(cmdutil.UsageError(c, err.Error()))
 			}
 
 			if len(cmdutil.GetFlagString(c, "output")) != 0 {
@@ -148,7 +149,7 @@ func (o *CreateDockerConfigOptions) Complete(f *cmdutil.Factory, args []string) 
 	if err != nil {
 		return err
 	}
-	o.SecretNamespace, err = f.DefaultNamespace()
+	o.SecretNamespace, _, err = f.DefaultNamespace()
 	if err != nil {
 		return err
 	}

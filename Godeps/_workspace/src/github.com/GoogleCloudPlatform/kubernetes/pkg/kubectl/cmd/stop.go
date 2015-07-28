@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	stop_long = `Gracefully shut down a resource by id or filename.
+	stop_long = `Gracefully shut down a resource by name or filename.
 
 Attempts to shut down and delete a resource that supports graceful termination.
 If the resource is scalable it will be scaled to 0 before deletion.`
@@ -49,33 +49,35 @@ func NewCmdStop(f *cmdutil.Factory, out io.Writer) *cobra.Command {
 		Filenames util.StringList
 	}{}
 	cmd := &cobra.Command{
-		Use:     "stop (-f FILENAME | RESOURCE (ID | -l label | --all))",
-		Short:   "Gracefully shut down a resource by id or filename.",
+		Use:     "stop (-f FILENAME | RESOURCE (NAME | -l label | --all))",
+		Short:   "Gracefully shut down a resource by name or filename.",
 		Long:    stop_long,
 		Example: stop_example,
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(RunStop(f, cmd, args, flags.Filenames, out))
 		},
 	}
-	usage := "Filename, directory, or URL to file of resource(s) to be stopped"
+	usage := "Filename, directory, or URL to file of resource(s) to be stopped."
 	kubectl.AddJsonFilenameFlag(cmd, &flags.Filenames, usage)
-	cmd.Flags().StringP("selector", "l", "", "Selector (label query) to filter on")
-	cmd.Flags().Bool("all", false, "[-all] to select all the specified resources")
+	cmd.Flags().StringP("selector", "l", "", "Selector (label query) to filter on.")
+	cmd.Flags().Bool("all", false, "[-all] to select all the specified resources.")
+	cmd.Flags().Bool("ignore-not-found", false, "Treat \"resource not found\" as a successful stop.")
 	cmd.Flags().Int("grace-period", -1, "Period of time in seconds given to the resource to terminate gracefully. Ignored if negative.")
+	cmd.Flags().Duration("timeout", 0, "The length of time to wait before giving up on a delete, zero means determine a timeout from the size of the object")
 	return cmd
 }
 
 func RunStop(f *cmdutil.Factory, cmd *cobra.Command, args []string, filenames util.StringList, out io.Writer) error {
-	cmdNamespace, err := f.DefaultNamespace()
+	cmdNamespace, enforceNamespace, err := f.DefaultNamespace()
 	if err != nil {
 		return err
 	}
 	mapper, typer := f.Object()
 	r := resource.NewBuilder(mapper, typer, f.ClientMapperForCommand()).
 		ContinueOnError().
-		NamespaceParam(cmdNamespace).RequireNamespace().
+		NamespaceParam(cmdNamespace).DefaultNamespace().
 		ResourceTypeOrNameArgs(false, args...).
-		FilenameParam(filenames...).
+		FilenameParam(enforceNamespace, filenames...).
 		SelectorParam(cmdutil.GetFlagString(cmd, "selector")).
 		SelectAllParam(cmdutil.GetFlagBool(cmd, "all")).
 		Flatten().
@@ -83,5 +85,5 @@ func RunStop(f *cmdutil.Factory, cmd *cobra.Command, args []string, filenames ut
 	if r.Err() != nil {
 		return r.Err()
 	}
-	return ReapResult(r, f, out, false, cmdutil.GetFlagInt(cmd, "grace-period"))
+	return ReapResult(r, f, out, false, cmdutil.GetFlagBool(cmd, "ignore-not-found"), cmdutil.GetFlagDuration(cmd, "timeout"), cmdutil.GetFlagInt(cmd, "grace-period"))
 }

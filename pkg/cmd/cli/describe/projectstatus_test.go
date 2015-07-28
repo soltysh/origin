@@ -48,7 +48,7 @@ func TestProjectStatus(t *testing.T) {
 			ErrFn: func(err error) bool { return err == nil },
 			Contains: []string{
 				"In project Test (example)\n",
-				"You have no Services, DeploymentConfigs, or BuildConfigs.",
+				"You have no services, deployment configs, or build configs.",
 			},
 		},
 		"empty service": {
@@ -61,8 +61,84 @@ func TestProjectStatus(t *testing.T) {
 			ErrFn: func(err error) bool { return err == nil },
 			Contains: []string{
 				"In project example\n",
-				"service empty-service",
-				"(<initializing>:5432", "To see more information",
+				"service/empty-service",
+				"<initializing>:5432",
+				"To see more, use",
+			},
+		},
+		"service with RC": {
+			Path: "../../../../test/fixtures/app-scenarios/k8s-unserviced-rc.json",
+			Extra: []runtime.Object{
+				&projectapi.Project{
+					ObjectMeta: kapi.ObjectMeta{Name: "example", Namespace: ""},
+				},
+			},
+			ErrFn: func(err error) bool { return err == nil },
+			Contains: []string{
+				"In project example\n",
+				"service/database-rc",
+				"rc/database-rc-1 runs mysql",
+				"0/1 pods growing to 1",
+				"To see more, use",
+			},
+		},
+		"rc with unmountable and missing secrets": {
+			Path: "../../../../pkg/api/graph/test/bad_secret_with_just_rc.yaml",
+			Extra: []runtime.Object{
+				&projectapi.Project{
+					ObjectMeta: kapi.ObjectMeta{Name: "example", Namespace: ""},
+				},
+			},
+			ErrFn: func(err error) bool { return err == nil },
+			Contains: []string{
+				"In project example\n",
+				"rc/my-rc runs openshift/mysql-55-centos7",
+				"0/1 pods growing to 1",
+				"rc/my-rc is attempting to mount a secret secret/existing-secret disallowed by sa/default",
+				"rc/my-rc is attempting to mount a secret secret/dne disallowed by sa/default",
+				"rc/my-rc is attempting to mount a missing secret secret/dne",
+			},
+		},
+		"dueling rcs": {
+			Path: "../../../../pkg/api/graph/test/dueling-rcs.yaml",
+			Extra: []runtime.Object{
+				&projectapi.Project{
+					ObjectMeta: kapi.ObjectMeta{Name: "dueling-rc", Namespace: ""},
+				},
+			},
+			ErrFn: func(err error) bool { return err == nil },
+			Contains: []string{
+				"rc/rc-1 is competing for pod/conflicted-pod with rc/rc-2",
+				"rc/rc-2 is competing for pod/conflicted-pod with rc/rc-1",
+			},
+		},
+		"service with pod": {
+			Path: "../../../../pkg/api/graph/test/service-with-pod.yaml",
+			Extra: []runtime.Object{
+				&projectapi.Project{
+					ObjectMeta: kapi.ObjectMeta{Name: "example", Namespace: ""},
+				},
+			},
+			ErrFn: func(err error) bool { return err == nil },
+			Contains: []string{
+				"In project example\n",
+				"service/frontend-app",
+				"pod/frontend-app-1-bjwh8 runs openshift/ruby-hello-world",
+				"To see more, use",
+			},
+		},
+		"standalone rc": {
+			Path: "../../../../pkg/api/graph/test/bare-rc.yaml",
+			Extra: []runtime.Object{
+				&projectapi.Project{
+					ObjectMeta: kapi.ObjectMeta{Name: "example", Namespace: ""},
+				},
+			},
+			ErrFn: func(err error) bool { return err == nil },
+			Contains: []string{
+				"In project example\n",
+				"  rc/database-1 runs openshift/mysql-55-centos7",
+				"rc/frontend-rc-1 runs openshift/ruby-hello-world",
 			},
 		},
 		"unstarted build": {
@@ -75,12 +151,36 @@ func TestProjectStatus(t *testing.T) {
 			ErrFn: func(err error) bool { return err == nil },
 			Contains: []string{
 				"In project example\n",
-				"service sinatra-example-2 (172.30.17.48:8080)",
+				"service/sinatra-example-2 - 172.30.17.48:8080",
 				"builds git://github.com",
 				"with docker.io/openshift/ruby-20-centos7:latest",
 				"not built yet",
 				"#1 deployment waiting on image or update",
-				"To see more information",
+				"To see more, use",
+			},
+		},
+		"unpushable build": {
+			Path: "../../../../pkg/api/graph/test/unpushable-build.yaml",
+			Extra: []runtime.Object{
+				&projectapi.Project{
+					ObjectMeta: kapi.ObjectMeta{Name: "example", Namespace: ""},
+				},
+			},
+			ErrFn: func(err error) bool { return err == nil },
+			Contains: []string{
+				"bc/ruby-hello-world is pushing to imagestreamtag/ruby-hello-world:latest that is using is/ruby-hello-world, but the administrator has not configured the integrated Docker registry.",
+			},
+		},
+		"cyclical build": {
+			Path: "../../../../pkg/api/graph/test/circular.yaml",
+			Extra: []runtime.Object{
+				&projectapi.Project{
+					ObjectMeta: kapi.ObjectMeta{Name: "example", Namespace: ""},
+				},
+			},
+			ErrFn: func(err error) bool { return err == nil },
+			Contains: []string{
+				"Cycle detected in build configurations:",
 			},
 		},
 		"running build": {
@@ -93,12 +193,12 @@ func TestProjectStatus(t *testing.T) {
 			ErrFn: func(err error) bool { return err == nil },
 			Contains: []string{
 				"In project example\n",
-				"service sinatra-example-1 (172.30.17.47:8080)",
+				"service/sinatra-example-1 - 172.30.17.47:8080",
 				"builds git://github.com",
 				"with docker.io/openshift/ruby-20-centos7:latest",
 				"build 1 running for about a minute",
 				"#1 deployment waiting on image or update",
-				"To see more information",
+				"To see more, use",
 			},
 			Time: mustParseTime("2015-04-06T21:20:03Z"),
 		},
@@ -112,13 +212,13 @@ func TestProjectStatus(t *testing.T) {
 			ErrFn: func(err error) bool { return err == nil },
 			Contains: []string{
 				"In project example\n",
-				"service sinatra-app-example (172.30.17.49:8080)",
+				"service/sinatra-app-example - 172.30.17.49:8080",
 				"sinatra-app-example-a deploys",
 				"sinatra-app-example-b deploys",
 				"with docker.io/openshift/ruby-20-centos7:latest",
 				"build 1 running for about a minute",
 				"- 7a4f354: Prepare v1beta3 Template types (Roy Programmer <someguy@outhere.com>)",
-				"To see more information",
+				"To see more, use",
 			},
 			Time: mustParseTime("2015-04-06T21:20:03Z"),
 		},
@@ -132,8 +232,8 @@ func TestProjectStatus(t *testing.T) {
 			ErrFn: func(err error) bool { return err == nil },
 			Contains: []string{
 				"In project example\n",
-				"service database (172.30.17.240:5434 -> 3306)",
-				"service frontend (172.30.17.154:5432 -> 8080)",
+				"service/database - 172.30.17.240:5434 -> 3306",
+				"service/frontend - 172.30.17.154:5432 -> 8080",
 				"database deploys",
 				"frontend deploys",
 				"with docker.io/openshift/ruby-20-centos7:latest",
@@ -141,7 +241,7 @@ func TestProjectStatus(t *testing.T) {
 				"#2 deployment running for 7 seconds - 2/1 pods",
 				"#1 deployed 8 seconds ago",
 				"#1 deployed less than a second ago",
-				"To see more information",
+				"To see more, use",
 			},
 			Time: mustParseTime("2015-04-07T04:12:25Z"),
 		},
@@ -178,6 +278,5 @@ func TestProjectStatus(t *testing.T) {
 				t.Errorf("%s: did not have %q:\n%s\n---", k, s, out)
 			}
 		}
-		t.Logf("\n%s", out)
 	}
 }

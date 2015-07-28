@@ -12,6 +12,7 @@ import (
 	"github.com/emicklei/go-restful"
 	"github.com/golang/glog"
 	"github.com/openshift/origin/pkg/assets"
+	"github.com/openshift/origin/pkg/assets/java"
 	configapi "github.com/openshift/origin/pkg/cmd/server/api"
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
 	"github.com/openshift/origin/pkg/version"
@@ -31,8 +32,7 @@ func (c *AssetConfig) InstallAPI(container *restful.Container) []string {
 		glog.Fatal(err)
 	}
 
-	mux := container.ServeMux
-	mux.Handle(publicURL.Path, http.StripPrefix(publicURL.Path, assetHandler))
+	container.Handle(publicURL.Path, http.StripPrefix(publicURL.Path, assetHandler))
 
 	return []string{fmt.Sprintf("Started OpenShift UI %%s%s", publicURL.Path)}
 }
@@ -117,13 +117,10 @@ func (c *AssetConfig) buildHandler() (http.Handler, error) {
 		LogoutURI:         c.Options.LogoutURL,
 	}
 
-	handler := http.FileServer(
-		&assetfs.AssetFS{
-			assets.Asset,
-			assets.AssetDir,
-			"",
-		},
-	)
+	assetFunc := assets.JoinAssetFuncs(assets.Asset, java.Asset)
+	assetDirFunc := assets.JoinAssetDirFuncs(assets.AssetDir, java.AssetDir)
+
+	handler := http.FileServer(&assetfs.AssetFS{assetFunc, assetDirFunc, ""})
 
 	// Map of context roots (no leading or trailing slash) to the asset path to serve for requests to a missing asset
 	subcontextMap := map[string]string{
@@ -131,7 +128,7 @@ func (c *AssetConfig) buildHandler() (http.Handler, error) {
 		"java": "java/index.html",
 	}
 
-	handler, err = assets.HTML5ModeHandler(publicURL.Path, subcontextMap, handler)
+	handler, err = assets.HTML5ModeHandler(publicURL.Path, subcontextMap, handler, assetFunc)
 	if err != nil {
 		return nil, err
 	}

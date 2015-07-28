@@ -29,7 +29,7 @@ import (
 const NodeConfigCommandName = "create-node-config"
 
 type CreateNodeConfigOptions struct {
-	GetSignerCertOptions *GetSignerCertOptions
+	SignerCertOptions *SignerCertOptions
 
 	NodeConfigDir string
 
@@ -73,7 +73,7 @@ func NewCommandNodeConfig(commandName string, fullName string, out io.Writer) *c
 
 	flags := cmd.Flags()
 
-	BindGetSignerCertOptions(options.GetSignerCertOptions, flags, "")
+	BindSignerCertOptions(options.SignerCertOptions, flags, "")
 
 	flags.StringVar(&options.NodeConfigDir, "node-dir", "", "The client data directory.")
 
@@ -96,11 +96,21 @@ func NewCommandNodeConfig(commandName string, fullName string, out io.Writer) *c
 	flags.StringVar(&options.APIServerCAFile, "certificate-authority", options.APIServerCAFile, "Path to the API server's CA file.")
 	flags.StringVar(&options.NetworkPluginName, "network-plugin", options.NetworkPluginName, "Name of the network plugin to hook to for pod networking.")
 
+	// autocompletion hints
+	cmd.MarkFlagFilename("node-dir")
+	cmd.MarkFlagFilename("volume-dir")
+	cmd.MarkFlagFilename("client-certificate")
+	cmd.MarkFlagFilename("client-key")
+	cmd.MarkFlagFilename("server-certificate")
+	cmd.MarkFlagFilename("server-key")
+	cmd.MarkFlagFilename("node-client-certificate-authority")
+	cmd.MarkFlagFilename("certificate-authority")
+
 	return cmd
 }
 
 func NewDefaultCreateNodeConfigOptions() *CreateNodeConfigOptions {
-	options := &CreateNodeConfigOptions{GetSignerCertOptions: &GetSignerCertOptions{}}
+	options := &CreateNodeConfigOptions{SignerCertOptions: &SignerCertOptions{}}
 	options.VolumeDir = "openshift.local.volumes"
 	// TODO: replace me with a proper round trip of config options through decode
 	options.DNSDomain = "cluster.local"
@@ -169,13 +179,13 @@ func (o CreateNodeConfigOptions) Validate(args []string) error {
 	}
 
 	if o.IsCreateClientCertificate() || o.IsCreateServerCertificate() {
-		if len(o.GetSignerCertOptions.KeyFile) == 0 {
+		if len(o.SignerCertOptions.KeyFile) == 0 {
 			return errors.New("signer-key must be provided to create certificates")
 		}
-		if len(o.GetSignerCertOptions.CertFile) == 0 {
+		if len(o.SignerCertOptions.CertFile) == 0 {
 			return errors.New("signer-cert must be provided to create certificates")
 		}
-		if len(o.GetSignerCertOptions.SerialFile) == 0 {
+		if len(o.SignerCertOptions.SerialFile) == 0 {
 			return errors.New("signer-serial must be provided to create certificates")
 		}
 	}
@@ -246,7 +256,7 @@ func (o CreateNodeConfigOptions) CreateNodeFolder() error {
 func (o CreateNodeConfigOptions) MakeClientCert(clientCertFile, clientKeyFile string) error {
 	if o.IsCreateClientCertificate() {
 		createNodeClientCert := CreateClientCertOptions{
-			GetSignerCertOptions: o.GetSignerCertOptions,
+			SignerCertOptions: o.SignerCertOptions,
 
 			CertFile: clientCertFile,
 			KeyFile:  clientKeyFile,
@@ -278,7 +288,7 @@ func (o CreateNodeConfigOptions) MakeClientCert(clientCertFile, clientKeyFile st
 func (o CreateNodeConfigOptions) MakeServerCert(serverCertFile, serverKeyFile string) error {
 	if o.IsCreateServerCertificate() {
 		nodeServerCertOptions := CreateServerCertOptions{
-			GetSignerCertOptions: o.GetSignerCertOptions,
+			SignerCertOptions: o.SignerCertOptions,
 
 			CertFile: serverCertFile,
 			KeyFile:  serverKeyFile,

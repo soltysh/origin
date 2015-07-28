@@ -105,12 +105,8 @@ func fuzzInternalObject(t *testing.T, forVersion string, item runtime.Object, se
 		},
 		func(j *build.BuildOutput, c fuzz.Continue) {
 			c.FuzzNoCustom(j)
-			specs := []string{"", "a/b", "a/b/c", "a:5000/b/c", "a/b:latest", "a/b@test"}
-			j.DockerImageReference = specs[c.Intn(len(specs))]
-			j.Tag, j.DockerImageReference = "", ""
 			if j.To != nil && (len(j.To.Kind) == 0 || j.To.Kind == "ImageStream") {
-				j.To.Kind = "ImageStream"
-				j.Tag = image.DefaultImageTag
+				j.To.Kind = "ImageStreamTag"
 			}
 			if j.To != nil && strings.Contains(j.To.Name, ":") {
 				j.To.Name = strings.Replace(j.To.Name, ":", "-", -1)
@@ -194,7 +190,7 @@ func fuzzInternalObject(t *testing.T, forVersion string, item runtime.Object, se
 func roundTrip(t *testing.T, codec runtime.Codec, originalItem runtime.Object) {
 	// Make a copy of the originalItem to give to conversion functions
 	// This lets us know if conversion messed with the input object
-	deepCopy, err := conversion.DeepCopy(originalItem)
+	deepCopy, err := api.Scheme.DeepCopy(originalItem)
 	if err != nil {
 		t.Errorf("Could not copy object: %v", err)
 		return

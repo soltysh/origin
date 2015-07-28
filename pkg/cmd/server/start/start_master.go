@@ -28,6 +28,7 @@ import (
 	"github.com/openshift/origin/pkg/cmd/server/kubernetes"
 	"github.com/openshift/origin/pkg/cmd/server/origin"
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
+	"github.com/openshift/origin/pkg/version"
 )
 
 type MasterOptions struct {
@@ -89,9 +90,9 @@ func NewCommandStartMaster(out io.Writer) (*cobra.Command, *MasterOptions) {
 			if err := options.StartMaster(); err != nil {
 				if kerrors.IsInvalid(err) {
 					if details := err.(*kerrors.StatusError).ErrStatus.Details; details != nil {
-						fmt.Fprintf(options.Output, "Invalid %s %s\n", details.Kind, details.ID)
+						fmt.Fprintf(options.Output, "Invalid %s %s\n", details.Kind, details.Name)
 						for _, cause := range details.Causes {
-							fmt.Fprintln(options.Output, cause.Message)
+							fmt.Fprintf(options.Output, "  %s: %s\n", cause.Field, cause.Message)
 						}
 						os.Exit(255)
 					}
@@ -114,6 +115,10 @@ func NewCommandStartMaster(out io.Writer) (*cobra.Command, *MasterOptions) {
 	BindImageFormatArgs(options.MasterArgs.ImageFormatArgs, flags, "")
 	BindKubeConnectionArgs(options.MasterArgs.KubeConnectionArgs, flags, "")
 	BindNetworkArgs(options.MasterArgs.NetworkArgs, flags, "")
+
+	// autocompletion hints
+	cmd.MarkFlagFilename("write-config")
+	cmd.MarkFlagFilename("config", "yaml", "yml")
 
 	return cmd, options
 }
@@ -300,8 +305,8 @@ func (o MasterOptions) CreateCerts() error {
 }
 
 func StartMaster(openshiftMasterConfig *configapi.MasterConfig) error {
-	glog.Infof("Starting an OpenShift master, reachable at %s (etcd: %v)", openshiftMasterConfig.ServingInfo.BindAddress, openshiftMasterConfig.EtcdClientInfo.URLs)
-	glog.Infof("OpenShift master public address is %s", openshiftMasterConfig.AssetConfig.MasterPublicURL)
+	glog.Infof("Starting OpenShift master on %s (%s)", openshiftMasterConfig.ServingInfo.BindAddress, version.Get().String())
+	glog.Infof("Public master address is %s", openshiftMasterConfig.AssetConfig.MasterPublicURL)
 
 	if openshiftMasterConfig.EtcdConfig != nil {
 		etcd.RunEtcd(openshiftMasterConfig.EtcdConfig)

@@ -12,19 +12,14 @@ import (
 	"github.com/openshift/origin/pkg/deploy/util"
 )
 
+// NewDeploymentConfigScaler returns a new scaler for deploymentConfigs
+func NewDeploymentConfigScaler(oc *client.Client, kc *kclient.Client) kubectl.Scaler {
+	return &DeploymentConfigScaler{c: NewScalerClient(oc, kc)}
+}
+
 // DeploymentConfigScaler is a wrapper for the kubectl Scaler client
 type DeploymentConfigScaler struct {
 	c kubectl.ScalerClient
-}
-
-// ScalerFor returns the appropriate Scaler client depending on the provided
-// kind of resource (Replication controllers and deploymentConfigs supported)
-func ScalerFor(kind string, oc client.Interface, kc kclient.Interface) (kubectl.Scaler, error) {
-	if kind != "DeploymentConfig" {
-		return kubectl.ScalerFor(kind, kubectl.NewScalerClient(kc))
-
-	}
-	return &DeploymentConfigScaler{NewScalerClient(oc, kc)}, nil
 }
 
 // Scale updates a replication controller created by the DeploymentConfig with the provided namespace/name,
@@ -43,7 +38,10 @@ func (scaler *DeploymentConfigScaler) Scale(namespace, name string, newSize uint
 		return err
 	}
 	if waitForReplicas != nil {
-		rc := &kapi.ReplicationController{ObjectMeta: kapi.ObjectMeta{Namespace: namespace, Name: rcName}}
+		rc, err := scaler.c.GetReplicationController(namespace, name)
+		if err != nil {
+			return err
+		}
 		return wait.Poll(waitForReplicas.Interval, waitForReplicas.Timeout,
 			scaler.c.ControllerHasDesiredReplicas(rc))
 	}
@@ -84,8 +82,6 @@ type realScalerClient struct {
 	kc kclient.Interface
 }
 
-var rcName string
-
 // GetReplicationController returns the most recent replication controller associated with the deploymentConfig
 // with the provided namespace/name combination
 func (c *realScalerClient) GetReplicationController(namespace, name string) (*kapi.ReplicationController, error) {
@@ -93,8 +89,7 @@ func (c *realScalerClient) GetReplicationController(namespace, name string) (*ka
 	if err != nil {
 		return nil, err
 	}
-	rcName = util.LatestDeploymentNameForConfig(dc)
-	return c.kc.ReplicationControllers(namespace).Get(rcName)
+	return c.kc.ReplicationControllers(namespace).Get(util.LatestDeploymentNameForConfig(dc))
 }
 
 // UpdateReplicationController updates the provided replication controller

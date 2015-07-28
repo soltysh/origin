@@ -44,13 +44,6 @@ func newRedFederalCowHammerConfig() clientcmdapi.Config {
 	}
 }
 
-type configCommandTest struct {
-	args            []string
-	startingConfig  clientcmdapi.Config
-	expectedConfig  clientcmdapi.Config
-	expectedOutputs []string
-}
-
 func ExampleView() {
 	expectedConfig := newRedFederalCowHammerConfig()
 	test := configCommandTest{
@@ -83,13 +76,33 @@ func ExampleView() {
 
 func TestSetCurrentContext(t *testing.T) {
 	expectedConfig := newRedFederalCowHammerConfig()
-	expectedConfig.CurrentContext = "the-new-context"
+	startingConfig := newRedFederalCowHammerConfig()
+
+	newContextName := "the-new-context"
+	newContext := clientcmdapi.NewContext()
+
+	startingConfig.Contexts[newContextName] = *newContext
+	expectedConfig.Contexts[newContextName] = *newContext
+
+	expectedConfig.CurrentContext = newContextName
+
 	test := configCommandTest{
 		args:           []string{"use-context", "the-new-context"},
-		startingConfig: newRedFederalCowHammerConfig(),
+		startingConfig: startingConfig,
 		expectedConfig: expectedConfig,
 	}
 
+	test.run(t)
+}
+
+func TestSetNonExistantContext(t *testing.T) {
+	expectedConfig := newRedFederalCowHammerConfig()
+	test := configCommandTest{
+		args:            []string{"use-context", "non-existant-config"},
+		startingConfig:  expectedConfig,
+		expectedConfig:  expectedConfig,
+		expectedOutputs: []string{`No context exists with the name: "non-existant-config"`},
+	}
 	test.run(t)
 }
 
@@ -106,6 +119,35 @@ func TestSetIntoExistingStruct(t *testing.T) {
 	}
 
 	test.run(t)
+}
+
+func TestSetWithPathPrefixIntoExistingStruct(t *testing.T) {
+	expectedConfig := newRedFederalCowHammerConfig()
+	cc := expectedConfig.Clusters["cow-clusters"]
+	cinfo := &cc
+	cinfo.Server = "http://cow.org:8080/foo/baz"
+	expectedConfig.Clusters["cow-cluster"] = *cinfo
+	test := configCommandTest{
+		args:           []string{"set", "clusters.cow-cluster.server", "http://cow.org:8080/foo/baz"},
+		startingConfig: newRedFederalCowHammerConfig(),
+		expectedConfig: expectedConfig,
+	}
+
+	test.run(t)
+
+	dc := clientcmd.NewDefaultClientConfig(expectedConfig, &clientcmd.ConfigOverrides{})
+	dcc, err := dc.ClientConfig()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	expectedHost := "http://cow.org:8080"
+	if expectedHost != dcc.Host {
+		t.Fatalf("expected client.Config.Host = %q instead of %q", expectedHost, dcc.Host)
+	}
+	expectedPrefix := "/foo/baz"
+	if expectedPrefix != dcc.Prefix {
+		t.Fatalf("expected client.Config.Prefix = %q instead of %q", expectedPrefix, dcc.Prefix)
+	}
 }
 
 func TestUnsetStruct(t *testing.T) {
@@ -660,6 +702,13 @@ func testConfigCommand(args []string, startingConfig clientcmdapi.Config) (strin
 	config := getConfigFromFileOrDie(fakeKubeFile.Name())
 
 	return buf.String(), *config
+}
+
+type configCommandTest struct {
+	args            []string
+	startingConfig  clientcmdapi.Config
+	expectedConfig  clientcmdapi.Config
+	expectedOutputs []string
 }
 
 func (test configCommandTest) run(t *testing.T) string {

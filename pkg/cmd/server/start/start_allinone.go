@@ -32,11 +32,13 @@ type AllInOneOptions struct {
 	ConfigDir        util.StringFlag
 	MasterConfigFile string
 	NodeConfigFile   string
+	PrintIP          bool
 
 	Output io.Writer
 }
 
-const allInOneLong = `Start an OpenShift all-in-one server
+const allInOneLong = `
+Start an OpenShift all-in-one server
 
 This command helps you launch an OpenShift all-in-one server, which allows
 you to run all of the components of an OpenShift system on a server with Docker. Running
@@ -79,9 +81,9 @@ func NewCommandStartAllInOne(fullName string, out io.Writer) (*cobra.Command, *A
 			if err := options.StartAllInOne(); err != nil {
 				if kerrors.IsInvalid(err) {
 					if details := err.(*kerrors.StatusError).ErrStatus.Details; details != nil {
-						fmt.Fprintf(c.Out(), "Invalid %s %s\n", details.Kind, details.ID)
+						fmt.Fprintf(c.Out(), "Invalid %s %s\n", details.Kind, details.Name)
 						for _, cause := range details.Causes {
-							fmt.Fprintln(c.Out(), cause.Message)
+							fmt.Fprintf(c.Out(), "  %s: %s\n", cause.Field, cause.Message)
 						}
 						os.Exit(255)
 					}
@@ -97,11 +99,12 @@ func NewCommandStartAllInOne(fullName string, out io.Writer) (*cobra.Command, *A
 	flags.Var(&options.ConfigDir, "write-config", "Directory to write an initial config into.  After writing, exit without starting the server.")
 	flags.StringVar(&options.MasterConfigFile, "master-config", "", "Location of the master configuration file to run from. When running from configuration files, all other command-line arguments are ignored.")
 	flags.StringVar(&options.NodeConfigFile, "node-config", "", "Location of the node configuration file to run from. When running from configuration files, all other command-line arguments are ignored.")
-	flags.BoolVar(&options.CreateCerts, "create-certs", true, "Indicates whether missing certs should be created")
+	flags.BoolVar(&options.CreateCerts, "create-certs", true, "Indicates whether missing certs should be created.")
+	flags.BoolVar(&options.PrintIP, "print-ip", false, "Print the IP that would be used if no master IP is specified and exit.")
 
 	masterArgs, nodeArgs, listenArg, imageFormatArgs, _ := GetAllInOneArgs()
 	options.MasterArgs, options.NodeArgs = masterArgs, nodeArgs
-	// by default, all-in-ones all disabled docker.  Set it here so that if we allow it to be bound later, bindings take precendence
+	// by default, all-in-ones all disabled docker.  Set it here so that if we allow it to be bound later, bindings take precedence
 	options.NodeArgs.AllowDisabledDocker = true
 
 	BindMasterArgs(masterArgs, flags, "")
@@ -116,6 +119,11 @@ func NewCommandStartAllInOne(fullName string, out io.Writer) (*cobra.Command, *A
 
 	startKube := kubernetes.NewCommand("kubernetes", fullName, out)
 	cmds.AddCommand(startKube)
+
+	// autocompletion hints
+	cmds.MarkFlagFilename("write-config")
+	cmds.MarkFlagFilename("master-config", "yaml", "yml")
+	cmds.MarkFlagFilename("node-config", "yaml", "yml")
 
 	return cmds, options
 }
@@ -154,7 +162,7 @@ func (o AllInOneOptions) Validate(args []string) error {
 	}
 
 	if len(o.ConfigDir.Value()) == 0 {
-		return errors.New("configDir must have a value")
+		return errors.New("config directory must have a value")
 	}
 
 	// if we are not starting up using a config file, run the argument validation
@@ -170,7 +178,7 @@ func (o AllInOneOptions) Validate(args []string) error {
 	}
 
 	if len(o.MasterArgs.KubeConnectionArgs.ClientConfigLoadingRules.ExplicitPath) != 0 {
-		return errors.New("all-in-one cannot start against with a remote kubernetes, start just the master instead")
+		return errors.New("all-in-one cannot start against with a remote kubernetes, start the master instead")
 	}
 
 	return nil
@@ -221,10 +229,14 @@ func (o *AllInOneOptions) Complete() error {
 // 4.  If only writing configs, it exits
 // 5.  Waits forever
 func (o AllInOneOptions) StartAllInOne() error {
-	if !o.IsWriteConfigOnly() {
-		glog.Infof("Starting an OpenShift all-in-one")
+	if o.PrintIP {
+		host, _, err := net.SplitHostPort(o.NodeArgs.DefaultKubernetesURL.Host)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(o.Output, "%s\n", host)
+		return nil
 	}
-
 	masterOptions := MasterOptions{o.MasterArgs, o.CreateCerts, o.MasterConfigFile, o.Output}
 	if err := masterOptions.RunMaster(); err != nil {
 		return err

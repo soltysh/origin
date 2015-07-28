@@ -27,12 +27,7 @@ func TestDockerCreateBuildPod(t *testing.T) {
 	if expected, actual := buildutil.GetBuildPodName(expected), actual.ObjectMeta.Name; expected != actual {
 		t.Errorf("Expected %s, but got %s!", expected, actual)
 	}
-	expectedLabels := make(map[string]string)
-	for k, v := range expected.Labels {
-		expectedLabels[k] = v
-	}
-	expectedLabels[buildapi.BuildLabel] = expected.Name
-	if !reflect.DeepEqual(expectedLabels, actual.Labels) {
+	if !reflect.DeepEqual(map[string]string{buildapi.BuildLabel: expected.Name}, actual.Labels) {
 		t.Errorf("Pod Labels does not match Build Labels!")
 	}
 	container := actual.Spec.Containers[0]
@@ -62,8 +57,8 @@ func TestDockerCreateBuildPod(t *testing.T) {
 	if len(actual.Spec.Volumes) != 4 {
 		t.Fatalf("Expected 4 volumes in Build pod, got %d", len(actual.Spec.Volumes))
 	}
-	if !kapi.Semantic.DeepEqual(container.Resources, expected.Parameters.Resources) {
-		t.Fatalf("Expected actual=expected, %v != %v", container.Resources, expected.Parameters.Resources)
+	if !kapi.Semantic.DeepEqual(container.Resources, expected.Spec.Resources) {
+		t.Fatalf("Expected actual=expected, %v != %v", container.Resources, expected.Spec.Resources)
 	}
 	found := false
 	foundIllegal := false
@@ -101,7 +96,7 @@ func mockDockerBuild() *buildapi.Build {
 				"name": "dockerBuild",
 			},
 		},
-		Parameters: buildapi.BuildParameters{
+		Spec: buildapi.BuildSpec{
 			Revision: &buildapi.SourceRevision{
 				Git: &buildapi.GitSourceRevision{},
 			},
@@ -123,8 +118,11 @@ func mockDockerBuild() *buildapi.Build {
 				},
 			},
 			Output: buildapi.BuildOutput{
-				DockerImageReference: "docker-registry/repository/dockerBuild",
-				PushSecret:           &kapi.LocalObjectReference{Name: "foo"},
+				To: &kapi.ObjectReference{
+					Kind: "DockerImage",
+					Name: "docker-registry/repository/dockerBuild",
+				},
+				PushSecret: &kapi.LocalObjectReference{Name: "foo"},
 			},
 			Resources: kapi.ResourceRequirements{
 				Limits: kapi.ResourceList{
@@ -133,6 +131,8 @@ func mockDockerBuild() *buildapi.Build {
 				},
 			},
 		},
-		Status: buildapi.BuildStatusNew,
+		Status: buildapi.BuildStatus{
+			Phase: buildapi.BuildPhaseNew,
+		},
 	}
 }

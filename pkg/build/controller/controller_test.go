@@ -108,7 +108,7 @@ func (*errNotFoundImageStreamClient) GetImageStream(namespace, name string) (*im
 	return nil, kerrors.NewNotFound("ImageStream", name)
 }
 
-func mockBuild(status buildapi.BuildStatus, output buildapi.BuildOutput) *buildapi.Build {
+func mockBuild(phase buildapi.BuildPhase, output buildapi.BuildOutput) *buildapi.Build {
 	return &buildapi.Build{
 		ObjectMeta: kapi.ObjectMeta{
 			Name:      "data-build",
@@ -117,7 +117,7 @@ func mockBuild(status buildapi.BuildStatus, output buildapi.BuildOutput) *builda
 				"name": "dataBuild",
 			},
 		},
-		Parameters: buildapi.BuildParameters{
+		Spec: buildapi.BuildSpec{
 			Source: buildapi.BuildSource{
 				Type: buildapi.BuildSourceGit,
 				Git: &buildapi.GitBuildSource{
@@ -131,7 +131,9 @@ func mockBuild(status buildapi.BuildStatus, output buildapi.BuildOutput) *builda
 			},
 			Output: output,
 		},
-		Status: status,
+		Status: buildapi.BuildStatus{
+			Phase: phase,
+		},
 	}
 }
 
@@ -166,7 +168,7 @@ func mockPod(status kapi.PodPhase, exitCode int) *kapi.Pod {
 			ContainerStatuses: []kapi.ContainerStatus{
 				{
 					State: kapi.ContainerState{
-						Termination: &kapi.ContainerStateTerminated{ExitCode: exitCode},
+						Terminated: &kapi.ContainerStateTerminated{ExitCode: exitCode},
 					},
 				},
 			},
@@ -176,8 +178,8 @@ func mockPod(status kapi.PodPhase, exitCode int) *kapi.Pod {
 
 func TestHandleBuild(t *testing.T) {
 	type handleBuildTest struct {
-		inStatus      buildapi.BuildStatus
-		outStatus     buildapi.BuildStatus
+		inStatus      buildapi.BuildPhase
+		outStatus     buildapi.BuildPhase
 		buildOutput   buildapi.BuildOutput
 		buildStrategy BuildStrategy
 		buildUpdater  buildclient.BuildUpdater
@@ -188,130 +190,165 @@ func TestHandleBuild(t *testing.T) {
 
 	tests := []handleBuildTest{
 		{ // 0
-			inStatus:  buildapi.BuildStatusNew,
-			outStatus: buildapi.BuildStatusPending,
+			inStatus:  buildapi.BuildPhaseNew,
+			outStatus: buildapi.BuildPhasePending,
 			buildOutput: buildapi.BuildOutput{
-				DockerImageReference: "repository/dataBuild",
+				To: &kapi.ObjectReference{
+					Kind: "DockerImage",
+					Name: "repository/dataBuild",
+				},
 			},
 		},
 		{ // 1
-			inStatus:  buildapi.BuildStatusPending,
-			outStatus: buildapi.BuildStatusPending,
+			inStatus:  buildapi.BuildPhasePending,
+			outStatus: buildapi.BuildPhasePending,
 			buildOutput: buildapi.BuildOutput{
-				DockerImageReference: "repository/dataBuild",
+				To: &kapi.ObjectReference{
+					Kind: "DockerImage",
+					Name: "repository/dataBuild",
+				},
 			},
 		},
 		{ // 2
-			inStatus:  buildapi.BuildStatusRunning,
-			outStatus: buildapi.BuildStatusRunning,
+			inStatus:  buildapi.BuildPhaseRunning,
+			outStatus: buildapi.BuildPhaseRunning,
 			buildOutput: buildapi.BuildOutput{
-				DockerImageReference: "repository/dataBuild",
+				To: &kapi.ObjectReference{
+					Kind: "DockerImage",
+					Name: "repository/dataBuild",
+				},
 			},
 		},
 		{ // 3
-			inStatus:  buildapi.BuildStatusComplete,
-			outStatus: buildapi.BuildStatusComplete,
+			inStatus:  buildapi.BuildPhaseComplete,
+			outStatus: buildapi.BuildPhaseComplete,
 			buildOutput: buildapi.BuildOutput{
-				DockerImageReference: "repository/dataBuild",
+				To: &kapi.ObjectReference{
+					Kind: "DockerImage",
+					Name: "repository/dataBuild",
+				},
 			},
 		},
 		{ // 4
-			inStatus:  buildapi.BuildStatusFailed,
-			outStatus: buildapi.BuildStatusFailed,
+			inStatus:  buildapi.BuildPhaseFailed,
+			outStatus: buildapi.BuildPhaseFailed,
 			buildOutput: buildapi.BuildOutput{
-				DockerImageReference: "repository/dataBuild",
+				To: &kapi.ObjectReference{
+					Kind: "DockerImage",
+					Name: "repository/dataBuild",
+				},
 			},
 		},
 		{ // 5
-			inStatus:  buildapi.BuildStatusError,
-			outStatus: buildapi.BuildStatusError,
+			inStatus:  buildapi.BuildPhaseError,
+			outStatus: buildapi.BuildPhaseError,
 			buildOutput: buildapi.BuildOutput{
-				DockerImageReference: "repository/dataBuild",
+				To: &kapi.ObjectReference{
+					Kind: "DockerImage",
+					Name: "repository/dataBuild",
+				},
 			},
 		},
 		{ // 6
-			inStatus:      buildapi.BuildStatusNew,
-			outStatus:     buildapi.BuildStatusError,
+			inStatus:      buildapi.BuildPhaseNew,
+			outStatus:     buildapi.BuildPhaseError,
 			buildStrategy: &errStrategy{},
 			buildOutput: buildapi.BuildOutput{
-				DockerImageReference: "repository/dataBuild",
+				To: &kapi.ObjectReference{
+					Kind: "DockerImage",
+					Name: "repository/dataBuild",
+				},
 			},
 		},
 		{ // 7
-			inStatus:   buildapi.BuildStatusNew,
-			outStatus:  buildapi.BuildStatusError,
+			inStatus:   buildapi.BuildPhaseNew,
+			outStatus:  buildapi.BuildPhaseError,
 			podManager: &errPodManager{},
 			buildOutput: buildapi.BuildOutput{
-				DockerImageReference: "repository/dataBuild",
+				To: &kapi.ObjectReference{
+					Kind: "DockerImage",
+					Name: "repository/dataBuild",
+				},
 			},
 		},
 		{ // 8
-			inStatus:   buildapi.BuildStatusNew,
-			outStatus:  buildapi.BuildStatusPending,
+			inStatus:   buildapi.BuildPhaseNew,
+			outStatus:  buildapi.BuildPhasePending,
 			podManager: &errExistsPodManager{},
 			buildOutput: buildapi.BuildOutput{
-				DockerImageReference: "repository/dataBuild",
+				To: &kapi.ObjectReference{
+					Kind: "DockerImage",
+					Name: "repository/dataBuild",
+				},
 			},
 		},
 		{ // 9
-			inStatus:     buildapi.BuildStatusNew,
-			outStatus:    buildapi.BuildStatusPending,
+			inStatus:     buildapi.BuildPhaseNew,
+			outStatus:    buildapi.BuildPhasePending,
 			buildUpdater: &errBuildUpdater{},
 			buildOutput: buildapi.BuildOutput{
-				DockerImageReference: "repository/dataBuild",
+				To: &kapi.ObjectReference{
+					Kind: "DockerImage",
+					Name: "repository/dataBuild",
+				},
 			},
 		},
 		{ // 10
-			inStatus:  buildapi.BuildStatusNew,
-			outStatus: buildapi.BuildStatusPending,
+			inStatus:  buildapi.BuildPhaseNew,
+			outStatus: buildapi.BuildPhasePending,
 			buildOutput: buildapi.BuildOutput{
 				To: &kapi.ObjectReference{
-					Name: "foo",
+					Kind: "ImageStreamTag",
+					Name: "foo:tag",
 				},
 			},
-			outputSpec: "image/repo",
+			outputSpec: "image/repo:tag",
 		},
 		{ // 11
-			inStatus:  buildapi.BuildStatusNew,
-			outStatus: buildapi.BuildStatusPending,
+			inStatus:  buildapi.BuildPhaseNew,
+			outStatus: buildapi.BuildPhasePending,
 			buildOutput: buildapi.BuildOutput{
 				To: &kapi.ObjectReference{
-					Name:      "foo",
+					Kind:      "ImageStreamTag",
+					Name:      "foo:tag",
 					Namespace: "bar",
 				},
 			},
-			outputSpec: "image/repo",
+			outputSpec: "image/repo:tag",
 		},
 		{ // 12
-			inStatus:    buildapi.BuildStatusNew,
-			outStatus:   buildapi.BuildStatusError,
+			inStatus:    buildapi.BuildPhaseNew,
+			outStatus:   buildapi.BuildPhaseError,
 			imageClient: &errNotFoundImageStreamClient{},
 			buildOutput: buildapi.BuildOutput{
 				To: &kapi.ObjectReference{
-					Name: "foo",
+					Kind: "ImageStreamTag",
+					Name: "foo:tag",
 				},
 			},
 		},
 		{ // 13
-			inStatus:    buildapi.BuildStatusNew,
-			outStatus:   buildapi.BuildStatusError,
+			inStatus:    buildapi.BuildPhaseNew,
+			outStatus:   buildapi.BuildPhaseError,
 			imageClient: &errImageStreamClient{},
 			buildOutput: buildapi.BuildOutput{
 				To: &kapi.ObjectReference{
-					Name: "foo",
+					Kind: "ImageStreamTag",
+					Name: "foo:tag",
 				},
 			},
 		},
 		{ // 14
-			inStatus:  buildapi.BuildStatusNew,
-			outStatus: buildapi.BuildStatusPending,
+			inStatus:  buildapi.BuildPhaseNew,
+			outStatus: buildapi.BuildPhasePending,
 			buildOutput: buildapi.BuildOutput{
 				To: &kapi.ObjectReference{
-					Name:      "foo",
+					Kind:      "ImageStreamTag",
+					Name:      "foo:tag",
 					Namespace: "bar",
 				},
 			},
-			outputSpec: "image/repo",
+			outputSpec: "image/repo:tag",
 			// an error updating the build is not reported as an error.
 			buildUpdater: &errBuildUpdater{},
 		},
@@ -337,7 +374,7 @@ func TestHandleBuild(t *testing.T) {
 
 		// ensure we return an error for cases where expected output is an error.
 		// these will be retried by the retrycontroller
-		if tc.inStatus != buildapi.BuildStatusError && tc.outStatus == buildapi.BuildStatusError {
+		if tc.inStatus != buildapi.BuildPhaseError && tc.outStatus == buildapi.BuildPhaseError {
 			if err == nil {
 				t.Errorf("(%d) Expected an error from HandleBuild, got none!", i)
 			}
@@ -347,16 +384,16 @@ func TestHandleBuild(t *testing.T) {
 		if err != nil {
 			t.Errorf("(%d) Unexpected error %v", i, err)
 		}
-		if build.Status != tc.outStatus {
-			t.Errorf("(%d) Expected %s, got %s!", i, tc.outStatus, build.Status)
+		if build.Status.Phase != tc.outStatus {
+			t.Errorf("(%d) Expected %s, got %s!", i, tc.outStatus, build.Status.Phase)
 		}
-		if tc.inStatus != buildapi.BuildStatusError && build.Status == buildapi.BuildStatusError && len(build.Message) == 0 {
+		if tc.inStatus != buildapi.BuildPhaseError && build.Status.Phase == buildapi.BuildPhaseError && len(build.Status.Message) == 0 {
 			t.Errorf("(%d) errored build should set message: %#v", i, build)
 		}
 		if len(tc.outputSpec) != 0 {
 			build := ctrl.BuildStrategy.(*okStrategy).build
-			if build.Parameters.Output.DockerImageReference != tc.outputSpec {
-				t.Errorf("(%d) expected build sent to strategy to have docker spec %q: %#v", i, tc.outputSpec, build)
+			if build.Spec.Output.To.Name != tc.outputSpec {
+				t.Errorf("(%d) expected build sent to strategy to have docker spec %s, got %s", i, tc.outputSpec, build.Spec.Output.To.Name)
 			}
 		}
 	}
@@ -365,8 +402,8 @@ func TestHandleBuild(t *testing.T) {
 func TestHandlePod(t *testing.T) {
 	type handlePodTest struct {
 		matchID             bool
-		inStatus            buildapi.BuildStatus
-		outStatus           buildapi.BuildStatus
+		inStatus            buildapi.BuildPhase
+		outStatus           buildapi.BuildPhase
 		startTimestamp      *util.Time
 		completionTimestamp *util.Time
 		podStatus           kapi.PodPhase
@@ -379,8 +416,8 @@ func TestHandlePod(t *testing.T) {
 	tests := []handlePodTest{
 		{ // 0
 			matchID:             false,
-			inStatus:            buildapi.BuildStatusPending,
-			outStatus:           buildapi.BuildStatusPending,
+			inStatus:            buildapi.BuildPhasePending,
+			outStatus:           buildapi.BuildPhasePending,
 			podStatus:           kapi.PodPending,
 			exitCode:            0,
 			startTimestamp:      nil,
@@ -388,8 +425,8 @@ func TestHandlePod(t *testing.T) {
 		},
 		{ // 1
 			matchID:             true,
-			inStatus:            buildapi.BuildStatusPending,
-			outStatus:           buildapi.BuildStatusPending,
+			inStatus:            buildapi.BuildPhasePending,
+			outStatus:           buildapi.BuildPhasePending,
 			podStatus:           kapi.PodPending,
 			exitCode:            0,
 			startTimestamp:      nil,
@@ -397,8 +434,8 @@ func TestHandlePod(t *testing.T) {
 		},
 		{ // 2
 			matchID:             true,
-			inStatus:            buildapi.BuildStatusPending,
-			outStatus:           buildapi.BuildStatusRunning,
+			inStatus:            buildapi.BuildPhasePending,
+			outStatus:           buildapi.BuildPhaseRunning,
 			podStatus:           kapi.PodRunning,
 			exitCode:            0,
 			startTimestamp:      curtime,
@@ -406,8 +443,8 @@ func TestHandlePod(t *testing.T) {
 		},
 		{ // 3
 			matchID:             true,
-			inStatus:            buildapi.BuildStatusRunning,
-			outStatus:           buildapi.BuildStatusComplete,
+			inStatus:            buildapi.BuildPhaseRunning,
+			outStatus:           buildapi.BuildPhaseComplete,
 			podStatus:           kapi.PodSucceeded,
 			exitCode:            0,
 			startTimestamp:      nil,
@@ -415,8 +452,8 @@ func TestHandlePod(t *testing.T) {
 		},
 		{ // 4
 			matchID:             true,
-			inStatus:            buildapi.BuildStatusRunning,
-			outStatus:           buildapi.BuildStatusFailed,
+			inStatus:            buildapi.BuildPhaseRunning,
+			outStatus:           buildapi.BuildPhaseFailed,
 			podStatus:           kapi.PodFailed,
 			exitCode:            -1,
 			startTimestamp:      nil,
@@ -424,8 +461,8 @@ func TestHandlePod(t *testing.T) {
 		},
 		{ // 5
 			matchID:             true,
-			inStatus:            buildapi.BuildStatusRunning,
-			outStatus:           buildapi.BuildStatusComplete,
+			inStatus:            buildapi.BuildPhaseRunning,
+			outStatus:           buildapi.BuildPhaseComplete,
 			podStatus:           kapi.PodSucceeded,
 			exitCode:            0,
 			buildUpdater:        &errBuildUpdater{},
@@ -455,36 +492,36 @@ func TestHandlePod(t *testing.T) {
 			// in this test (but would not updated in etcd)
 			continue
 		}
-		if build.Status != tc.outStatus {
-			t.Errorf("(%d) Expected %s, got %s!", i, tc.outStatus, build.Status)
+		if build.Status.Phase != tc.outStatus {
+			t.Errorf("(%d) Expected %s, got %s!", i, tc.outStatus, build.Status.Phase)
 		}
 
-		if tc.startTimestamp == nil && build.StartTimestamp != nil {
-			t.Errorf("(%d) Expected nil start timestamp, got %v!", i, build.StartTimestamp)
+		if tc.startTimestamp == nil && build.Status.StartTimestamp != nil {
+			t.Errorf("(%d) Expected nil start timestamp, got %v!", i, build.Status.StartTimestamp)
 		}
-		if tc.startTimestamp != nil && build.StartTimestamp == nil {
+		if tc.startTimestamp != nil && build.Status.StartTimestamp == nil {
 			t.Errorf("(%d) nil start timestamp!", i)
 		}
-		if tc.startTimestamp != nil && !tc.startTimestamp.Before(*build.StartTimestamp) && tc.startTimestamp.Time != build.StartTimestamp.Time {
-			t.Errorf("(%d) Expected build start timestamp %v to be equal to or later than %v!", i, build.StartTimestamp, tc.startTimestamp)
+		if tc.startTimestamp != nil && !tc.startTimestamp.Before(*build.Status.StartTimestamp) && tc.startTimestamp.Time != build.Status.StartTimestamp.Time {
+			t.Errorf("(%d) Expected build start timestamp %v to be equal to or later than %v!", i, build.Status.StartTimestamp, tc.startTimestamp)
 		}
 
-		if tc.completionTimestamp == nil && build.CompletionTimestamp != nil {
-			t.Errorf("(%d) Expected nil completion timestamp, got %v!", i, build.CompletionTimestamp)
+		if tc.completionTimestamp == nil && build.Status.CompletionTimestamp != nil {
+			t.Errorf("(%d) Expected nil completion timestamp, got %v!", i, build.Status.CompletionTimestamp)
 		}
-		if tc.completionTimestamp != nil && build.CompletionTimestamp == nil {
+		if tc.completionTimestamp != nil && build.Status.CompletionTimestamp == nil {
 			t.Errorf("(%d) nil completion timestamp!", i)
 		}
-		if tc.completionTimestamp != nil && !tc.completionTimestamp.Before(*build.CompletionTimestamp) && tc.completionTimestamp.Time != build.CompletionTimestamp.Time {
-			t.Errorf("(%d) Expected build completion timestamp %v to be equal to or later than %v!", i, build.CompletionTimestamp, tc.completionTimestamp)
+		if tc.completionTimestamp != nil && !tc.completionTimestamp.Before(*build.Status.CompletionTimestamp) && tc.completionTimestamp.Time != build.Status.CompletionTimestamp.Time {
+			t.Errorf("(%d) Expected build completion timestamp %v to be equal to or later than %v!", i, build.Status.CompletionTimestamp, tc.completionTimestamp)
 		}
 	}
 }
 
 func TestCancelBuild(t *testing.T) {
 	type handleCancelBuildTest struct {
-		inStatus            buildapi.BuildStatus
-		outStatus           buildapi.BuildStatus
+		inStatus            buildapi.BuildPhase
+		outStatus           buildapi.BuildPhase
 		podStatus           kapi.PodPhase
 		exitCode            int
 		buildUpdater        buildclient.BuildUpdater
@@ -497,47 +534,47 @@ func TestCancelBuild(t *testing.T) {
 
 	tests := []handleCancelBuildTest{
 		{ // 0
-			inStatus:            buildapi.BuildStatusNew,
-			outStatus:           buildapi.BuildStatusCancelled,
+			inStatus:            buildapi.BuildPhaseNew,
+			outStatus:           buildapi.BuildPhaseCancelled,
 			exitCode:            0,
 			startTimestamp:      nil,
 			completionTimestamp: curtime,
 		},
 		{ // 1
-			inStatus:            buildapi.BuildStatusPending,
-			outStatus:           buildapi.BuildStatusCancelled,
+			inStatus:            buildapi.BuildPhasePending,
+			outStatus:           buildapi.BuildPhaseCancelled,
 			podStatus:           kapi.PodRunning,
 			exitCode:            0,
 			startTimestamp:      nil,
 			completionTimestamp: curtime,
 		},
 		{ // 2
-			inStatus:            buildapi.BuildStatusRunning,
-			outStatus:           buildapi.BuildStatusCancelled,
+			inStatus:            buildapi.BuildPhaseRunning,
+			outStatus:           buildapi.BuildPhaseCancelled,
 			podStatus:           kapi.PodRunning,
 			exitCode:            0,
 			startTimestamp:      nil,
 			completionTimestamp: curtime,
 		},
 		{ // 3
-			inStatus:            buildapi.BuildStatusComplete,
-			outStatus:           buildapi.BuildStatusComplete,
+			inStatus:            buildapi.BuildPhaseComplete,
+			outStatus:           buildapi.BuildPhaseComplete,
 			podStatus:           kapi.PodSucceeded,
 			exitCode:            0,
 			startTimestamp:      nil,
 			completionTimestamp: nil,
 		},
 		{ // 4
-			inStatus:            buildapi.BuildStatusFailed,
-			outStatus:           buildapi.BuildStatusFailed,
+			inStatus:            buildapi.BuildPhaseFailed,
+			outStatus:           buildapi.BuildPhaseFailed,
 			podStatus:           kapi.PodFailed,
 			exitCode:            1,
 			startTimestamp:      nil,
 			completionTimestamp: nil,
 		},
 		{ // 5
-			inStatus:            buildapi.BuildStatusNew,
-			outStatus:           buildapi.BuildStatusNew,
+			inStatus:            buildapi.BuildPhaseNew,
+			outStatus:           buildapi.BuildPhaseNew,
 			podStatus:           kapi.PodFailed,
 			exitCode:            1,
 			podManager:          &errPodManager{},
@@ -545,11 +582,18 @@ func TestCancelBuild(t *testing.T) {
 			completionTimestamp: nil,
 		},
 		{ // 6
-			inStatus:            buildapi.BuildStatusNew,
-			outStatus:           buildapi.BuildStatusNew,
+			inStatus:            buildapi.BuildPhaseNew,
+			outStatus:           buildapi.BuildPhaseNew,
 			podStatus:           kapi.PodFailed,
 			exitCode:            1,
 			buildUpdater:        &errBuildUpdater{},
+			startTimestamp:      nil,
+			completionTimestamp: nil,
+		},
+		{ // 7
+			inStatus:            buildapi.BuildPhaseCancelled,
+			outStatus:           buildapi.BuildPhaseCancelled,
+			exitCode:            0,
 			startTimestamp:      nil,
 			completionTimestamp: nil,
 		},
@@ -557,8 +601,7 @@ func TestCancelBuild(t *testing.T) {
 
 	for i, tc := range tests {
 		build := mockBuild(tc.inStatus, buildapi.BuildOutput{})
-		ctrl := mockBuildPodController(build)
-		pod := mockPod(tc.podStatus, tc.exitCode)
+		ctrl := mockBuildController()
 		if tc.buildUpdater != nil {
 			ctrl.BuildUpdater = tc.buildUpdater
 		}
@@ -566,7 +609,7 @@ func TestCancelBuild(t *testing.T) {
 			ctrl.PodManager = tc.podManager
 		}
 
-		err := ctrl.CancelBuild(build, pod)
+		err := ctrl.CancelBuild(build)
 
 		if tc.podManager != nil && reflect.TypeOf(tc.podManager).Elem().Name() == "errPodManager" {
 			if err == nil {
@@ -582,28 +625,287 @@ func TestCancelBuild(t *testing.T) {
 			continue
 		}
 
-		if tc.startTimestamp == nil && build.StartTimestamp != nil {
-			t.Errorf("(%d) Expected nil start timestamp, got %v!", i, build.StartTimestamp)
+		if tc.startTimestamp == nil && build.Status.StartTimestamp != nil {
+			t.Errorf("(%d) Expected nil start timestamp, got %v!", i, build.Status.StartTimestamp)
 		}
-		if tc.startTimestamp != nil && build.StartTimestamp == nil {
+		if tc.startTimestamp != nil && build.Status.StartTimestamp == nil {
 			t.Errorf("(%d) nil start timestamp!", i)
 		}
-		if tc.startTimestamp != nil && !tc.startTimestamp.Before(*build.StartTimestamp) && tc.startTimestamp.Time != build.StartTimestamp.Time {
-			t.Errorf("(%d) Expected build start timestamp %v to be equal to or later than %v!", i, build.StartTimestamp, tc.startTimestamp)
+		if tc.startTimestamp != nil && !tc.startTimestamp.Before(*build.Status.StartTimestamp) && tc.startTimestamp.Time != build.Status.StartTimestamp.Time {
+			t.Errorf("(%d) Expected build start timestamp %v to be equal to or later than %v!", i, build.Status.StartTimestamp, tc.startTimestamp)
 		}
 
-		if tc.completionTimestamp == nil && build.CompletionTimestamp != nil {
-			t.Errorf("(%d) Expected nil completion timestamp, got %v!", i, build.CompletionTimestamp)
+		if tc.completionTimestamp == nil && build.Status.CompletionTimestamp != nil {
+			t.Errorf("(%d) Expected nil completion timestamp, got %v!", i, build.Status.CompletionTimestamp)
 		}
-		if tc.completionTimestamp != nil && build.CompletionTimestamp == nil {
+		if tc.completionTimestamp != nil && build.Status.CompletionTimestamp == nil {
 			t.Errorf("(%d) nil start timestamp!", i)
 		}
-		if tc.completionTimestamp != nil && !tc.completionTimestamp.Before(*build.CompletionTimestamp) && tc.completionTimestamp.Time != build.CompletionTimestamp.Time {
-			t.Errorf("(%d) Expected build completion timestamp %v to be equal to or later than %v!", i, build.CompletionTimestamp, tc.completionTimestamp)
+		if tc.completionTimestamp != nil && !tc.completionTimestamp.Before(*build.Status.CompletionTimestamp) && tc.completionTimestamp.Time != build.Status.CompletionTimestamp.Time {
+			t.Errorf("(%d) Expected build completion timestamp %v to be equal to or later than %v!", i, build.Status.CompletionTimestamp, tc.completionTimestamp)
 		}
 
-		if build.Status != tc.outStatus {
-			t.Errorf("(%d) Expected %s, got %s!", i, tc.outStatus, build.Status)
+		if build.Status.Phase != tc.outStatus {
+			t.Errorf("(%d) Expected %s, got %s!", i, tc.outStatus, build.Status.Phase)
 		}
+	}
+}
+
+type customPodManager struct {
+	CreatePodFunc func(namespace string, pod *kapi.Pod) (*kapi.Pod, error)
+	DeletePodFunc func(namespace string, pod *kapi.Pod) error
+	GetPodFunc    func(namespace, name string) (*kapi.Pod, error)
+}
+
+func (c *customPodManager) CreatePod(namespace string, pod *kapi.Pod) (*kapi.Pod, error) {
+	return c.CreatePodFunc(namespace, pod)
+}
+
+func (c *customPodManager) DeletePod(namespace string, pod *kapi.Pod) error {
+	return c.DeletePodFunc(namespace, pod)
+}
+
+func (c *customPodManager) GetPod(namespace, name string) (*kapi.Pod, error) {
+	return c.GetPodFunc(namespace, name)
+}
+
+func TestHandleHandleBuildDeletionOK(t *testing.T) {
+	deleteWasCalled := false
+	build := mockBuild(buildapi.BuildPhaseComplete, buildapi.BuildOutput{})
+	ctrl := BuildDeleteController{&customPodManager{
+		GetPodFunc: func(namespace, names string) (*kapi.Pod, error) {
+			return &kapi.Pod{ObjectMeta: kapi.ObjectMeta{Labels: map[string]string{buildapi.BuildLabel: build.Name}}}, nil
+		},
+		DeletePodFunc: func(namespace string, pod *kapi.Pod) error {
+			deleteWasCalled = true
+			return nil
+		},
+	}}
+
+	err := ctrl.HandleBuildDeletion(build)
+	if err != nil {
+		t.Errorf("Unexpected error %v", err)
+	}
+	if !deleteWasCalled {
+		t.Error("DeletePod was not called when it should!")
+	}
+}
+
+func TestHandleHandleBuildDeletionOKDeprecatedLabel(t *testing.T) {
+	deleteWasCalled := false
+	build := mockBuild(buildapi.BuildPhaseComplete, buildapi.BuildOutput{})
+	ctrl := BuildDeleteController{&customPodManager{
+		GetPodFunc: func(namespace, names string) (*kapi.Pod, error) {
+			return &kapi.Pod{ObjectMeta: kapi.ObjectMeta{Labels: map[string]string{buildapi.DeprecatedBuildLabel: build.Name}}}, nil
+		},
+		DeletePodFunc: func(namespace string, pod *kapi.Pod) error {
+			deleteWasCalled = true
+			return nil
+		},
+	}}
+
+	err := ctrl.HandleBuildDeletion(build)
+	if err != nil {
+		t.Errorf("Unexpected error %v", err)
+	}
+	if !deleteWasCalled {
+		t.Error("DeletePod was not called when it should!")
+	}
+}
+
+func TestHandleHandleBuildDeletionFailGetPod(t *testing.T) {
+	build := mockBuild(buildapi.BuildPhaseComplete, buildapi.BuildOutput{})
+	ctrl := BuildDeleteController{&customPodManager{
+		GetPodFunc: func(namespace, name string) (*kapi.Pod, error) {
+			return nil, errors.New("random")
+		},
+	}}
+
+	err := ctrl.HandleBuildDeletion(build)
+	if err == nil {
+		t.Error("Expected random error got none!")
+	}
+}
+
+func TestHandleHandleBuildDeletionGetPodNotFound(t *testing.T) {
+	deleteWasCalled := false
+	build := mockBuild(buildapi.BuildPhaseComplete, buildapi.BuildOutput{})
+	ctrl := BuildDeleteController{&customPodManager{
+		GetPodFunc: func(namespace, name string) (*kapi.Pod, error) {
+			return nil, kerrors.NewNotFound("Pod", name)
+		},
+		DeletePodFunc: func(namespace string, pod *kapi.Pod) error {
+			deleteWasCalled = true
+			return nil
+		},
+	}}
+
+	err := ctrl.HandleBuildDeletion(build)
+	if err != nil {
+		t.Errorf("Unexpected error, %v", err)
+	}
+	if deleteWasCalled {
+		t.Error("DeletePod was called when it should not!")
+	}
+}
+
+func TestHandleHandleBuildDeletionMismatchedLabels(t *testing.T) {
+	deleteWasCalled := false
+	build := mockBuild(buildapi.BuildPhaseComplete, buildapi.BuildOutput{})
+	ctrl := BuildDeleteController{&customPodManager{
+		GetPodFunc: func(namespace, names string) (*kapi.Pod, error) {
+			return &kapi.Pod{}, nil
+		},
+		DeletePodFunc: func(namespace string, pod *kapi.Pod) error {
+			deleteWasCalled = true
+			return nil
+		},
+	}}
+
+	err := ctrl.HandleBuildDeletion(build)
+	if err != nil {
+		t.Errorf("Unexpected error %v", err)
+	}
+	if deleteWasCalled {
+		t.Error("DeletePod was called when it should not!")
+	}
+}
+
+func TestHandleHandleBuildDeletionDeletePodError(t *testing.T) {
+	build := mockBuild(buildapi.BuildPhaseComplete, buildapi.BuildOutput{})
+	ctrl := BuildDeleteController{&customPodManager{
+		GetPodFunc: func(namespace, names string) (*kapi.Pod, error) {
+			return &kapi.Pod{ObjectMeta: kapi.ObjectMeta{Labels: map[string]string{buildapi.BuildLabel: build.Name}}}, nil
+		},
+		DeletePodFunc: func(namespace string, pod *kapi.Pod) error {
+			return errors.New("random")
+		},
+	}}
+
+	err := ctrl.HandleBuildDeletion(build)
+	if err == nil {
+		t.Error("Expected random error got none!")
+	}
+}
+
+type customBuildUpdater struct {
+	UpdateFunc func(namespace string, build *buildapi.Build) error
+}
+
+func (c *customBuildUpdater) Update(namespace string, build *buildapi.Build) error {
+	return c.UpdateFunc(namespace, build)
+}
+
+func mockBuildPodDeleteController(build *buildapi.Build, buildUpdater *customBuildUpdater, err error) *BuildPodDeleteController {
+	return &BuildPodDeleteController{
+		BuildStore:   buildtest.FakeBuildStore{Build: build, Err: err},
+		BuildUpdater: buildUpdater,
+	}
+}
+
+func TestHandleBuildPodDeletionOK(t *testing.T) {
+	updateWasCalled := false
+	// only not finished build (buildutil.IsBuildComplete) should be handled
+	build := mockBuild(buildapi.BuildPhaseRunning, buildapi.BuildOutput{})
+	ctrl := mockBuildPodDeleteController(build, &customBuildUpdater{
+		UpdateFunc: func(namespace string, build *buildapi.Build) error {
+			updateWasCalled = true
+			return nil
+		},
+	}, nil)
+	pod := mockPod(kapi.PodSucceeded, 0)
+
+	err := ctrl.HandleBuildPodDeletion(pod)
+	if err != nil {
+		t.Errorf("Unexpected error %v", err)
+	}
+	if !updateWasCalled {
+		t.Error("UpdateBuild was not called when it should!")
+	}
+}
+
+func TestHandleBuildPodDeletionOKFinishedBuild(t *testing.T) {
+	updateWasCalled := false
+	// finished build buildutil.IsBuildComplete should not be handled
+	build := mockBuild(buildapi.BuildPhaseComplete, buildapi.BuildOutput{})
+	ctrl := mockBuildPodDeleteController(build, &customBuildUpdater{
+		UpdateFunc: func(namespace string, build *buildapi.Build) error {
+			updateWasCalled = true
+			return nil
+		},
+	}, nil)
+	pod := mockPod(kapi.PodSucceeded, 0)
+
+	err := ctrl.HandleBuildPodDeletion(pod)
+	if err != nil {
+		t.Errorf("Unexpected error %v", err)
+	}
+	if updateWasCalled {
+		t.Error("UpdateBuild was called when it should not!")
+	}
+}
+
+func TestHandleBuildPodDeletionOKErroneousBuild(t *testing.T) {
+	updateWasCalled := false
+	// erroneous builds should not be handled
+	build := mockBuild(buildapi.BuildPhaseError, buildapi.BuildOutput{})
+	ctrl := mockBuildPodDeleteController(build, &customBuildUpdater{
+		UpdateFunc: func(namespace string, build *buildapi.Build) error {
+			updateWasCalled = true
+			return nil
+		},
+	}, nil)
+	pod := mockPod(kapi.PodSucceeded, 0)
+
+	err := ctrl.HandleBuildPodDeletion(pod)
+	if err != nil {
+		t.Errorf("Unexpected error %v", err)
+	}
+	if updateWasCalled {
+		t.Error("UpdateBuild was called when it should not!")
+	}
+}
+
+func TestHandleBuildPodDeletionBuildGetError(t *testing.T) {
+	ctrl := mockBuildPodDeleteController(nil, &customBuildUpdater{}, errors.New("random"))
+	pod := mockPod(kapi.PodSucceeded, 0)
+
+	err := ctrl.HandleBuildPodDeletion(pod)
+	if err == nil {
+		t.Error("Expected random error, but got none!")
+	}
+}
+
+func TestHandleBuildPodDeletionBuildNotExists(t *testing.T) {
+	updateWasCalled := false
+	ctrl := mockBuildPodDeleteController(nil, &customBuildUpdater{
+		UpdateFunc: func(namespace string, build *buildapi.Build) error {
+			updateWasCalled = true
+			return nil
+		},
+	}, nil)
+	pod := mockPod(kapi.PodSucceeded, 0)
+
+	err := ctrl.HandleBuildPodDeletion(pod)
+	if err != nil {
+		t.Errorf("Unexpected error %v", err)
+	}
+	if updateWasCalled {
+		t.Error("UpdateBuild was called when it should not!")
+	}
+}
+
+func TestHandleBuildPodDeletionBuildUpdateError(t *testing.T) {
+	build := mockBuild(buildapi.BuildPhaseRunning, buildapi.BuildOutput{})
+	ctrl := mockBuildPodDeleteController(build, &customBuildUpdater{
+		UpdateFunc: func(namespace string, build *buildapi.Build) error {
+			return errors.New("random")
+		},
+	}, nil)
+	pod := mockPod(kapi.PodSucceeded, 0)
+
+	err := ctrl.HandleBuildPodDeletion(pod)
+	if err == nil {
+		t.Error("Expected random error, but got none!")
 	}
 }

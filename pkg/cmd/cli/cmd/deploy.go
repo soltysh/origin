@@ -38,23 +38,42 @@ type DeployOptions struct {
 }
 
 const (
-	deployLong = `View, start, cancel, or retry deployments.
+	deployLong = `
+View, start, cancel, or retry a deployment
 
-If no options are given, view the latest deployment.
+This command allows you to control a deployment config. Each individual deployment is exposed
+as a new replication controller, and the deployment process manages scaling down old deployments
+and scaling up new ones. You can rollback to any previous deployment, or even scale multiple
+deployments up at the same time.
 
-NOTE: This command is still under active development and is subject to change.`
+There are several deployment strategies defined:
 
-	deployExample = `  // Display the latest deployment for the 'database' DeploymentConfig
+* Rolling (default) - scales up the new deployment in stages, gradually reducing the number
+  of old deployments. If one of the new deployed pods never becomes "ready", the new deployment
+  will be rolled back (scaled down to zero). Use when your application can tolerate two versions
+  of code running at the same time (many web applications, scalable databases)
+* Recreate - scales the old deployment down to zero, then scales the new deployment up to full.
+  Use when your application cannot tolerate two versions of code running at the same time
+* Custom - run your own deployment process inside a Docker container using your own scripts.
+
+If a deployment fails, you may opt to retry it (if the error was transient). Some deployments may
+never successfully complete - in which case you can use the '--latest' flag to force a redeployment.
+When rolling back to a previous deployment, a new deployment will be created with an identical copy
+of your config at the latest position.
+
+If no options are given, shows information about the latest deployment.`
+
+	deployExample = `  // Display the latest deployment for the 'database' deployment config
   $ %[1]s deploy database
 
-  // Start a new deployment based on the 'database' DeploymentConfig
+  // Start a new deployment based on the 'database'
   $ %[1]s deploy database --latest
 
-  // Retry the latest failed deployment based on the 'frontend' DeploymentConfig
+  // Retry the latest failed deployment based on 'frontend'
   // The deployer pod and any hook pods are deleted for the latest failed deployment
   $ %[1]s deploy frontend --retry
 
-  // Cancel the in-progress deployment based on the 'frontend' DeploymentConfig
+  // Cancel the in-progress deployment based on 'frontend'
   $ %[1]s deploy frontend --cancel`
 )
 
@@ -66,7 +85,7 @@ func NewCmdDeploy(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.C
 
 	cmd := &cobra.Command{
 		Use:     "deploy DEPLOYMENTCONFIG",
-		Short:   "View, start, cancel, or retry deployments",
+		Short:   "View, start, cancel, or retry a deployment",
 		Long:    deployLong,
 		Example: fmt.Sprintf(deployExample, fullName),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -99,7 +118,7 @@ func (o *DeployOptions) Complete(f *clientcmd.Factory, args []string, out io.Wri
 	if err != nil {
 		return err
 	}
-	o.namespace, err = f.DefaultNamespace()
+	o.namespace, _, err = f.DefaultNamespace()
 	if err != nil {
 		return err
 	}
@@ -130,8 +149,11 @@ func (o DeployOptions) Validate(args []string) error {
 	if o.cancelDeploy {
 		numOptions++
 	}
+	if o.enableTriggers {
+		numOptions++
+	}
 	if numOptions > 1 {
-		return errors.New("only one of --latest, --retry, or --cancel is allowed.")
+		return errors.New("only one of --latest, --retry, --cancel, or --enable-triggers is allowed.")
 	}
 	return nil
 }
@@ -189,14 +211,14 @@ func (o DeployOptions) RunDeploy() error {
 				return o.osClient.DeploymentConfigs(namespace).Update(config)
 			},
 		}
-		t.enableTriggers(config, o.out)
+		err = t.enableTriggers(config, o.out)
 	default:
 		describer := describe.NewLatestDeploymentsDescriber(o.osClient, o.kubeClient, -1)
 		desc, err := describer.Describe(config.Namespace, config.Name)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(o.out, desc)
+		fmt.Fprint(o.out, desc)
 	}
 
 	return err
@@ -238,7 +260,7 @@ func (c *deployLatestCommand) deploy(config *deployapi.DeploymentConfig, out io.
 	config.LatestVersion++
 	_, err = c.client.UpdateDeploymentConfig(config)
 	if err == nil {
-		fmt.Fprintf(out, "deployed #%d\n", config.LatestVersion)
+		fmt.Fprintf(out, "Started deployment #%d\n", config.LatestVersion)
 	}
 	return err
 }
@@ -314,6 +336,7 @@ func (c *cancelDeploymentCommand) cancel(config *deployapi.DeploymentConfig, out
 		return nil
 	}
 	failedCancellations := []string{}
+	anyCancelled := false
 	for _, deployment := range deployments.Items {
 		status := deployutil.DeploymentStatusFor(&deployment)
 
@@ -330,20 +353,21 @@ func (c *cancelDeploymentCommand) cancel(config *deployapi.DeploymentConfig, out
 			deployment.Annotations[deployapi.DeploymentStatusReasonAnnotation] = deployapi.DeploymentCancelledByUser
 			_, err := c.client.UpdateDeployment(&deployment)
 			if err == nil {
-				fmt.Fprintf(out, "cancelled #%d\n", config.LatestVersion)
+				fmt.Fprintf(out, "cancelled deployment #%d\n", config.LatestVersion)
+				anyCancelled = true
 			} else {
-				fmt.Fprintf(out, "couldn't cancel deployment %d (status: %s): %v\n", deployutil.DeploymentVersionFor(&deployment), status, err)
+				fmt.Fprintf(out, "couldn't cancel deployment #%d (status: %s): %v\n", deployutil.DeploymentVersionFor(&deployment), status, err)
 				failedCancellations = append(failedCancellations, strconv.Itoa(deployutil.DeploymentVersionFor(&deployment)))
 			}
-		default:
-			fmt.Fprintln(out, "no active deployments to cancel")
 		}
 	}
-	if len(failedCancellations) == 0 {
-		return nil
-	} else {
+	if len(failedCancellations) > 0 {
 		return fmt.Errorf("couldn't cancel deployment %s", strings.Join(failedCancellations, ", "))
 	}
+	if !anyCancelled {
+		fmt.Fprintln(out, "no active deployments to cancel")
+	}
+	return nil
 }
 
 // triggerEnabler can enable image triggers for a config.

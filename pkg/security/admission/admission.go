@@ -95,8 +95,8 @@ func (c *constraint) Admit(a kadmission.Attributes) error {
 	}
 
 	// get all constraints that are usable by the SA
-	if len(pod.Spec.ServiceAccount) > 0 {
-		userInfo := serviceaccount.UserInfo(a.GetNamespace(), pod.Spec.ServiceAccount, "")
+	if len(pod.Spec.ServiceAccountName) > 0 {
+		userInfo := serviceaccount.UserInfo(a.GetNamespace(), pod.Spec.ServiceAccountName, "")
 		glog.V(4).Infof("getting security context constraints for pod %s (generate: %s) with service account info %v", pod.Name, pod.GenerateName, userInfo)
 		saConstraints, err := getMatchingSecurityContextConstraints(c.store, userInfo)
 		if err != nil {
@@ -262,7 +262,7 @@ func getMatchingSecurityContextConstraints(store cache.Store, userInfo user.Info
 		if !ok {
 			return nil, errors.NewInternalError(fmt.Errorf("error converting object from store to a security context constraint: %v", c))
 		}
-		if constraintAppliesTo(constraint, userInfo) {
+		if ConstraintAppliesTo(constraint, userInfo) {
 			matchedConstraints = append(matchedConstraints, constraint)
 		}
 	}
@@ -272,7 +272,7 @@ func getMatchingSecurityContextConstraints(store cache.Store, userInfo user.Info
 
 // constraintAppliesTo inspects the constraint's users and groups against the userInfo to determine
 // if it is usable by the userInfo.
-func constraintAppliesTo(constraint *kapi.SecurityContextConstraints, userInfo user.Info) bool {
+func ConstraintAppliesTo(constraint *kapi.SecurityContextConstraints, userInfo user.Info) bool {
 	for _, user := range constraint.Users {
 		if userInfo.GetName() == user {
 			return true

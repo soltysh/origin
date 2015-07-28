@@ -68,8 +68,8 @@ func TestBuildConfigNoOutput(t *testing.T) {
 	if config.Name != "origin" {
 		t.Errorf("unexpected name: %#v", config)
 	}
-	if !reflect.DeepEqual(config.Parameters.Output, buildapi.BuildOutput{}) {
-		t.Errorf("unexpected build output: %#v", config.Parameters.Output)
+	if !reflect.DeepEqual(config.Spec.Output, buildapi.BuildOutput{}) {
+		t.Errorf("unexpected build output: %#v", config.Spec.Output)
 	}
 }
 
@@ -112,14 +112,14 @@ func TestBuildConfigOutput(t *testing.T) {
 		if config.Name != "origin" {
 			t.Errorf("(%d) unexpected name: %s", i, config.Name)
 		}
-		if config.Parameters.Output.To.Name != "origin:latest" || config.Parameters.Output.To.Kind != test.expectedKind {
-			t.Errorf("(%d) unexpected output image: %s/%s", i, config.Parameters.Output.To.Kind, config.Parameters.Output.To.Name)
+		if config.Spec.Output.To.Name != "origin:latest" || config.Spec.Output.To.Kind != test.expectedKind {
+			t.Errorf("(%d) unexpected output image: %s/%s", i, config.Spec.Output.To.Kind, config.Spec.Output.To.Name)
 		}
-		if len(config.Triggers) != 3 {
-			t.Errorf("(%d) unexpected number of triggers %d: %#v\n", i, len(config.Triggers), config.Triggers)
+		if len(config.Spec.Triggers) != 3 {
+			t.Errorf("(%d) unexpected number of triggers %d: %#v\n", i, len(config.Spec.Triggers), config.Spec.Triggers)
 		}
 		imageChangeTrigger := false
-		for _, trigger := range config.Triggers {
+		for _, trigger := range config.Spec.Triggers {
 			if trigger.Type == buildapi.ImageChangeBuildTriggerType {
 				imageChangeTrigger = true
 				if trigger.ImageChange == nil {
@@ -358,4 +358,93 @@ func ExampleGenerateSimpleDockerApp() {
 	}
 	log.Print(string(data))
 	// output:
+}
+
+func TestImageStream(t *testing.T) {
+	tests := []struct {
+		name        string
+		r           *ImageRef
+		expectedIs  *imageapi.ImageStream
+		expectedErr error
+	}{
+		{
+			name: "existing image stream",
+			r: &ImageRef{
+				Stream: &imageapi.ImageStream{
+					ObjectMeta: kapi.ObjectMeta{
+						Name: "some-stream",
+					},
+				},
+			},
+			expectedIs: &imageapi.ImageStream{
+				ObjectMeta: kapi.ObjectMeta{
+					Name: "some-stream",
+				},
+			},
+		},
+		{
+			name: "input stream",
+			r: &ImageRef{
+				DockerImageReference: imageapi.DockerImageReference{
+					Namespace: "test",
+					Name:      "input",
+				},
+			},
+			expectedIs: &imageapi.ImageStream{
+				ObjectMeta: kapi.ObjectMeta{
+					Name: "input",
+				},
+				Spec: imageapi.ImageStreamSpec{
+					DockerImageRepository: "test/input",
+				},
+			},
+		},
+		{
+			name: "insecure input stream",
+			r: &ImageRef{
+				DockerImageReference: imageapi.DockerImageReference{
+					Namespace: "test",
+					Name:      "insecure",
+				},
+				Insecure: true,
+			},
+			expectedIs: &imageapi.ImageStream{
+				ObjectMeta: kapi.ObjectMeta{
+					Name: "insecure",
+					Annotations: map[string]string{
+						imageapi.InsecureRepositoryAnnotation: "true",
+					},
+				},
+				Spec: imageapi.ImageStreamSpec{
+					DockerImageRepository: "test/insecure",
+				},
+			},
+		},
+		{
+			name: "output stream",
+			r: &ImageRef{
+				DockerImageReference: imageapi.DockerImageReference{
+					Namespace: "test",
+					Name:      "output",
+				},
+				OutputImage: true,
+			},
+			expectedIs: &imageapi.ImageStream{
+				ObjectMeta: kapi.ObjectMeta{
+					Name: "output",
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		is, err := test.r.ImageStream()
+		if err != test.expectedErr {
+			t.Errorf("%s: error mismatch, expected %v, got %v", test.name, test.expectedErr, err)
+			continue
+		}
+		if !reflect.DeepEqual(is, test.expectedIs) {
+			t.Errorf("%s: image stream mismatch, expected %+v, got %+v", test.name, test.expectedIs, is)
+		}
+	}
 }
