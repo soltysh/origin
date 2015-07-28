@@ -40,15 +40,6 @@ func (bs *DockerBuildStrategy) CreateBuildPod(build *buildapi.Build) (*kapi.Pod,
 		mergeTrustedEnvWithoutDuplicates(strategy.Env, &containerEnv)
 	}
 
-	containerEnv := []kapi.EnvVar{
-		{Name: "BUILD", Value: string(data)},
-		{Name: "SOURCE_REPOSITORY", Value: build.Parameters.Source.Git.URI},
-		{Name: "BUILD_LOGLEVEL", Value: fmt.Sprintf("%d", cmdutil.GetLogLevel())},
-	}
-	if len(strategy.Env) > 0 {
-		mergeTrustedEnvWithoutDuplicates(strategy.Env, &containerEnv)
-	}
-
 	pod := &kapi.Pod{
 		ObjectMeta: kapi.ObjectMeta{
 			Name:      buildutil.GetBuildPodName(build),
