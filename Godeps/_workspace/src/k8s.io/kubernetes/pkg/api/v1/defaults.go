@@ -17,6 +17,8 @@ limitations under the License.
 package v1
 
 import (
+	"strings"
+
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/util"
 	"k8s.io/kubernetes/pkg/util/intstr"
@@ -63,6 +65,14 @@ func addDefaultingFuncs() {
 			if obj.Protocol == "" {
 				obj.Protocol = ProtocolTCP
 			}
+
+			// Carry conversion to make port case valid
+			switch strings.ToUpper(string(obj.Protocol)) {
+			case string(ProtocolTCP):
+				obj.Protocol = ProtocolTCP
+			case string(ProtocolUDP):
+				obj.Protocol = ProtocolUDP
+			}
 		},
 		func(obj *Container) {
 			if obj.ImagePullPolicy == "" {
@@ -95,6 +105,20 @@ func addDefaultingFuncs() {
 					sp.TargetPort = intstr.FromInt(int(sp.Port))
 				}
 			}
+
+			// Carry conversion
+			if len(obj.ClusterIP) == 0 && len(obj.DeprecatedPortalIP) > 0 {
+				obj.ClusterIP = obj.DeprecatedPortalIP
+			}
+		},
+		func(obj *ServicePort) {
+			// Carry conversion to make port case valid
+			switch strings.ToUpper(string(obj.Protocol)) {
+			case string(ProtocolTCP):
+				obj.Protocol = ProtocolTCP
+			case string(ProtocolUDP):
+				obj.Protocol = ProtocolUDP
+			}
 		},
 		func(obj *Pod) {
 			// If limits are specified, but requests are not, default requests to limits
@@ -124,9 +148,20 @@ func addDefaultingFuncs() {
 			if obj.HostNetwork {
 				defaultHostNetworkPorts(&obj.Containers)
 			}
+
 			if obj.SecurityContext == nil {
 				obj.SecurityContext = &PodSecurityContext{}
 			}
+
+			// Carry migration from serviceAccount to serviceAccountName
+			if len(obj.ServiceAccountName) == 0 && len(obj.DeprecatedServiceAccount) > 0 {
+				obj.ServiceAccountName = obj.DeprecatedServiceAccount
+			}
+			// Carry migration from host to nodeName
+			if len(obj.NodeName) == 0 && len(obj.DeprecatedHost) > 0 {
+				obj.NodeName = obj.DeprecatedHost
+			}
+
 			if obj.TerminationGracePeriodSeconds == nil {
 				period := int64(DefaultTerminationGracePeriodSeconds)
 				obj.TerminationGracePeriodSeconds = &period
@@ -178,6 +213,15 @@ func addDefaultingFuncs() {
 						ep.Protocol = ProtocolTCP
 					}
 				}
+			}
+		},
+		func(obj *EndpointPort) {
+			// Carry conversion to make port case valid
+			switch strings.ToUpper(string(obj.Protocol)) {
+			case string(ProtocolTCP):
+				obj.Protocol = ProtocolTCP
+			case string(ProtocolUDP):
+				obj.Protocol = ProtocolUDP
 			}
 		},
 		func(obj *HTTPGetAction) {
