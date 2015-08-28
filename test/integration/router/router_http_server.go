@@ -1,4 +1,4 @@
-// +build integration,!no-docker,docker
+// +build integration,docker
 
 package router
 
@@ -9,8 +9,22 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/openshift/origin/pkg/cmd/util"
 	"golang.org/x/net/websocket"
 )
+
+// GetDefaultLocalAddress returns an address at which the local host can
+// be reached, or 0.0.0.0 (which should work for locations from the host
+// to itself) if the actual default local address cannot be determined.
+func GetDefaultLocalAddress() string {
+	addr := "0.0.0.0"
+	ip, err := util.DefaultLocalIP4()
+	if err == nil {
+		addr = ip.String()
+	}
+
+	return addr
+}
 
 // NewTestHttpServer creates a new TestHttpService using default locations for listening address
 // as well as default certificates.  New channels will be initialized which can be used by test clients
@@ -19,10 +33,16 @@ func NewTestHttpService() *TestHttpService {
 	endpointChannel := make(chan string)
 	routeChannel := make(chan string)
 
+	addr := GetDefaultLocalAddress()
+
+	masterHttpAddr := fmt.Sprintf("%s:8080", addr)
+	podHttpAddr := fmt.Sprintf("%s:8888", addr)
+	podHttpsAddr := fmt.Sprintf("%s:8443", addr)
+
 	return &TestHttpService{
-		MasterHttpAddr:   "0.0.0.0:8080",
-		PodHttpAddr:      "0.0.0.0:8888",
-		PodHttpsAddr:     "0.0.0.0:8443",
+		MasterHttpAddr:   masterHttpAddr,
+		PodHttpAddr:      podHttpAddr,
+		PodHttpsAddr:     podHttpsAddr,
 		PodWebSocketPath: "echo",
 		PodTestPath:      "test",
 		PodHttpsCert:     []byte(Example2Cert),
@@ -57,20 +77,15 @@ type TestHttpService struct {
 }
 
 const (
-	// HelloMaster is the expected response to a call on the MasterHttpAddr.
-	HelloMaster = "Hello OpenShift!"
 	// HelloPod is the expected response to a call to PodHttpAddr (usually called through a route)
 	HelloPod = "Hello Pod!"
 	// HelloPod is the expected response to a call to PodHttpAddr (usually called through a route)
 	HelloPodPath = "Hello Pod Path!"
 	// HelloPodSecure is the expected response to a call to PodHttpsAddr (usually called through a route)
 	HelloPodSecure = "Hello Pod Secure!"
+	// HelloPodPathSecure is the expected response to a call to PodHttpsAddr (usually called through a route)
+	HelloPodPathSecure = "Hello Pod Path Secure!"
 )
-
-// handleHelloMaster handles calls to MasterHttpAddr
-func (s *TestHttpService) handleHelloMaster(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, HelloMaster)
-}
 
 // handleHelloPod handles calls to PodHttpAddr (usually called through a route)
 func (s *TestHttpService) handleHelloPod(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +100,11 @@ func (s *TestHttpService) handleHelloPodTest(w http.ResponseWriter, r *http.Requ
 // handleHelloPodSecure handles calls to PodHttpsAddr (usually called through a route)
 func (s *TestHttpService) handleHelloPodSecure(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, HelloPodSecure)
+}
+
+// handleHelloPodTestSecure handles calls to PodHttpsAddr (usually called through a route) with the /test/ path
+func (s *TestHttpService) handleHelloPodTestSecure(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, HelloPodPathSecure)
 }
 
 // handleRouteWatch handles calls to /osapi/v1beta1/watch/routes and uses the route channel to simulate watch events
@@ -158,8 +178,6 @@ func (s *TestHttpService) startMaster() error {
 		masterServer.HandleFunc(fmt.Sprintf("/oapi/%s/watch/routes", version), s.handleRouteWatch)
 	}
 
-	masterServer.HandleFunc("/", s.handleHelloMaster)
-
 	if err := s.startServing(s.MasterHttpAddr, masterServer); err != nil {
 		return err
 	}
@@ -179,6 +197,7 @@ func (s *TestHttpService) startPod() error {
 
 	securePodServer := http.NewServeMux()
 	securePodServer.HandleFunc("/", s.handleHelloPodSecure)
+	securePodServer.HandleFunc("/"+s.PodTestPath, s.handleHelloPodTestSecure)
 	securePodServer.Handle("/"+s.PodWebSocketPath, websocket.Handler(s.handleWebSocket))
 	if err := s.startServingTLS(s.PodHttpsAddr, s.PodHttpsCert, s.PodHttpsKey, s.PodHttpsCaCert, securePodServer); err != nil {
 		return err

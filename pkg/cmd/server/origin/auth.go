@@ -11,14 +11,14 @@ import (
 	"path"
 
 	"code.google.com/p/go-uuid/uuid"
-	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	kerrs "github.com/GoogleCloudPlatform/kubernetes/pkg/api/errors"
-	kuser "github.com/GoogleCloudPlatform/kubernetes/pkg/auth/user"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/RangelReale/osin"
 	"github.com/RangelReale/osincli"
 	"github.com/emicklei/go-restful"
 	"github.com/golang/glog"
+	kapi "k8s.io/kubernetes/pkg/api"
+	kerrs "k8s.io/kubernetes/pkg/api/errors"
+	kuser "k8s.io/kubernetes/pkg/auth/user"
+	"k8s.io/kubernetes/pkg/util"
 
 	"github.com/openshift/origin/pkg/auth/authenticator"
 	"github.com/openshift/origin/pkg/auth/authenticator/challenger/passwordchallenger"
@@ -221,7 +221,7 @@ func CreateOrUpdateDefaultOAuthClients(masterPublicAddr string, assetPublicAddre
 			},
 			Secret:                OSCliClientBase.Secret,
 			RespondWithChallenges: OSCliClientBase.RespondWithChallenges,
-			RedirectURIs:          []string{masterPublicAddr + path.Join(OpenShiftOAuthAPIPrefix, tokenrequest.DisplayTokenEndpoint)},
+			RedirectURIs:          []string{masterPublicAddr + path.Join(OpenShiftOAuthAPIPrefix, tokenrequest.ImplicitTokenEndpoint)},
 		},
 	}
 
@@ -232,13 +232,17 @@ func CreateOrUpdateDefaultOAuthClients(masterPublicAddr string, assetPublicAddre
 			// Update the existing resource version
 			currClient.ResourceVersion = existing.ResourceVersion
 
-			// Add in any redirects from the existing one
-			// This preserves any additional customized redirects in the default clients
-			redirects := util.NewStringSet(currClient.RedirectURIs...)
-			for _, redirect := range existing.RedirectURIs {
-				if !redirects.Has(redirect) {
-					currClient.RedirectURIs = append(currClient.RedirectURIs, redirect)
-					redirects.Insert(redirect)
+			// Preserve redirects for clients other than the CLI client
+			// The CLI client doesn't care about the redirect URL, just the token or error fragment
+			if currClient.Name != OSCliClientBase.Name {
+				// Add in any redirects from the existing one
+				// This preserves any additional customized redirects in the default clients
+				redirects := util.NewStringSet(currClient.RedirectURIs...)
+				for _, redirect := range existing.RedirectURIs {
+					if !redirects.Has(redirect) {
+						currClient.RedirectURIs = append(currClient.RedirectURIs, redirect)
+						redirects.Insert(redirect)
+					}
 				}
 			}
 

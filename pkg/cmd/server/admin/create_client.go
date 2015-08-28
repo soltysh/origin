@@ -8,10 +8,10 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 
-	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	kcmdutil "github.com/GoogleCloudPlatform/kubernetes/pkg/kubectl/cmd/util"
+	kapi "k8s.io/kubernetes/pkg/api"
+	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
+	"k8s.io/kubernetes/pkg/util"
 )
 
 const CreateClientCommandName = "create-api-client-config"
@@ -32,7 +32,7 @@ type CreateClientOptions struct {
 }
 
 const createClientLong = `
-Create a client configuration for connecting to OpenShift
+Create a client configuration for connecting to the server
 
 This command creates a folder containing a client certificate, a client key,
 a server certificate authority, and a .kubeconfig file for connecting to the

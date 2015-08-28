@@ -24,11 +24,11 @@ function cleanup()
 }
 
 package="${OS_TEST_PACKAGE:-test/integration}"
-tags="${OS_TEST_TAGS:-integration no-docker}"
+tags="${OS_TEST_TAGS:-integration !docker etcd}"
 
 export GOMAXPROCS="$(grep "processor" -c /proc/cpuinfo 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || 1)"
 TMPDIR=${TMPDIR:-/tmp}
-export BASETMPDIR=${BASETMPDIR:-"${TMPDIR}/openshift-integration"}
+export BASETMPDIR=${BASETMPDIR:-${TMPDIR}/openshift-integration}
 
 echo
 echo "Test ${package} -tags='${tags}' ..."
@@ -81,7 +81,18 @@ export -f exectest
 export testexec
 export childargs
 
+# $1 is passed to grep -E to filter the list of tests; this may be the name of a single test,
+# a fragment of a test name, or a regular expression.
+#
+# Examples:
+#
+# hack/test-integration.sh WatchBuilds
+# hack/test-integration.sh Template*
+# hack/test-integration.sh "(WatchBuilds|Template)"
+
 # run each test as its own process
 pushd "./${package}" 2>&1 >/dev/null
-time go run "${OS_ROOT}/hack/listtests.go" -prefix="${OS_GO_PACKAGE}/${package}.Test" "${testdir}" | grep --color=never -E "${1-Test}" | xargs -I {} -n 1 bash -c "exectest {} ${@:2}" # "${testexec}" -test.run="^{}$" "${@:2}"
+time go run "${OS_ROOT}/hack/listtests.go" -prefix="${OS_GO_PACKAGE}/${package}.Test" "${testdir}" \
+  | grep --color=never -E "${1-Test}" \
+  | xargs -I {} -n 1 bash -c "exectest {} ${@:2}" # "${testexec}" -test.run="^{}$" "${@:2}"
 popd 2>&1 >/dev/null

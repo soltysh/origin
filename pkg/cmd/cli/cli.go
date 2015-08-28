@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	kubecmd "github.com/GoogleCloudPlatform/kubernetes/pkg/kubectl/cmd"
+	kubecmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 
 	"github.com/openshift/origin/pkg/cmd/cli/cmd"
 	"github.com/openshift/origin/pkg/cmd/cli/policy"
@@ -24,9 +24,9 @@ import (
 )
 
 const cliLong = `
-OpenShift Client
+Developer and Administrator Client
 
-The OpenShift client exposes commands for managing your applications, as well as lower level
+This client exposes commands for managing your applications, as well as lower level
 tools to interact with each component of your system.
 
 To create a new application, you can use the example app source. Login to your server and then
@@ -52,15 +52,14 @@ created for you.
 
 You can easily switch between multiple projects using '%[1]s project <projectname>'.`
 
-func NewCommandCLI(name, fullName string) *cobra.Command {
+func NewCommandCLI(name, fullName string, out io.Writer) *cobra.Command {
 	in := os.Stdin
-	out := os.Stdout
 	errout := os.Stderr
 
 	// Main command
 	cmds := &cobra.Command{
 		Use:   name,
-		Short: "Client tools for OpenShift",
+		Short: "Command line tools for managing applications",
 		Long:  fmt.Sprintf(cliLong, fullName),
 		Run:   cmdutil.DefaultSubCommandRun(out),
 		BashCompletionFunction: bashCompletionFunc,
@@ -102,8 +101,9 @@ func NewCommandCLI(name, fullName string) *cobra.Command {
 				cmd.NewCmdDescribe(fullName, f, out),
 				cmd.NewCmdEdit(fullName, f, out),
 				cmd.NewCmdEnv(fullName, f, in, out),
-				cmd.NewCmdVolume(fullName, f, out),
+				cmd.NewCmdVolume(fullName, f, out, errout),
 				cmd.NewCmdLabel(fullName, f, out),
+				cmd.NewCmdAnnotate(fullName, f, out),
 				cmd.NewCmdExpose(fullName, f, out),
 				cmd.NewCmdStop(fullName, f, out),
 				cmd.NewCmdDelete(fullName, f, out),
@@ -127,6 +127,8 @@ func NewCommandCLI(name, fullName string) *cobra.Command {
 				cmd.NewCmdPatch(fullName, f, out),
 				cmd.NewCmdProcess(fullName, f, out),
 				cmd.NewCmdExport(fullName, f, in, out),
+				cmd.NewCmdRun(fullName, f, in, out, errout),
+				cmd.NewCmdAttach(fullName, f, in, out, errout),
 				policy.NewCmdPolicy(policy.PolicyRecommendedName, fullName+" "+policy.PolicyRecommendedName, f, out),
 				secrets.NewCmdSecrets(secrets.SecretsRecommendedName, fullName+" "+secrets.SecretsRecommendedName, f, out, fullName+" edit"),
 			},
@@ -161,7 +163,10 @@ func NewCmdKubectl(name string, out io.Writer) *cobra.Command {
 	cmds.Aliases = []string{"kubectl"}
 	cmds.Use = name
 	cmds.Short = "Kubernetes cluster management via kubectl"
-	cmds.Long = cmds.Long + "\n\nThis command is provided for direct management of the Kubernetes cluster OpenShift runs on."
+	cmds.Long = cmds.Long + `
+
+This command exposes the exact semantics of the Kubernetes command line client with additional
+support for application lifecycles.`
 	flags.VisitAll(func(flag *pflag.Flag) {
 		if f := cmds.PersistentFlags().Lookup(flag.Name); f == nil {
 			cmds.PersistentFlags().AddFlag(flag)
@@ -191,7 +196,7 @@ func CommandFor(basename string) *cobra.Command {
 	case "kubectl":
 		cmd = NewCmdKubectl(basename, out)
 	default:
-		cmd = NewCommandCLI(basename, basename)
+		cmd = NewCommandCLI(basename, basename, out)
 	}
 
 	if cmd.UsageFunc() == nil {

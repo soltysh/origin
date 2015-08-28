@@ -13,16 +13,17 @@ import (
 	"strings"
 	"time"
 
-	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	dockercmd "github.com/docker/docker/builder/command"
 	"github.com/docker/docker/builder/parser"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/glog"
+	kapi "k8s.io/kubernetes/pkg/api"
 
 	"github.com/openshift/origin/pkg/build/api"
 	"github.com/openshift/origin/pkg/build/builder/cmd/dockercfg"
 	"github.com/openshift/source-to-image/pkg/git"
 	"github.com/openshift/source-to-image/pkg/tar"
+	"github.com/openshift/source-to-image/pkg/util"
 )
 
 const (
@@ -39,20 +40,27 @@ const (
 // DockerBuilder builds Docker images given a git repository URL
 type DockerBuilder struct {
 	dockerClient DockerClient
-	authPresent  bool
-	auth         docker.AuthConfiguration
 	git          git.Git
 	tar          tar.Tar
 	build        *api.Build
 	urlTimeout   time.Duration
 }
 
+// MetaInstuction represent an Docker instruction used for adding metadata
+// to Dockerfile
+type MetaInstruction string
+
+const (
+	// Label represents the LABEL Docker instruction
+	Label MetaInstruction = "LABEL"
+	// Env represents the ENV Docker instruction
+	Env MetaInstruction = "ENV"
+)
+
 // NewDockerBuilder creates a new instance of DockerBuilder
-func NewDockerBuilder(dockerClient DockerClient, authCfg docker.AuthConfiguration, authPresent bool, build *api.Build) *DockerBuilder {
+func NewDockerBuilder(dockerClient DockerClient, build *api.Build) *DockerBuilder {
 	return &DockerBuilder{
 		dockerClient: dockerClient,
-		authPresent:  authPresent,
-		auth:         authCfg,
 		build:        build,
 		git:          git.New(),
 		tar:          tar.New(),
@@ -100,11 +108,10 @@ func (d *DockerBuilder) Build() error {
 			dockercfg.PushAuthType,
 		)
 		if authPresent {
-			glog.V(3).Infof("Using Docker authentication provided")
-			d.auth = pushAuthConfig
+			glog.Infof("Using provided push secret for pushing %s image", d.build.Spec.Output.To.Name)
 		}
 		glog.Infof("Pushing %s image ...", d.build.Spec.Output.To.Name)
-		if err := pushImage(d.dockerClient, d.build.Spec.Output.To.Name, d.auth); err != nil {
+		if err := pushImage(d.dockerClient, d.build.Spec.Output.To.Name, pushAuthConfig); err != nil {
 			return fmt.Errorf("Failed to push image: %v", err)
 		}
 		glog.Infof("Successfully pushed %s", d.build.Spec.Output.To.Name)
@@ -166,7 +173,7 @@ func (d *DockerBuilder) fetchSource(dir string) error {
 		setHttps = true
 	}
 	if len(d.build.Spec.Source.Git.HTTPProxy) != 0 {
-		glog.V(2).Infof("Setting http proxy variables for Git to %s", d.build.Spec.Source.Git.HTTPSProxy)
+		glog.V(2).Infof("Setting http proxy variables for Git to %s", d.build.Spec.Source.Git.HTTPProxy)
 		origProxy["HTTP_PROXY"] = os.Getenv("HTTP_PROXY")
 		origProxy["http_proxy"] = os.Getenv("http_proxy")
 		os.Setenv("HTTP_PROXY", d.build.Spec.Source.Git.HTTPProxy)
@@ -209,7 +216,7 @@ func (d *DockerBuilder) fetchSource(dir string) error {
 
 // addBuildParameters checks if a Image is set to replace the default base image.
 // If that's the case then change the Dockerfile to make the build with the given image.
-// Also append the environment variables in the Dockerfile.
+// Also append the environment variables and labels in the Dockerfile.
 func (d *DockerBuilder) addBuildParameters(dir string) error {
 	dockerfilePath := filepath.Join(dir, "Dockerfile")
 	if d.build.Spec.Strategy.DockerStrategy != nil && len(d.build.Spec.Source.ContextDir) > 0 {
@@ -239,7 +246,15 @@ func (d *DockerBuilder) addBuildParameters(dir string) error {
 	}
 
 	envVars := getBuildEnvVars(d.build)
-	newFileData = appendEnvVars(newFileData, envVars)
+	newFileData = appendMetadata(Env, newFileData, envVars)
+
+	labels := map[string]string{}
+	sourceInfo := d.git.GetInfo(dir)
+	if len(d.build.Spec.Source.ContextDir) > 0 {
+		sourceInfo.ContextDir = d.build.Spec.Source.ContextDir
+	}
+	labels = util.GenerateLabelsFromSourceInfo(labels, sourceInfo, api.DefaultDockerLabelNamespace)
+	newFileData = appendMetadata(Label, newFileData, labels)
 
 	if ioutil.WriteFile(dockerfilePath, []byte(newFileData), filePerm); err != nil {
 		return err
@@ -248,16 +263,16 @@ func (d *DockerBuilder) addBuildParameters(dir string) error {
 	return nil
 }
 
-// appendEnvVars appends environment variables to a string containing
-// a valid Dockerfile
-func appendEnvVars(fileData string, envVars map[string]string) string {
+// appendMetadata appends a Docker instruction that adds metadata values
+// to a string containing a valid Dockerfile.
+func appendMetadata(inst MetaInstruction, fileData string, envVars map[string]string) string {
 	if !strings.HasSuffix(fileData, "\n") {
 		fileData += "\n"
 	}
 	first := true
 	for k, v := range envVars {
 		if first {
-			fileData += fmt.Sprintf("ENV %s=\"%s\"", k, v)
+			fileData += fmt.Sprintf("%s %s=\"%s\"", inst, k, v)
 			first = false
 		} else {
 			fileData += fmt.Sprintf(" \\\n\t%s=\"%s\"", k, v)
@@ -400,12 +415,12 @@ func traverseAST(cmd string, node *parser.Node) int {
 // setupPullSecret provides a Docker authentication configuration when the
 // PullSecret is specified.
 func (d *DockerBuilder) setupPullSecret() (*docker.AuthConfigurations, error) {
-	if len(os.Getenv("PULL_DOCKERCFG_PATH")) == 0 {
+	if len(os.Getenv(dockercfg.PullAuthType)) == 0 {
 		return nil, nil
 	}
-	r, err := os.Open(os.Getenv("PULL_DOCKERCFG_PATH"))
+	r, err := os.Open(os.Getenv(dockercfg.PullAuthType))
 	if err != nil {
-		return nil, fmt.Errorf("'%s': %s", os.Getenv("PULL_DOCKERCFG_PATH"), err)
+		return nil, fmt.Errorf("'%s': %s", os.Getenv(dockercfg.PullAuthType), err)
 	}
 	return docker.NewAuthConfigurations(r)
 }

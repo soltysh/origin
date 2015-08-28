@@ -3,13 +3,13 @@ package proxy
 import (
 	"fmt"
 
-	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	kerrors "github.com/GoogleCloudPlatform/kubernetes/pkg/api/errors"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/rest"
-	kclient "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/fields"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
+	kapi "k8s.io/kubernetes/pkg/api"
+	kerrors "k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/api/rest"
+	kclient "k8s.io/kubernetes/pkg/client"
+	"k8s.io/kubernetes/pkg/fields"
+	"k8s.io/kubernetes/pkg/labels"
+	"k8s.io/kubernetes/pkg/runtime"
 
 	"github.com/openshift/origin/pkg/project/api"
 	projectapi "github.com/openshift/origin/pkg/project/api"
@@ -126,6 +126,29 @@ func (s *REST) Create(ctx kapi.Context, obj runtime.Object) (runtime.Object, err
 		return nil, err
 	}
 	return convertNamespace(namespace), nil
+}
+
+func (s *REST) Update(ctx kapi.Context, obj runtime.Object) (runtime.Object, bool, error) {
+	project, ok := obj.(*api.Project)
+	if !ok {
+		return nil, false, fmt.Errorf("not a project: %#v", obj)
+	}
+
+	oldObj, err := s.Get(ctx, project.Name)
+	if err != nil {
+		return nil, false, err
+	}
+	s.updateStrategy.PrepareForUpdate(obj, oldObj)
+	if errs := s.updateStrategy.ValidateUpdate(ctx, obj, oldObj); len(errs) > 0 {
+		return nil, false, kerrors.NewInvalid("project", project.Name, errs)
+	}
+
+	namespace, err := s.client.Update(convertProject(project))
+	if err != nil {
+		return nil, false, err
+	}
+
+	return convertNamespace(namespace), false, nil
 }
 
 // Delete deletes a Project specified by its name

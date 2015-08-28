@@ -1,4 +1,4 @@
-// +build integration,!no-docker,docker
+// +build integration,docker
 
 package integration
 
@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -16,10 +17,10 @@ import (
 	dockerClient "github.com/fsouza/go-dockerclient"
 	"golang.org/x/net/websocket"
 
-	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta3"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/watch"
-	watchjson "github.com/GoogleCloudPlatform/kubernetes/pkg/watch/json"
+	kapi "k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/v1beta3"
+	"k8s.io/kubernetes/pkg/watch"
+	watchjson "k8s.io/kubernetes/pkg/watch/json"
 
 	routeapi "github.com/openshift/origin/pkg/route/api"
 	tr "github.com/openshift/origin/test/integration/router"
@@ -81,6 +82,11 @@ func TestRouter(t *testing.T) {
 		t.Fatalf("Couldn't get https endpoint: %v", err)
 	}
 
+	routeAddress := getRouteAddress()
+	routerTestAddress := fmt.Sprintf("%s/test", routeAddress)
+	routerEchoHttpAddress := fmt.Sprintf("%s:80/echo", routeAddress)
+	routerEchoHttpsAddress := fmt.Sprintf("%s:443/echo", routeAddress)
+
 	//run through test cases now that environment is set up
 	testCases := []struct {
 		name              string
@@ -105,11 +111,11 @@ func TestRouter(t *testing.T) {
 			protocol:          "http",
 			expectedResponse:  tr.HelloPod,
 			routeTLS:          nil,
-			routerUrl:         "0.0.0.0",
+			routerUrl:         routeAddress,
 		},
 		{
 			name:              "non-secure-path",
-			serviceName:       "example",
+			serviceName:       "example-path",
 			endpoints:         []kapi.EndpointSubset{httpEndpoint},
 			routeAlias:        "www.example-unsecure.com",
 			routePath:         "/test",
@@ -118,7 +124,7 @@ func TestRouter(t *testing.T) {
 			protocol:          "http",
 			expectedResponse:  tr.HelloPodPath,
 			routeTLS:          nil,
-			routerUrl:         "0.0.0.0/test",
+			routerUrl:         routerTestAddress,
 		},
 		{
 			name:              "edge termination",
@@ -135,11 +141,11 @@ func TestRouter(t *testing.T) {
 				Key:           tr.ExampleKey,
 				CACertificate: tr.ExampleCACert,
 			},
-			routerUrl: "0.0.0.0",
+			routerUrl: routeAddress,
 		},
 		{
 			name:              "edge termination path",
-			serviceName:       "example-edge",
+			serviceName:       "example-edge-path",
 			endpoints:         []kapi.EndpointSubset{httpEndpoint},
 			routeAlias:        "www.example.com",
 			routePath:         "/test",
@@ -153,13 +159,50 @@ func TestRouter(t *testing.T) {
 				Key:           tr.ExampleKey,
 				CACertificate: tr.ExampleCACert,
 			},
+			routerUrl: routerTestAddress,
+		},
+		{
+			name:              "reencrypt",
+			serviceName:       "example-reencrypt",
+			endpoints:         []kapi.EndpointSubset{httpsEndpoint},
+			routeAlias:        "www.example.com",
+			endpointEventType: watch.Added,
+			routeEventType:    watch.Added,
+			protocol:          "https",
+			expectedResponse:  tr.HelloPodSecure,
+			routeTLS: &routeapi.TLSConfig{
+				Termination:              routeapi.TLSTerminationReencrypt,
+				Certificate:              tr.ExampleCert,
+				Key:                      tr.ExampleKey,
+				CACertificate:            tr.ExampleCACert,
+				DestinationCACertificate: tr.ExampleCACert,
+			},
+			routerUrl: "0.0.0.0",
+		},
+		{
+			name:              "reencrypt path",
+			serviceName:       "example-reencrypt-path",
+			endpoints:         []kapi.EndpointSubset{httpsEndpoint},
+			routeAlias:        "www.example.com",
+			routePath:         "/test",
+			endpointEventType: watch.Added,
+			routeEventType:    watch.Added,
+			protocol:          "https",
+			expectedResponse:  tr.HelloPodPathSecure,
+			routeTLS: &routeapi.TLSConfig{
+				Termination:              routeapi.TLSTerminationReencrypt,
+				Certificate:              tr.ExampleCert,
+				Key:                      tr.ExampleKey,
+				CACertificate:            tr.ExampleCACert,
+				DestinationCACertificate: tr.ExampleCACert,
+			},
 			routerUrl: "0.0.0.0/test",
 		},
 		{
 			name:              "passthrough termination",
 			serviceName:       "example-passthrough",
 			endpoints:         []kapi.EndpointSubset{httpsEndpoint},
-			routeAlias:        "www.example2.com",
+			routeAlias:        "www.example-passthrough.com",
 			endpointEventType: watch.Added,
 			routeEventType:    watch.Added,
 			protocol:          "https",
@@ -167,24 +210,24 @@ func TestRouter(t *testing.T) {
 			routeTLS: &routeapi.TLSConfig{
 				Termination: routeapi.TLSTerminationPassthrough,
 			},
-			routerUrl: "0.0.0.0",
+			routerUrl: routeAddress,
 		},
 		{
 			name:              "websocket unsecure",
 			serviceName:       "websocket-unsecure",
 			endpoints:         []kapi.EndpointSubset{httpEndpoint},
-			routeAlias:        "0.0.0.0:80",
+			routeAlias:        "www.example.com",
 			endpointEventType: watch.Added,
 			routeEventType:    watch.Added,
 			protocol:          "ws",
 			expectedResponse:  "hello-websocket-unsecure",
-			routerUrl:         "0.0.0.0:80/echo",
+			routerUrl:         routerEchoHttpAddress,
 		},
 		{
 			name:              "ws edge termination",
 			serviceName:       "websocket-edge",
 			endpoints:         []kapi.EndpointSubset{httpEndpoint},
-			routeAlias:        "0.0.0.0:443",
+			routeAlias:        "www.example.com",
 			endpointEventType: watch.Added,
 			routeEventType:    watch.Added,
 			protocol:          "wss",
@@ -195,13 +238,13 @@ func TestRouter(t *testing.T) {
 				Key:           tr.ExampleKey,
 				CACertificate: tr.ExampleCACert,
 			},
-			routerUrl: "0.0.0.0:443/echo",
+			routerUrl: routerEchoHttpsAddress,
 		},
 		{
 			name:              "ws passthrough termination",
 			serviceName:       "websocket-passthrough",
 			endpoints:         []kapi.EndpointSubset{httpsEndpoint},
-			routeAlias:        "0.0.0.0:443",
+			routeAlias:        "www.example.com",
 			endpointEventType: watch.Added,
 			routeEventType:    watch.Added,
 			protocol:          "wss",
@@ -209,18 +252,36 @@ func TestRouter(t *testing.T) {
 			routeTLS: &routeapi.TLSConfig{
 				Termination: routeapi.TLSTerminationPassthrough,
 			},
-			routerUrl: "0.0.0.0:443/echo",
+			routerUrl: routerEchoHttpsAddress,
 		},
 	}
 
+	ns := "rotorouter"
 	for _, tc := range testCases {
-		//simulate the events
+		// The following is a workaround for the websocket client, which does not
+		// allow a "Host" header that is distinct from the address to which the
+		// client code attempts to connect—so if we are putting "www.example.com" in
+		// the "Host" header, the client will connect to "www.example.com".
+		//
+		// In the case where we use HAProxy (with the template router), it is
+		// possible to use 0.0.0.0, so we can do so as a workaround to get the tests
+		// passing with the template router.  In the case of the F5 router though,
+		// F5 BIG-IP would reject 0.0.0.0 as an invalid servername, so the only way
+		// to make the tests pass with the F5 router is to use a hostname and make
+		// that hostname resolve to the F5 BIG-IP host's IP address.
+		if getRouterImage() == defaultRouterImage &&
+			(tc.protocol == "ws" || tc.protocol == "wss") {
+			tc.routeAlias = "0.0.0.0"
+		}
+
+		// Simulate the events.
 		endpointEvent := &watch.Event{
 			Type: tc.endpointEventType,
 
 			Object: &kapi.Endpoints{
 				ObjectMeta: kapi.ObjectMeta{
-					Name: tc.serviceName,
+					Name:      tc.serviceName,
+					Namespace: ns,
 				},
 				Subsets: tc.endpoints,
 			},
@@ -229,6 +290,10 @@ func TestRouter(t *testing.T) {
 		routeEvent := &watch.Event{
 			Type: tc.routeEventType,
 			Object: &routeapi.Route{
+				ObjectMeta: kapi.ObjectMeta{
+					Name:      tc.serviceName,
+					Namespace: ns,
+				},
 				Host:        tc.routeAlias,
 				Path:        tc.routePath,
 				ServiceName: tc.serviceName,
@@ -239,10 +304,14 @@ func TestRouter(t *testing.T) {
 		fakeMasterAndPod.EndpointChannel <- eventString(endpointEvent)
 		fakeMasterAndPod.RouteChannel <- eventString(routeEvent)
 
+		// Give the router some time to finish processing events before we connect.
+		time.Sleep(time.Second * 5)
+
 		for i := 0; i < tcRetries; i++ {
-			//wait for router to pick up configs
+			// Wait for router to pick up configs.
 			time.Sleep(time.Second * tcWaitSeconds)
-			//now verify the route with an http client
+
+			// Now verify the route with an HTTP client.
 			resp, err := getRoute(tc.routerUrl, tc.routeAlias, tc.protocol, tc.expectedResponse)
 
 			if err != nil {
@@ -254,6 +323,13 @@ func TestRouter(t *testing.T) {
 
 			if resp != tc.expectedResponse {
 				t.Errorf("TC %s failed! Response body %v did not match expected %v", tc.name, resp, tc.expectedResponse)
+
+				// The following is related to the workaround above, q.v.
+				if getRouterImage() != defaultRouterImage {
+					t.Errorf("You may need to add an entry to /etc/hosts so that the"+
+						" hostname of the router (%s) resolves its the IP address, (%s).",
+						tc.routeAlias, routeAddress)
+				}
 			} else {
 				//good to go, stop trying
 				break
@@ -262,11 +338,16 @@ func TestRouter(t *testing.T) {
 
 		//clean up
 		routeEvent.Type = watch.Deleted
-		endpointEvent.Type = watch.Deleted
+		endpointEvent.Type = watch.Modified
+		endpoints := endpointEvent.Object.(*kapi.Endpoints)
+		endpoints.Subsets = []kapi.EndpointSubset{}
 
 		fakeMasterAndPod.EndpointChannel <- eventString(endpointEvent)
 		fakeMasterAndPod.RouteChannel <- eventString(routeEvent)
 	}
+
+	// Give the router some time to finish processing events before we kill it.
+	time.Sleep(time.Second * 5)
 }
 
 // TestRouterPathSpecificity tests that the router is matching routes from most specific to least when using
@@ -337,13 +418,14 @@ func TestRouterPathSpecificity(t *testing.T) {
 		},
 	}
 
+	routeAddress := getRouteAddress()
+	routerTestAddress := fmt.Sprintf("%s/test", routeAddress)
+
 	fakeMasterAndPod.EndpointChannel <- eventString(endpointEvent)
 	fakeMasterAndPod.RouteChannel <- eventString(routeEvent)
 	time.Sleep(time.Second * tcWaitSeconds)
 	//ensure you can curl path but not main host
-	validateRoute("0.0.0.0/test", "www.example.com", "http", tr.HelloPodPath, t)
-	//should fall through to the default backend which is 127.0.0.1:8080 where the test server is simulating a master
-	validateRoute("0.0.0.0", "www.example.com", "http", tr.HelloMaster, t)
+	validateRoute(routerTestAddress, "www.example.com", "http", tr.HelloPodPath, t)
 
 	//create host based route
 	routeEvent = &watch.Event{
@@ -360,8 +442,8 @@ func TestRouterPathSpecificity(t *testing.T) {
 	fakeMasterAndPod.RouteChannel <- eventString(routeEvent)
 	time.Sleep(time.Second * tcWaitSeconds)
 	//ensure you can curl path and host
-	validateRoute("0.0.0.0/test", "www.example.com", "http", tr.HelloPodPath, t)
-	validateRoute("0.0.0.0", "www.example.com", "http", tr.HelloPod, t)
+	validateRoute(routerTestAddress, "www.example.com", "http", tr.HelloPodPath, t)
+	validateRoute(routeAddress, "www.example.com", "http", tr.HelloPod, t)
 
 	//delete path based route
 	routeEvent = &watch.Event{
@@ -378,9 +460,41 @@ func TestRouterPathSpecificity(t *testing.T) {
 	}
 	fakeMasterAndPod.RouteChannel <- eventString(routeEvent)
 	time.Sleep(time.Second * tcWaitSeconds)
-	//ensure you can still curl path and host
-	validateRoute("0.0.0.0/test", "www.example.com", "http", tr.HelloPodPath, t)
-	validateRoute("0.0.0.0", "www.example.com", "http", tr.HelloPod, t)
+	// Ensure you can still curl path and host.  The host-based route should now
+	// handle requests to / as well as requests to /test (or any other path).
+	// Note, however, that the host-based route and the host-based route use the
+	// same service, and that that service varies its response in accordance with
+	// the path, so we still get the tr.HelloPodPath response when we request
+	// /test even though we request using routeAddress.
+	validateRoute(routerTestAddress, "www.example.com", "http", tr.HelloPodPath, t)
+	validateRoute(routeAddress, "www.example.com", "http", tr.HelloPod, t)
+
+	// Clean up the host-based route and endpoint.
+	routeEvent = &watch.Event{
+		Type: watch.Deleted,
+		Object: &routeapi.Route{
+			ObjectMeta: kapi.ObjectMeta{
+				Name:      "host",
+				Namespace: "default",
+			},
+			Host:        "www.example.com",
+			ServiceName: "myService",
+		},
+	}
+	fakeMasterAndPod.RouteChannel <- eventString(routeEvent)
+	endpointEvent = &watch.Event{
+		Type: watch.Modified,
+		Object: &kapi.Endpoints{
+			ObjectMeta: kapi.ObjectMeta{
+				Name:      "myService",
+				Namespace: "default",
+			},
+			Subsets: []kapi.EndpointSubset{},
+		},
+	}
+	fakeMasterAndPod.EndpointChannel <- eventString(endpointEvent)
+
+	time.Sleep(time.Second * 5)
 }
 
 // TestRouterDuplications ensures that the router implementation is keying correctly and resolving routes that may be
@@ -449,12 +563,14 @@ func TestRouterDuplications(t *testing.T) {
 	fakeMasterAndPod.RouteChannel <- eventString(exampleRouteEvent)
 	fakeMasterAndPod.RouteChannel <- eventString(example2RouteEvent)
 
+	routeAddress := getRouteAddress()
+
 	var examplePass, example2Pass bool
 	var exampleResp, example2Resp string
 	for i := 0; i < tcRetries; i++ {
 		//ensure you can curl both
-		examplePass, exampleResp = isValidRoute("0.0.0.0", "www.example.com", "http", tr.HelloPod)
-		example2Pass, example2Resp = isValidRoute("0.0.0.0", "www.example2.com", "http", tr.HelloPod)
+		examplePass, exampleResp = isValidRoute(routeAddress, "www.example.com", "http", tr.HelloPod)
+		example2Pass, example2Resp = isValidRoute(routeAddress, "www.example2.com", "http", tr.HelloPod)
 
 		if examplePass && example2Pass {
 			break
@@ -466,6 +582,45 @@ func TestRouterDuplications(t *testing.T) {
 	if !examplePass || !example2Pass {
 		t.Errorf("Unable to validate both routes in a duplicate service scenario.  Resp 1: %s, Resp 2: %s", exampleResp, example2Resp)
 	}
+
+	// Clean up the endpoint and routes.
+	example2RouteCleanupEvent := &watch.Event{
+		Type: watch.Deleted,
+		Object: &routeapi.Route{
+			ObjectMeta: kapi.ObjectMeta{
+				Name:      "example2",
+				Namespace: "default",
+			},
+			Host:        "www.example2.com",
+			ServiceName: "myService",
+		},
+	}
+	fakeMasterAndPod.RouteChannel <- eventString(example2RouteCleanupEvent)
+	exampleRouteCleanupEvent := &watch.Event{
+		Type: watch.Deleted,
+		Object: &routeapi.Route{
+			ObjectMeta: kapi.ObjectMeta{
+				Name:      "example",
+				Namespace: "default",
+			},
+			Host:        "www.example.com",
+			ServiceName: "myService",
+		},
+	}
+	fakeMasterAndPod.RouteChannel <- eventString(exampleRouteCleanupEvent)
+	endpointCleanupEvent := &watch.Event{
+		Type: watch.Modified,
+		Object: &kapi.Endpoints{
+			ObjectMeta: kapi.ObjectMeta{
+				Name:      "myService",
+				Namespace: "default",
+			},
+			Subsets: []kapi.EndpointSubset{},
+		},
+	}
+	fakeMasterAndPod.EndpointChannel <- eventString(endpointCleanupEvent)
+
+	time.Sleep(time.Second * 5)
 }
 
 // isValidRoute ensures that the route can be retrieved and matches the expected output
@@ -497,9 +652,15 @@ func getEndpoint(hostport string) (kapi.EndpointSubset, error) {
 	return kapi.EndpointSubset{Addresses: []kapi.EndpointAddress{{IP: host}}, Ports: []kapi.EndpointPort{{Port: portNum}}}, nil
 }
 
-// getRoute is a utility function for making the web request to a route.  Protocol is either http or https.  If the
-// protocol is https then getRoute will make a secure transport client with InsecureSkipVerify: true.  Http does a plain
-// http client request.
+// getRoute is a utility function for making the web request to a route.
+// Protocol is one of http, https, ws, or wss.  If the protocol is https or wss,
+// then getRoute will make a secure transport client with InsecureSkipVerify:
+// true.  If the protocol is http or ws, then getRoute does an unencrypted HTTP
+// client request.  If the protocol is ws or wss, then getRoute will upgrade the
+// connection to websockets and then send expectedResponse *to* the route, with
+// the expectation that the route will echo back what it receives.  Note that
+// getRoute returns only the first len(expectedResponse) bytes of the actual
+// response.
 func getRoute(routerUrl string, hostName string, protocol string, expectedResponse string) (response string, err error) {
 	url := protocol + "://" + routerUrl
 	var tlsConfig *tls.Config
@@ -535,12 +696,17 @@ func getRoute(routerUrl string, hostName string, protocol string, expectedRespon
 
 		return string(respBody), nil
 	case "ws", "wss":
-		wsConfig, err := websocket.NewConfig(url, "http://localhost/")
+		origin := fmt.Sprintf("http://%s/", tr.GetDefaultLocalAddress())
+		wsConfig, err := websocket.NewConfig(url, origin)
 		if err != nil {
 			return "", err
 		}
 
-		wsConfig.Header.Set("Host", hostName)
+		port := 80
+		if protocol == "wss" {
+			port = 443
+		}
+		wsConfig.Location.Host = fmt.Sprintf("%s:%d", hostName, port)
 		wsConfig.TlsConfig = tlsConfig
 
 		ws, err := websocket.DialConfig(wsConfig)
@@ -591,11 +757,45 @@ func createAndStartRouterContainer(dockerCli *dockerClient.Client, masterIp stri
 		exposedPorts[dockerPort] = struct{}{}
 	}
 
+	copyEnv := []string{
+		"ROUTER_EXTERNAL_HOST_HOSTNAME",
+		"ROUTER_EXTERNAL_HOST_USERNAME",
+		"ROUTER_EXTERNAL_HOST_PASSWORD",
+		"ROUTER_EXTERNAL_HOST_HTTP_VSERVER",
+		"ROUTER_EXTERNAL_HOST_HTTPS_VSERVER",
+		"ROUTER_EXTERNAL_HOST_INSECURE",
+		"ROUTER_EXTERNAL_HOST_PRIVKEY",
+	}
+
+	env := []string{}
+
+	for _, name := range copyEnv {
+		val := os.Getenv(name)
+		if len(val) > 0 {
+			env = append(env, name+"="+val)
+		}
+	}
+
+	vols := ""
+	hostVols := []string{}
+
+	privkeyFilename := os.Getenv("ROUTER_EXTERNAL_HOST_PRIVKEY")
+	if len(privkeyFilename) != 0 {
+		vols = privkeyFilename
+		privkeyBindmount := fmt.Sprintf("%[1]s:%[1]s", privkeyFilename)
+		hostVols = append(hostVols, privkeyBindmount)
+	}
+
 	containerOpts := dockerClient.CreateContainerOptions{
 		Config: &dockerClient.Config{
 			Image:        getRouterImage(),
 			Cmd:          []string{"--master=" + masterIp, "--loglevel=4"},
+			Env:          env,
 			ExposedPorts: exposedPorts,
+			VolumesFrom:  vols,
+		},
+		HostConfig: &dockerClient.HostConfig{
+			Binds: hostVols,
 		},
 	}
 
@@ -616,6 +816,8 @@ func createAndStartRouterContainer(dockerCli *dockerClient.Client, masterIp stri
 
 	//wait for it to start
 	for i := 0; i < dockerRetries; i++ {
+		time.Sleep(time.Second * dockerWaitSeconds)
+
 		c, err := dockerCli.InspectContainer(container.ID)
 
 		if err != nil {
@@ -626,7 +828,6 @@ func createAndStartRouterContainer(dockerCli *dockerClient.Client, masterIp stri
 			running = true
 			break
 		}
-		time.Sleep(time.Second * dockerWaitSeconds)
 	}
 
 	if !running {
@@ -680,4 +881,17 @@ func getRouterImage() string {
 	}
 
 	return i
+}
+
+// getRouteAddress checks for the OPENSHIFT_ROUTE_ADDRESS environment
+// variable and returns it if it set and non-empty; otherwise it returns
+// "0.0.0.0".
+func getRouteAddress() string {
+	addr := os.Getenv("OPENSHIFT_ROUTE_ADDRESS")
+
+	if len(addr) == 0 {
+		addr = "0.0.0.0"
+	}
+
+	return addr
 }

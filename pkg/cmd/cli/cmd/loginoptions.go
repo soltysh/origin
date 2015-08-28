@@ -7,17 +7,17 @@ import (
 	"os"
 	"path/filepath"
 
-	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	kerrors "github.com/GoogleCloudPlatform/kubernetes/pkg/api/errors"
-	kclient "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
-	kclientcmd "github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd"
-	clientcmdapi "github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd/api"
-	kclientcmdapi "github.com/GoogleCloudPlatform/kubernetes/pkg/client/clientcmd/api"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/fields"
-	kcmdconfig "github.com/GoogleCloudPlatform/kubernetes/pkg/kubectl/cmd/config"
-	kubecmdconfig "github.com/GoogleCloudPlatform/kubernetes/pkg/kubectl/cmd/config"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
+	kapi "k8s.io/kubernetes/pkg/api"
+	kerrors "k8s.io/kubernetes/pkg/api/errors"
+	kclient "k8s.io/kubernetes/pkg/client"
+	kclientcmd "k8s.io/kubernetes/pkg/client/clientcmd"
+	clientcmdapi "k8s.io/kubernetes/pkg/client/clientcmd/api"
+	kclientcmdapi "k8s.io/kubernetes/pkg/client/clientcmd/api"
+	"k8s.io/kubernetes/pkg/fields"
+	kcmdconfig "k8s.io/kubernetes/pkg/kubectl/cmd/config"
+	kubecmdconfig "k8s.io/kubernetes/pkg/kubectl/cmd/config"
+	"k8s.io/kubernetes/pkg/labels"
+	"k8s.io/kubernetes/pkg/util"
 
 	"github.com/openshift/origin/pkg/client"
 	"github.com/openshift/origin/pkg/cmd/cli/config"
@@ -87,7 +87,7 @@ func (o *LoginOptions) getClientConfig() (*kclient.Config, error) {
 		if cmdutil.IsTerminal(o.Reader) {
 			for !o.serverProvided() {
 				defaultServer := defaultClusterURL
-				promptMsg := fmt.Sprintf("OpenShift server [%s]: ", defaultServer)
+				promptMsg := fmt.Sprintf("Server [%s]: ", defaultServer)
 
 				o.Server = cmdutil.PromptForStringWithDefault(o.Reader, defaultServer, promptMsg)
 			}
@@ -212,7 +212,7 @@ func (o *LoginOptions) gatherAuthInfo() error {
 				return err
 			}
 
-			fmt.Fprintln(o.Out, "The token provided is invalid (probably expired).\n")
+			fmt.Fprint(o.Out, "The token provided is invalid (probably expired).\n\n")
 		}
 	}
 
@@ -278,7 +278,7 @@ func (o *LoginOptions) gatherAuthInfo() error {
 	}
 	o.Username = me.Name
 	o.Config = clientConfig
-	fmt.Fprintln(o.Out, "Login successful.\n")
+	fmt.Fprint(o.Out, "Login successful.\n\n")
 
 	return nil
 }
@@ -394,7 +394,7 @@ func (o *LoginOptions) SaveConfig() (bool, error) {
 		return false, err
 	}
 
-	if err := kubecmdconfig.ModifyConfig(o.PathOptions, *configToWrite); err != nil {
+	if err := kubecmdconfig.ModifyConfig(o.PathOptions, *configToWrite, true); err != nil {
 		return false, err
 	}
 

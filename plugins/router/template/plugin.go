@@ -2,13 +2,14 @@ package templaterouter
 
 import (
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"text/template"
 
-	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	ktypes "github.com/GoogleCloudPlatform/kubernetes/pkg/types"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/watch"
 	"github.com/golang/glog"
+	kapi "k8s.io/kubernetes/pkg/api"
+	ktypes "k8s.io/kubernetes/pkg/types"
+	"k8s.io/kubernetes/pkg/watch"
 
 	routeapi "github.com/openshift/origin/pkg/route/api"
 )
@@ -59,11 +60,12 @@ type router interface {
 
 // NewTemplatePlugin creates a new TemplatePlugin.
 func NewTemplatePlugin(cfg TemplatePluginConfig) (*TemplatePlugin, error) {
+	templateBaseName := filepath.Base(cfg.TemplatePath)
 	masterTemplate := template.Must(template.New("config").ParseFiles(cfg.TemplatePath))
 	templates := map[string]*template.Template{}
 
 	for _, template := range masterTemplate.Templates() {
-		if template == masterTemplate {
+		if template.Name() == templateBaseName {
 			continue
 		}
 

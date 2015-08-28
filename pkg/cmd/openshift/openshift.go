@@ -1,6 +1,7 @@
 package openshift
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 	"strings"
@@ -26,14 +27,12 @@ import (
 )
 
 const openshiftLong = `
-OpenShift Application Platform
+%[2]s Application Platform
 
-OpenShift helps you build, deploy, and manage your applications. To start an all-in-one server, run:
+The %[2]s distribution of Kubernetes helps you build, deploy, and manage your applications on top of
+Docker containers. To start an all-in-one server with the default configuration, run:
 
-  $ openshift start &
-
-OpenShift is built around Docker and the Kubernetes cluster container manager.  You must have
-Docker installed on this machine to start your server.`
+  $ %[1]s start &`
 
 // CommandFor returns the appropriate command for this base name,
 // or the global OpenShift command
@@ -50,7 +49,7 @@ func CommandFor(basename string) *cobra.Command {
 
 	switch basename {
 	case "openshift-router":
-		cmd = irouter.NewCommandTemplateRouter(basename)
+		cmd = irouter.NewCommandRouter(basename)
 	case "openshift-deploy":
 		cmd = deployer.NewCommandDeployer(basename)
 	case "openshift-sti-build":
@@ -58,7 +57,7 @@ func CommandFor(basename string) *cobra.Command {
 	case "openshift-docker-build":
 		cmd = builder.NewCommandDockerBuilder(basename)
 	case "oc", "osc":
-		cmd = cli.NewCommandCLI(basename, basename)
+		cmd = cli.NewCommandCLI(basename, basename, out)
 	case "oadm", "osadm":
 		cmd = admin.NewCommandAdmin(basename, basename, out)
 	case "kubectl":
@@ -75,8 +74,8 @@ func CommandFor(basename string) *cobra.Command {
 		cmd = kubernetes.NewSchedulerCommand(basename, basename, out)
 	case "kubernetes":
 		cmd = kubernetes.NewCommand(basename, basename, out)
-	case "origin":
-		cmd = NewCommandOpenShift("origin")
+	case "origin", "atomic-enterprise":
+		cmd = NewCommandOpenShift(basename)
 	default:
 		cmd = NewCommandOpenShift("openshift")
 	}
@@ -93,17 +92,25 @@ func CommandFor(basename string) *cobra.Command {
 func NewCommandOpenShift(name string) *cobra.Command {
 	out := os.Stdout
 
+	product := "Origin"
+	switch name {
+	case "openshift":
+		product = "OpenShift"
+	case "atomic-enterprise":
+		product = "Atomic"
+	}
+
 	root := &cobra.Command{
 		Use:   name,
-		Short: "OpenShift helps you build, deploy, and manage your cloud applications",
-		Long:  openshiftLong,
+		Short: "Build, deploy, and manage your cloud applications",
+		Long:  fmt.Sprintf(openshiftLong, name, product),
 		Run:   cmdutil.DefaultSubCommandRun(out),
 	}
 
 	startAllInOne, _ := start.NewCommandStartAllInOne(name, out)
 	root.AddCommand(startAllInOne)
 	root.AddCommand(admin.NewCommandAdmin("admin", name+" admin", out))
-	root.AddCommand(cli.NewCommandCLI("cli", name+" cli"))
+	root.AddCommand(cli.NewCommandCLI("cli", name+" cli", out))
 	root.AddCommand(cli.NewCmdKubectl("kube", out))
 	root.AddCommand(newExperimentalCommand("ex", name+" ex"))
 	root.AddCommand(version.NewVersionCommand(name))
@@ -115,7 +122,7 @@ func NewCommandOpenShift(name string) *cobra.Command {
 	}
 
 	infra.AddCommand(
-		irouter.NewCommandTemplateRouter("router"),
+		irouter.NewCommandRouter("router"),
 		deployer.NewCommandDeployer("deploy"),
 		builder.NewCommandSTIBuilder("sti-build"),
 		builder.NewCommandDockerBuilder("docker-build"),

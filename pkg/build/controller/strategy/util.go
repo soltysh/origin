@@ -3,12 +3,12 @@ package strategy
 import (
 	"path/filepath"
 
-	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
 	"github.com/golang/glog"
 	buildapi "github.com/openshift/origin/pkg/build/api"
 	imageapi "github.com/openshift/origin/pkg/image/api"
 	"github.com/openshift/origin/pkg/util/namer"
+	kapi "k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/util"
 )
 
 const (
@@ -127,6 +127,19 @@ func setupSourceSecrets(pod *kapi.Pod, sourceSecret *kapi.LocalObjectReference) 
 	pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, []kapi.EnvVar{
 		{Name: "SOURCE_SECRET_PATH", Value: sourceSecretMountPath},
 	}...)
+}
+
+// addSourceEnvVars adds environment variables related to the source code
+// repository to builder container
+func addSourceEnvVars(source buildapi.BuildSource, output *[]kapi.EnvVar) {
+	sourceVars := []kapi.EnvVar{{Name: "SOURCE_REPOSITORY", Value: source.Git.URI}}
+	if len(source.ContextDir) > 0 {
+		sourceVars = append(sourceVars, kapi.EnvVar{Name: "SOURCE_CONTEXT_DIR", Value: source.ContextDir})
+	}
+	if len(source.Git.Ref) > 0 {
+		sourceVars = append(sourceVars, kapi.EnvVar{Name: "SOURCE_REF", Value: source.Git.Ref})
+	}
+	*output = append(*output, sourceVars...)
 }
 
 // mergeTrustedEnvWithoutDuplicates merges two environment lists without having

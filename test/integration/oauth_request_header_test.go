@@ -1,4 +1,4 @@
-// +build integration,!no-etcd
+// +build integration,etcd
 
 package integration
 
@@ -9,8 +9,8 @@ import (
 	"regexp"
 	"testing"
 
-	kclient "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
+	kclient "k8s.io/kubernetes/pkg/client"
+	"k8s.io/kubernetes/pkg/runtime"
 
 	"github.com/openshift/origin/pkg/client"
 	configapi "github.com/openshift/origin/pkg/cmd/server/api"
@@ -109,7 +109,7 @@ func TestOAuthRequestHeader(t *testing.T) {
 		UseAsChallenger: false,
 		UseAsLogin:      false,
 		Provider: runtime.EmbeddedObject{
-			&configapi.RequestHeaderIdentityProvider{
+			Object: &configapi.RequestHeaderIdentityProvider{
 				ClientCA: caFile.Name(),
 				Headers:  []string{"My-Remote-User", "SSO-User"},
 			},

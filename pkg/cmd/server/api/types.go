@@ -1,9 +1,15 @@
 package api
 
 import (
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
+	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/runtime"
+	"k8s.io/kubernetes/pkg/util"
+)
+
+const (
+	FeatureBuilder    = `Builder`
+	FeatureS2I        = `S2I Builder`
+	FeatureWebConsole = `Web Console`
 )
 
 var (
@@ -13,6 +19,9 @@ var (
 	DefaultOpenShiftAPILevels  = []string{"v1beta3", "v1"}
 	DeadKubernetesAPILevels    = []string{"v1beta1", "v1beta2"}
 	DeadOpenShiftAPILevels     = []string{"v1beta1"}
+
+	KnownOpenShiftFeatures = []string{FeatureBuilder, FeatureS2I, FeatureWebConsole}
+	AtomicDisabledFeatures = []string{FeatureBuilder, FeatureS2I, FeatureWebConsole}
 )
 
 type ExtendedArguments map[string][]string
@@ -83,6 +92,8 @@ const (
 	ControllersAll = "*"
 )
 
+type FeatureList []string
+
 type MasterConfig struct {
 	api.TypeMeta
 
@@ -105,7 +116,17 @@ type MasterConfig struct {
 	Controllers string
 	// PauseControllers instructs the master to not automatically start controllers, but instead
 	// to wait until a notification to the server is received before launching them.
+	// TODO: will be disabled in function for 1.1.
 	PauseControllers bool
+	// ControllerLeaseTTL enables controller election, instructing the master to attempt to acquire
+	// a lease before controllers start and renewing it within a number of seconds defined by this value.
+	// Setting this value non-negative forces pauseControllers=true. This value defaults off (0, or
+	// omitted) and controller election can be disabled with -1.
+	ControllerLeaseTTL int
+	// TODO: the next field added to controllers must be added to a new controllers struct
+
+	// Allow to disable OpenShift components
+	DisabledFeatures FeatureList
 
 	// EtcdStorageConfig contains information about how API resources are
 	// stored in Etcd. These values are only relevant when etcd is the
@@ -210,6 +231,7 @@ type NetworkConfig struct {
 	NetworkPluginName  string
 	ClusterNetworkCIDR string
 	HostSubnetLength   uint
+	ServiceNetworkCIDR string
 }
 
 type ImageConfig struct {
@@ -268,6 +290,9 @@ type EtcdStorageConfig struct {
 type ServingInfo struct {
 	// BindAddress is the ip:port to serve on
 	BindAddress string
+	// BindNetwork is the type of network to bind to - defaults to "tcp4", accepts "tcp",
+	// "tcp4", and "tcp6"
+	BindNetwork string
 	// ServerCert is the TLS cert info for serving secure traffic
 	ServerCert CertInfo
 	// ClientCA is the certificate bundle for all the signers that you'll recognize for incoming client certificates
@@ -293,6 +318,9 @@ type MasterClients struct {
 type DNSConfig struct {
 	// BindAddress is the ip:port to serve DNS on
 	BindAddress string
+	// BindNetwork is the type of network to bind to - defaults to "tcp4", accepts "tcp",
+	// "tcp4", and "tcp6"
+	BindNetwork string
 }
 
 type AssetConfig struct {
@@ -335,6 +363,10 @@ type ServiceAccountConfig struct {
 	// ManagedNames is a list of service account names that will be auto-created in every namespace.
 	// If no names are specified, the ServiceAccountsController will not be started.
 	ManagedNames []string
+
+	// LimitSecretReferences controls whether or not to allow a service account to reference any secret in a namespace
+	// without explicitly referencing them
+	LimitSecretReferences bool
 
 	// PrivateKeyFile is a file containing a PEM-encoded private RSA key, used to sign service account tokens.
 	// If no private key is specified, the service account TokensController will not be started.
@@ -573,7 +605,8 @@ type KubernetesMasterConfig struct {
 	APILevels []string
 	// MasterIP is the public IP address of kubernetes stuff.  If empty, the first result from net.InterfaceAddrs will be used.
 	MasterIP string
-	// MasterCount is the number of expected masters that should be running. This value defaults to 1 and may be set to a positive integer.
+	// MasterCount is the number of expected masters that should be running. This value defaults to 1 and may be set to a positive integer,
+	// or if set to -1, indicates this is part of a cluster.
 	MasterCount int
 	// ServicesSubnet is the subnet to use for assigning service IPs
 	ServicesSubnet string

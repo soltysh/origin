@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	kapp "github.com/GoogleCloudPlatform/kubernetes/cmd/kube-apiserver/app"
-	cmapp "github.com/GoogleCloudPlatform/kubernetes/cmd/kube-controller-manager/app"
-	kvalidation "github.com/GoogleCloudPlatform/kubernetes/pkg/api/validation"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/serviceaccount"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util/fielderrors"
+	kapp "k8s.io/kubernetes/cmd/kube-apiserver/app"
+	cmapp "k8s.io/kubernetes/cmd/kube-controller-manager/app"
+	kvalidation "k8s.io/kubernetes/pkg/api/validation"
+	"k8s.io/kubernetes/pkg/controller/serviceaccount"
+	"k8s.io/kubernetes/pkg/util"
+	"k8s.io/kubernetes/pkg/util/fielderrors"
 
 	"github.com/openshift/origin/pkg/cmd/server/api"
 	"github.com/openshift/origin/pkg/cmd/server/bootstrappolicy"
@@ -61,6 +61,15 @@ func ValidateMasterConfig(config *api.MasterConfig) ValidationResults {
 		validationResults.AddErrors(urlErrs...)
 	}
 
+	switch {
+	case config.ControllerLeaseTTL > 300,
+		config.ControllerLeaseTTL < -1,
+		config.ControllerLeaseTTL > 0 && config.ControllerLeaseTTL < 10:
+		validationResults.AddErrors(fielderrors.NewFieldInvalid("controllerLeaseTTL", config.ControllerLeaseTTL, "TTL must be -1 (disabled), 0 (default), or between 10 and 300 seconds"))
+	}
+
+	validationResults.AddErrors(ValidateDisabledFeatures(config.DisabledFeatures, "disabledFeatures")...)
+
 	if config.AssetConfig != nil {
 		validationResults.AddErrors(ValidateAssetConfig(config.AssetConfig).Prefix("assetConfig")...)
 		colocated := config.AssetConfig.ServingInfo.BindAddress == config.ServingInfo.BindAddress
@@ -86,6 +95,11 @@ func ValidateMasterConfig(config *api.MasterConfig) ValidationResults {
 
 	if config.DNSConfig != nil {
 		validationResults.AddErrors(ValidateHostPort(config.DNSConfig.BindAddress, "bindAddress").Prefix("dnsConfig")...)
+		switch config.DNSConfig.BindNetwork {
+		case "tcp", "tcp4", "tcp6":
+		default:
+			validationResults.AddErrors(fielderrors.NewFieldInvalid("dnsConfig.bindNetwork", config.DNSConfig.BindNetwork, "must be 'tcp', 'tcp4', or 'tcp6'"))
+		}
 	}
 
 	if config.EtcdConfig != nil {
@@ -297,8 +311,8 @@ func ValidateKubernetesMasterConfig(config *api.KubernetesMasterConfig) Validati
 		validationResults.AddErrors(ValidateSpecifiedIP(config.MasterIP, "masterIP")...)
 	}
 
-	if config.MasterCount < 1 {
-		validationResults.AddErrors(fielderrors.NewFieldInvalid("masterCount", config.MasterCount, "must be a positive integer"))
+	if config.MasterCount == 0 || config.MasterCount < -1 {
+		validationResults.AddErrors(fielderrors.NewFieldInvalid("masterCount", config.MasterCount, "must be a positive integer or -1"))
 	}
 
 	if len(config.ServicesSubnet) > 0 {

@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	kerrors "github.com/GoogleCloudPlatform/kubernetes/pkg/util/errors"
+	kerrors "k8s.io/kubernetes/pkg/util/errors"
 
 	authapi "github.com/openshift/origin/pkg/auth/api"
 	oauthapi "github.com/openshift/origin/pkg/oauth/api"
@@ -38,7 +38,7 @@ const (
 	// WarningHeaderMiscCode is the code for "Miscellaneous warning", which may be displayed to human users
 	WarningHeaderMiscCode = "199"
 	// WarningHeaderOpenShiftSource is the name of the agent adding the warning header
-	WarningHeaderOpenShiftSource = "OpenShift"
+	WarningHeaderOpenShiftSource = "Origin"
 
 	warningHeaderCodeIndex  = 1
 	warningHeaderAgentIndex = 2

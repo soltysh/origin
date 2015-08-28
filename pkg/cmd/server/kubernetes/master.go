@@ -9,25 +9,25 @@ import (
 	"github.com/emicklei/go-restful"
 	"github.com/golang/glog"
 
-	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/client"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/client/record"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/cloudprovider/nodecontroller"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/controller"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/master"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/namespace"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/resourcequota"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/service"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/volume"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/volume/host_path"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/volume/nfs"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/volumeclaimbinder"
-	"github.com/GoogleCloudPlatform/kubernetes/plugin/pkg/scheduler"
-	_ "github.com/GoogleCloudPlatform/kubernetes/plugin/pkg/scheduler/algorithmprovider"
-	schedulerapi "github.com/GoogleCloudPlatform/kubernetes/plugin/pkg/scheduler/api"
-	latestschedulerapi "github.com/GoogleCloudPlatform/kubernetes/plugin/pkg/scheduler/api/latest"
-	"github.com/GoogleCloudPlatform/kubernetes/plugin/pkg/scheduler/factory"
+	kapi "k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/client"
+	"k8s.io/kubernetes/pkg/client/record"
+	endpointcontroller "k8s.io/kubernetes/pkg/controller/endpoint"
+	namespacecontroller "k8s.io/kubernetes/pkg/controller/namespace"
+	nodecontroller "k8s.io/kubernetes/pkg/controller/node"
+	volumeclaimbinder "k8s.io/kubernetes/pkg/controller/persistentvolume"
+	replicationcontroller "k8s.io/kubernetes/pkg/controller/replication"
+	resourcequotacontroller "k8s.io/kubernetes/pkg/controller/resourcequota"
+	"k8s.io/kubernetes/pkg/master"
+	"k8s.io/kubernetes/pkg/util"
+	"k8s.io/kubernetes/pkg/volume"
+	"k8s.io/kubernetes/pkg/volume/host_path"
+	"k8s.io/kubernetes/pkg/volume/nfs"
+	"k8s.io/kubernetes/plugin/pkg/scheduler"
+	_ "k8s.io/kubernetes/plugin/pkg/scheduler/algorithmprovider"
+	schedulerapi "k8s.io/kubernetes/plugin/pkg/scheduler/api"
+	latestschedulerapi "k8s.io/kubernetes/plugin/pkg/scheduler/api/latest"
+	"k8s.io/kubernetes/plugin/pkg/scheduler/factory"
 )
 
 const (
@@ -57,7 +57,7 @@ func (c *MasterConfig) InstallAPI(container *restful.Container) []string {
 
 // RunNamespaceController starts the Kubernetes Namespace Manager
 func (c *MasterConfig) RunNamespaceController() {
-	namespaceController := namespace.NewNamespaceManager(c.KubeClient, c.ControllerManager.NamespaceSyncPeriod)
+	namespaceController := namespacecontroller.NewNamespaceController(c.KubeClient, c.ControllerManager.NamespaceSyncPeriod)
 	namespaceController.Run()
 	glog.Infof("Started Kubernetes Namespace Manager")
 }
@@ -70,24 +70,23 @@ func (c *MasterConfig) RunPersistentVolumeClaimBinder() {
 }
 
 func (c *MasterConfig) RunPersistentVolumeClaimRecycler(recyclerImageName string) {
+	// VolumeConfig contains defaults that can be overridden
+	volumeConfig := volume.NewVolumeConfig()
 
-	hostPathRecycler := &volume.RecyclableVolumeConfig{
-		ImageName: recyclerImageName,
-		Command:   []string{"/usr/share/openshift/scripts/volumes/recycler.sh"},
-		Args:      []string{"/scrub"},
-		Timeout:   int64(60),
-	}
+	defaultScrubPod := volumeConfig.PersistentVolumeRecyclerDefaultScrubPod
+	defaultScrubPod.Spec.Containers[0].Image = recyclerImageName
+	defaultScrubPod.Spec.Containers[0].Command = []string{"/usr/share/openshift/scripts/volumes/recycler.sh"}
+	defaultScrubPod.Spec.Containers[0].Args = []string{"/scrub"}
 
-	nfsRecycler := &volume.RecyclableVolumeConfig{
-		ImageName: recyclerImageName,
-		Command:   []string{"/usr/share/openshift/scripts/volumes/recycler.sh"},
-		Args:      []string{"/scrub"},
-		Timeout:   int64(300),
-	}
+	volumeConfig.PersistentVolumeRecyclerDefaultScrubPod = defaultScrubPod
+	volumeConfig.PersistentVolumeRecyclerMinTimeoutNfs = 300
+	volumeConfig.PersistentVolumeRecyclerTimeoutIncrementNfs = 30
+	volumeConfig.PersistentVolumeRecyclerMinTimeoutHostPath = 120
+	volumeConfig.PersistentVolumeRecyclerTimeoutIncrementHostPath = 30
 
 	allPlugins := []volume.VolumePlugin{}
-	allPlugins = append(allPlugins, host_path.ProbeVolumePlugins(hostPathRecycler)...)
-	allPlugins = append(allPlugins, nfs.ProbeVolumePlugins(nfsRecycler)...)
+	allPlugins = append(allPlugins, host_path.ProbeVolumePlugins(volumeConfig)...)
+	allPlugins = append(allPlugins, nfs.ProbeVolumePlugins(volumeConfig)...)
 
 	recycler, err := volumeclaimbinder.NewPersistentVolumeRecycler(c.KubeClient, c.ControllerManager.PVClaimBinderSyncPeriod, allPlugins)
 	if err != nil {
@@ -99,14 +98,14 @@ func (c *MasterConfig) RunPersistentVolumeClaimRecycler(recyclerImageName string
 
 // RunReplicationController starts the Kubernetes replication controller sync loop
 func (c *MasterConfig) RunReplicationController(client *client.Client) {
-	controllerManager := controller.NewReplicationManager(client, controller.BurstReplicas)
+	controllerManager := replicationcontroller.NewReplicationManager(client, replicationcontroller.BurstReplicas)
 	go controllerManager.Run(c.ControllerManager.ConcurrentRCSyncs, util.NeverStop)
 	glog.Infof("Started Kubernetes Replication Manager")
 }
 
 // RunEndpointController starts the Kubernetes replication controller sync loop
 func (c *MasterConfig) RunEndpointController() {
-	endpoints := service.NewEndpointController(c.KubeClient)
+	endpoints := endpointcontroller.NewEndpointController(c.KubeClient)
 	go endpoints.Run(c.ControllerManager.ConcurrentEndpointSyncs, util.NeverStop)
 
 	glog.Infof("Started Kubernetes Endpoint Controller")
@@ -129,7 +128,7 @@ func (c *MasterConfig) RunScheduler() {
 
 // RunResourceQuotaManager starts the resource quota manager
 func (c *MasterConfig) RunResourceQuotaManager() {
-	resourceQuotaManager := resourcequota.NewResourceQuotaManager(c.KubeClient)
+	resourceQuotaManager := resourcequotacontroller.NewResourceQuotaController(c.KubeClient)
 	resourceQuotaManager.Run(c.ControllerManager.ResourceQuotaSyncPeriod)
 }
 
@@ -139,7 +138,6 @@ func (c *MasterConfig) RunNodeController() {
 	controller := nodecontroller.NewNodeController(
 		c.CloudProvider,
 		c.KubeClient,
-		s.RegisterRetryCount,
 		s.PodEvictionTimeout,
 
 		nodecontroller.NewPodEvictor(util.NewTokenBucketRateLimiter(s.DeletingPodsQps, s.DeletingPodsBurst)),
@@ -151,6 +149,7 @@ func (c *MasterConfig) RunNodeController() {
 		(*net.IPNet)(&s.ClusterCIDR),
 		s.AllocateNodeCIDRs,
 	)
+
 	controller.Run(s.NodeSyncPeriod)
 
 	glog.Infof("Started Kubernetes Node Controller")
@@ -160,7 +159,8 @@ func (c *MasterConfig) createSchedulerConfig() (*scheduler.Config, error) {
 	var policy schedulerapi.Policy
 	var configData []byte
 
-	configFactory := factory.NewConfigFactory(c.KubeClient)
+	// TODO make the rate limiter configurable
+	configFactory := factory.NewConfigFactory(c.KubeClient, util.NewTokenBucketRateLimiter(15.0, 20))
 	if _, err := os.Stat(c.Options.SchedulerConfigFile); err == nil {
 		configData, err = ioutil.ReadFile(c.Options.SchedulerConfigFile)
 		if err != nil {

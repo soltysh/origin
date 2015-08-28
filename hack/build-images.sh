@@ -40,11 +40,13 @@ tar xzf "${OS_IMAGE_RELEASE_TAR}" -C "${imagedir}"
 cp -f "${imagedir}/openshift" images/origin/bin
 cp -f "${imagedir}/openshift" images/router/haproxy/bin
 cp -f "${imagedir}/openshift" images/ipfailover/keepalived/bin
+cp -f "${imagedir}/openshift" images/router/f5/bin
 
 # Copy image binaries to the appropriate locations.
 cp -f "${imagedir}/pod" images/pod/bin
 cp -f "${imagedir}/hello-openshift" examples/hello-openshift/bin
 cp -f "${imagedir}/deployment"      examples/deployment/bin
+cp -f "${imagedir}/gitserver"       examples/gitserver/bin
 cp -f "${imagedir}/dockerregistry"  images/dockerregistry/bin
 
 # builds an image and tags it two ways - with latest, and with the release tag
@@ -59,6 +61,7 @@ image openshift/origin-pod                   images/pod
 # images that depend on openshift/origin-base
 image openshift/origin                       images/origin
 image openshift/origin-haproxy-router        images/router/haproxy
+image openshift/origin-f5-router             images/router/f5
 image openshift/origin-keepalived-ipfailover images/ipfailover/keepalived
 image openshift/origin-docker-registry       images/dockerregistry
 # images that depend on openshift/origin
@@ -68,7 +71,6 @@ image openshift/origin-gitserver             examples/gitserver
 image openshift/origin-sti-builder           images/builder/docker/sti-builder
 # unpublished images
 image openshift/origin-custom-docker-builder images/builder/docker/custom-docker-builder
-image openshift/sti-image-builder            images/builder/docker/sti-image-builder
 
 # extra images (not part of infrastructure)
 image openshift/hello-openshift              examples/hello-openshift
