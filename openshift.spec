@@ -318,12 +318,6 @@ install -p -m 644 rel-eng/completions/bash/* %{buildroot}/etc/bash_completion.d/
 /etc/bash_completion.d/*
 %dir %config(noreplace) /etc/origin
 
-%pre
-# If /etc/openshift exists symlink it to /etc/origin
-if [ -d "%{_sysconfdir}/openshift" ]; then
-  ln -s %{_sysconfdir}/openshift %{_sysconfdir}/origin
-fi
-
 %files master
 %defattr(-,root,root,-)
 %{_unitdir}/%{name}-master.service
@@ -437,12 +431,6 @@ fi
 %{_sharedstatedir}/origin
 /etc/bash_completion.d/*
 %dir %config(noreplace) %{_sysconfdir}/origin
-
-%pre -n atomic-enterprise
-# If /etc/openshift exists symlink it to /etc/origin
-if [ -d "%{_sysconfdir}/openshift" ]; then
-  ln -s %{_sysconfdir}/openshift %{_sysconfdir}/origin
-fi
 
 %files -n atomic-enterprise-master
 %defattr(-,root,root,-)
