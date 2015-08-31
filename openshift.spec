@@ -48,7 +48,7 @@ Requires(postun): systemd
 Summary:        OpenShift Node
 Requires:       %{name} = %{version}-%{release}
 Requires:       docker-io >= 1.6.2
-Requires:       tuned-profiles-%{name}-node
+Requires:       tuned-profiles-openshift-node
 Requires:       util-linux
 Requires:       socat
 Requires:       nfs-utils
@@ -59,12 +59,12 @@ Requires(postun): systemd
 %description node
 %{summary}
 
-%package -n tuned-profiles-%{name}-node
+%package -n tuned-profiles-openshift-node
 Summary:        Tuned profiles for OpenShift Node hosts
 Requires:       tuned >= 2.3
 Requires:       %{name} = %{version}-%{release}
 
-%description -n tuned-profiles-%{name}-node
+%description -n tuned-profiles-openshift-node
 %{summary}
 
 %package clients
@@ -98,81 +98,6 @@ Requires:         ethtool
 
 %description sdn-ovs
 %{summary}
-
-
-# ====
-%package -n atomic-enterprise
-Summary:         Open Source Platform as a Service by Red Hat
-
-
-%description -n atomic-enterprise
-%{summary}
-
-
-%package -n atomic-enterprise-master
-Summary:        Atomic Enterprise Master
-Requires:       atomic-enterprise = %{version}-%{release}
-Requires(post): systemd
-Requires(preun): systemd
-Requires(postun): systemd
-
-%description -n atomic-enterprise-master
-%{summary}
-
-%package -n atomic-enterprise-node
-Summary:        Origin Node
-Requires:       atomic-enterprise = %{version}-%{release}
-Requires:       docker-io >= 1.6.2
-Requires:       tuned-profiles-atomic-enterprise-node
-Requires:       util-linux
-Requires:       socat
-Requires:       nfs-utils
-Requires(post): systemd
-Requires(preun): systemd
-Requires(postun): systemd
-
-%description -n atomic-enterprise-node
-%{summary}
-
-%package -n tuned-profiles-atomic-enterprise-node
-Summary:        Tuned profiles for Origin Node hosts
-Requires:       tuned >= 2.3
-Requires:       atomic-enterprise = %{version}-%{release}
-
-%description -n tuned-profiles-atomic-enterprise-node
-%{summary}
-
-%package -n atomic-enterprise-clients
-Summary:      Origin Client binaries for Linux, Mac OSX, and Windows
-BuildRequires: golang-pkg-windows-386
-
-%description -n atomic-enterprise-clients
-%{summary}
-
-%package -n atomic-enterprise-dockerregistry
-Summary:        Docker Registry v2 for Origin
-Requires:       atomic-enterprise = %{version}-%{release}
-
-%description -n atomic-enterprise-dockerregistry
-%{summary}
-
-%package -n atomic-enterprise-pod
-Summary:        Origin Pod
-Requires:       atomic-enterprise = %{version}-%{release}
-
-%description -n atomic-enterprise-pod
-%{summary}
-
-%package -n atomic-enterprise-sdn-ovs
-Summary:          Origin SDN Plugin for Open vSwitch
-Requires:         openvswitch >= 2.3.1
-Requires:         atomic-enterprise-node = %{version}-%{release}
-Requires:         bridge-utils
-Requires:         ethtool
-
-%description -n atomic-enterprise-sdn-ovs
-%{summary}
-# ========
 
 %prep
 %setup -q
@@ -216,6 +141,7 @@ popd
 %install
 
 install -d %{buildroot}%{_bindir}
+install -d %{buildroot}%{_datadir}/%{name}/{linux,macosx,windows}
 
 # Install linux components
 for bin in openshift dockerregistry
@@ -223,70 +149,49 @@ do
   echo "+++ INSTALLING ${bin}"
   install -p -m 755 _build/bin/${bin} %{buildroot}%{_bindir}/${bin}
 done
-
-# openshift == atomic-enterprise
-install -p -m 755 _build/bin/openshift _build/bin/atomic-enterprise
-install -p -m 755 _build/bin/atomic-enterprise %{buildroot}%{_bindir}/atomic-enterprise
-
 # Install 'openshift' as client executable for windows and mac
-for pkgname in openshift atomic-enterprise
-do
-  install -d %{buildroot}%{_datadir}/${pkgname}/{linux,macosx,windows}
-  install -p -m 755 _build/bin/openshift %{buildroot}%{_datadir}/${pkgname}/linux/oc
-  install -p -m 755 _build/bin/darwin_amd64/openshift %{buildroot}%{_datadir}/${pkgname}/macosx/oc
-  install -p -m 755 _build/bin/windows_386/openshift.exe %{buildroot}%{_datadir}/${pkgname}/windows/oc.exe
-done
-
+install -p -m 755 _build/bin/openshift %{buildroot}%{_datadir}/%{name}/linux/oc
+install -p -m 755 _build/bin/darwin_amd64/openshift %{buildroot}%{_datadir}/%{name}/macosx/oc
+install -p -m 755 _build/bin/windows_386/openshift.exe %{buildroot}%{_datadir}/%{name}/windows/oc.exe
 #Install openshift pod
 install -p -m 755 images/pod/pod %{buildroot}%{_bindir}/
 
+install -d -m 0755 %{buildroot}/etc/%{name}/{master,node}
 install -d -m 0755 %{buildroot}%{_unitdir}
+install -m 0644 -t %{buildroot}%{_unitdir} rel-eng/openshift-master.service
+install -m 0644 -t %{buildroot}%{_unitdir} rel-eng/openshift-node.service
 
 mkdir -p %{buildroot}%{_sysconfdir}/sysconfig
-
-ln -s %{_bindir}/%{name} %{buildroot}%{_bindir}/oc
-ln -s %{_bindir}/%{name} %{buildroot}%{_bindir}/oadm
-ln -s %{_bindir}/%{name} %{buildroot}%{_bindir}/kubectl
-
-for pkgname in openshift atomic-enterprise
-do
-
-  install -d -m 0755 %{buildroot}/etc/${pkgname}/{master,node}
-  install -m 0644  rel-eng/${pkgname}-master.service %{buildroot}%{_unitdir}/${pkgname}-master.service
-  install -m 0644  rel-eng/${pkgname}-node.service %{buildroot}%{_unitdir}/${pkgname}-node.service
-
-  install -m 0644 rel-eng/${pkgname}-master.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/${pkgname}-master
-  install -m 0644 rel-eng/${pkgname}-node.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/${pkgname}-node
-  install -d -m 0755 %{buildroot}%{_prefix}/lib/tuned/${pkgname}-node-{guest,host}
-  install -m 0644 tuned/%{name}-node-guest/tuned.conf %{buildroot}%{_prefix}/lib/tuned/${pkgname}-node-guest/tuned.conf
-  install -m 0644 tuned/%{name}-node-host/tuned.conf %{buildroot}%{_prefix}/lib/tuned/${pkgname}-node-host/tuned.conf
-  install -d -m 0755 %{buildroot}%{_mandir}/man7
-  install -m 0644 tuned/man/tuned-profiles-%{name}-node.7 %{buildroot}%{_mandir}/man7/tuned-profiles-${pkgname}-node.7
-
-done
+install -m 0644 rel-eng/openshift-master.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/openshift-master
+install -m 0644 rel-eng/openshift-node.sysconfig %{buildroot}%{_sysconfdir}/sysconfig/openshift-node
 
 mkdir -p %{buildroot}%{_sharedstatedir}/%{name}
-mkdir -p %{buildroot}%{_sharedstatedir}/origin
 
+ln -s %{_bindir}/openshift %{buildroot}%{_bindir}/oc
+ln -s %{_bindir}/openshift %{buildroot}%{_bindir}/oadm
+ln -s %{_bindir}/openshift %{buildroot}%{_bindir}/kubectl
+
+install -d -m 0755 %{buildroot}%{_prefix}/lib/tuned/openshift-node-{guest,host}
+install -m 0644 tuned/openshift-node-guest/tuned.conf %{buildroot}%{_prefix}/lib/tuned/openshift-node-guest/
+install -m 0644 tuned/openshift-node-host/tuned.conf %{buildroot}%{_prefix}/lib/tuned/openshift-node-host/
+install -d -m 0755 %{buildroot}%{_mandir}/man7
+install -m 0644 tuned/man/tuned-profiles-openshift-node.7 %{buildroot}%{_mandir}/man7/tuned-profiles-openshift-node.7
 
 # Install sdn scripts
 install -d -m 0755 %{buildroot}%{kube_plugin_path}
+pushd _thirdpartyhacks/src/%{sdn_import_path}/ovssubnet/controller/kube/bin
+   install -p -m 755 %{name}-ovs-subnet %{buildroot}%{kube_plugin_path}/openshift-ovs-subnet
+   install -p -m 755 %{name}-sdn-kube-subnet-setup.sh %{buildroot}%{_bindir}/openshift-sdn-kube-subnet-setup.sh
+popd
+pushd _thirdpartyhacks/src/%{sdn_import_path}/ovssubnet/controller/multitenant/bin
+   install -p -m 755 %{name}-ovs-multitenant %{buildroot}%{_bindir}/openshift-ovs-multitenant
+   install -p -m 755 %{name}-sdn-multitenant-setup.sh %{buildroot}%{_bindir}/openshift-sdn-multitenant-setup.sh
+popd
 install -d -m 0755 %{buildroot}%{_prefix}/lib/systemd/system/docker.service.d
 install -p -m 0644 rel-eng/docker-sdn-ovs.conf %{buildroot}%{_prefix}/lib/systemd/system/docker.service.d/
-for pkgname in openshift atomic-enterprise
-do
+install -d -m 0755 %{buildroot}%{_prefix}/lib/systemd/system/openshift-node.service.d
+install -p -m 0644 rel-eng/openshift-sdn-ovs.conf %{buildroot}%{_prefix}/lib/systemd/system/openshift-node.service.d/
 
-  pushd _thirdpartyhacks/src/%{sdn_import_path}/ovssubnet/controller/kube/bin
-     install -p -m 755 %{name}-ovs-subnet %{buildroot}%{kube_plugin_path}/${pkgname}-ovs-subnet
-     install -p -m 755 %{name}-sdn-kube-subnet-setup.sh %{buildroot}%{_bindir}/${pkgname}-sdn-kube-subnet-setup.sh
-  popd
-  pushd _thirdpartyhacks/src/%{sdn_import_path}/ovssubnet/controller/multitenant/bin
-     install -p -m 755 %{name}-ovs-multitenant %{buildroot}%{_bindir}/${pkgname}-ovs-multitenant
-     install -p -m 755 %{name}-sdn-multitenant-setup.sh %{buildroot}%{_bindir}/${pkgname}-sdn-multitenant-setup.sh
-  popd
-  install -d -m 0755 %{buildroot}%{_prefix}/lib/systemd/system/${pkgname}-node.service.d
-  install -p -m 0644 rel-eng/%{name}-sdn-ovs.conf %{buildroot}%{_prefix}/lib/systemd/system/${pkgname}-node.service.d/${pkgname}-sdn-ovs.conf
-done
 
 # Install bash completions
 install -d -m 755 %{buildroot}/etc/bash_completion.d/
@@ -304,8 +209,8 @@ install -p -m 644 rel-eng/completions/bash/* %{buildroot}/etc/bash_completion.d/
 
 %files master
 %defattr(-,root,root,-)
-%{_unitdir}/%{name}-master.service
-%config(noreplace) %{_sysconfdir}/sysconfig/%{name}-master
+%{_unitdir}/openshift-master.service
+%config(noreplace) %{_sysconfdir}/sysconfig/openshift-master
 %config(noreplace) /etc/%{name}/master
 
 %post master
@@ -317,10 +222,11 @@ install -p -m 644 rel-eng/completions/bash/* %{buildroot}/etc/bash_completion.d/
 %postun master
 %systemd_postun
 
+
 %files node
 %defattr(-,root,root,-)
-%{_unitdir}/%{name}-node.service
-%config(noreplace) %{_sysconfdir}/sysconfig/%{name}-node
+%{_unitdir}/openshift-node.service
+%config(noreplace) %{_sysconfdir}/sysconfig/openshift-node
 %config(noreplace) /etc/%{name}/node
 
 %post node
@@ -334,11 +240,11 @@ install -p -m 644 rel-eng/completions/bash/* %{buildroot}/etc/bash_completion.d/
 
 %files sdn-ovs
 %defattr(-,root,root,-)
-%{_bindir}/%{name}-sdn-kube-subnet-setup.sh
+%{_bindir}/openshift-sdn-kube-subnet-setup.sh
 %{_bindir}/%{name}-ovs-multitenant
 %{_bindir}/%{name}-sdn-multitenant-setup.sh
-%{kube_plugin_path}/%{name}-ovs-subnet
-%{_prefix}/lib/systemd/system/%{name}-node.service.d/%{name}-sdn-ovs.conf
+%{kube_plugin_path}/openshift-ovs-subnet
+%{_prefix}/lib/systemd/system/openshift-node.service.d/openshift-sdn-ovs.conf
 %{_prefix}/lib/systemd/system/docker.service.d/docker-sdn-ovs.conf
 
 %files -n tuned-profiles-openshift-node
@@ -375,95 +281,6 @@ fi
 %files pod
 %defattr(-,root,root,-)
 %{_bindir}/pod
-
-# ===
-%files -n atomic-enterprise
-%defattr(-,root,root,-)
-%doc README.md LICENSE
-%{_bindir}/openshift
-%{_bindir}/atomic-enterprise
-%{_bindir}/oc
-%{_bindir}/oadm
-%{_bindir}/kubectl
-%{_sharedstatedir}/origin
-/etc/bash_completion.d/*
-
-%files -n atomic-enterprise-master
-%defattr(-,root,root,-)
-%{_unitdir}/atomic-enterprise-master.service
-%config(noreplace) %{_sysconfdir}/sysconfig/atomic-enterprise-master
-%config(noreplace) /etc/%{name}/master
-
-%post -n atomic-enterprise-master
-%systemd_post %{basename:atomic-enterprise-master.service}
-
-%preun -n atomic-enterprise-master
-%systemd_preun %{basename:atomic-enterprise-master.service}
-
-%postun -n atomic-enterprise-master
-%systemd_postun
-
-%files -n atomic-enterprise-node
-%defattr(-,root,root,-)
-%{_unitdir}/atomic-enterprise-node.service
-%config(noreplace) %{_sysconfdir}/sysconfig/atomic-enterprise-node
-%config(noreplace) /etc/%{name}/node
-
-%post -n atomic-enterprise-node
-%systemd_post %{basename:atomic-enterprise-node.service}
-
-%preun -n atomic-enterprise-node
-%systemd_preun %{basename:atomic-enterprise-node.service}
-
-%postun -n atomic-enterprise-node
-%systemd_postun
-
-
-%files -n atomic-enterprise-sdn-ovs
-%defattr(-,root,root,-)
-%{_bindir}/atomic-enterprise-sdn-kube-subnet-setup.sh
-%{_bindir}/atomic-enterprise-ovs-multitenant
-%{_bindir}/atomic-enterprise-sdn-multitenant-setup.sh
-%{kube_plugin_path}/atomic-enterprise-ovs-subnet
-%{_prefix}/lib/systemd/system/atomic-enterprise-node.service.d/atomic-enterprise-sdn-ovs.conf
-%{_prefix}/lib/systemd/system/docker.service.d/docker-sdn-ovs.conf
-
-%files -n tuned-profiles-atomic-enterprise-node
-%defattr(-,root,root,-)
-%{_prefix}/lib/tuned/atomic-enterprise-node-host
-%{_prefix}/lib/tuned/atomic-enterprise-node-guest
-%{_mandir}/man7/tuned-profiles-atomic-enterprise-node.7*
-
-%post -n tuned-profiles-atomic-enterprise-node
-recommended=`/usr/sbin/tuned-adm recommend`
-if [[ "${recommended}" =~ guest ]] ; then
-  /usr/sbin/tuned-adm profile atomic-enterprise-node-guest > /dev/null 2>&1
-else
-  /usr/sbin/tuned-adm profile atomic-enterprise-node-host > /dev/null 2>&1
-fi
-
-%preun -n tuned-profiles-atomic-enterprise-node
-# reset the tuned profile to the recommended profile
-# $1 = 0 when we're being removed > 0 during upgrades
-if [ "$1" = 0 ]; then
-  recommended=`/usr/sbin/tuned-adm recommend`
-  /usr/sbin/tuned-adm profile $recommended > /dev/null 2>&1
-fi
-
-%files -n atomic-enterprise-clients
-%{_datadir}/atomic-enterprise/linux/oc
-%{_datadir}/atomic-enterprise/macosx/oc
-%{_datadir}/atomic-enterprise/windows/oc.exe
-
-%files -n atomic-enterprise-dockerregistry
-%defattr(-,root,root,-)
-%{_bindir}/dockerregistry
-
-%files -n atomic-enterprise-pod
-%defattr(-,root,root,-)
-%{_bindir}/pod
-
-# ===
 
 %changelog
 * Wed Aug 12 2015 Steve Milner <smilner@redhat.com> 0.2-7
@@ -518,3 +335,5 @@ fi
 * Mon Sep 15 2014 Adam Miller <admiller@redhat.com> - 0-0.0.2.git2647df5
 - Update to latest upstream.
 
+* Thu Aug 14 2014 Adam Miller <admiller@redhat.com> - 0-0.0.1.gitc3839b8
+- First package
