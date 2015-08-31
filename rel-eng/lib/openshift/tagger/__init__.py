@@ -1,5 +1,5 @@
 """
-Code for tagging Origin packages
+Code for tagging Openshift v3 packages
 """
 
 import os
@@ -21,9 +21,9 @@ from tito.tagger import VersionTagger
 from tito.exception import TitoException
 
 
-class OriginTagger(VersionTagger):
+class OpenshiftTagger(VersionTagger):
   """
-  Origin custom tagger. This tagger has several deviations from normal
+  OpenShift v3 custom tagger. This tagger has several deviations from normal
   the normal tito tagger.
 
   ** Rather than versions being tagged %{name}-%{version}-%{release} they're
@@ -52,7 +52,7 @@ class OriginTagger(VersionTagger):
 
 
   Used For:
-    - Origin, probably not much else
+    - Openshift v3, probably not much else
   """
 
   def _tag_release(self):
@@ -202,7 +202,7 @@ class OriginTagger(VersionTagger):
 
 # This won't do anything until tito supports configuring the forcedversion tagger
 # See https://github.com/dgoodwin/tito/pull/163
-class OriginForceVersionTagger(OriginTagger):
+class OpenshiftForceVersionTagger(OpenshiftTagger):
     """
     Tagger which forcibly updates the spec file to a version provided on the
     command line by the --use-version option.
