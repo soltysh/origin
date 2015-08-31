@@ -284,8 +284,8 @@ mkdir -p %{buildroot}%{_sharedstatedir}/origin
 
 # Install sdn scripts
 install -d -m 0755 %{buildroot}%{kube_plugin_path}
-install -d -m 0755 %{buildroot}%{_unitdir}/docker.service.d
-install -p -m 0644 rel-eng/docker-sdn-ovs.conf %{buildroot}%{_unitdir}/docker.service.d/
+install -d -m 0755 %{buildroot}%{_prefix}/lib/systemd/system/docker.service.d
+install -p -m 0644 rel-eng/docker-sdn-ovs.conf %{buildroot}%{_prefix}/lib/systemd/system/docker.service.d/
 for pkgname in openshift atomic-enterprise
 do
 
@@ -297,8 +297,8 @@ do
      install -p -m 755 %{name}-ovs-multitenant %{buildroot}%{_bindir}/${pkgname}-ovs-multitenant
      install -p -m 755 %{name}-sdn-multitenant-setup.sh %{buildroot}%{_bindir}/${pkgname}-sdn-multitenant-setup.sh
   popd
-  install -d -m 0755 %{buildroot}%{_unitdir}/${pkgname}-node.service.d
-  install -p -m 0644 rel-eng/%{name}-sdn-ovs.conf %{buildroot}%{_unitdir}/${pkgname}-node.service.d/${pkgname}-sdn-ovs.conf
+  install -d -m 0755 %{buildroot}%{_prefix}/lib/systemd/system/${pkgname}-node.service.d
+  install -p -m 0644 rel-eng/%{name}-sdn-ovs.conf %{buildroot}%{_prefix}/lib/systemd/system/${pkgname}-node.service.d/${pkgname}-sdn-ovs.conf
 done
 
 # Install bash completions
@@ -381,8 +381,8 @@ install -p -m 644 rel-eng/completions/bash/* %{buildroot}/etc/bash_completion.d/
 %{_bindir}/%{name}-ovs-multitenant
 %{_bindir}/%{name}-sdn-multitenant-setup.sh
 %{kube_plugin_path}/%{name}-ovs-subnet
-%{_unitdir}/%{name}-node.service.d/%{name}-sdn-ovs.conf
-%{_unitdir}/docker.service.d/docker-sdn-ovs.conf
+%{_prefix}/lib/systemd/system/%{name}-node.service.d/%{name}-sdn-ovs.conf
+%{_prefix}/lib/systemd/system/docker.service.d/docker-sdn-ovs.conf
 
 %files -n tuned-profiles-openshift-node
 %defattr(-,root,root,-)
@@ -535,8 +535,8 @@ fi
 %{_bindir}/atomic-enterprise-ovs-multitenant
 %{_bindir}/atomic-enterprise-sdn-multitenant-setup.sh
 %{kube_plugin_path}/atomic-enterprise-ovs-subnet
-%{_unitdir}/atomic-enterprise-node.service.d/atomic-enterprise-sdn-ovs.conf
-%{_unitdir}/docker.service.d/docker-sdn-ovs.conf
+%{_prefix}/lib/systemd/system/atomic-enterprise-node.service.d/atomic-enterprise-sdn-ovs.conf
+%{_prefix}/lib/systemd/system/docker.service.d/docker-sdn-ovs.conf
 
 %files -n tuned-profiles-atomic-enterprise-node
 %defattr(-,root,root,-)
