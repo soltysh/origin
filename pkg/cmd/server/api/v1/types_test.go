@@ -50,6 +50,10 @@ volumeDirectory: ""
 	expectedSerializedMasterConfig = `apiLevels: null
 apiVersion: v1
 assetConfig:
+  extensionDevelopment: false
+  extensionScripts: null
+  extensionStylesheets: null
+  extensions: null
   logoutURL: ""
   masterPublicURL: ""
   publicURL: ""
@@ -162,7 +166,7 @@ oauthConfig:
     name: ""
     provider:
       apiVersion: v1
-      attributes:
+      attributeMappings:
         email: null
         id: null
         name: null
@@ -178,9 +182,11 @@ oauthConfig:
     name: ""
     provider:
       apiVersion: v1
+      challengeURL: ""
       clientCA: ""
       headers: null
       kind: RequestHeaderIdentityProvider
+      loginURL: ""
   - challenge: false
     login: false
     name: ""

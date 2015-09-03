@@ -343,6 +343,22 @@ type AssetConfig struct {
 
 	// MasterPublicURL is how the web console can access the OpenShift api server
 	MasterPublicURL string
+
+	// ExtensionScripts are file paths on the asset server files to load as scripts when the Web
+	// Console loads
+	ExtensionScripts []string
+
+	// ExtensionStylesheets are file paths on the asset server files to load as stylesheets when
+	// the Web Console loads
+	ExtensionStylesheets []string
+
+	// Extensions are files to serve from the asset server filesystem under a subcontext
+	Extensions []AssetExtensionsConfig
+
+	// ExtensionDevelopment when true tells the asset server to reload extension scripts and
+	// stylesheets for every request rather than only at startup. It lets you develop extensions
+	// without having to restart the server for every change.
+	ExtensionDevelopment bool
 }
 
 type OAuthConfig struct {
@@ -476,11 +492,11 @@ type LDAPPasswordIdentityProvider struct {
 	// CA is the optional trusted certificate authority bundle to use when making requests to the server
 	// If empty, the default system roots are used
 	CA string
-	// Attributes maps LDAP attributes to identities
-	Attributes LDAPAttributes
+	// LDAPEntryAttributeMapping maps LDAP attributes to identities
+	LDAPEntryAttributeMapping LDAPAttributeMapping
 }
 
-type LDAPAttributes struct {
+type LDAPAttributeMapping struct {
 	// ID is the list of attributes whose values should be used as the user ID. Required.
 	// LDAP standard identity attribute is "dn"
 	ID []string
@@ -498,6 +514,22 @@ type LDAPAttributes struct {
 
 type RequestHeaderIdentityProvider struct {
 	api.TypeMeta
+
+	// LoginURL is a URL to redirect unauthenticated /authorize requests to
+	// Unauthenticated requests from OAuth clients which expect interactive logins will be redirected here
+	// ${url} is replaced with the current URL, escaped to be safe in a query parameter
+	//   https://www.example.com/sso-login?then=${url}
+	// ${query} is replaced with the current query string
+	//   https://www.example.com/auth-proxy/oauth/authorize?${query}
+	LoginURL string
+
+	// ChallengeURL is a URL to redirect unauthenticated /authorize requests to
+	// Unauthenticated requests from OAuth clients which expect WWW-Authenticate challenges will be redirected here
+	// ${url} is replaced with the current URL, escaped to be safe in a query parameter
+	//   https://www.example.com/sso-login?then=${url}
+	// ${query} is replaced with the current query string
+	//   https://www.example.com/auth-proxy/oauth/authorize?${query}
+	ChallengeURL string
 
 	// ClientCA is a file with the trusted signer certs.  If empty, no request verification is done, and any direct request to the OAuth server can impersonate any identity from this provider, merely by setting a request header.
 	ClientCA string
@@ -653,4 +685,17 @@ type PodManifestConfig struct {
 	// FileCheckIntervalSeconds is the interval in seconds for checking the manifest file(s) for new data
 	// The interval needs to be a positive value
 	FileCheckIntervalSeconds int64
+}
+
+type AssetExtensionsConfig struct {
+	// Name is the path under /<context>/extensions/ to serve files from SourceDirectory
+	Name string
+	// SourceDirectory is a directory on the asset server to serve files under Name in the Web
+	// Console. It may have nested folders.
+	SourceDirectory string
+	// HTML5Mode determines whether to redirect to the root index.html when a file is not found.
+	// This is needed for apps that use the HTML5 history API like AngularJS apps with HTML5
+	// mode enabled. If HTML5Mode is true, also rewrite the base element in index.html with the
+	// Web Console's context root. Defaults to false.
+	HTML5Mode bool
 }

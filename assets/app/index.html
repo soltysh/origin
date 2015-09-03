@@ -22,6 +22,7 @@
     <!-- build:css(.tmp) styles/main.css -->
     <link rel="stylesheet" type="text/css" href="styles/main.css">
     <!-- endbuild -->
+    <link rel="stylesheet" type="text/css" href="styles/extensions.css">
      <style type="text/css">
 
 
@@ -38,10 +39,10 @@
           <span class="icon-bar"></span>
         </button>
         <a class="navbar-brand" id="openshift-logo" href="./">
-          <img src="images/logo-enterprise-thin.svg" alt="OpenShift Origin">
+          <div class="brand-logo"></div>
         </a>
       </div>
-      <div class="collapse navbar-collapse navbar-collapse-1">
+      <div class="collapse navbar-collapse navbar-collapse-1">  
         <ul class="nav navbar-nav navbar-utility">
           <li>
             <a href="http://docs.openshift.com/enterprise/3.0/welcome/index.html">
@@ -85,7 +86,7 @@
     <!-- endbuild -->
 
     <!-- build:js(.) scripts/vendor.js -->
-    <script src="bower_components/es5-dom-shim/__COMPILE/a.js"></script>    
+    <script src="bower_components/es5-dom-shim/__COMPILE/a.js"></script>
     <!-- bower:js -->
     <script src="bower_components/jquery/dist/jquery.js"></script>
     <script src="bower_components/angular/angular.js"></script>
@@ -128,7 +129,9 @@
         <script src="scripts/services/userstore.js"></script>
         <script src="scripts/services/auth.js"></script>
         <script src="scripts/services/data.js"></script>
+        <script src="scripts/services/project.js"></script>
         <script src="scripts/services/applicationGenerator.js"></script>
+        <script src="scripts/services/alertMessage.js"></script>
         <script src="scripts/services/login.js"></script>
         <script src="scripts/services/logout.js"></script>
         <script src="scripts/services/navigate.js"></script>
@@ -157,6 +160,7 @@
         <script src="scripts/controllers/catalog/images.js"></script>
         <script src="scripts/controllers/create.js"></script>
         <script src="scripts/controllers/createProject.js"></script>
+        <script src="scripts/controllers/modals/deleteModal.js"></script>
         <script src="scripts/directives/date.js"></script>
         <script src="scripts/directives/oscFileInput.js"></script>
         <script src="scripts/directives/oscFormSection.js"></script>
@@ -180,5 +184,9 @@
         <script src="scripts/filters/util.js"></script>
         <script src="scripts/extensions/javaLink.js"></script>
         <!-- endbuild -->
+
+    <!-- Load any extensions last. -->
+    <script src="scripts/extensions.js"></script>
+
 </body>
 </html>
