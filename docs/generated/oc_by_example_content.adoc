@@ -541,6 +541,9 @@ Create a new build configuration
 
   // Create a build config from a remote repository using its beta2 branch
   $ openshift cli new-build https://github.com/openshift/ruby-hello-world#beta2
+
+  // Create a build config from a remote repository and add custom environment variables into resulting image
+  $ openshift cli new-build https://github.com/openshift/ruby-hello-world --env=RACK_ENV=development
 ----
 ====
 
@@ -766,6 +769,9 @@ Create a new secret based on a key file or on files within a directory
 
   // Create a new secret named my-secret with keys for each file in the folder "bar"
   $ openshift cli secrets new my-secret path/to/bar
+
+  // Create a new .dockercfg secret named my-secret
+  $ openshift cli secrets new my-secret path/to/.dockercfg
 ----
 ====
 

@@ -34,6 +34,10 @@ type NodeConfig struct {
 	// If you're describing a set of static nodes to the master, this value must match one of the values in the list
 	NodeName string
 
+	// Node may have multiple IPs, specify the IP to use for pod traffic routing
+	// If not specified, network parse/lookup on the nodeName is performed and the first non-loopback address is used
+	NodeIP string
+
 	// ServingInfo describes how to start serving
 	ServingInfo ServingInfo
 
@@ -381,6 +385,15 @@ type OAuthConfig struct {
 	SessionConfig *SessionConfig
 
 	TokenConfig TokenConfig
+
+	// Templates allow you to customize pages like the login page.
+	Templates *OAuthTemplates
+}
+
+type OAuthTemplates struct {
+	// Login is a path to a file containing a go template used to render the login page.
+	// If unspecified, the default login page is used.
+	Login string
 }
 
 type ServiceAccountConfig struct {

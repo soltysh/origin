@@ -48,7 +48,7 @@ Requires(postun): systemd
 Summary:        OpenShift Node
 Requires:       %{name} = %{version}-%{release}
 Requires:       docker-io >= 1.6.2
-Requires:       tuned-profiles-openshift-node
+Requires:       tuned-profiles-openshift-node = %{version}-%{release}
 Requires:       util-linux
 Requires:       socat
 Requires:       nfs-utils
@@ -62,7 +62,6 @@ Requires(postun): systemd
 %package -n tuned-profiles-openshift-node
 Summary:        Tuned profiles for OpenShift Node hosts
 Requires:       tuned >= 2.3
-Requires:       %{name} = %{version}-%{release}
 
 %description -n tuned-profiles-openshift-node
 %{summary}

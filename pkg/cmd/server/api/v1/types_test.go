@@ -29,6 +29,7 @@ masterKubeConfig: ""
 networkConfig:
   mtu: 0
   networkPluginName: ""
+nodeIP: ""
 nodeName: ""
 podManifestConfig:
   fileCheckIntervalSeconds: 0
@@ -230,6 +231,7 @@ oauthConfig:
     sessionMaxAgeSeconds: 0
     sessionName: ""
     sessionSecretsFile: ""
+  templates: null
   tokenConfig:
     accessTokenMaxAgeSeconds: 0
     authorizeTokenMaxAgeSeconds: 0
