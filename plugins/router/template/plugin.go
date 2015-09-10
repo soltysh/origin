@@ -2,13 +2,15 @@ package templaterouter
 
 import (
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"text/template"
 
-	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	ktypes "github.com/GoogleCloudPlatform/kubernetes/pkg/types"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/watch"
 	"github.com/golang/glog"
+	kapi "k8s.io/kubernetes/pkg/api"
+	ktypes "k8s.io/kubernetes/pkg/types"
+	"k8s.io/kubernetes/pkg/util"
+	"k8s.io/kubernetes/pkg/watch"
 
 	routeapi "github.com/openshift/origin/pkg/route/api"
 )
@@ -16,21 +18,28 @@ import (
 // TemplatePlugin implements the router.Plugin interface to provide
 // a template based, backend-agnostic router.
 type TemplatePlugin struct {
-	Router router
+	Router routerInterface
+}
+
+func newDefaultTemplatePlugin(router routerInterface) *TemplatePlugin {
+	return &TemplatePlugin{
+		Router: router,
+	}
 }
 
 type TemplatePluginConfig struct {
+	WorkingDir         string
 	TemplatePath       string
 	ReloadScriptPath   string
 	DefaultCertificate string
 	StatsPort          int
 	StatsUsername      string
 	StatsPassword      string
-	PeerService        ktypes.NamespacedName
+	PeerService        *ktypes.NamespacedName
 }
 
-// router controls the interaction of the plugin with the underlying router implementation
-type router interface {
+// routerInterface controls the interaction of the plugin with the underlying router implementation
+type routerInterface interface {
 	// Mutative operations in this interface do not return errors.
 	// The only error state for these methods is when an unknown
 	// frontend key is used; all call sites make certain the frontend
@@ -47,45 +56,56 @@ type router interface {
 	// DeleteEndpoints deletes the endpoints for the frontend with the given id.
 	DeleteEndpoints(id string)
 
-	// AddRoute adds a route for the given id.  Returns true if a change was made
-	// and the state should be stored with Commit().
-	AddRoute(id string, route *routeapi.Route) bool
+	// AddRoute adds a route for the given id and the calculated host.  Returns true if a
+	// change was made and the state should be stored with Commit().
+	AddRoute(id string, route *routeapi.Route, host string) bool
 	// RemoveRoute removes the given route for the given id.
 	RemoveRoute(id string, route *routeapi.Route)
-
+	// Reduce the list of routes to only these namespaces
+	FilterNamespaces(namespaces util.StringSet)
 	// Commit refreshes the backend and persists the router state.
 	Commit() error
 }
 
 // NewTemplatePlugin creates a new TemplatePlugin.
 func NewTemplatePlugin(cfg TemplatePluginConfig) (*TemplatePlugin, error) {
-	masterTemplate := template.Must(template.New("config").ParseFiles(cfg.TemplatePath))
+	templateBaseName := filepath.Base(cfg.TemplatePath)
+	masterTemplate, err := template.New("config").ParseFiles(cfg.TemplatePath)
+	if err != nil {
+		return nil, err
+	}
 	templates := map[string]*template.Template{}
 
 	for _, template := range masterTemplate.Templates() {
-		if template == masterTemplate {
+		if template.Name() == templateBaseName {
 			continue
 		}
 
 		templates[template.Name()] = template
 	}
 
+	peerKey := ""
+	if cfg.PeerService != nil {
+		peerKey = peerEndpointsKey(*cfg.PeerService)
+	}
+
 	templateRouterCfg := templateRouterCfg{
+		dir:                cfg.WorkingDir,
 		templates:          templates,
 		reloadScriptPath:   cfg.ReloadScriptPath,
 		defaultCertificate: cfg.DefaultCertificate,
 		statsUser:          cfg.StatsUsername,
 		statsPassword:      cfg.StatsPassword,
 		statsPort:          cfg.StatsPort,
-		peerEndpointsKey:   peerEndpointsKey(cfg.PeerService),
+		peerEndpointsKey:   peerKey,
 	}
 	router, err := newTemplateRouter(templateRouterCfg)
-	return &TemplatePlugin{router}, err
+	return newDefaultTemplatePlugin(router), err
 }
 
 // HandleEndpoints processes watch events on the Endpoints resource.
 func (p *TemplatePlugin) HandleEndpoints(eventType watch.EventType, endpoints *kapi.Endpoints) error {
-	key := endpointsKey(*endpoints)
+	key := endpointsKey(endpoints)
 
 	glog.V(4).Infof("Processing %d Endpoints for Name: %v (%v)", len(endpoints.Subsets), endpoints.Name, eventType)
 
@@ -101,7 +121,7 @@ func (p *TemplatePlugin) HandleEndpoints(eventType watch.EventType, endpoints *k
 	case watch.Added, watch.Modified:
 		glog.V(4).Infof("Modifying endpoints for %s", key)
 		routerEndpoints := createRouterEndpoints(endpoints)
-		key := endpointsKey(*endpoints)
+		key := endpointsKey(endpoints)
 		commit := p.Router.AddEndpoints(key, routerEndpoints)
 		if commit {
 			return p.Router.Commit()
@@ -112,17 +132,23 @@ func (p *TemplatePlugin) HandleEndpoints(eventType watch.EventType, endpoints *k
 }
 
 // HandleRoute processes watch events on the Route resource.
+// TODO: this function can probably be collapsed with the router itself, as a function that
+//   determines which component needs to be recalculated (which template) and then does so
+//   on demand.
 func (p *TemplatePlugin) HandleRoute(eventType watch.EventType, route *routeapi.Route) error {
-	key := routeKey(*route)
-	if _, ok := p.Router.FindServiceUnit(key); !ok {
-		glog.V(4).Infof("Creating new frontend for key: %v", key)
-		p.Router.CreateServiceUnit(key)
-	}
+	key := routeKey(route)
+
+	host := route.Spec.Host
 
 	switch eventType {
 	case watch.Added, watch.Modified:
+		if _, ok := p.Router.FindServiceUnit(key); !ok {
+			glog.V(4).Infof("Creating new frontend for key: %v", key)
+			p.Router.CreateServiceUnit(key)
+		}
+
 		glog.V(4).Infof("Modifying routes for %s", key)
-		commit := p.Router.AddRoute(key, route)
+		commit := p.Router.AddRoute(key, route, host)
 		if commit {
 			return p.Router.Commit()
 		}
@@ -134,13 +160,20 @@ func (p *TemplatePlugin) HandleRoute(eventType watch.EventType, route *routeapi.
 	return nil
 }
 
+// HandleAllowedNamespaces limits the scope of valid routes to only those that match
+// the provided namespace list.
+func (p *TemplatePlugin) HandleNamespaces(namespaces util.StringSet) error {
+	p.Router.FilterNamespaces(namespaces)
+	return p.Router.Commit()
+}
+
 // routeKey returns the internal router key to use for the given Route.
-func routeKey(route routeapi.Route) string {
-	return fmt.Sprintf("%s/%s", route.Namespace, route.ServiceName)
+func routeKey(route *routeapi.Route) string {
+	return fmt.Sprintf("%s/%s", route.Namespace, route.Spec.To.Name)
 }
 
 // endpointsKey returns the internal router key to use for the given Endpoints.
-func endpointsKey(endpoints kapi.Endpoints) string {
+func endpointsKey(endpoints *kapi.Endpoints) string {
 	return fmt.Sprintf("%s/%s", endpoints.Namespace, endpoints.Name)
 }
 

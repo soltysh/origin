@@ -9,11 +9,11 @@ import (
 	"path"
 	"strings"
 
-	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	kvalidation "github.com/GoogleCloudPlatform/kubernetes/pkg/api/validation"
-	kclient "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
-	cmdutil "github.com/GoogleCloudPlatform/kubernetes/pkg/kubectl/cmd/util"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
+	kapi "k8s.io/kubernetes/pkg/api"
+	kvalidation "k8s.io/kubernetes/pkg/api/validation"
+	kclient "k8s.io/kubernetes/pkg/client"
+	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/util"
 
 	"github.com/openshift/origin/pkg/cmd/util/clientcmd"
 	"github.com/spf13/cobra"
@@ -30,14 +30,17 @@ with a name and file path, in which case the given name will be used. Specifying
 using with all valid keys in that directory.
 `
 
-	newExamples = `  // Create a new secret named my-secret with a key named ssh-privatekey
+	newExample = `  // Create a new secret named my-secret with a key named ssh-privatekey
   $ %[1]s my-secret ~/.ssh/ssh-privatekey
 
   // Create a new secret named my-secret with keys named ssh-privatekey and ssh-publickey instead of the names of the keys on disk
   $ %[1]s my-secret ssh-privatekey=~/.ssh/id_rsa ssh-publickey=~/.ssh/id_rsa.pub
 
   // Create a new secret named my-secret with keys for each file in the folder "bar"
-  $ %[1]s my-secret path/to/bar`
+  $ %[1]s my-secret path/to/bar
+
+  // Create a new .dockercfg secret named my-secret
+  $ %[1]s my-secret path/to/.dockercfg`
 )
 
 type CreateSecretOptions struct {
@@ -70,7 +73,7 @@ func NewCmdCreateSecret(name, fullName string, f *clientcmd.Factory, out io.Writ
 		Use:     fmt.Sprintf("%s NAME [KEY=]SOURCE ...", name),
 		Short:   "Create a new secret based on a key file or on files within a directory",
 		Long:    newLong,
-		Example: fmt.Sprintf(newExamples, fullName),
+		Example: fmt.Sprintf(newExample, fullName),
 		Run: func(c *cobra.Command, args []string) {
 			if err := options.Complete(args, f); err != nil {
 				cmdutil.CheckErr(cmdutil.UsageError(c, err.Error()))

@@ -3,9 +3,9 @@ package generator
 import (
 	"fmt"
 
-	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/kubectl"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/runtime"
+	kapi "k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/kubectl"
+	"k8s.io/kubernetes/pkg/runtime"
 
 	"github.com/openshift/origin/pkg/route/api"
 )
@@ -51,8 +51,12 @@ func (RouteGenerator) Generate(params map[string]string) (runtime.Object, error)
 			Name:   name,
 			Labels: labels,
 		},
-		Host:        params["hostname"],
-		ServiceName: params["default-name"],
+		Spec: api.RouteSpec{
+			Host: params["hostname"],
+			To: kapi.ObjectReference{
+				Name: params["default-name"],
+			},
+		},
 	}, nil
 }
 

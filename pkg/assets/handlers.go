@@ -13,7 +13,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
+	"k8s.io/kubernetes/pkg/util"
 )
 
 var varyHeaderRegexp = regexp.MustCompile("\\s*,\\s*")
@@ -146,18 +146,31 @@ window.OPENSHIFT_CONFIG = {
   api: {
     openshift: {
       hostPort: "{{ .MasterAddr | js}}",
-      prefix: "{{ .MasterPrefix | js}}"
+      prefixes: {
+        "v1beta3": "{{ .MasterLegacyPrefix | js}}",
+        "*":       "{{ .MasterPrefix | js}}"
+      },
+      resources: {
+{{range $i,$e := .MasterResources}}{{if $i}},
+{{end}}        "{{$e | js}}": true{{end}}
+      }
     },
     k8s: {
       hostPort: "{{ .KubernetesAddr | js}}",
-      prefix: "{{ .KubernetesPrefix | js}}"
+      prefixes: {
+      	"*": "{{ .KubernetesPrefix | js}}"
+      },
+      resources: {
+{{range $i,$e := .KubernetesResources}}{{if $i}},
+{{end}}        "{{$e | js}}": true{{end}}
+      }
     }
   },
   auth: {
   	oauth_authorize_uri: "{{ .OAuthAuthorizeURI | js}}",
   	oauth_redirect_base: "{{ .OAuthRedirectBase | js}}",
   	oauth_client_id: "{{ .OAuthClientID | js}}",
-  	logout_uri: "{{ .LogoutURI | js}}",
+  	logout_uri: "{{ .LogoutURI | js}}"
   }
 };
 `))
@@ -167,11 +180,17 @@ type WebConsoleConfig struct {
 	MasterAddr string
 	// MasterPrefix is the OpenShift API context root
 	MasterPrefix string
+	// MasterLegacyPrefix is the OpenShift API context root for legacy API versions
+	MasterLegacyPrefix string
+	// MasterResources holds resource names for the OpenShift API
+	MasterResources []string
 	// KubernetesAddr is the host:port the UI should call the kubernetes API on. Scheme is derived from the scheme the UI is served on, so they must be the same.
 	// TODO this is probably unneeded since everything goes through the openshift master's proxy
 	KubernetesAddr string
 	// KubernetesPrefix is the Kubernetes API context root
 	KubernetesPrefix string
+	// KubernetesResources holds resource names for the Kubernetes API
+	KubernetesResources []string
 	// OAuthAuthorizeURI is the OAuth2 endpoint to use to request an API token. It must support request_type=token.
 	OAuthAuthorizeURI string
 	// OAuthRedirectBase is the base URI of the web console. It must be a valid redirect_uri for the OAuthClientID
@@ -182,16 +201,19 @@ type WebConsoleConfig struct {
 	LogoutURI string
 }
 
-func GeneratedConfigHandler(config WebConsoleConfig, h http.Handler) http.Handler {
+func GeneratedConfigHandler(config WebConsoleConfig) (http.Handler, error) {
+	var buffer bytes.Buffer
+	if err := configTemplate.Execute(&buffer, config); err != nil {
+		return nil, err
+	}
+	content := buffer.Bytes()
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.TrimPrefix(r.URL.Path, "/") == "config.js" {
-			w.Header().Add("Cache-Control", "no-cache, no-store")
-			w.Header().Add("Content-Type", "application/json")
-			if err := configTemplate.Execute(w, config); err != nil {
-				util.HandleError(fmt.Errorf("unable to render config template: %v", err))
-			}
-			return
+		w.Header().Add("Cache-Control", "no-cache, no-store")
+		w.Header().Add("Content-Type", "application/javascript")
+		_, err := w.Write(content)
+		if err != nil {
+			util.HandleError(fmt.Errorf("Error serving Web Console configuration: %v", err))
 		}
-		h.ServeHTTP(w, r)
-	})
+	}), nil
 }

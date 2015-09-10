@@ -8,13 +8,17 @@
  * Controller of the openshiftConsole
  */
 angular.module('openshiftConsole')
-  .controller('BuildsController', function ($scope, DataService, $filter, LabelFilter, Logger) {
+  .controller('BuildsController', function ($scope, DataService, $filter, LabelFilter, Logger, $location, $anchorScroll) {
     $scope.builds = {};
     $scope.unfilteredBuilds = {};
     $scope.buildConfigs = {};
     $scope.labelSuggestions = {};
     $scope.alerts = $scope.alerts || {};
     $scope.emptyMessage = "Loading...";
+    // Expand builds on load if there's a hash that might link to a hidden build.
+    $scope.expanded = !!$location.hash();
+    // Show only 3 builds for each build config by default.
+    $scope.defaultBuildLimit = 3;
 
     $scope.buildsByBuildConfig = {};
 
@@ -48,6 +52,12 @@ angular.module('openshiftConsole')
         if (buildStatus === "Complete" || buildStatus === "Failed" || buildStatus === "Error" || buildStatus === "Cancelled"){
           delete $scope.buildConfigBuildsInProgress[buildConfigName][buildName];
         }
+      }
+
+      // Scroll to anchor on first load if location has a hash.
+      if (!action && $location.hash()) {
+        // Wait until the digest loop completes.
+        setTimeout($anchorScroll, 10);
       }
 
       Logger.log("builds (subscribe)", $scope.unfilteredBuilds);
@@ -100,7 +110,7 @@ angular.module('openshiftConsole')
     $scope.startBuild = function(buildConfigName) {
       var req = {
         kind: "BuildRequest",
-        apiVersion: "v1beta3",
+        apiVersion: "v1",
         metadata: {
           name: buildConfigName
         }
@@ -119,7 +129,31 @@ angular.module('openshiftConsole')
             {
               type: "error",
               message: "An error occurred while starting the build.",
-              details: getErrorDetails(result)
+              details: $filter('getErrorDetails')(result)
+            }
+          ];
+        }
+      );
+    };
+
+    $scope.cancelBuild = function(build, buildConfigName) {
+      var canceledBuild = angular.copy(build);
+      canceledBuild.status.cancelled = true;
+      DataService.update("builds", canceledBuild.metadata.name, canceledBuild, $scope).then(
+        function() {
+            $scope.alerts = [
+            {
+              type: "success",
+              message: "Cancelling build " + build.metadata.name + " of " + buildConfigName + ".",
+            }
+          ];
+        },
+        function(result) {
+          $scope.alerts = [
+            {
+              type: "error",
+              message: "An error occurred cancelling the build.",
+              details: $filter('getErrorDetails')(result)
             }
           ];
         }
@@ -130,7 +164,7 @@ angular.module('openshiftConsole')
     $scope.cloneBuild = function(buildName) {
       var req = {
         kind: "BuildRequest",
-        apiVersion: "v1beta3",
+        apiVersion: "v1",
         metadata: {
           name: buildName
         }
@@ -149,7 +183,7 @@ angular.module('openshiftConsole')
             {
               type: "error",
               message: "An error occurred while rerunning the build.",
-              details: getErrorDetails(result)
+              details: $filter('getErrorDetails')(result)
             }
           ];
         }
@@ -164,20 +198,6 @@ angular.module('openshiftConsole')
         updateFilterWarning();
       });
     });
-
-    function getErrorDetails(result) {
-      var error = result.data || {};
-      if (error.message) {
-        return error.message;
-      }
-
-      var status = result.status || error.status;
-      if (status) {
-        return "Status: " + status;
-      }
-
-      return "";
-    }
 
     $scope.$on('$destroy', function(){
       DataService.unwatchAll(watches);

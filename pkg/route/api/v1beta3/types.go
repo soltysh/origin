@@ -1,7 +1,7 @@
 package v1beta3
 
 import (
-	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api/v1beta3"
+	kapi "k8s.io/kubernetes/pkg/api/v1beta3"
 )
 
 // Route encapsulates the inputs needed to connect an alias to endpoints.
@@ -25,9 +25,8 @@ type RouteSpec struct {
 	// Ports are the ports that the user wishes to expose.
 	//Ports []RoutePort `json:"ports,omitempty"`
 
-	// Optional: Alias/DNS that points to the service
-	// Can be host or host:port
-	// host and port are combined to follow the net/url URL struct
+	// Host is an alias/DNS that points to the service. Optional
+	// Must follow DNS952 subdomain conventions.
 	Host string `json:"host"`
 	// Optional: Path that the router watches for, to route traffic for to the service
 	Path string `json:"path,omitempty"`
@@ -55,8 +54,10 @@ type RoutePort struct {
 }
 */
 
-// RouteStatus describes the current state of this route.
-type RouteStatus struct{}
+// RouteStatus provides relevant info about the status of a route, including which routers
+// acknowledge it.
+type RouteStatus struct {
+}
 
 // RouterShard has information of a routing shard and is used to
 // generate host names and routing table entries when a routing shard is

@@ -2,12 +2,14 @@ package validation
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 
-	kapi "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/api/validation"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util"
-	"github.com/GoogleCloudPlatform/kubernetes/pkg/util/fielderrors"
+	kapi "k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/validation"
+	"k8s.io/kubernetes/pkg/util"
+	"k8s.io/kubernetes/pkg/util/fielderrors"
 
 	deployapi "github.com/openshift/origin/pkg/deploy/api"
 )
@@ -87,7 +89,7 @@ func validateDeploymentStrategy(strategy *deployapi.DeploymentStrategy) fielderr
 		}
 	}
 
-	// TODO: validate resource requirements (prereq: https://github.com/GoogleCloudPlatform/kubernetes/pull/7059)
+	// TODO: validate resource requirements (prereq: https://github.com/kubernetes/kubernetes/pull/7059)
 
 	return errs
 }
@@ -186,6 +188,17 @@ func validateRollingParams(params *deployapi.RollingDeploymentStrategyParams) fi
 			errs = append(errs, fielderrors.NewFieldInvalid("updatePercent", *params.UpdatePercent, "must be between 1 and 100 or between -1 and -100 (inclusive)"))
 		}
 	}
+	// Most of this is lifted from the upstream experimental deployments API. We
+	// can't reuse it directly yet, but no use reinventing the logic, so copy-
+	// pasted and adapted here.
+	errs = append(errs, ValidatePositiveIntOrPercent(params.MaxUnavailable, "maxUnavailable")...)
+	errs = append(errs, ValidatePositiveIntOrPercent(params.MaxSurge, "maxSurge")...)
+	if getIntOrPercentValue(params.MaxUnavailable) == 0 && getIntOrPercentValue(params.MaxSurge) == 0 {
+		// Both MaxSurge and MaxUnavailable cannot be zero.
+		errs = append(errs, fielderrors.NewFieldInvalid("maxUnavailable", params.MaxUnavailable, "cannot be 0 when maxSurge is 0 as well"))
+	}
+	// Validate that MaxUnavailable is not more than 100%.
+	errs = append(errs, IsNotMoreThan100Percent(params.MaxUnavailable, "maxUnavailable")...)
 
 	if params.Pre != nil {
 		errs = append(errs, validateLifecycleHook(params.Pre).Prefix("pre")...)
@@ -250,3 +263,60 @@ func validateImageChangeParams(params *deployapi.DeploymentTriggerImageChangePar
 
 	return errs
 }
+
+func ValidatePositiveIntOrPercent(intOrPercent util.IntOrString, fieldName string) fielderrors.ValidationErrorList {
+	allErrs := fielderrors.ValidationErrorList{}
+	if intOrPercent.Kind == util.IntstrString {
+		if !IsValidPercent(intOrPercent.StrVal) {
+			allErrs = append(allErrs, fielderrors.NewFieldInvalid(fieldName, intOrPercent, "value should be int(5) or percentage(5%)"))
+		}
+
+	} else if intOrPercent.Kind == util.IntstrInt {
+		allErrs = append(allErrs, ValidatePositiveField(int64(intOrPercent.IntVal), fieldName)...)
+	}
+	return allErrs
+}
+
+func getPercentValue(intOrStringValue util.IntOrString) (int, bool) {
+	if intOrStringValue.Kind != util.IntstrString || !IsValidPercent(intOrStringValue.StrVal) {
+		return 0, false
+	}
+	value, _ := strconv.Atoi(intOrStringValue.StrVal[:len(intOrStringValue.StrVal)-1])
+	return value, true
+}
+
+func getIntOrPercentValue(intOrStringValue util.IntOrString) int {
+	value, isPercent := getPercentValue(intOrStringValue)
+	if isPercent {
+		return value
+	}
+	return intOrStringValue.IntVal
+}
+
+func IsNotMoreThan100Percent(intOrStringValue util.IntOrString, fieldName string) fielderrors.ValidationErrorList {
+	allErrs := fielderrors.ValidationErrorList{}
+	value, isPercent := getPercentValue(intOrStringValue)
+	if !isPercent || value <= 100 {
+		return nil
+	}
+	allErrs = append(allErrs, fielderrors.NewFieldInvalid(fieldName, intOrStringValue, "should not be more than 100%"))
+	return allErrs
+}
+
+func ValidatePositiveField(value int64, fieldName string) fielderrors.ValidationErrorList {
+	allErrs := fielderrors.ValidationErrorList{}
+	if value < 0 {
+		allErrs = append(allErrs, fielderrors.NewFieldInvalid(fieldName, value, isNegativeErrorMsg))
+	}
+	return allErrs
+}
+
+const percentFmt string = "[0-9]+%"
+
+var percentRegexp = regexp.MustCompile("^" + percentFmt + "$")
+
+func IsValidPercent(percent string) bool {
+	return percentRegexp.MatchString(percent)
+}
+
+const isNegativeErrorMsg string = `must be non-negative`
