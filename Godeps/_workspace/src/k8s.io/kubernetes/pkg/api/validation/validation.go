@@ -2143,7 +2143,45 @@ func ValidateSecurityContextConstraints(scc *api.SecurityContextConstraints) fie
 		//good types
 	default:
 		msg := fmt.Sprintf("invalid strategy type.  Valid values are %s, %s", api.SELinuxStrategyMustRunAs, api.SELinuxStrategyRunAsAny)
-		allErrs = append(allErrs, field.Invalid(seLinuxContextPath.Child("type"), scc.RunAsUser.Type, msg))
+		allErrs = append(allErrs, field.Invalid(seLinuxContextPath.Child("type"), scc.SELinuxContext.Type, msg))
+	}
+
+	// ensure the fsgroup strat has a valid type
+	if scc.FSGroup.Type != api.FSGroupStrategyMustRunAs && scc.FSGroup.Type != api.FSGroupStrategyRunAsAny {
+		allErrs = append(allErrs, field.NotSupported(field.NewPath("fsGroup", "type"), scc.FSGroup.Type,
+			[]string{string(api.FSGroupStrategyMustRunAs), string(api.FSGroupStrategyRunAsAny)}))
+	}
+	allErrs = append(allErrs, validateIDRanges(scc.FSGroup.Ranges, field.NewPath("fsGroup"))...)
+
+	if scc.SupplementalGroups.Type != api.SupplementalGroupsStrategyMustRunAs &&
+		scc.SupplementalGroups.Type != api.SupplementalGroupsStrategyRunAsAny {
+		allErrs = append(allErrs, field.NotSupported(field.NewPath("supplementalGroups", "type"), scc.SupplementalGroups.Type,
+			[]string{string(api.SupplementalGroupsStrategyMustRunAs), string(api.SupplementalGroupsStrategyRunAsAny)}))
+	}
+	allErrs = append(allErrs, validateIDRanges(scc.SupplementalGroups.Ranges, field.NewPath("supplementalGroups"))...)
+
+	return allErrs
+}
+
+// validateIDRanges ensures the range is valid.
+func validateIDRanges(rng []api.IDRange, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	for i, r := range rng {
+		// if 0 <= Min <= Max then we do not need to validate max.  It is always greater than or
+		// equal to 0 and Min.
+		minPath := fldPath.Child("ranges").Index(i).Child("min")
+		maxPath := fldPath.Child("ranges").Index(i).Child("max")
+
+		if r.Min < 0 {
+			allErrs = append(allErrs, field.Invalid(minPath, r.Min, "min cannot be negative"))
+		}
+		if r.Max < 0 {
+			allErrs = append(allErrs, field.Invalid(maxPath, r.Max, "max cannot be negative"))
+		}
+		if r.Min > r.Max {
+			allErrs = append(allErrs, field.Invalid(minPath, r, "min cannot be greater than max"))
+		}
 	}
 
 	return allErrs
