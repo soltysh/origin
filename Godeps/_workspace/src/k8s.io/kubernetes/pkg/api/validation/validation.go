@@ -2119,6 +2119,12 @@ func ValidateLoadBalancerStatus(status *api.LoadBalancerStatus, fldPath *field.P
 func ValidateSecurityContextConstraints(scc *api.SecurityContextConstraints) field.ErrorList {
 	allErrs := ValidateObjectMeta(&scc.ObjectMeta, false, ValidateSecurityContextConstraintsName, field.NewPath("metadata"))
 
+	if scc.Priority != nil {
+		if *scc.Priority < 0 {
+			allErrs = append(allErrs, field.Invalid(field.NewPath("priority"), *scc.Priority, "priority cannot be negative"))
+		}
+	}
+
 	// ensure the user strat has a valid type
 	runAsUserPath := field.NewPath("runAsUser")
 	switch scc.RunAsUser.Type {
