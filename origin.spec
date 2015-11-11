@@ -268,6 +268,7 @@ if [ -d "%{_sysconfdir}/openshift" ]; then
   fi
 fi
 if [ -d "%{_sharedstatedir}/openshift" ]; then
+  [ "$(ls -A %{_sharedstatedir}/openshift)" ] || touch %{_sharedstatedir}/openshift/.keepdir
   if ! [ -d "%{_sharedstatedir}/origin"  ]; then
     ln -s %{_sharedstatedir}/openshift %{_sharedstatedir}/origin
   fi
