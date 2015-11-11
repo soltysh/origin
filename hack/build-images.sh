@@ -48,6 +48,7 @@ cp -pf "${imagedir}/hello-openshift" examples/hello-openshift/bin
 cp -pf "${imagedir}/deployment"      examples/deployment/bin
 cp -pf "${imagedir}/gitserver"       examples/gitserver/bin
 cp -pf "${imagedir}/dockerregistry"  images/dockerregistry/bin
+cp -pf "${imagedir}/recycle"         images/recycler/bin
 
 # builds an image and tags it two ways - with latest, and with the release tag
 function image {
