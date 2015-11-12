@@ -48,6 +48,7 @@ cp -pf "${imagedir}/hello-openshift" examples/hello-openshift/bin
 cp -pf "${imagedir}/deployment"      examples/deployment/bin
 cp -pf "${imagedir}/gitserver"       examples/gitserver/bin
 cp -pf "${imagedir}/dockerregistry"  images/dockerregistry/bin
+cp -pf "${imagedir}/recycle"         images/recycler/bin
 
 # builds an image and tags it two ways - with latest, and with the release tag
 function image {
@@ -65,6 +66,7 @@ image openshift/origin-keepalived-ipfailover images/ipfailover/keepalived
 image openshift/origin-docker-registry       images/dockerregistry
 # images that depend on openshift/origin
 image openshift/origin-deployer              images/deployer
+image openshift/origin-recycler              images/recycler
 image openshift/origin-docker-builder        images/builder/docker/docker-builder
 image openshift/origin-gitserver             examples/gitserver
 image openshift/origin-sti-builder           images/builder/docker/sti-builder
