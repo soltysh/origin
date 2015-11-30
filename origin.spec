@@ -406,6 +406,9 @@ fi
 
 
 %changelog
+* Mon Nov 30 2015 Brenton Leanhardt <bleanhar@redhat.com> 3.1.0.4-1.git.10
+- BZ1281726 - NFS Recycler Fails in containerized Kubernetes
+  Regression
 * Tue Nov 10 2015 Scott Dodson <sdodson@redhat.com> 3.1.0.4
 - change OS bootstrap SCCs to use RunAsAny for fsgroup and sup groups
   (pweil@redhat.com)
