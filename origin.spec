@@ -406,6 +406,8 @@ fi
 
 
 %changelog
+* Mon Nov 30 2015 Brenton Leanhardt <bleanhar@redhat.com> 3.1.0.4-1.git.14
+- CVE-2015-7528 OpenShift: pod log location must validate container if provided
 * Mon Nov 30 2015 Brenton Leanhardt <bleanhar@redhat.com> 3.1.0.4-1.git.10
 - BZ1281726 - NFS Recycler Fails in containerized Kubernetes
   Regression
