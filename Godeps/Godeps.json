@@ -946,7 +946,7 @@
 			"Rev": "0c2979aeaa5b573e60d3ddffe5ce8dca8df309bd"
 		},
 		{
-			"ImportPath": "google.golang.org/api/container/v1beta1",
+			"ImportPath": "google.golang.org/api/container/v1",
 			"Rev": "0c2979aeaa5b573e60d3ddffe5ce8dca8df309bd"
 		},
 		{
