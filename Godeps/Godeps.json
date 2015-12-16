@@ -963,7 +963,7 @@
 		},
 		{
 			"ImportPath": "google.golang.org/grpc",
-			"Rev": "868330046b32ec2d0e37a3d8d8cdacff14f32555"
+			"Rev": "4bd040ce23a624ff9a1d07b0e729ee189bddd51c"
 		},
 		{
 			"ImportPath": "gopkg.in/asn1-ber.v1",
