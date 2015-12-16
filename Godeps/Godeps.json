@@ -972,6 +972,7 @@
 		},
 		{
 			"ImportPath": "gopkg.in/ldap.v2",
+			"Comment": "v2.2",
 			"Rev": "e9a325d64989e2844be629682cb085d2c58eef8d"
 		},
 		{
