@@ -326,7 +326,7 @@ func createPD() (string, error) {
 			return "", fmt.Errorf("Provider does not support volumes")
 		}
 		volumeOptions := &awscloud.VolumeOptions{}
-		volumeOptions.CapacityMB = 10 * 1024
+		volumeOptions.CapacityGB = 10
 		return volumes.CreateVolume(volumeOptions)
 	}
 }
