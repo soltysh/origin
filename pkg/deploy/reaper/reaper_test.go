@@ -41,7 +41,6 @@ func TestStop(t *testing.T) {
 		kc        *ktestclient.Fake
 		expected  []ktestclient.Action
 		kexpected []ktestclient.Action
-		output    string
 		err       bool
 	}{
 		{
@@ -63,8 +62,7 @@ func TestStop(t *testing.T) {
 				ktestclient.NewGetAction("replicationcontrollers", "", "config-1"),
 				ktestclient.NewDeleteAction("replicationcontrollers", "", "config-1"),
 			},
-			output: "config stopped",
-			err:    false,
+			err: false,
 		},
 		{
 			testName:  "stop multiple controllers",
@@ -113,8 +111,7 @@ func TestStop(t *testing.T) {
 				ktestclient.NewGetAction("replicationcontrollers", "", "config-5"),
 				ktestclient.NewDeleteAction("replicationcontrollers", "", "config-5"),
 			},
-			output: "config stopped",
-			err:    false,
+			err: false,
 		},
 		{
 			testName:  "no config, some deployments",
@@ -135,8 +132,7 @@ func TestStop(t *testing.T) {
 				ktestclient.NewGetAction("replicationcontrollers", "", "config-1"),
 				ktestclient.NewDeleteAction("replicationcontrollers", "", "config-1"),
 			},
-			output: "config stopped",
-			err:    false,
+			err: false,
 		},
 		{
 			testName:  "no config, no deployments",
@@ -150,8 +146,7 @@ func TestStop(t *testing.T) {
 			kexpected: []ktestclient.Action{
 				ktestclient.NewListAction("replicationcontrollers", "default", nil, nil),
 			},
-			output: "",
-			err:    true,
+			err: true,
 		},
 		{
 			testName:  "config, no deployments",
@@ -165,14 +160,13 @@ func TestStop(t *testing.T) {
 			kexpected: []ktestclient.Action{
 				ktestclient.NewListAction("replicationcontrollers", "default", nil, nil),
 			},
-			output: "config stopped",
-			err:    false,
+			err: false,
 		},
 	}
 
 	for _, test := range tests {
 		reaper := &DeploymentConfigReaper{oc: test.oc, kc: test.kc, pollInterval: time.Millisecond, timeout: time.Millisecond}
-		out, err := reaper.Stop(test.namespace, test.name, 1*time.Second, nil)
+		err := reaper.Stop(test.namespace, test.name, 1*time.Second, nil)
 
 		if !test.err && err != nil {
 			t.Errorf("%s: unexpected error: %v", test.testName, err)
@@ -206,9 +200,6 @@ func TestStop(t *testing.T) {
 					t.Errorf("%s: unexpected action[%d]: %s, expected %s", test.testName, j, a, e)
 				}
 			}
-		}
-		if out != test.output {
-			t.Errorf("%s: unexpected output %q, expected %q", test.testName, out, test.output)
 		}
 	}
 }

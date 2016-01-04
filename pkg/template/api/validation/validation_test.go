@@ -6,6 +6,7 @@ import (
 	kapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/util/errors"
+	"k8s.io/kubernetes/pkg/util/validation/field"
 
 	"github.com/openshift/origin/pkg/template/api"
 )
@@ -35,10 +36,10 @@ func TestValidateParameter(t *testing.T) {
 
 	for _, test := range tests {
 		param := makeParameter(test.ParameterName, "1")
-		if test.IsValidExpected && len(ValidateParameter(param)) != 0 {
+		if test.IsValidExpected && len(ValidateParameter(param, field.NewPath(""))) != 0 {
 			t.Errorf("Expected zero validation errors on valid parameter name.")
 		}
-		if !test.IsValidExpected && len(ValidateParameter(param)) == 0 {
+		if !test.IsValidExpected && len(ValidateParameter(param, field.NewPath(""))) == 0 {
 			t.Errorf("Expected some validation errors on invalid parameter name.")
 		}
 	}

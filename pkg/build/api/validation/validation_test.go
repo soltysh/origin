@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	kapi "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/util/fielderrors"
+	"k8s.io/kubernetes/pkg/util/validation/field"
 
 	buildapi "github.com/openshift/origin/pkg/build/api"
 )
@@ -116,7 +116,7 @@ func TestValidateBuildUpdate(t *testing.T) {
 	errorCases := map[string]struct {
 		Old    *buildapi.Build
 		Update *buildapi.Build
-		T      fielderrors.ValidationErrorType
+		T      field.ErrorType
 		F      string
 	}{
 		"changed spec": {
@@ -128,7 +128,7 @@ func TestValidateBuildUpdate(t *testing.T) {
 				ObjectMeta: kapi.ObjectMeta{Namespace: kapi.NamespaceDefault, Name: "my-build", ResourceVersion: "1"},
 				Spec:       newNonDefaultParameters(),
 			},
-			T: fielderrors.ValidationErrorTypeInvalid,
+			T: field.ErrorTypeInvalid,
 			F: "spec",
 		},
 		"update from terminal1": {
@@ -142,7 +142,7 @@ func TestValidateBuildUpdate(t *testing.T) {
 				Spec:       newDefaultParameters(),
 				Status:     buildapi.BuildStatus{Phase: buildapi.BuildPhaseRunning},
 			},
-			T: fielderrors.ValidationErrorTypeInvalid,
+			T: field.ErrorTypeInvalid,
 			F: "status.Phase",
 		},
 		"update from terminal2": {
@@ -156,7 +156,7 @@ func TestValidateBuildUpdate(t *testing.T) {
 				Spec:       newDefaultParameters(),
 				Status:     buildapi.BuildStatus{Phase: buildapi.BuildPhaseRunning},
 			},
-			T: fielderrors.ValidationErrorTypeInvalid,
+			T: field.ErrorTypeInvalid,
 			F: "status.Phase",
 		},
 		"update from terminal3": {
@@ -170,7 +170,7 @@ func TestValidateBuildUpdate(t *testing.T) {
 				Spec:       newDefaultParameters(),
 				Status:     buildapi.BuildStatus{Phase: buildapi.BuildPhaseRunning},
 			},
-			T: fielderrors.ValidationErrorTypeInvalid,
+			T: field.ErrorTypeInvalid,
 			F: "status.Phase",
 		},
 		"update from terminal4": {
@@ -184,7 +184,7 @@ func TestValidateBuildUpdate(t *testing.T) {
 				Spec:       newDefaultParameters(),
 				Status:     buildapi.BuildStatus{Phase: buildapi.BuildPhaseRunning},
 			},
-			T: fielderrors.ValidationErrorTypeInvalid,
+			T: field.ErrorTypeInvalid,
 			F: "status.Phase",
 		},
 	}
@@ -196,10 +196,10 @@ func TestValidateBuildUpdate(t *testing.T) {
 			continue
 		}
 		for i := range errs {
-			if errs[i].(*fielderrors.ValidationError).Type != v.T {
+			if errs[i].(*field.Error).Type != v.T {
 				t.Errorf("%s: expected errors to have type %s: %v", k, v.T, errs[i])
 			}
-			if errs[i].(*fielderrors.ValidationError).Field != v.F {
+			if errs[i].(*field.Error).Field != v.F {
 				t.Errorf("%s: expected errors to have field %s: %v", k, v.F, errs[i])
 			}
 		}
@@ -234,8 +234,8 @@ func TestBuildConfigGitSourceWithProxyFailure(t *testing.T) {
 	if len(errors) != 1 {
 		t.Errorf("Expected one error, got %d", len(errors))
 	}
-	err := errors[0].(*fielderrors.ValidationError)
-	if err.Type != fielderrors.ValidationErrorTypeInvalid {
+	err := errors[0].(*field.Error)
+	if err.Type != field.ErrorTypeInvalid {
 		t.Errorf("Expected invalid value validation error, got %q", err.Type)
 	}
 	if err.Detail != "only http:// and https:// GIT protocols are allowed with HTTP or HTTPS proxy set" {
@@ -280,12 +280,12 @@ func TestBuildConfigDockerStrategyImageChangeTrigger(t *testing.T) {
 	case 0:
 		t.Errorf("Expected validation error, got nothing")
 	case 1:
-		err, ok := errors[0].(*fielderrors.ValidationError)
+		err, ok := errors[0].(*field.Error)
 		if !ok {
-			t.Fatalf("Expected error to be fielderrors.ValidationError, got %T", errors[0])
+			t.Fatalf("Expected error to be field.Error, got %T", errors[0])
 		}
-		if err.Type != fielderrors.ValidationErrorTypeRequired {
-			t.Errorf("Expected error to be '%v', got '%v'", fielderrors.ValidationErrorTypeRequired, err.Type)
+		if err.Type != field.ErrorTypeRequired {
+			t.Errorf("Expected error to be '%v', got '%v'", field.ErrorTypeRequired, err.Type)
 		}
 	default:
 		t.Errorf("Expected a single validation error, got %v", errors)
@@ -319,9 +319,9 @@ func TestBuildConfigValidationFailureRequiredName(t *testing.T) {
 	if len(errors) != 1 {
 		t.Fatalf("Unexpected validation errors %v", errors)
 	}
-	err := errors[0].(*fielderrors.ValidationError)
-	if err.Type != fielderrors.ValidationErrorTypeRequired {
-		t.Errorf("Unexpected error type, expected %s, got %s", fielderrors.ValidationErrorTypeRequired, err.Type)
+	err := errors[0].(*field.Error)
+	if err.Type != field.ErrorTypeRequired {
+		t.Errorf("Unexpected error type, expected %s, got %s", field.ErrorTypeRequired, err.Type)
 	}
 	if err.Field != "metadata.name" {
 		t.Errorf("Unexpected field name expected metadata.name, got %s", err.Field)
@@ -333,7 +333,7 @@ func TestBuildConfigImageChangeTriggers(t *testing.T) {
 		name        string
 		triggers    []buildapi.BuildTriggerPolicy
 		expectError bool
-		errorType   fielderrors.ValidationErrorType
+		errorType   field.ErrorType
 	}{
 		{
 			name: "valid default trigger",
@@ -358,7 +358,7 @@ func TestBuildConfigImageChangeTriggers(t *testing.T) {
 				},
 			},
 			expectError: true,
-			errorType:   fielderrors.ValidationErrorTypeInvalid,
+			errorType:   field.ErrorTypeInvalid,
 		},
 		{
 			name: "missing image change struct",
@@ -368,7 +368,7 @@ func TestBuildConfigImageChangeTriggers(t *testing.T) {
 				},
 			},
 			expectError: true,
-			errorType:   fielderrors.ValidationErrorTypeRequired,
+			errorType:   field.ErrorTypeRequired,
 		},
 		{
 			name: "only one default image change trigger",
@@ -407,7 +407,7 @@ func TestBuildConfigImageChangeTriggers(t *testing.T) {
 				},
 			},
 			expectError: true,
-			errorType:   fielderrors.ValidationErrorTypeInvalid,
+			errorType:   field.ErrorTypeInvalid,
 		},
 		{
 			name: "empty reference kind for trigger",
@@ -426,7 +426,7 @@ func TestBuildConfigImageChangeTriggers(t *testing.T) {
 				},
 			},
 			expectError: true,
-			errorType:   fielderrors.ValidationErrorTypeInvalid,
+			errorType:   field.ErrorTypeInvalid,
 		},
 		{
 			name: "duplicate imagestreamtag references",
@@ -451,7 +451,7 @@ func TestBuildConfigImageChangeTriggers(t *testing.T) {
 				},
 			},
 			expectError: true,
-			errorType:   fielderrors.ValidationErrorTypeInvalid,
+			errorType:   field.ErrorTypeInvalid,
 		},
 		{
 			name: "duplicate imagestreamtag - same as strategy ref",
@@ -471,7 +471,7 @@ func TestBuildConfigImageChangeTriggers(t *testing.T) {
 				},
 			},
 			expectError: true,
-			errorType:   fielderrors.ValidationErrorTypeInvalid,
+			errorType:   field.ErrorTypeInvalid,
 		},
 		{
 			name: "imagestreamtag references with same name, different ns",
@@ -524,7 +524,7 @@ func TestBuildConfigImageChangeTriggers(t *testing.T) {
 				},
 			},
 			expectError: true,
-			errorType:   fielderrors.ValidationErrorTypeInvalid,
+			errorType:   field.ErrorTypeInvalid,
 		},
 	}
 
@@ -564,7 +564,7 @@ func TestBuildConfigImageChangeTriggers(t *testing.T) {
 		}
 		// Check whether it's the expected error type
 		if len(errors) > 0 && tc.expectError && tc.errorType != "" {
-			verr, ok := errors[0].(*fielderrors.ValidationError)
+			verr, ok := errors[0].(*field.Error)
 			if !ok {
 				t.Errorf("%s: unexpected error: %#v. Expected ValidationError of type: %s", tc.name, errors[0], verr.Type)
 				continue
@@ -607,8 +607,8 @@ func TestBuildConfigValidationOutputFailure(t *testing.T) {
 
 func TestValidateBuildRequest(t *testing.T) {
 	testCases := map[string]*buildapi.BuildRequest{
-		string(fielderrors.ValidationErrorTypeRequired) + "metadata.namespace": {ObjectMeta: kapi.ObjectMeta{Name: "requestName"}},
-		string(fielderrors.ValidationErrorTypeRequired) + "metadata.name":      {ObjectMeta: kapi.ObjectMeta{Namespace: kapi.NamespaceDefault}},
+		string(field.ErrorTypeRequired) + "metadata.namespace": {ObjectMeta: kapi.ObjectMeta{Name: "requestName"}},
+		string(field.ErrorTypeRequired) + "metadata.name":      {ObjectMeta: kapi.ObjectMeta{Namespace: kapi.NamespaceDefault}},
 	}
 
 	for desc, tc := range testCases {
@@ -620,7 +620,7 @@ func TestValidateBuildRequest(t *testing.T) {
 			t.Errorf("%s: Unexpected validation result: %v", desc, errors)
 		}
 		if len(desc) > 0 {
-			err := errors[0].(*fielderrors.ValidationError)
+			err := errors[0].(*field.Error)
 			errDesc := string(err.Type) + err.Field
 			if desc != errDesc {
 				t.Errorf("Unexpected validation result for %s: expected %s, got %s", err.Field, desc, errDesc)
@@ -632,7 +632,7 @@ func TestValidateBuildRequest(t *testing.T) {
 func TestValidateSource(t *testing.T) {
 	dockerfile := "FROM something"
 	errorCases := []struct {
-		t        fielderrors.ValidationErrorType
+		t        field.ErrorType
 		path     string
 		source   *buildapi.BuildSource
 		ok       bool
@@ -640,7 +640,7 @@ func TestValidateSource(t *testing.T) {
 	}{
 		// 0
 		{
-			t:    fielderrors.ValidationErrorTypeRequired,
+			t:    field.ErrorTypeRequired,
 			path: "git.uri",
 			source: &buildapi.BuildSource{
 				Git: &buildapi.GitBuildSource{
@@ -650,7 +650,7 @@ func TestValidateSource(t *testing.T) {
 		},
 		// 1
 		{
-			t:    fielderrors.ValidationErrorTypeInvalid,
+			t:    field.ErrorTypeInvalid,
 			path: "git.uri",
 			source: &buildapi.BuildSource{
 				Git: &buildapi.GitBuildSource{
@@ -660,7 +660,7 @@ func TestValidateSource(t *testing.T) {
 		},
 		// 2
 		{
-			t:    fielderrors.ValidationErrorTypeInvalid,
+			t:    field.ErrorTypeInvalid,
 			path: "contextDir",
 			source: &buildapi.BuildSource{
 				Dockerfile: &dockerfile,
@@ -669,7 +669,7 @@ func TestValidateSource(t *testing.T) {
 		},
 		// 3
 		{
-			t:    fielderrors.ValidationErrorTypeInvalid,
+			t:    field.ErrorTypeInvalid,
 			path: "git",
 			source: &buildapi.BuildSource{
 				Git: &buildapi.GitBuildSource{
@@ -681,7 +681,7 @@ func TestValidateSource(t *testing.T) {
 		},
 		// 4
 		{
-			t:    fielderrors.ValidationErrorTypeInvalid,
+			t:    field.ErrorTypeInvalid,
 			path: "binary.asFile",
 			source: &buildapi.BuildSource{
 				Binary: &buildapi.BinaryBuildSource{AsFile: "/a/path"},
@@ -689,7 +689,7 @@ func TestValidateSource(t *testing.T) {
 		},
 		// 5
 		{
-			t:    fielderrors.ValidationErrorTypeInvalid,
+			t:    field.ErrorTypeInvalid,
 			path: "binary.asFile",
 			source: &buildapi.BuildSource{
 				Binary: &buildapi.BinaryBuildSource{AsFile: "/"},
@@ -697,7 +697,7 @@ func TestValidateSource(t *testing.T) {
 		},
 		// 6
 		{
-			t:    fielderrors.ValidationErrorTypeInvalid,
+			t:    field.ErrorTypeInvalid,
 			path: "binary.asFile",
 			source: &buildapi.BuildSource{
 				Binary: &buildapi.BinaryBuildSource{AsFile: "a\\b"},
@@ -747,7 +747,7 @@ func TestValidateSource(t *testing.T) {
 		},
 		// 12
 		{
-			t:    fielderrors.ValidationErrorTypeRequired,
+			t:    field.ErrorTypeRequired,
 			path: "sourceSecret.name",
 			source: &buildapi.BuildSource{
 				Git: &buildapi.GitBuildSource{
@@ -759,7 +759,7 @@ func TestValidateSource(t *testing.T) {
 		},
 		// 13
 		{
-			t:    fielderrors.ValidationErrorTypeInvalid,
+			t:    field.ErrorTypeInvalid,
 			path: "git.httpproxy",
 			source: &buildapi.BuildSource{
 				Git: &buildapi.GitBuildSource{
@@ -771,7 +771,7 @@ func TestValidateSource(t *testing.T) {
 		},
 		// 14
 		{
-			t:    fielderrors.ValidationErrorTypeInvalid,
+			t:    field.ErrorTypeInvalid,
 			path: "git.httpsproxy",
 			source: &buildapi.BuildSource{
 				Git: &buildapi.GitBuildSource{
@@ -801,7 +801,7 @@ func TestValidateSource(t *testing.T) {
 		},
 		// 16
 		{
-			t:    fielderrors.ValidationErrorTypeRequired,
+			t:    field.ErrorTypeRequired,
 			path: "image.paths",
 			source: &buildapi.BuildSource{
 				Image: &buildapi.ImageSource{
@@ -814,7 +814,7 @@ func TestValidateSource(t *testing.T) {
 		},
 		// 17
 		{
-			t:    fielderrors.ValidationErrorTypeInvalid,
+			t:    field.ErrorTypeInvalid,
 			path: "image.from.kind",
 			source: &buildapi.BuildSource{
 				Image: &buildapi.ImageSource{
@@ -833,7 +833,7 @@ func TestValidateSource(t *testing.T) {
 		},
 		// 18
 		{
-			t:    fielderrors.ValidationErrorTypeRequired,
+			t:    field.ErrorTypeRequired,
 			path: "image.pullSecret.name",
 			source: &buildapi.BuildSource{
 				Image: &buildapi.ImageSource{
@@ -873,7 +873,7 @@ func TestValidateSource(t *testing.T) {
 				continue
 			}
 		}
-		err := errors[0].(*fielderrors.ValidationError)
+		err := errors[0].(*field.Error)
 		if err.Type != tc.t {
 			t.Errorf("%d: Unexpected error type: %s", i, err.Type)
 		}
@@ -891,7 +891,7 @@ func TestValidateSource(t *testing.T) {
 
 func TestValidateStrategy(t *testing.T) {
 	errorCases := []struct {
-		t        fielderrors.ValidationErrorType
+		t        field.ErrorType
 		path     string
 		strategy *buildapi.BuildStrategy
 		ok       bool
@@ -899,7 +899,7 @@ func TestValidateStrategy(t *testing.T) {
 	}{
 		// 0
 		{
-			t:    fielderrors.ValidationErrorTypeInvalid,
+			t:    field.ErrorTypeInvalid,
 			path: "",
 			strategy: &buildapi.BuildStrategy{
 				SourceStrategy: &buildapi.SourceBuildStrategy{},
@@ -927,7 +927,7 @@ func TestValidateStrategy(t *testing.T) {
 				continue
 			}
 		}
-		err := errors[0].(*fielderrors.ValidationError)
+		err := errors[0].(*field.Error)
 		if err.Type != tc.t {
 			t.Errorf("%d: Unexpected error type: %s", i, err.Type)
 		}
@@ -947,7 +947,7 @@ func TestValidateBuildSpec(t *testing.T) {
 	}{
 		// 0
 		{
-			string(fielderrors.ValidationErrorTypeInvalid) + "output.to.name",
+			string(field.ErrorTypeInvalid) + "output.to.name",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
 					Git: &buildapi.GitBuildSource{
@@ -968,7 +968,7 @@ func TestValidateBuildSpec(t *testing.T) {
 		},
 		// 1
 		{
-			string(fielderrors.ValidationErrorTypeInvalid) + "output.to.kind",
+			string(field.ErrorTypeInvalid) + "output.to.kind",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
 					Git: &buildapi.GitBuildSource{
@@ -989,7 +989,7 @@ func TestValidateBuildSpec(t *testing.T) {
 		},
 		// 2
 		{
-			string(fielderrors.ValidationErrorTypeRequired) + "output.to.kind",
+			string(field.ErrorTypeRequired) + "output.to.kind",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
 					Git: &buildapi.GitBuildSource{
@@ -1007,7 +1007,7 @@ func TestValidateBuildSpec(t *testing.T) {
 		},
 		// 3
 		{
-			string(fielderrors.ValidationErrorTypeRequired) + "output.to.name",
+			string(field.ErrorTypeRequired) + "output.to.name",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
 					Git: &buildapi.GitBuildSource{
@@ -1027,7 +1027,7 @@ func TestValidateBuildSpec(t *testing.T) {
 		},
 		// 4
 		{
-			string(fielderrors.ValidationErrorTypeInvalid) + "output.to.name",
+			string(field.ErrorTypeInvalid) + "output.to.name",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
 					Git: &buildapi.GitBuildSource{
@@ -1049,7 +1049,7 @@ func TestValidateBuildSpec(t *testing.T) {
 		},
 		// 5
 		{
-			string(fielderrors.ValidationErrorTypeInvalid) + "output.to.namespace",
+			string(field.ErrorTypeInvalid) + "output.to.namespace",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
 					Git: &buildapi.GitBuildSource{
@@ -1073,7 +1073,7 @@ func TestValidateBuildSpec(t *testing.T) {
 		// invalid because from is not specified in the
 		// sti strategy definition
 		{
-			string(fielderrors.ValidationErrorTypeRequired) + "strategy.sourceStrategy.from.kind",
+			string(field.ErrorTypeRequired) + "strategy.sourceStrategy.from.kind",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
 					Git: &buildapi.GitBuildSource{
@@ -1094,7 +1094,7 @@ func TestValidateBuildSpec(t *testing.T) {
 		// 7
 		// Invalid because from.name is not specified
 		{
-			string(fielderrors.ValidationErrorTypeRequired) + "strategy.sourceStrategy.from.name",
+			string(field.ErrorTypeRequired) + "strategy.sourceStrategy.from.name",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
 					Git: &buildapi.GitBuildSource{
@@ -1119,7 +1119,7 @@ func TestValidateBuildSpec(t *testing.T) {
 		// 8
 		// invalid because from name is a bad format
 		{
-			string(fielderrors.ValidationErrorTypeInvalid) + "strategy.sourceStrategy.from.name",
+			string(field.ErrorTypeInvalid) + "strategy.sourceStrategy.from.name",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
 					Git: &buildapi.GitBuildSource{
@@ -1143,7 +1143,7 @@ func TestValidateBuildSpec(t *testing.T) {
 		// invalid because from is not specified in the
 		// custom strategy definition
 		{
-			string(fielderrors.ValidationErrorTypeRequired) + "strategy.customStrategy.from.kind",
+			string(field.ErrorTypeRequired) + "strategy.customStrategy.from.kind",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
 					Git: &buildapi.GitBuildSource{
@@ -1165,7 +1165,7 @@ func TestValidateBuildSpec(t *testing.T) {
 		// invalid because from.name is not specified in the
 		// custom strategy definition
 		{
-			string(fielderrors.ValidationErrorTypeInvalid) + "strategy.customStrategy.from.name",
+			string(field.ErrorTypeInvalid) + "strategy.customStrategy.from.name",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
 					Git: &buildapi.GitBuildSource{
@@ -1187,7 +1187,7 @@ func TestValidateBuildSpec(t *testing.T) {
 		},
 		// 11
 		{
-			string(fielderrors.ValidationErrorTypeInvalid) + "source.dockerfile",
+			string(field.ErrorTypeInvalid) + "source.dockerfile",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
 					Dockerfile: &longString,
@@ -1199,7 +1199,7 @@ func TestValidateBuildSpec(t *testing.T) {
 		},
 		// 12
 		{
-			string(fielderrors.ValidationErrorTypeInvalid) + "source.dockerfile",
+			string(field.ErrorTypeInvalid) + "source.dockerfile",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
 					Dockerfile: &longString,
@@ -1215,7 +1215,7 @@ func TestValidateBuildSpec(t *testing.T) {
 		// 13
 		// invalid because CompletionDeadlineSeconds <= 0
 		{
-			string(fielderrors.ValidationErrorTypeInvalid) + "completionDeadlineSeconds",
+			string(field.ErrorTypeInvalid) + "completionDeadlineSeconds",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
 					Git: &buildapi.GitBuildSource{
@@ -1238,7 +1238,7 @@ func TestValidateBuildSpec(t *testing.T) {
 		// 14
 		// must provide some source input
 		{
-			string(fielderrors.ValidationErrorTypeInvalid) + "source",
+			string(field.ErrorTypeInvalid) + "source",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{},
 				Strategy: buildapi.BuildStrategy{
@@ -1255,7 +1255,7 @@ func TestValidateBuildSpec(t *testing.T) {
 		// 15
 		// dockerfilePath can't be an absolute path
 		{
-			string(fielderrors.ValidationErrorTypeInvalid) + "strategy.dockerStrategy.dockerfilePath",
+			string(field.ErrorTypeInvalid) + "strategy.dockerStrategy.dockerfilePath",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
 					Git: &buildapi.GitBuildSource{
@@ -1279,7 +1279,7 @@ func TestValidateBuildSpec(t *testing.T) {
 		// 16
 		// dockerfilePath can't start with ..
 		{
-			string(fielderrors.ValidationErrorTypeInvalid) + "strategy.dockerStrategy.dockerfilePath",
+			string(field.ErrorTypeInvalid) + "strategy.dockerStrategy.dockerfilePath",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
 					Git: &buildapi.GitBuildSource{
@@ -1307,7 +1307,7 @@ func TestValidateBuildSpec(t *testing.T) {
 			t.Errorf("Test[%d] %s: Unexpected validation result: %v", count, config.err, errors)
 			continue
 		}
-		err := errors[0].(*fielderrors.ValidationError)
+		err := errors[0].(*field.Error)
 		errDesc := string(err.Type) + err.Field
 		if config.err != errDesc {
 			t.Errorf("Test[%d] Unexpected validation result for %s: expected %s, got %s", count, err.Field, config.err, errDesc)
@@ -1517,28 +1517,28 @@ func TestValidateDockerfilePath(t *testing.T) {
 func TestValidateTrigger(t *testing.T) {
 	tests := map[string]struct {
 		trigger  buildapi.BuildTriggerPolicy
-		expected []*fielderrors.ValidationError
+		expected []*field.Error
 	}{
 		"trigger without type": {
 			trigger:  buildapi.BuildTriggerPolicy{},
-			expected: []*fielderrors.ValidationError{fielderrors.NewFieldRequired("type")},
+			expected: []*field.Error{field.Required(field.NewPath("type"))},
 		},
 		"trigger with unknown type": {
 			trigger: buildapi.BuildTriggerPolicy{
 				Type: "UnknownTriggerType",
 			},
-			expected: []*fielderrors.ValidationError{fielderrors.NewFieldInvalid("type", "", "")},
+			expected: []*field.Error{field.Invalid(field.NewPath("type"), "", "")},
 		},
 		"GitHub type with no github webhook": {
 			trigger:  buildapi.BuildTriggerPolicy{Type: buildapi.GitHubWebHookBuildTriggerType},
-			expected: []*fielderrors.ValidationError{fielderrors.NewFieldRequired("github")},
+			expected: []*field.Error{field.Required(field.NewPath("github"))},
 		},
 		"GitHub trigger with no secret": {
 			trigger: buildapi.BuildTriggerPolicy{
 				Type:          buildapi.GitHubWebHookBuildTriggerType,
 				GitHubWebHook: &buildapi.WebHookTrigger{},
 			},
-			expected: []*fielderrors.ValidationError{fielderrors.NewFieldRequired("github.secret")},
+			expected: []*field.Error{field.Required(field.NewPath("github", "secret"))},
 		},
 		"GitHub trigger with generic webhook": {
 			trigger: buildapi.BuildTriggerPolicy{
@@ -1547,18 +1547,18 @@ func TestValidateTrigger(t *testing.T) {
 					Secret: "secret101",
 				},
 			},
-			expected: []*fielderrors.ValidationError{fielderrors.NewFieldRequired("github")},
+			expected: []*field.Error{field.Required(field.NewPath("github"))},
 		},
 		"Generic trigger with no generic webhook": {
 			trigger:  buildapi.BuildTriggerPolicy{Type: buildapi.GenericWebHookBuildTriggerType},
-			expected: []*fielderrors.ValidationError{fielderrors.NewFieldRequired("generic")},
+			expected: []*field.Error{field.Required(field.NewPath("generic"))},
 		},
 		"Generic trigger with no secret": {
 			trigger: buildapi.BuildTriggerPolicy{
 				Type:           buildapi.GenericWebHookBuildTriggerType,
 				GenericWebHook: &buildapi.WebHookTrigger{},
 			},
-			expected: []*fielderrors.ValidationError{fielderrors.NewFieldRequired("generic.secret")},
+			expected: []*field.Error{field.Required(field.NewPath("generic", "secret"))},
 		},
 		"Generic trigger with github webhook": {
 			trigger: buildapi.BuildTriggerPolicy{
@@ -1567,13 +1567,13 @@ func TestValidateTrigger(t *testing.T) {
 					Secret: "secret101",
 				},
 			},
-			expected: []*fielderrors.ValidationError{fielderrors.NewFieldRequired("generic")},
+			expected: []*field.Error{field.Required(field.NewPath("generic"))},
 		},
 		"ImageChange trigger without params": {
 			trigger: buildapi.BuildTriggerPolicy{
 				Type: buildapi.ImageChangeBuildTriggerType,
 			},
-			expected: []*fielderrors.ValidationError{fielderrors.NewFieldRequired("imageChange")},
+			expected: []*field.Error{field.Required(field.NewPath("imageChange"))},
 		},
 		"valid GitHub trigger": {
 			trigger: buildapi.BuildTriggerPolicy{
@@ -1617,13 +1617,13 @@ func TestValidateTrigger(t *testing.T) {
 		if len(errors) != 1 {
 			t.Errorf("%s: Expected one validation error, got %d", desc, len(errors))
 			for i, err := range errors {
-				validationError := err.(*fielderrors.ValidationError)
+				validationError := err.(*field.Error)
 				t.Errorf("  %d. %v", i+1, validationError)
 			}
 			continue
 		}
 		err := errors[0]
-		validationError := err.(*fielderrors.ValidationError)
+		validationError := err.(*field.Error)
 		if validationError.Type != test.expected[0].Type {
 			t.Errorf("%s: Unexpected error type: %s", desc, validationError.Type)
 		}
@@ -1643,9 +1643,9 @@ func TestValidateToImageReference(t *testing.T) {
 	if len(errs) != 1 {
 		t.Errorf("Wrong number of errors: %v", errs)
 	}
-	err := errs[0].(*fielderrors.ValidationError)
-	if err.Type != fielderrors.ValidationErrorTypeInvalid {
-		t.Errorf("Wrong error type, expected %v, got %v", fielderrors.ValidationErrorTypeInvalid, err.Type)
+	err := errs[0].(*field.Error)
+	if err.Type != field.ErrorTypeInvalid {
+		t.Errorf("Wrong error type, expected %v, got %v", field.ErrorTypeInvalid, err.Type)
 	}
 	if err.Field != "namespace" {
 		t.Errorf("Error on wrong field, expected %s, got %s", "namespace", err.Field)

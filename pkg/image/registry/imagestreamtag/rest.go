@@ -56,12 +56,20 @@ func nameAndTag(id string) (name string, tag string, err error) {
 	return
 }
 
-func (r *REST) List(ctx kapi.Context, label labels.Selector, field fields.Selector) (runtime.Object, error) {
-	imageStreams, err := r.imageStreamRegistry.ListImageStreams(ctx, labels.Everything())
+func (r *REST) List(ctx kapi.Context, options *unversioned.ListOptions) (runtime.Object, error) {
+	imageStreams, err := r.imageStreamRegistry.ListImageStreams(ctx, options)
 	if err != nil {
 		return nil, err
 	}
 
+	label := labels.Everything()
+	if options != nil && options.LabelSelector.Selector != nil {
+		label = options.LabelSelector.Selector
+	}
+	field := fields.Everything()
+	if options != nil && options.FieldSelector.Selector != nil {
+		field = options.FieldSelector.Selector
+	}
 	matcher := MatchImageStreamTag(label, field)
 
 	list := &api.ImageStreamTagList{}

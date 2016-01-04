@@ -130,7 +130,7 @@ func TestGroupReaper(t *testing.T) {
 		ktc.PrependReactor("delete", "*", reactor)
 
 		reaper := NewGroupReaper(tc, tc, tc, ktc)
-		_, err := reaper.Stop("", test.group, 0, nil)
+		err := reaper.Stop("", test.group, 0, nil)
 		if err != nil {
 			t.Errorf("%s: unexpected error: %v", test.name, err)
 		}

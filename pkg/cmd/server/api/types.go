@@ -48,7 +48,7 @@ var (
 		APIGroupKube:       {"v1"},
 		APIGroupExtensions: {"v1beta1"},
 	}
-	KnownKubeAPIGroups = sets.KeySet(reflect.ValueOf(KubeAPIGroupsToAllowedVersions))
+	KnownKubeAPIGroups = sets.StringKeySet(reflect.ValueOf(KubeAPIGroupsToAllowedVersions))
 
 	// FeatureAliases maps deprecated names of feature flag to their canonical
 	// names. Aliases must be lower-cased for O(1) lookup.

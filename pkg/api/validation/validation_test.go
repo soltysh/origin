@@ -9,7 +9,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/validation"
 	"k8s.io/kubernetes/pkg/runtime"
 	ktypes "k8s.io/kubernetes/pkg/types"
-	"k8s.io/kubernetes/pkg/util/fielderrors"
+	"k8s.io/kubernetes/pkg/util/validation/field"
 
 	"github.com/openshift/origin/pkg/api"
 	authorizationapi "github.com/openshift/origin/pkg/authorization/api"
@@ -38,8 +38,8 @@ func TestNameFunc(t *testing.T) {
 
 			foundExpectedError := false
 			for _, err := range errList {
-				validationError, ok := err.(*fielderrors.ValidationError)
-				if !ok || validationError.Type != fielderrors.ValidationErrorTypeInvalid || validationError.Field != "metadata.name" {
+				validationError, ok := err.(*field.Error)
+				if !ok || validationError.Type != field.ErrorTypeInvalid || validationError.Field != "metadata.name" {
 					continue
 				}
 
@@ -75,8 +75,8 @@ func TestNameFunc(t *testing.T) {
 
 			foundExpectedError := false
 			for _, err := range errList {
-				validationError, ok := err.(*fielderrors.ValidationError)
-				if !ok || validationError.Type != fielderrors.ValidationErrorTypeInvalid || validationError.Field != "metadata.name" {
+				validationError, ok := err.(*field.Error)
+				if !ok || validationError.Type != field.ErrorTypeInvalid || validationError.Field != "metadata.name" {
 					continue
 				}
 
@@ -124,7 +124,7 @@ func TestObjectMeta(t *testing.T) {
 			foundExpectedError := false
 
 			for _, err := range errList {
-				validationError, ok := err.(*fielderrors.ValidationError)
+				validationError, ok := err.(*field.Error)
 				if !ok {
 					continue
 				}
@@ -195,7 +195,7 @@ func TestObjectMetaUpdate(t *testing.T) {
 			foundExpectedError := false
 
 			for _, err := range errList {
-				validationError, ok := err.(*fielderrors.ValidationError)
+				validationError, ok := err.(*field.Error)
 				if !ok {
 					continue
 				}

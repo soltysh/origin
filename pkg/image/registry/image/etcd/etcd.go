@@ -3,15 +3,17 @@ package etcd
 import (
 	"errors"
 
-	"github.com/openshift/origin/pkg/image/api"
-	"github.com/openshift/origin/pkg/image/registry/image"
 	kapi "k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
 	etcdgeneric "k8s.io/kubernetes/pkg/registry/generic/etcd"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/storage"
 	"k8s.io/kubernetes/pkg/watch"
+
+	"github.com/openshift/origin/pkg/image/api"
+	"github.com/openshift/origin/pkg/image/registry/image"
 )
 
 // REST implements a RESTStorage for images against etcd.
@@ -59,14 +61,31 @@ func (r *REST) NewList() runtime.Object {
 }
 
 // List obtains a list of images with labels that match selector.
-func (r *REST) List(ctx kapi.Context, label labels.Selector, field fields.Selector) (runtime.Object, error) {
-	return r.store.ListPredicate(ctx, image.MatchImage(label, field))
+func (r *REST) List(ctx kapi.Context, options *unversioned.ListOptions) (runtime.Object, error) {
+	label := labels.Everything()
+	if options != nil && options.LabelSelector.Selector != nil {
+		label = options.LabelSelector.Selector
+	}
+	field := fields.Everything()
+	if options != nil && options.FieldSelector.Selector != nil {
+		field = options.FieldSelector.Selector
+	}
+	return r.store.ListPredicate(ctx, image.MatchImage(label, field), options)
 }
 
 // Watch begins watching for new, changed, or deleted images.
-func (r *REST) Watch(ctx kapi.Context, label labels.Selector, field fields.Selector, resourceVersion string) (watch.Interface, error) {
-	if !field.Empty() {
+func (r *REST) Watch(ctx kapi.Context, options *unversioned.ListOptions) (watch.Interface, error) {
+	if !options.FieldSelector.Selector.Empty() {
 		return nil, errors.New("field selectors are not supported on images")
+	}
+	label := labels.Everything()
+	if options != nil && options.LabelSelector.Selector != nil {
+		label = options.LabelSelector.Selector
+	}
+	field := fields.Everything()
+	resourceVersion := ""
+	if options != nil {
+		resourceVersion = options.ResourceVersion
 	}
 	return r.store.WatchPredicate(ctx, image.MatchImage(label, field), resourceVersion)
 }

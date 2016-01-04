@@ -154,11 +154,11 @@ func (ac *AuthorizationCache) Run(period time.Duration) {
 
 	namespaceReflector := cache.NewReflector(
 		&cache.ListWatch{
-			ListFunc: func() (runtime.Object, error) {
-				return ac.namespaceInterface.List(labels.Everything(), fields.Everything())
+			ListFunc: func(options kapi.ListOptions) (runtime.Object, error) {
+				return ac.namespaceInterface.List(options)
 			},
-			WatchFunc: func(resourceVersion string) (watch.Interface, error) {
-				return ac.namespaceInterface.Watch(labels.Everything(), fields.Everything(), resourceVersion)
+			WatchFunc: func(options kapi.ListOptions) (watch.Interface, error) {
+				return ac.namespaceInterface.Watch(options)
 			},
 		},
 		&kapi.Namespace{},

@@ -17,6 +17,7 @@ import (
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/types"
 	"k8s.io/kubernetes/pkg/util"
+	"k8s.io/kubernetes/pkg/util/intstr"
 	"k8s.io/kubernetes/pkg/util/sets"
 
 	osapi "github.com/openshift/origin/pkg/api"
@@ -275,11 +276,11 @@ func fuzzInternalObject(t *testing.T, forVersion string, item runtime.Object, se
 					}
 				}
 				if c.RandBool() {
-					params.MaxUnavailable = util.NewIntOrStringFromInt(int(c.RandUint64()))
-					params.MaxSurge = util.NewIntOrStringFromInt(int(c.RandUint64()))
+					params.MaxUnavailable = intstr.FromInt(int(c.RandUint64()))
+					params.MaxSurge = intstr.FromInt(int(c.RandUint64()))
 				} else {
-					params.MaxSurge = util.NewIntOrStringFromString(fmt.Sprintf("%d%%", c.RandUint64()))
-					params.MaxUnavailable = util.NewIntOrStringFromString(fmt.Sprintf("%d%%", c.RandUint64()))
+					params.MaxSurge = intstr.FromString(fmt.Sprintf("%d%%", c.RandUint64()))
+					params.MaxUnavailable = intstr.FromString(fmt.Sprintf("%d%%", c.RandUint64()))
 				}
 				j.RollingParams = params
 			default:

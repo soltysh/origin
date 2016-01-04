@@ -152,7 +152,7 @@ func (c *DeploymentController) Handle(deployment *kapi.ReplicationController) er
 					glog.V(4).Infof("Cancelled deployer pod %s for deployment %s", deployerPod.Name, deployutil.LabelForDeployment(deployment))
 				}
 			}
-			c.recorder.Eventf(deployment, "Cancelled", "Cancelled deployment")
+			c.recorder.Eventf(deployment, kapi.EventTypeNormal, "Cancelled", "Cancelled deployment")
 		}
 	case deployapi.DeploymentStatusFailed:
 		// Nothing to do in this terminal state.

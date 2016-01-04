@@ -33,5 +33,5 @@ func Resource(resource string) unversioned.GroupResource {
 }
 
 func init() {
-	api.Scheme.AddKnownTypes(SchemeGroupVersion)
+	Scheme.AddKnownTypes(SchemeGroupVersion)
 }

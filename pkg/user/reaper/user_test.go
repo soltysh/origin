@@ -191,7 +191,7 @@ func TestUserReaper(t *testing.T) {
 		ktc.PrependReactor("delete", "*", reactor)
 
 		reaper := NewUserReaper(tc, tc, tc, tc, ktc)
-		_, err := reaper.Stop("", test.user, 0, nil)
+		err := reaper.Stop("", test.user, 0, nil)
 		if err != nil {
 			t.Errorf("%s: unexpected error: %v", test.name, err)
 		}

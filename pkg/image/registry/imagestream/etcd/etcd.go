@@ -5,8 +5,7 @@ import (
 	"github.com/openshift/origin/pkg/image/api"
 	"github.com/openshift/origin/pkg/image/registry/imagestream"
 	kapi "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/fields"
-	"k8s.io/kubernetes/pkg/labels"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	etcdgeneric "k8s.io/kubernetes/pkg/registry/generic/etcd"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/storage"
@@ -70,12 +69,32 @@ func (r *REST) NewList() runtime.Object {
 }
 
 // List obtains a list of image streams with labels that match selector.
-func (r *REST) List(ctx kapi.Context, label labels.Selector, field fields.Selector) (runtime.Object, error) {
-	return r.store.ListPredicate(ctx, imagestream.MatchImageStream(label, field))
+func (r *REST) List(ctx kapi.Context, options *unversioned.ListOptions) (runtime.Object, error) {
+	label := labels.Everything()
+	if options != nil && options.LabelSelector.Selector != nil {
+		label = options.LabelSelector.Selector
+	}
+	field := fields.Everything()
+	if options != nil && options.FieldSelector.Selector != nil {
+		field = options.FieldSelector.Selector
+	}
+	return r.store.ListPredicate(ctx, imagestream.MatchImageStream(label, field), options)
 }
 
 // Watch begins watching for new, changed, or deleted image streams.
-func (r *REST) Watch(ctx kapi.Context, label labels.Selector, field fields.Selector, resourceVersion string) (watch.Interface, error) {
+func (r *REST) Watch(ctx kapi.Context, options *unversioned.ListOptions) (watch.Interface, error) {
+	label := labels.Everything()
+	if options != nil && options.LabelSelector.Selector != nil {
+		label = options.LabelSelector.Selector
+	}
+	field := fields.Everything()
+	if options != nil && options.FieldSelector.Selector != nil {
+		field = options.FieldSelector.Selector
+	}
+	resourceVersion := ""
+	if options != nil {
+		resourceVersion = options.ResourceVersion
+	}
 	return r.store.WatchPredicate(ctx, imagestream.MatchImageStream(label, field), resourceVersion)
 }
 

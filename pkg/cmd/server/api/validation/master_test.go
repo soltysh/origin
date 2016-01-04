@@ -5,7 +5,7 @@ import (
 
 	kapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/util"
-	"k8s.io/kubernetes/pkg/util/fielderrors"
+	"k8s.io/kubernetes/pkg/util/validation/field"
 
 	"github.com/openshift/origin/pkg/cmd/server/api"
 	configapi "github.com/openshift/origin/pkg/cmd/server/api"
@@ -25,11 +25,11 @@ func TestFailingAPIServerArgs(t *testing.T) {
 	}
 
 	var (
-		portErr    *fielderrors.ValidationError
-		missingErr *fielderrors.ValidationError
+		portErr    *field.Error
+		missingErr *field.Error
 	)
 	for _, uncastErr := range errs {
-		err, ok := uncastErr.(*fielderrors.ValidationError)
+		err, ok := uncastErr.(*field.Error)
 		if !ok {
 			t.Errorf("expected validationerror, not %v", err)
 			continue
@@ -85,11 +85,11 @@ func TestFailingControllerArgs(t *testing.T) {
 	}
 
 	var (
-		portErr    *fielderrors.ValidationError
-		missingErr *fielderrors.ValidationError
+		portErr    *field.Error
+		missingErr *field.Error
 	)
 	for _, uncastErr := range errs {
-		err, ok := uncastErr.(*fielderrors.ValidationError)
+		err, ok := uncastErr.(*field.Error)
 		if !ok {
 			t.Errorf("expected validationerror, not %v", err)
 			continue
@@ -139,60 +139,60 @@ func TestValidate_ValidateEtcdStorageConfig(t *testing.T) {
 		kubeStorageVersion      string
 		openshiftStorageVersion string
 		name                    string
-		expected                fielderrors.ValidationErrorList
+		expected                field.ErrorList
 	}{
 		{
 			label:                   "valid levels",
 			kubeStorageVersion:      "v1",
 			openshiftStorageVersion: "v1",
-			expected:                fielderrors.ValidationErrorList{},
+			expected:                field.ErrorList{},
 		},
 		{
 			label:                   "unknown openshift level",
 			kubeStorageVersion:      "v1",
 			openshiftStorageVersion: "bogus",
-			expected: fielderrors.ValidationErrorList{
-				fielderrors.NewFieldValueNotSupported(osField, "bogus", []string{"v1"}),
+			expected: field.ErrorList{
+				field.NotSupported(field.NewPath(osField), "bogus", []string{"v1"}),
 			},
 		},
 		{
 			label:                   "unsupported openshift level",
 			kubeStorageVersion:      "v1",
 			openshiftStorageVersion: "v1beta3",
-			expected: fielderrors.ValidationErrorList{
-				fielderrors.NewFieldValueNotSupported(osField, "v1beta3", []string{"v1"}),
+			expected: field.ErrorList{
+				field.NotSupported(field.NewPath(osField), "v1beta3", []string{"v1"}),
 			},
 		},
 		{
 			label:                   "missing openshift level",
 			kubeStorageVersion:      "v1",
 			openshiftStorageVersion: "",
-			expected: fielderrors.ValidationErrorList{
-				fielderrors.NewFieldRequired(osField),
+			expected: field.ErrorList{
+				field.Required(field.NewPath(osField)),
 			},
 		},
 		{
 			label:                   "unknown kube level",
 			kubeStorageVersion:      "bogus",
 			openshiftStorageVersion: "v1",
-			expected: fielderrors.ValidationErrorList{
-				fielderrors.NewFieldValueNotSupported(kubeField, "bogus", []string{"v1"}),
+			expected: field.ErrorList{
+				field.NotSupported(field.NewPath(kubeField), "bogus", []string{"v1"}),
 			},
 		},
 		{
 			label:                   "unsupported kube level",
 			kubeStorageVersion:      "v1beta3",
 			openshiftStorageVersion: "v1",
-			expected: fielderrors.ValidationErrorList{
-				fielderrors.NewFieldValueNotSupported(kubeField, "v1beta3", []string{"v1"}),
+			expected: field.ErrorList{
+				field.NotSupported(field.NewPath(kubeField), "v1beta3", []string{"v1"}),
 			},
 		},
 		{
 			label:                   "missing kube level",
 			kubeStorageVersion:      "",
 			openshiftStorageVersion: "v1",
-			expected: fielderrors.ValidationErrorList{
-				fielderrors.NewFieldRequired(kubeField),
+			expected: field.ErrorList{
+				field.Required(field.NewPath(kubeField)),
 			},
 		},
 	}

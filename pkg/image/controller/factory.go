@@ -25,11 +25,11 @@ type ImportControllerFactory struct {
 // Create creates an ImportController.
 func (f *ImportControllerFactory) Create() controller.RunnableController {
 	lw := &cache.ListWatch{
-		ListFunc: func() (runtime.Object, error) {
-			return f.Client.ImageStreams(kapi.NamespaceAll).List(labels.Everything(), fields.Everything())
+		ListFunc: func(options kapi.ListOptions) (runtime.Object, error) {
+			return f.Client.ImageStreams(kapi.NamespaceAll).List(options)
 		},
-		WatchFunc: func(resourceVersion string) (watch.Interface, error) {
-			return f.Client.ImageStreams(kapi.NamespaceAll).Watch(labels.Everything(), fields.Everything(), resourceVersion)
+		WatchFunc: func(options kapi.ListOptions) (watch.Interface, error) {
+			return f.Client.ImageStreams(kapi.NamespaceAll).Watch(options)
 		},
 	}
 	q := cache.NewFIFO(cache.MetaNamespaceKeyFunc)

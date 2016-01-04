@@ -3,7 +3,7 @@ package validation
 import (
 	"testing"
 
-	"k8s.io/kubernetes/pkg/util/fielderrors"
+	"k8s.io/kubernetes/pkg/util/validation/field"
 
 	configapi "github.com/openshift/origin/pkg/cmd/server/api"
 )
@@ -22,11 +22,11 @@ func TestFailingKubeletArgs(t *testing.T) {
 	}
 
 	var (
-		portErr    *fielderrors.ValidationError
-		missingErr *fielderrors.ValidationError
+		portErr    *field.Error
+		missingErr *field.Error
 	)
 	for _, uncastErr := range errs {
-		err, ok := uncastErr.(*fielderrors.ValidationError)
+		err, ok := uncastErr.(*field.Error)
 		if !ok {
 			t.Errorf("expected validationerror, not %v", err)
 			continue

@@ -5,6 +5,7 @@ import (
 
 	kapi "k8s.io/kubernetes/pkg/api"
 	kerrors "k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/api/meta"
 	"k8s.io/kubernetes/pkg/api/rest"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	kclient "k8s.io/kubernetes/pkg/client/unversioned"
@@ -173,7 +174,7 @@ type decoratorFunc func(obj runtime.Object) error
 func filterList(list runtime.Object, m generic.Matcher, d decoratorFunc) (filtered runtime.Object, err error) {
 	// TODO: push a matcher down into tools.etcdHelper to avoid all this
 	// nonsense. This is a lot of unnecessary copies.
-	items, err := runtime.ExtractList(list)
+	items, err := meta.ExtractList(list)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +193,7 @@ func filterList(list runtime.Object, m generic.Matcher, d decoratorFunc) (filter
 			filteredItems = append(filteredItems, obj)
 		}
 	}
-	err = runtime.SetList(list, filteredItems)
+	err = meta.SetList(list, filteredItems)
 	if err != nil {
 		return nil, err
 	}

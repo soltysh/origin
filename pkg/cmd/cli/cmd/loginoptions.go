@@ -13,10 +13,8 @@ import (
 	kclientcmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	clientcmdapi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
 	kclientcmdapi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
-	"k8s.io/kubernetes/pkg/fields"
 	kcmdconfig "k8s.io/kubernetes/pkg/kubectl/cmd/config"
 	kubecmdconfig "k8s.io/kubernetes/pkg/kubectl/cmd/config"
-	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/util/sets"
 
 	"github.com/openshift/origin/pkg/client"
@@ -302,7 +300,7 @@ func (o *LoginOptions) gatherProjectInfo() error {
 		return err
 	}
 
-	projects, err := oClient.Projects().List(labels.Everything(), fields.Everything())
+	projects, err := oClient.Projects().List(kapi.ListOptions{})
 	if err != nil {
 		return err
 	}
