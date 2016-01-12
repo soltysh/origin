@@ -58,7 +58,7 @@ func TLSConfigFor(c *Config) (*tls.Config, error) {
 	if c.HasCA() && c.TLS.Insecure {
 		return nil, fmt.Errorf("specifying a root certificates file with the insecure flag is not allowed")
 	}
-	if err := loadTLSFiles(c); err != nil {
+	if err := LoadTLSFiles(c); err != nil {
 		return nil, err
 	}
 
@@ -86,7 +86,7 @@ func TLSConfigFor(c *Config) (*tls.Config, error) {
 // loadTLSFiles copies the data from the CertFile, KeyFile, and CAFile fields into the CertData,
 // KeyData, and CAFile fields, or returns an error. If no error is returned, all three fields are
 // either populated or were empty to start.
-func loadTLSFiles(c *Config) error {
+func LoadTLSFiles(c *Config) error {
 	var err error
 	c.TLS.CAData, err = dataFromSliceOrFile(c.TLS.CAData, c.TLS.CAFile)
 	if err != nil {

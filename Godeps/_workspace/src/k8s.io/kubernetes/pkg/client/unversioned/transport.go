@@ -26,14 +26,14 @@ import (
 // TLSConfigFor returns a tls.Config that will provide the transport level security defined
 // by the provided Config. Will return nil if no transport level security is requested.
 func TLSConfigFor(config *Config) (*tls.Config, error) {
-	return transport.TLSConfigFor(config.transportConfig())
+	return transport.TLSConfigFor(config.TransportConfig())
 }
 
 // TransportFor returns an http.RoundTripper that will provide the authentication
 // or transport level security defined by the provided Config. Will return the
 // default http.DefaultTransport if no special case behavior is needed.
 func TransportFor(config *Config) (http.RoundTripper, error) {
-	return transport.New(config.transportConfig())
+	return transport.New(config.TransportConfig())
 }
 
 // HTTPWrappersForConfig wraps a round tripper with any relevant layered behavior from the
@@ -41,11 +41,11 @@ func TransportFor(config *Config) (http.RoundTripper, error) {
 // the underlying connection (like WebSocket or HTTP2 clients). Pure HTTP clients should use
 // the higher level TransportFor or RESTClientFor methods.
 func HTTPWrappersForConfig(config *Config, rt http.RoundTripper) (http.RoundTripper, error) {
-	return transport.HTTPWrappersForConfig(config.transportConfig(), rt)
+	return transport.HTTPWrappersForConfig(config.TransportConfig(), rt)
 }
 
 // transportConfig converts a client config to an appropriate transport config.
-func (c *Config) transportConfig() *transport.Config {
+func (c *Config) TransportConfig() *transport.Config {
 	return &transport.Config{
 		UserAgent:     c.UserAgent,
 		Transport:     c.Transport,
