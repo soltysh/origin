@@ -16,6 +16,7 @@ import (
 	"k8s.io/kubernetes/pkg/apiserver"
 	kclient "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/controller/serviceaccount"
+	kubeletclient "k8s.io/kubernetes/pkg/kubelet/client"
 	"k8s.io/kubernetes/pkg/master"
 	"k8s.io/kubernetes/pkg/storage"
 	etcdstorage "k8s.io/kubernetes/pkg/storage/etcd"
@@ -96,7 +97,7 @@ type MasterConfig struct {
 	// to provide access to the client for things that need it.
 	EtcdClient *etcdclient.Client
 
-	KubeletClientConfig *kclient.KubeletConfig
+	KubeletClientConfig *kubeletclient.KubeletClientConfig
 
 	// ClientCAs will be used to request client certificates in connections to the API.
 	// This CertPool should contain all the CAs that will be used for client certificate verification.

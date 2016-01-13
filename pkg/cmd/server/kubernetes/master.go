@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"time"
 
 	"github.com/emicklei/go-restful"
 	"github.com/golang/glog"
@@ -12,8 +13,10 @@ import (
 	osclient "github.com/openshift/origin/pkg/client"
 	kctrlmgr "k8s.io/kubernetes/cmd/kube-controller-manager/app"
 	kapi "k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/client/record"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/controller"
 	endpointcontroller "k8s.io/kubernetes/pkg/controller/endpoint"
 	jobcontroller "k8s.io/kubernetes/pkg/controller/job"
 	namespacecontroller "k8s.io/kubernetes/pkg/controller/namespace"
@@ -55,13 +58,13 @@ func (c *MasterConfig) InstallAPI(container *restful.Container) []string {
 	_ = master.New(c.Master)
 
 	messages := []string{}
-	if !c.Master.DisableV1 {
-		messages = append(messages, fmt.Sprintf("Started Kubernetes API at %%s%s", KubeAPIPrefixV1))
-	}
+	// if !c.Master.DisableV1 {
+	messages = append(messages, fmt.Sprintf("Started Kubernetes API at %%s%s", KubeAPIPrefixV1))
+	// }
 
-	if c.Master.EnableExp {
-		messages = append(messages, fmt.Sprintf("Started Kubernetes API Extensions at %%s%s", KubeAPIExtensionsPrefixV1beta1))
-	}
+	// if c.Master.EnableExp {
+	messages = append(messages, fmt.Sprintf("Started Kubernetes API Extensions at %%s%s", KubeAPIExtensionsPrefixV1beta1))
+	// }
 
 	return messages
 }
@@ -70,7 +73,8 @@ func (c *MasterConfig) InstallAPI(container *restful.Container) []string {
 func (c *MasterConfig) RunNamespaceController() {
 	// we now have several of the kube "experimental" pieces enabled in Origin, so this needs to be
 	// enabled whenever we have the "experimental" APIs enabled.
-	experimentalMode := c.Master.EnableExp
+	// experimentalMode := c.Master.EnableExp
+	experimentalMode := &unversioned.APIVersions{Versions: []string{"extensions/v1beta1", "v1"}}
 	namespaceController := namespacecontroller.NewNamespaceController(c.KubeClient, experimentalMode, c.ControllerManager.NamespaceSyncPeriod)
 	namespaceController.Run()
 }
@@ -185,8 +189,8 @@ func (c *MasterConfig) RunJobController(client *client.Client) {
 
 // RunHPAController starts the Kubernetes hpa controller sync loop
 func (c *MasterConfig) RunHPAController(oc *osclient.Client, kc *client.Client, heapsterNamespace string) {
-	delegScaleNamespacer := osclient.NewDelegatingScaleNamespacer(oc, kc)
-	podautoscaler := podautoscalercontroller.NewHorizontalController(kc, delegScaleNamespacer, kc, metrics.NewHeapsterMetricsClient(kc, heapsterNamespace, "https", "heapster", ""))
+	// delegScaleNamespacer := osclient.NewDelegatingScaleNamespacer(oc, kc)
+	podautoscaler := podautoscalercontroller.NewHorizontalController(kc, metrics.NewHeapsterMetricsClient(kc, heapsterNamespace, "https", "heapster", ""))
 	podautoscaler.Run(c.ControllerManager.HorizontalPodAutoscalerSyncPeriod)
 }
 
@@ -213,8 +217,8 @@ func (c *MasterConfig) RunScheduler() {
 
 // RunResourceQuotaManager starts the resource quota manager
 func (c *MasterConfig) RunResourceQuotaManager() {
-	resourceQuotaManager := resourcequotacontroller.NewResourceQuotaController(c.KubeClient)
-	resourceQuotaManager.Run(c.ControllerManager.ResourceQuotaSyncPeriod)
+	resourceQuotaManager := resourcequotacontroller.NewResourceQuotaController(c.KubeClient, controller.StaticResyncPeriodFunc(5*time.Minute))
+	resourceQuotaManager.Run(5, util.NeverStop)
 }
 
 // RunNodeController starts the node controller

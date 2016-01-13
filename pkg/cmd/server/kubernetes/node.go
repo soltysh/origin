@@ -232,7 +232,7 @@ func (c *NodeConfig) RunProxy() {
 		c.FilteringEndpointsHandler.SetBaseEndpointsHandler(proxier)
 		endpointsConfig.RegisterHandler(c.FilteringEndpointsHandler)
 	}
-	recorder.Eventf(nodeRef, "Starting", "Starting kube-proxy.")
+	recorder.Eventf(nodeRef, kapi.EventTypeNormal, "Starting", "Starting kube-proxy.")
 	glog.Infof("Started Kubernetes Proxy on %s", host)
 }
 
