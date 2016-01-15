@@ -6,6 +6,7 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	kmeta "k8s.io/kubernetes/pkg/api/meta"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/util/sets"
 
@@ -17,17 +18,21 @@ import (
 )
 
 // Version is the string that represents the current external default version.
-const Version = "v1"
+var Version = unversioned.GroupVersion{"", "v1"}
 
 // OldestVersion is the string that represents the oldest server version supported,
 // for client code that wants to hardcode the lowest common denominator.
-const OldestVersion = "v1beta3"
+var OldestVersion = unversioned.GroupVersion{"", "v1beta3"}
 
 // Versions is the list of versions that are recognized in code. The order provided
 // may be assumed to be least feature rich to most feature rich, and clients may
 // choose to prefer the latter items in the list over the former items when presented
 // with a set of versions to choose.
-var Versions = []string{"v1", "v1beta3"}
+var Versions = []unversioned.GroupVersion{Version, OldestVersion}
+
+// TODO: this should be removed, it's here to make the storage related stuff work
+// as before.
+var VersionsStrings = []string{"v1", "v1beta3"}
 
 // Codec is the default codec for serializing output that should use
 // the latest supported version.  Use this Codec when writing to
@@ -55,22 +60,22 @@ var RESTMapper kmeta.RESTMapper
 
 // InterfacesFor returns the default Codec and ResourceVersioner for a given version
 // string, or an error if the version is not known.
-func InterfacesFor(version string) (*kmeta.VersionInterfaces, error) {
+func InterfacesFor(version unversioned.GroupVersion) (*kmeta.VersionInterfaces, error) {
 	switch version {
-	case "v1beta3":
+	case v1beta3.SchemeGroupVersion:
 		return &kmeta.VersionInterfaces{
 			Codec:            v1beta3.Codec,
 			ObjectConvertor:  api.Scheme,
 			MetadataAccessor: accessor,
 		}, nil
-	case "v1":
+	case v1.SchemeGroupVersion:
 		return &kmeta.VersionInterfaces{
 			Codec:            v1.Codec,
 			ObjectConvertor:  api.Scheme,
 			MetadataAccessor: accessor,
 		}, nil
 	default:
-		return nil, fmt.Errorf("unsupported storage version: %s (valid: %s)", version, strings.Join(Versions, ", "))
+		return nil, fmt.Errorf("unsupported storage version: %q (valid: %v)", version, Versions)
 	}
 }
 
@@ -88,8 +93,8 @@ var UserResources = []string{
 }
 
 // OriginKind returns true if OpenShift owns the kind described in a given apiVersion.
-func OriginKind(kind, apiVersion string) bool {
-	return originTypes.Has(kind)
+func OriginKind(gvk unversioned.GroupVersionKind) bool {
+	return originTypes.Has(gvk.Kind)
 }
 
 func init() {
@@ -98,12 +103,11 @@ func init() {
 	kubeMapper := api.RESTMapper
 
 	// list of versions we support on the server, in preferred order
-	versions := []string{"v1", "v1beta3"}
+	versions := []unversioned.GroupVersion{Version, OldestVersion}
 
 	originMapper := kmeta.NewDefaultRESTMapper(
-		"",
 		versions,
-		func(version string) (*kmeta.VersionInterfaces, error) {
+		func(version unversioned.GroupVersion) (*kmeta.VersionInterfaces, error) {
 			interfaces, err := InterfacesFor(version)
 			if err != nil {
 				return nil, err
@@ -156,8 +160,9 @@ func init() {
 			if found || (strings.HasSuffix(kind, "List") && kindToRootScope[strings.TrimSuffix(kind, "List")]) {
 				scope = kmeta.RESTScopeRoot
 			}
-			glog.V(6).Infof("Registering %s %s %s", kind, version, scope.Name())
-			originMapper.Add(scope, kind, version, false)
+			gvk := version.WithKind(kind)
+			glog.V(6).Infof("Registering %s %s", gvk.String(), scope.Name())
+			originMapper.Add(gvk, scope, false)
 		}
 	}
 

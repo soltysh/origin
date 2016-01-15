@@ -86,3 +86,13 @@ func (a AdapterAttributes) IsReadOnly() bool {
 	v := a.GetVerb()
 	return v == "get" || v == "list" || v == "watch"
 }
+
+// IsResourceRequest satisfies the kubernetes authorizer.Attributes interface
+func (a AdapterAttributes) IsResourceRequest() bool {
+	return !a.IsNonResourceURL()
+}
+
+// GetPath satisfies the kubernetes authorizer.Attributes interface
+func (a AdapterAttributes) GetPath() string {
+	return a.GetURL()
+}

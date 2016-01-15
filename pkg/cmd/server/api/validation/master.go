@@ -36,30 +36,24 @@ func (r *ValidationResults) Append(additionalResults ValidationResults) {
 	r.AddWarnings(additionalResults.Warnings...)
 }
 
-func (r *ValidationResults) AddErrors(errors ...error) {
+func (r *ValidationResults) AddErrors(errors ...*field.Error) {
 	if len(errors) == 0 {
 		return
 	}
 	r.Errors = append(r.Errors, errors...)
 }
 
-func (r *ValidationResults) AddWarnings(warnings ...error) {
+func (r *ValidationResults) AddWarnings(warnings ...*field.Error) {
 	if len(warnings) == 0 {
 		return
 	}
 	r.Warnings = append(r.Warnings, warnings...)
 }
 
-func (r ValidationResults) Prefix(prefix string) ValidationResults {
-	r.Warnings = r.Warnings.Prefix(prefix)
-	r.Errors = r.Errors.Prefix(prefix)
-	return r
-}
-
-func ValidateMasterConfig(config *api.MasterConfig) ValidationResults {
+func ValidateMasterConfig(config *api.MasterConfig, fldPath *field.Path) ValidationResults {
 	validationResults := ValidationResults{}
 
-	if _, urlErrs := ValidateURL(config.MasterPublicURL, "masterPublicURL"); len(urlErrs) > 0 {
+	if _, urlErrs := ValidateURL(config.MasterPublicURL, fldPath.Child("masterPublicURL")); len(urlErrs) > 0 {
 		validationResults.AddErrors(urlErrs...)
 	}
 
@@ -67,13 +61,13 @@ func ValidateMasterConfig(config *api.MasterConfig) ValidationResults {
 	case config.ControllerLeaseTTL > 300,
 		config.ControllerLeaseTTL < -1,
 		config.ControllerLeaseTTL > 0 && config.ControllerLeaseTTL < 10:
-		validationResults.AddErrors(field.Invalid(field.NewPath("controllerLeaseTTL"), config.ControllerLeaseTTL, "TTL must be -1 (disabled), 0 (default), or between 10 and 300 seconds"))
+		validationResults.AddErrors(field.Invalid(fldPath.Child("controllerLeaseTTL"), config.ControllerLeaseTTL, "TTL must be -1 (disabled), 0 (default), or between 10 and 300 seconds"))
 	}
 
-	validationResults.AddErrors(ValidateDisabledFeatures(config.DisabledFeatures, "disabledFeatures")...)
+	validationResults.AddErrors(ValidateDisabledFeatures(config.DisabledFeatures, fldPath.Child("disabledFeatures"))...)
 
 	if config.AssetConfig != nil {
-		assetConfigPath := field.NewPath("assetConfig")
+		assetConfigPath := fldPath.Child("assetConfig")
 		validationResults.Append(ValidateAssetConfig(config.AssetConfig, assetConfigPath))
 		colocated := config.AssetConfig.ServingInfo.BindAddress == config.ServingInfo.BindAddress
 		if colocated {
@@ -93,7 +87,7 @@ func ValidateMasterConfig(config *api.MasterConfig) ValidationResults {
 			if config.OAuthConfig.AssetPublicURL != config.AssetConfig.PublicURL {
 				validationResults.AddErrors(
 					field.Invalid(assetConfigPath.Child("publicURL"), config.AssetConfig.PublicURL, "must match oauthConfig.assetPublicURL"),
-					field.Invalid(field.NewPath("oauthConfig", "assetPublicURL"), config.OAuthConfig.AssetPublicURL, "must match assetConfig.publicURL"),
+					field.Invalid(fldPath.Child("oauthConfig", "assetPublicURL"), config.OAuthConfig.AssetPublicURL, "must match assetConfig.publicURL"),
 				)
 			}
 		}
@@ -103,7 +97,7 @@ func ValidateMasterConfig(config *api.MasterConfig) ValidationResults {
 	}
 
 	if config.DNSConfig != nil {
-		dnsConfigPath := field.NewPath("dnsConfig")
+		dnsConfigPath := fldPath.Child("dnsConfig")
 		validationResults.AddErrors(ValidateHostPort(config.DNSConfig.BindAddress, dnsConfigPath.Child("bindAddress"))...)
 		switch config.DNSConfig.BindNetwork {
 		case "tcp", "tcp4", "tcp6":
@@ -113,65 +107,65 @@ func ValidateMasterConfig(config *api.MasterConfig) ValidationResults {
 	}
 
 	if config.EtcdConfig != nil {
-		etcdConfigErrs := ValidateEtcdConfig(config.EtcdConfig, field.NewPath("etcdConfig"))
+		etcdConfigErrs := ValidateEtcdConfig(config.EtcdConfig, fldPath.Child("etcdConfig"))
 		validationResults.Append(etcdConfigErrs)
 
 		if len(etcdConfigErrs.Errors) == 0 {
 			// Validate the etcdClientInfo with the internal etcdConfig
-			validationResults.AddErrors(ValidateEtcdConnectionInfo(config.EtcdClientInfo, config.EtcdConfig, field.NewPath("etcdClientInfo"))...)
+			validationResults.AddErrors(ValidateEtcdConnectionInfo(config.EtcdClientInfo, config.EtcdConfig, fldPath.Child("etcdClientInfo"))...)
 		} else {
 			// Validate the etcdClientInfo by itself
-			validationResults.AddErrors(ValidateEtcdConnectionInfo(config.EtcdClientInfo, nil, field.NewPath("etcdClientInfo"))...)
+			validationResults.AddErrors(ValidateEtcdConnectionInfo(config.EtcdClientInfo, nil, fldPath.Child("etcdClientInfo"))...)
 		}
 	} else {
 		// Validate the etcdClientInfo by itself
-		validationResults.AddErrors(ValidateEtcdConnectionInfo(config.EtcdClientInfo, nil, field.NewPath("etcdClientInfo"))...)
+		validationResults.AddErrors(ValidateEtcdConnectionInfo(config.EtcdClientInfo, nil, fldPath.Child("etcdClientInfo"))...)
 	}
-	validationResults.AddErrors(ValidateEtcdStorageConfig(config.EtcdStorageConfig, field.NewPath("etcdStorageConfig"))...)
+	validationResults.AddErrors(ValidateEtcdStorageConfig(config.EtcdStorageConfig, fldPath.Child("etcdStorageConfig"))...)
 
-	validationResults.AddErrors(ValidateImageConfig(config.ImageConfig, field.NewPath("imageConfig"))...)
+	validationResults.AddErrors(ValidateImageConfig(config.ImageConfig, fldPath.Child("imageConfig"))...)
 
-	validationResults.AddErrors(ValidateKubeletConnectionInfo(config.KubeletClientInfo, field.NewPath("kubeletClientInfo"))...)
+	validationResults.AddErrors(ValidateKubeletConnectionInfo(config.KubeletClientInfo, fldPath.Child("kubeletClientInfo"))...)
 
 	builtInKubernetes := config.KubernetesMasterConfig != nil
 	if config.KubernetesMasterConfig != nil {
-		validationResults.Append(ValidateKubernetesMasterConfig(config.KubernetesMasterConfig, field.NewPath("kubernetesMasterConfig")))
+		validationResults.Append(ValidateKubernetesMasterConfig(config.KubernetesMasterConfig, fldPath.Child("kubernetesMasterConfig")))
 	}
 	if (config.KubernetesMasterConfig == nil) && (len(config.MasterClients.ExternalKubernetesKubeConfig) == 0) {
-		validationResults.AddErrors(field.Invalid(field.NewPath("kubernetesMasterConfig"), config.KubernetesMasterConfig, "either kubernetesMasterConfig or masterClients.externalKubernetesKubeConfig must have a value"))
+		validationResults.AddErrors(field.Invalid(fldPath.Child("kubernetesMasterConfig"), config.KubernetesMasterConfig, "either kubernetesMasterConfig or masterClients.externalKubernetesKubeConfig must have a value"))
 	}
 	if (config.KubernetesMasterConfig != nil) && (len(config.MasterClients.ExternalKubernetesKubeConfig) != 0) {
-		validationResults.AddErrors(field.Invalid(field.NewPath("kubernetesMasterConfig"), config.KubernetesMasterConfig, "kubernetesMasterConfig and masterClients.externalKubernetesKubeConfig are mutually exclusive"))
+		validationResults.AddErrors(field.Invalid(fldPath.Child("kubernetesMasterConfig"), config.KubernetesMasterConfig, "kubernetesMasterConfig and masterClients.externalKubernetesKubeConfig are mutually exclusive"))
 	}
 
 	if len(config.NetworkConfig.ServiceNetworkCIDR) > 0 {
 		if _, _, err := net.ParseCIDR(strings.TrimSpace(config.NetworkConfig.ServiceNetworkCIDR)); err != nil {
-			validationResults.AddErrors(field.Invalid(field.NewPath("networkConfig", "serviceNetworkCIDR"), config.NetworkConfig.ServiceNetworkCIDR, "must be a valid CIDR notation IP range (e.g. 172.30.0.0/16)"))
+			validationResults.AddErrors(field.Invalid(fldPath.Child("networkConfig", "serviceNetworkCIDR"), config.NetworkConfig.ServiceNetworkCIDR, "must be a valid CIDR notation IP range (e.g. 172.30.0.0/16)"))
 		} else if config.KubernetesMasterConfig != nil && len(config.KubernetesMasterConfig.ServicesSubnet) > 0 && config.KubernetesMasterConfig.ServicesSubnet != config.NetworkConfig.ServiceNetworkCIDR {
-			validationResults.AddErrors(field.Invalid(field.NewPath("networkConfig", "serviceNetworkCIDR"), config.NetworkConfig.ServiceNetworkCIDR, fmt.Sprintf("must match kubernetesMasterConfig.servicesSubnet value of %q", config.KubernetesMasterConfig.ServicesSubnet)))
+			validationResults.AddErrors(field.Invalid(fldPath.Child("networkConfig", "serviceNetworkCIDR"), config.NetworkConfig.ServiceNetworkCIDR, fmt.Sprintf("must match kubernetesMasterConfig.servicesSubnet value of %q", config.KubernetesMasterConfig.ServicesSubnet)))
 		}
 	}
 
-	validationResults.AddErrors(ValidateKubeConfig(config.MasterClients.OpenShiftLoopbackKubeConfig, "openShiftLoopbackKubeConfig", field.NewPath("masterClients"))...)
+	validationResults.AddErrors(ValidateKubeConfig(config.MasterClients.OpenShiftLoopbackKubeConfig, fldPath.Child("masterClients", "openShiftLoopbackKubeConfig"))...)
 
 	if len(config.MasterClients.ExternalKubernetesKubeConfig) > 0 {
-		validationResults.AddErrors(ValidateKubeConfig(config.MasterClients.ExternalKubernetesKubeConfig, "externalKubernetesKubeConfig", field.NewPath("masterClients"))...)
+		validationResults.AddErrors(ValidateKubeConfig(config.MasterClients.ExternalKubernetesKubeConfig, fldPath.Child("masterClients", "externalKubernetesKubeConfig"))...)
 	}
 
-	validationResults.AddErrors(ValidatePolicyConfig(config.PolicyConfig, field.NewPath("policyConfig"))...)
+	validationResults.AddErrors(ValidatePolicyConfig(config.PolicyConfig, fldPath.Child("policyConfig"))...)
 	if config.OAuthConfig != nil {
-		validationResults.Append(ValidateOAuthConfig(config.OAuthConfig, field.NewPath("oauthConfig")))
+		validationResults.Append(ValidateOAuthConfig(config.OAuthConfig, fldPath.Child("oauthConfig")))
 	}
 
-	validationResults.Append(ValidateServiceAccountConfig(config.ServiceAccountConfig, builtInKubernetes, field.NewPath("serviceAccountConfig")))
+	validationResults.Append(ValidateServiceAccountConfig(config.ServiceAccountConfig, builtInKubernetes, fldPath.Child("serviceAccountConfig")))
 
-	validationResults.Append(ValidateHTTPServingInfo(config.ServingInfo, field.NewPath("servingInfo")))
+	validationResults.Append(ValidateHTTPServingInfo(config.ServingInfo, fldPath.Child("servingInfo")))
 
-	validationResults.Append(ValidateProjectConfig(config.ProjectConfig, field.NewPath("projectConfig")))
+	validationResults.Append(ValidateProjectConfig(config.ProjectConfig, fldPath.Child("projectConfig")))
 
-	validationResults.AddErrors(ValidateRoutingConfig(config.RoutingConfig, field.NewPath("routingConfig"))...)
+	validationResults.AddErrors(ValidateRoutingConfig(config.RoutingConfig, fldPath.Child("routingConfig"))...)
 
-	validationResults.Append(ValidateAPILevels(config.APILevels, api.KnownOpenShiftAPILevels, api.DeadOpenShiftAPILevels, field.NewPath("apiLevels")))
+	validationResults.Append(ValidateAPILevels(config.APILevels, api.KnownOpenShiftAPILevels, api.DeadOpenShiftAPILevels, fldPath.Child("apiLevels")))
 
 	return validationResults
 }
@@ -269,7 +263,7 @@ func ValidateServiceAccountConfig(config api.ServiceAccountConfig, builtInKubern
 			validationResults.AddErrors(field.Invalid(privateKeyFilePath, config.PrivateKeyFile, err.Error()))
 		}
 	} else if builtInKubernetes {
-		validationResults.AddWarnings(field.Invalid(privateKeyFilePath, "", "no service account tokens will be generated, which could prevent builds and deployments from working"))
+		validationResults.AddWarnings(field.Invalid(fldPath.Child("privateKeyFile"), "", "no service account tokens will be generated, which could prevent builds and deployments from working"))
 	}
 
 	if len(config.PublicKeyFiles) == 0 {
@@ -328,7 +322,7 @@ func ValidateAssetConfig(config *api.AssetConfig, fldPath *field.Path) Validatio
 	}
 
 	if len(config.MetricsPublicURL) > 0 {
-		if _, metricsURLErrs := ValidateSecureURL(config.MetricsPublicURL, fld.Path.Child("metricsPublicURL")); len(metricsURLErrs) > 0 {
+		if _, metricsURLErrs := ValidateSecureURL(config.MetricsPublicURL, fldPath.Child("metricsPublicURL")); len(metricsURLErrs) > 0 {
 			validationResults.AddErrors(metricsURLErrs...)
 		}
 	} else {
@@ -459,7 +453,7 @@ func ValidateKubernetesMasterConfig(config *api.KubernetesMasterConfig, fldPath 
 			}
 
 			if !allowedVersions.Has(version) {
-				validationResults.AddWarnings(field.NotSupported(keyPath.Index(i)), version, allowedVersions.List())
+				validationResults.AddWarnings(field.NotSupported(keyPath.Index(i), version, allowedVersions.List()))
 			}
 		}
 	}
@@ -526,10 +520,10 @@ func ValidateRoutingConfig(config api.RoutingConfig, fldPath *field.Path) field.
 	return allErrs
 }
 
-func ValidateAPIServerExtendedArguments(config api.ExtendedArguments) field.ErrorList {
-	return ValidateExtendedArguments(config, kapp.NewAPIServer().AddFlags)
+func ValidateAPIServerExtendedArguments(config api.ExtendedArguments, fldPath *field.Path) field.ErrorList {
+	return ValidateExtendedArguments(config, kapp.NewAPIServer().AddFlags, fldPath)
 }
 
-func ValidateControllerExtendedArguments(config api.ExtendedArguments) field.ErrorList {
-	return ValidateExtendedArguments(config, cmapp.NewCMServer().AddFlags)
+func ValidateControllerExtendedArguments(config api.ExtendedArguments, fldPath *field.Path) field.ErrorList {
+	return ValidateExtendedArguments(config, cmapp.NewCMServer().AddFlags, fldPath)
 }

@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	kapi "k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/client/transport"
 	kclient "k8s.io/kubernetes/pkg/client/unversioned"
 	kclientcmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 
@@ -19,40 +20,41 @@ const libModulesPath = "/lib/modules"
 
 //  Get kube client configuration from a file containing credentials for
 //  connecting to the master.
-func getClientConfig(path string) (*kclient.Config, error) {
+func getClientConfig(path string) (*kclient.Config, *transport.Config, error) {
 	if 0 == len(path) {
-		return nil, fmt.Errorf("You must specify a .kubeconfig file path containing credentials for connecting to the master with --credentials")
+		return nil, nil, fmt.Errorf("You must specify a .kubeconfig file path containing credentials for connecting to the master with --credentials")
 	}
 
 	rules := &kclientcmd.ClientConfigLoadingRules{ExplicitPath: path, Precedence: []string{}}
 	credentials, err := rules.Load()
 	if err != nil {
-		return nil, fmt.Errorf("Could not load credentials from %q: %v", path, err)
+		return nil, nil, fmt.Errorf("Could not load credentials from %q: %v", path, err)
 	}
 
 	config, err := kclientcmd.NewDefaultClientConfig(*credentials, &kclientcmd.ConfigOverrides{}).ClientConfig()
 	if err != nil {
-		return nil, fmt.Errorf("Credentials %q error: %v", path, err)
+		return nil, nil, fmt.Errorf("Credentials %q error: %v", path, err)
 	}
 
-	if err := kclient.LoadTLSFiles(config); err != nil {
-		return nil, fmt.Errorf("Unable to load certificate info using credentials from %q: %v", path, err)
+	transportCfg := config.TransportConfig()
+	if err := transport.LoadTLSFiles(transportCfg); err != nil {
+		return nil, nil, fmt.Errorf("Unable to load certificate info using credentials from %q: %v", path, err)
 	}
 
-	return config, nil
+	return config, transportCfg, nil
 }
 
 //  Generate the IP failover monitor (keepalived) container environment entries.
-func generateEnvEntries(name string, options *ipfailover.IPFailoverConfigCmdOptions, kconfig *kclient.Config) app.Environment {
+func generateEnvEntries(name string, options *ipfailover.IPFailoverConfigCmdOptions, kconfig *kclient.Config, transportCfg *transport.Config) app.Environment {
 	watchPort := strconv.Itoa(options.WatchPort)
 	replicas := strconv.Itoa(options.Replicas)
 	insecureStr := strconv.FormatBool(kconfig.Insecure)
 
 	return app.Environment{
 		"OPENSHIFT_MASTER":    kconfig.Host,
-		"OPENSHIFT_CA_DATA":   string(kconfig.CAData),
-		"OPENSHIFT_KEY_DATA":  string(kconfig.KeyData),
-		"OPENSHIFT_CERT_DATA": string(kconfig.CertData),
+		"OPENSHIFT_CA_DATA":   string(transportCfg.TLS.CAData),
+		"OPENSHIFT_KEY_DATA":  string(transportCfg.TLS.KeyData),
+		"OPENSHIFT_CERT_DATA": string(transportCfg.TLS.CertData),
 		"OPENSHIFT_INSECURE":  insecureStr,
 
 		"OPENSHIFT_HA_CONFIG_NAME":       name,
@@ -108,12 +110,12 @@ func generateContainerConfig(name string, options *ipfailover.IPFailoverConfigCm
 		return containers, nil
 	}
 
-	config, err := getClientConfig(options.Credentials)
+	config, transportCfg, err := getClientConfig(options.Credentials)
 	if err != nil {
 		return containers, err
 	}
 
-	env := generateEnvEntries(name, options, config)
+	env := generateEnvEntries(name, options, config, transportCfg)
 
 	c := generateFailoverMonitorContainerConfig(name, options, env)
 	if c != nil {

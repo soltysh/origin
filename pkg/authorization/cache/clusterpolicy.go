@@ -4,11 +4,13 @@ import (
 	"time"
 
 	kapi "k8s.io/kubernetes/pkg/api"
-	errors "k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/client/cache"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/runtime"
+	kfield "k8s.io/kubernetes/pkg/util/validation/field"
 	"k8s.io/kubernetes/pkg/watch"
 
 	authorizationapi "github.com/openshift/origin/pkg/authorization/api"
@@ -31,11 +33,21 @@ func NewReadOnlyClusterPolicyCache(registry clusterpolicyregistry.WatchingRegist
 
 	reflector := cache.NewReflector(
 		&cache.ListWatch{
-			ListFunc: func() (runtime.Object, error) {
-				return registry.ListClusterPolicies(ctx, labels.Everything(), fields.Everything())
+			ListFunc: func(options kapi.ListOptions) (runtime.Object, error) {
+				opts := &unversioned.ListOptions{
+					LabelSelector:   unversioned.LabelSelector{options.LabelSelector},
+					FieldSelector:   unversioned.FieldSelector{options.FieldSelector},
+					ResourceVersion: options.ResourceVersion,
+				}
+				return registry.ListClusterPolicies(ctx, opts)
 			},
-			WatchFunc: func(resourceVersion string) (watch.Interface, error) {
-				return registry.WatchClusterPolicies(ctx, labels.Everything(), fields.Everything(), resourceVersion)
+			WatchFunc: func(options kapi.ListOptions) (watch.Interface, error) {
+				opts := &unversioned.ListOptions{
+					LabelSelector:   unversioned.LabelSelector{options.LabelSelector},
+					FieldSelector:   unversioned.FieldSelector{options.FieldSelector},
+					ResourceVersion: options.ResourceVersion,
+				}
+				return registry.WatchClusterPolicies(ctx, opts)
 			},
 		},
 		&authorizationapi.ClusterPolicy{},
@@ -74,7 +86,7 @@ func (c *readOnlyClusterPolicyCache) List(label labels.Selector, field fields.Se
 	for i := range returnedList {
 		clusterPolicy, castOK := returnedList[i].(*authorizationapi.ClusterPolicy)
 		if !castOK {
-			return clusterPolicyList, errors.NewInvalid("ClusterPolicy", "clusterPolicy", []error{})
+			return clusterPolicyList, errors.NewInvalid("ClusterPolicy", "clusterPolicy", kfield.ErrorList{})
 		}
 		if label.Matches(labels.Set(clusterPolicy.Labels)) && field.Matches(authorizationapi.ClusterPolicyToSelectableFields(clusterPolicy)) {
 			clusterPolicyList.Items = append(clusterPolicyList.Items, *clusterPolicy)
@@ -97,7 +109,7 @@ func (c *readOnlyClusterPolicyCache) Get(name string) (*authorizationapi.Cluster
 	}
 	clusterPolicy, castOK := item.(*authorizationapi.ClusterPolicy)
 	if !castOK {
-		castErr := errors.NewInvalid("ClusterPolicy", name, []error{})
+		castErr := errors.NewInvalid("ClusterPolicy", name, kfield.ErrorList{})
 		return &authorizationapi.ClusterPolicy{}, castErr
 	}
 	return clusterPolicy, nil

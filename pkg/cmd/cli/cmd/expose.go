@@ -92,8 +92,8 @@ func validate(cmd *cobra.Command, f *clientcmd.Factory, args []string) error {
 	mapping := info.ResourceMapping()
 
 	generator := cmdutil.GetFlagString(cmd, "generator")
-	switch mapping.Kind {
-	case "Service":
+	switch mapping.GroupVersionKind.GroupKind() {
+	case kapi.Kind("Service"):
 		switch generator {
 		case "service/v1", "service/v2":
 			// Set default protocol back for generating services

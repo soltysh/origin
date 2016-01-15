@@ -23,21 +23,21 @@ func ValidateOAuthConfig(config *api.OAuthConfig, fldPath *field.Path) Validatio
 	if config.MasterCA == nil {
 		validationResults.AddErrors(field.Invalid(fldPath.Child("masterCA"), config.MasterCA, "a filename or empty string is required"))
 	} else if len(*config.MasterCA) > 0 {
-		validationResults.AddErrors(ValidateFile(*config.MasterCA, "masterCA")...)
+		validationResults.AddErrors(ValidateFile(*config.MasterCA, fldPath.Child("masterCA"))...)
 	}
 
 	if len(config.MasterURL) == 0 {
 		validationResults.AddErrors(field.Required(fldPath.Child("masterURL")))
-	} else if _, urlErrs := ValidateURL(config.MasterURL, "masterURL"); len(urlErrs) > 0 {
+	} else if _, urlErrs := ValidateURL(config.MasterURL, fldPath.Child("masterURL")); len(urlErrs) > 0 {
 		validationResults.AddErrors(urlErrs...)
 	}
 
-	if _, urlErrs := ValidateURL(config.MasterPublicURL, "masterPublicURL"); len(urlErrs) > 0 {
+	if _, urlErrs := ValidateURL(config.MasterPublicURL, fldPath.Child("masterPublicURL")); len(urlErrs) > 0 {
 		validationResults.AddErrors(urlErrs...)
 	}
 
 	if len(config.AssetPublicURL) == 0 {
-		validationResults.AddErrors(fieldRequired(fldPath.Child("assetPublicURL")))
+		validationResults.AddErrors(field.Required(fldPath.Child("assetPublicURL")))
 	}
 
 	if config.SessionConfig != nil {
@@ -74,7 +74,7 @@ func ValidateOAuthConfig(config *api.OAuthConfig, fldPath *field.Path) Validatio
 		}
 
 		identityProviderPath := fldPath.Child("identityProvider").Index(i)
-		validationResults.Append(validateIdentityProvider(identityProvider, identityProviderPath))
+		validationResults.Append(ValidateIdentityProvider(identityProvider, identityProviderPath))
 
 		if len(identityProvider.Name) > 0 {
 			if providerNames.Has(identityProvider.Name) {
@@ -120,25 +120,25 @@ var validMappingMethods = sets.NewString(
 	string(identitymapper.MappingMethodGenerate),
 )
 
-func ValidateIdentityProvider(identityProvider api.IdentityProvider) ValidationResults {
+func ValidateIdentityProvider(identityProvider api.IdentityProvider, fldPath *field.Path) ValidationResults {
 	validationResults := ValidationResults{}
 
 	if len(identityProvider.Name) == 0 {
-		validationResults.AddErrors(field.Required(field.NewPath("name")))
+		validationResults.AddErrors(field.Required(fldPath.Child("name")))
 	}
 	if ok, err := validation.ValidateIdentityProviderName(identityProvider.Name); !ok {
-		validationResults.AddErrors(field.Invalid(field.NewPath("name"), identityProvider.Name, err))
+		validationResults.AddErrors(field.Invalid(fldPath.Child("name"), identityProvider.Name, err))
 	}
 
 	if len(identityProvider.MappingMethod) == 0 {
-		validationResults.AddErrors(field.Required(field.NewPath("mappingMethod")))
+		validationResults.AddErrors(field.Required(fldPath.Child("mappingMethod")))
 	} else if !validMappingMethods.Has(identityProvider.MappingMethod) {
-		validationResults.AddErrors(field.NotSupported(field.NewPath("mappingMethod"), identityProvider.MappingMethod, validMappingMethods.List()))
+		validationResults.AddErrors(field.NotSupported(fldPath.Child("mappingMethod"), identityProvider.MappingMethod, validMappingMethods.List()))
 	}
 
-	providerPath := file.NewPath("provider")
+	providerPath := fldPath.Child("provider")
 	if !api.IsIdentityProviderType(identityProvider.Provider) {
-		validationResults.AddErrors(field.Invalid(field.NewPath("provider"), identityProvider.Provider, fmt.Sprintf("%v is invalid in this context", identityProvider.Provider)))
+		validationResults.AddErrors(field.Invalid(fldPath.Child("provider"), identityProvider.Provider, fmt.Sprintf("%v is invalid in this context", identityProvider.Provider)))
 	} else {
 		switch provider := identityProvider.Provider.Object.(type) {
 		case (*api.RequestHeaderIdentityProvider):
@@ -177,7 +177,7 @@ func ValidateLDAPIdentityProvider(provider *api.LDAPPasswordIdentityProvider) Va
 
 	// At least one attribute to use as the user id is required
 	if len(provider.Attributes.ID) == 0 {
-		validationResults.AddErrors(providerPath.Child("attributes", "id"), "[]", "at least one id attribute is required (LDAP standard identity attribute is 'dn')")
+		validationResults.AddErrors(field.Invalid(providerPath.Child("attributes", "id"), "[]", "at least one id attribute is required (LDAP standard identity attribute is 'dn')"))
 	}
 
 	return validationResults
@@ -205,7 +205,7 @@ func ValidateRequestHeaderIdentityProvider(provider *api.RequestHeaderIdentityPr
 	validationResults := ValidationResults{}
 
 	if len(provider.ClientCA) > 0 {
-		validationResults.AddErrors(ValidateFile(provider.ClientCA, "provider.clientCA")...)
+		validationResults.AddErrors(ValidateFile(provider.ClientCA, field.NewPath("provider", "clientCA"))...)
 	}
 	if len(provider.Headers) == 0 {
 		validationResults.AddErrors(field.Required(field.NewPath("provider", "headers")))
@@ -222,7 +222,7 @@ func ValidateRequestHeaderIdentityProvider(provider *api.RequestHeaderIdentityPr
 	}
 
 	if len(provider.ChallengeURL) > 0 {
-		url, urlErrs := ValidateURL(provider.ChallengeURL, "provider.challengeURL")
+		url, urlErrs := ValidateURL(provider.ChallengeURL, field.NewPath("provider", "challengeURL"))
 		validationResults.AddErrors(urlErrs...)
 		if len(urlErrs) == 0 && !strings.Contains(url.RawQuery, redirector.URLToken) && !strings.Contains(url.RawQuery, redirector.QueryToken) {
 			validationResults.AddWarnings(
@@ -235,7 +235,7 @@ func ValidateRequestHeaderIdentityProvider(provider *api.RequestHeaderIdentityPr
 		}
 	}
 	if len(provider.LoginURL) > 0 {
-		url, urlErrs := ValidateURL(provider.LoginURL, "provider.loginURL")
+		url, urlErrs := ValidateURL(provider.LoginURL, field.NewPath("provider", "loginURL"))
 		validationResults.AddErrors(urlErrs...)
 		if len(urlErrs) == 0 && !strings.Contains(url.RawQuery, redirector.URLToken) && !strings.Contains(url.RawQuery, redirector.QueryToken) {
 			validationResults.AddWarnings(
@@ -312,7 +312,7 @@ func validateGrantConfig(config api.GrantConfig, fldPath *field.Path) field.Erro
 	allErrs := field.ErrorList{}
 
 	if !api.ValidGrantHandlerTypes.Has(string(config.Method)) {
-		allErrs = append(allErrs, filed.Invalid(field.NewPath("grantConfig", "method"), config.Method, fmt.Sprintf("must be one of: %v", api.ValidGrantHandlerTypes.List())))
+		allErrs = append(allErrs, field.Invalid(field.NewPath("grantConfig", "method"), config.Method, fmt.Sprintf("must be one of: %v", api.ValidGrantHandlerTypes.List())))
 	}
 
 	return allErrs

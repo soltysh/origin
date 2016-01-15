@@ -31,10 +31,10 @@ var (
 	KnownKubernetesStorageVersionLevels = []string{"v1", "v1beta3"}
 	// KnownOpenShiftStorageVersionLevels are storage versions that can be dealt
 	// with internally
-	KnownOpenShiftStorageVersionLevels = latest.Versions
+	KnownOpenShiftStorageVersionLevels = latest.VersionsStrings
 	// DefaultOpenShiftStorageVersionLevel is the default storage version for
 	// resources.
-	DefaultOpenShiftStorageVersionLevel = latest.Versions[0]
+	DefaultOpenShiftStorageVersionLevel = latest.VersionsStrings[0]
 	// DeadKubernetesStorageVersionLevels are storage versions which shouldn't
 	// be exposed externally.
 	DeadKubernetesStorageVersionLevels = []string{"v1beta3"}

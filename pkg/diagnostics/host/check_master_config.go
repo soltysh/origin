@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"k8s.io/kubernetes/pkg/util/validation/field"
+
 	configapilatest "github.com/openshift/origin/pkg/cmd/server/api/latest"
 	configvalidation "github.com/openshift/origin/pkg/cmd/server/api/validation"
 	"github.com/openshift/origin/pkg/diagnostics/types"
@@ -42,7 +44,7 @@ func (d MasterConfigCheck) Check() types.DiagnosticResult {
 
 	r.Info("DH0003", fmt.Sprintf("Found a master config file: %[1]s", d.MasterConfigFile))
 
-	results := configvalidation.ValidateMasterConfig(masterConfig)
+	results := configvalidation.ValidateMasterConfig(masterConfig, field.NewPath("masterConfig"))
 	if len(results.Errors) > 0 {
 		errText := fmt.Sprintf("Validation of master config file '%s' failed:\n", d.MasterConfigFile)
 		for _, err := range results.Errors {

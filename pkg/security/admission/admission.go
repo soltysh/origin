@@ -95,7 +95,7 @@ func (a *constraint) Stop() {
 //     with the validated SCC.  If we don't find any reject the pod and give all errors from the
 //     failed attempts.
 func (c *constraint) Admit(a kadmission.Attributes) error {
-	if a.GetResource() != string(kapi.ResourcePods) {
+	if a.GetResource().Resource != string(kapi.ResourcePods) {
 		return nil
 	}
 
@@ -136,8 +136,8 @@ func (c *constraint) Admit(a kadmission.Attributes) error {
 	// all containers in a single pod must validate under a single provider or we will reject the request
 	validationErrs := field.ErrorList{}
 	for _, provider := range providers {
-		if errs := assignSecurityContext(provider, pod); len(errs) > 0 {
-			validationErrs = append(validationErrs, errs.Prefix(fmt.Sprintf("provider %s: ", provider.GetSCCName()))...)
+		if errs := assignSecurityContext(provider, pod, field.NewPath(fmt.Sprintf("provider %s: ", provider.GetSCCName()))); len(errs) > 0 {
+			validationErrs = append(validationErrs, errs...)
 			continue
 		}
 
@@ -158,7 +158,7 @@ func (c *constraint) Admit(a kadmission.Attributes) error {
 // assignSecurityContext creates a security context for each container in the pod
 // and validates that the sc falls within the scc constraints.  All containers must validate against
 // the same scc or is not considered valid.
-func assignSecurityContext(provider scc.SecurityContextConstraintsProvider, pod *kapi.Pod) field.ErrorList {
+func assignSecurityContext(provider scc.SecurityContextConstraintsProvider, pod *kapi.Pod, fldPath *field.Path) field.ErrorList {
 	generatedSCs := make([]*kapi.SecurityContext, len(pod.Spec.Containers))
 
 	errs := field.ErrorList{}
@@ -173,7 +173,7 @@ func assignSecurityContext(provider scc.SecurityContextConstraintsProvider, pod 
 	// validation.
 	originalPSC := pod.Spec.SecurityContext
 	pod.Spec.SecurityContext = psc
-	errs = append(errs, provider.ValidatePodSecurityContext(pod).Prefix("spec.securityContext")...)
+	errs = append(errs, provider.ValidatePodSecurityContext(pod, field.NewPath("spec", "securityContext"))...)
 
 	// Note: this is not changing the original container, we will set container SCs later so long
 	// as all containers validated under the same SCC.
@@ -192,7 +192,7 @@ func assignSecurityContext(provider scc.SecurityContextConstraintsProvider, pod 
 		generatedSCs[i] = sc
 
 		containerCopy.SecurityContext = sc
-		errs = append(errs, provider.ValidateContainerSecurityContext(pod, &containerCopy).Prefix(fmt.Sprintf("spec.containers[%d].securityContext", i))...)
+		errs = append(errs, provider.ValidateContainerSecurityContext(pod, &containerCopy, field.NewPath("spec", "containers").Index(i).Child("securityContext"))...)
 	}
 
 	if len(errs) > 0 {

@@ -12,7 +12,7 @@ import (
 )
 
 func ValidateLDAPSyncConfig(config *api.LDAPSyncConfig) ValidationResults {
-	validationResults := ValidateLDAPClientConfig(config.URL, config.BindDN, config.BindPassword, config.CA, config.Insecure)
+	validationResults := ValidateLDAPClientConfig(config.URL, config.BindDN, config.BindPassword, config.CA, config.Insecure, field.NewPath(""))
 
 	schemaConfigsFound := []string{}
 
@@ -49,13 +49,13 @@ func ValidateLDAPClientConfig(url, bindDN, bindPassword, CA string, insecure boo
 	validationResults := ValidationResults{}
 
 	if len(url) == 0 {
-		validationResults.AddErrors(field.Required(field.NewPath("url")))
+		validationResults.AddErrors(field.Required(fldPath.Child("url")))
 		return validationResults
 	}
 
 	u, err := ldaputil.ParseURL(url)
 	if err != nil {
-		validationResults.AddErrors(field.Invalid(field.NewPath("url"), url, err.Error()))
+		validationResults.AddErrors(field.Invalid(fldPath.Child("url"), url, err.Error()))
 		return validationResults
 	}
 
@@ -63,30 +63,30 @@ func ValidateLDAPClientConfig(url, bindDN, bindPassword, CA string, insecure boo
 	// Both unset means an anonymous bind is used for search (https://tools.ietf.org/html/rfc4513#section-5.1.1)
 	// Both set means the name/password simple bind is used for search (https://tools.ietf.org/html/rfc4513#section-5.1.3)
 	if (len(bindDN) == 0) != (len(bindPassword) == 0) {
-		validationResults.AddErrors(field.Invalid(field.NewPath("bindDN"), bindDN,
+		validationResults.AddErrors(field.Invalid(fldPath.Child("bindDN"), bindDN,
 			"bindDN and bindPassword must both be specified, or both be empty"))
-		validationResults.AddErrors(field.Invalid(field.NewPath("bindPassword"), "<masked>",
+		validationResults.AddErrors(field.Invalid(fldPath.Child("bindPassword"), "<masked>",
 			"bindDN and bindPassword must both be specified, or both be empty"))
 	}
 
 	if insecure {
 		if u.Scheme == ldaputil.SchemeLDAPS {
-			validationResults.AddErrors(field.Invalid(field.NewPath("url"), url,
+			validationResults.AddErrors(field.Invalid(fldPath.Child("url"), url,
 				fmt.Sprintf("Cannot use %s scheme with insecure=true", u.Scheme)))
 		}
 		if len(CA) > 0 {
-			validationResults.AddErrors(field.Invalid(field.NewPath("ca"), CA,
+			validationResults.AddErrors(field.Invalid(fldPath.Child("ca"), CA,
 				"Cannot specify a ca with insecure=true"))
 		}
 	} else {
 		if len(CA) > 0 {
-			validationResults.AddErrors(ValidateFile(CA, field.NewPath("ca"))...)
+			validationResults.AddErrors(ValidateFile(CA, fldPath.Child("ca"))...)
 		}
 	}
 
 	// Warn if insecure
 	if insecure {
-		validationResults.AddWarnings(field.Invalid(field.NewPath("insecure"), insecure,
+		validationResults.AddWarnings(field.Invalid(fldPath.Child("insecure"), insecure,
 			"validating passwords over an insecure connection could allow them to be intercepted"))
 	}
 
@@ -107,7 +107,7 @@ func ValidateRFC2307Config(config *api.RFC2307Config) ValidationResults {
 		validationResults.AddErrors(field.Required(field.NewPath("groupMembershipAttributes")))
 	}
 
-	validationResults.Append(ValidateLDAPQuery(config.AllUsersQuery).Prefix("usersQuery"))
+	validationResults.Append(ValidateLDAPQuery(config.AllUsersQuery, field.NewPath("usersQuery")))
 	if len(config.UserUIDAttribute) == 0 {
 		validationResults.AddErrors(field.Required(field.NewPath("userUIDAttribute")))
 	}

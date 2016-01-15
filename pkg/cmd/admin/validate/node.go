@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/util/validation/field"
 
 	configapilatest "github.com/openshift/origin/pkg/cmd/server/api/latest"
 	"github.com/openshift/origin/pkg/cmd/server/api/validation"
@@ -82,7 +83,7 @@ func (o *ValidateNodeConfigOptions) Run() (ok bool, err error) {
 		return true, err
 	}
 
-	results := validation.ValidateNodeConfig(nodeConfig)
+	results := validation.ValidateNodeConfig(nodeConfig, field.NewPath("nodeConfig"))
 	writer := tabwriter.NewWriter(o.Out, minColumnWidth, tabWidth, padding, padchar, flags)
 	err = prettyPrintValidationResults(results, writer)
 	if err != nil {

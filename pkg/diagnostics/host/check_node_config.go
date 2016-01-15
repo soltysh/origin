@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"k8s.io/kubernetes/pkg/util/validation/field"
+
 	configapilatest "github.com/openshift/origin/pkg/cmd/server/api/latest"
 	configvalidation "github.com/openshift/origin/pkg/cmd/server/api/validation"
 	"github.com/openshift/origin/pkg/diagnostics/types"
@@ -41,7 +43,7 @@ func (d NodeConfigCheck) Check() types.DiagnosticResult {
 
 	r.Info("DH1003", fmt.Sprintf("Found a node config file: %[1]s", d.NodeConfigFile))
 
-	results := configvalidation.ValidateNodeConfig(nodeConfig)
+	results := configvalidation.ValidateNodeConfig(nodeConfig, field.NewPath("nodeConfig"))
 	if len(results.Errors) > 0 {
 		errText := fmt.Sprintf("Validation of node config file '%s' failed:\n", d.NodeConfigFile)
 		for _, err := range results.Errors {

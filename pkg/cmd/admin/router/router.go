@@ -14,6 +14,7 @@ import (
 
 	kapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/client/transport"
 	kclient "k8s.io/kubernetes/pkg/client/unversioned"
 	kclientcmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	"k8s.io/kubernetes/pkg/controller/serviceaccount"
@@ -512,7 +513,8 @@ func RunCmdRouter(f *clientcmd.Factory, cmd *cobra.Command, out io.Writer, cfg *
 		if err != nil {
 			return fmt.Errorf("router could not be created; the provided credentials %q could not be used: %v", cfg.Credentials, err)
 		}
-		if err := kclient.LoadTLSFiles(config); err != nil {
+		transportCfg := config.TransportConfig()
+		if err := transport.LoadTLSFiles(transportCfg); err != nil {
 			return fmt.Errorf("router could not be created; the provided credentials %q could not load certificate info: %v", cfg.Credentials, err)
 		}
 		insecure := "false"
@@ -532,9 +534,9 @@ func RunCmdRouter(f *clientcmd.Factory, cmd *cobra.Command, out io.Writer, cfg *
 
 		env := app.Environment{
 			"OPENSHIFT_MASTER":                    config.Host,
-			"OPENSHIFT_CA_DATA":                   string(config.CAData),
-			"OPENSHIFT_KEY_DATA":                  string(config.KeyData),
-			"OPENSHIFT_CERT_DATA":                 string(config.CertData),
+			"OPENSHIFT_CA_DATA":                   string(transportCfg.TLS.CAData),
+			"OPENSHIFT_KEY_DATA":                  string(transportCfg.TLS.KeyData),
+			"OPENSHIFT_CERT_DATA":                 string(transportCfg.TLS.CertData),
 			"OPENSHIFT_INSECURE":                  insecure,
 			"DEFAULT_CERTIFICATE":                 defaultCert,
 			"ROUTER_SERVICE_NAME":                 name,

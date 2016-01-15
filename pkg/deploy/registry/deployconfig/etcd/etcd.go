@@ -131,19 +131,7 @@ func (r *ScaleREST) Update(ctx kapi.Context, obj runtime.Object) (runtime.Object
 		return nil, false, errors.NewBadRequest(fmt.Sprintf("wrong object passed to Scale update: %v", obj))
 	}
 
-	// fake an existing object to validate
-	existing := &extensions.Scale{
-		ObjectMeta: kapi.ObjectMeta{
-			Name:              scale.Name,
-			CreationTimestamp: scale.CreationTimestamp,
-		},
-	}
-
-	if existing.Namespace, ok = kapi.NamespaceFrom(ctx); !ok {
-		existing.Namespace = scale.Namespace
-	}
-
-	if errs := extvalidation.ValidateScaleUpdate(scale, existing); len(errs) > 0 {
+	if errs := extvalidation.ValidateScale(scale); len(errs) > 0 {
 		return nil, false, errors.NewInvalid("scale", scale.Name, errs)
 	}
 

@@ -11,43 +11,43 @@ import (
 	"github.com/openshift/origin/pkg/cmd/server/api"
 )
 
-func ValidateNodeConfig(config *api.NodeConfig) ValidationResults {
+func ValidateNodeConfig(config *api.NodeConfig, fldPath *field.Path) ValidationResults {
 	validationResults := ValidationResults{}
 
 	if len(config.NodeName) == 0 {
-		validationResults.AddErrors(field.Required(field.NewPath("nodeName")))
+		validationResults.AddErrors(field.Required(fldPath.Child("nodeName")))
 	}
 	if len(config.NodeIP) > 0 {
-		validationResults.AddErrors(ValidateSpecifiedIP(config.NodeIP, field.NewPath("nodeIP"))...)
+		validationResults.AddErrors(ValidateSpecifiedIP(config.NodeIP, fldPath.Child("nodeIP"))...)
 	}
 
-	servingInfoPath := field.NewPath("servingInfo")
+	servingInfoPath := fldPath.Child("servingInfo")
 	validationResults.Append(ValidateServingInfo(config.ServingInfo, servingInfoPath))
 	if config.ServingInfo.BindNetwork == "tcp6" {
-		validationResults.AddErrors(servingInfoPath.Child("bindNetwork"), config.ServingInfo.BindNetwork, "tcp6 is not a valid bindNetwork for nodes, must be tcp or tcp4")
+		validationResults.AddErrors(field.Invalid(servingInfoPath.Child("bindNetwork"), config.ServingInfo.BindNetwork, "tcp6 is not a valid bindNetwork for nodes, must be tcp or tcp4"))
 	}
-	validationResults.AddErrors(ValidateKubeConfig(config.MasterKubeConfig, field.NewPath("masterKubeConfig"))...)
+	validationResults.AddErrors(ValidateKubeConfig(config.MasterKubeConfig, fldPath.Child("masterKubeConfig"))...)
 
 	if len(config.DNSIP) > 0 {
-		validationResults.AddErrors(ValidateSpecifiedIP(config.DNSIP, field.NewPath("dnsIP"))...)
+		validationResults.AddErrors(ValidateSpecifiedIP(config.DNSIP, fldPath.Child("dnsIP"))...)
 	}
 
-	validationResults.AddErrors(ValidateImageConfig(config.ImageConfig, field.NewPath("imageConfig"))...)
+	validationResults.AddErrors(ValidateImageConfig(config.ImageConfig, fldPath.Child("imageConfig"))...)
 
 	if config.PodManifestConfig != nil {
-		validationResults.AddErrors(ValidatePodManifestConfig(config.PodManifestConfig, field.NewPath("podManifestConfig"))...)
+		validationResults.AddErrors(ValidatePodManifestConfig(config.PodManifestConfig, fldPath.Child("podManifestConfig"))...)
 	}
 
-	validationResults.AddErrors(ValidateNetworkConfig(config.NetworkConfig, field.NewPath("networkConfig"))...)
+	validationResults.AddErrors(ValidateNetworkConfig(config.NetworkConfig, fldPath.Child("networkConfig"))...)
 
-	validationResults.AddErrors(ValidateDockerConfig(config.DockerConfig, field.NewPath("dockerConfig"))...)
+	validationResults.AddErrors(ValidateDockerConfig(config.DockerConfig, fldPath.Child("dockerConfig"))...)
 
-	validationResults.AddErrors(ValidateNodeAuthConfig(config.AuthConfig, field.NewPath("authConfig"))...)
+	validationResults.AddErrors(ValidateNodeAuthConfig(config.AuthConfig, fldPath.Child("authConfig"))...)
 
-	validationResults.AddErrors(ValidateKubeletExtendedArguments(config.KubeletArguments, field.NewPath("kubeletArguments"))...)
+	validationResults.AddErrors(ValidateKubeletExtendedArguments(config.KubeletArguments, fldPath.Child("kubeletArguments"))...)
 
 	if _, err := time.ParseDuration(config.IPTablesSyncPeriod); err != nil {
-		validationResults.AddErrors(field.Invalid(field.NewPath("iptablesSyncPeriod"), config.IPTablesSyncPeriod, fmt.Sprintf("unable to parse iptablesSyncPeriod: %v. Examples with correct format: '5s', '1m', '2h22m'", err)))
+		validationResults.AddErrors(field.Invalid(fldPath.Child("iptablesSyncPeriod"), config.IPTablesSyncPeriod, fmt.Sprintf("unable to parse iptablesSyncPeriod: %v. Examples with correct format: '5s', '1m', '2h22m'", err)))
 	}
 
 	return validationResults

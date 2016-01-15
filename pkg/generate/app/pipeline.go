@@ -415,11 +415,11 @@ func (a *acceptUnique) Accept(from interface{}) bool {
 	if err != nil {
 		return false
 	}
-	_, kind, err := a.typer.ObjectVersionAndKind(obj)
+	gvk, err := a.typer.ObjectKind(obj)
 	if err != nil {
 		return false
 	}
-	key := fmt.Sprintf("%s/%s/%s", kind, meta.Namespace, meta.Name)
+	key := fmt.Sprintf("%s/%s/%s", gvk.Kind, meta.Namespace, meta.Name)
 	_, exists := a.objects[key]
 	if exists {
 		return false
@@ -459,11 +459,11 @@ func (a *acceptBuildConfigs) Accept(from interface{}) bool {
 	if err != nil {
 		return false
 	}
-	_, kind, err := a.typer.ObjectVersionAndKind(obj)
+	gvk, err := a.typer.ObjectKind(obj)
 	if err != nil {
 		return false
 	}
-	return kind == "BuildConfig" || kind == "ImageStream"
+	return gvk.Kind == "BuildConfig" || gvk.Kind == "ImageStream"
 }
 
 // NewAcceptBuildConfigs creates an acceptor accepting BuildConfig objects

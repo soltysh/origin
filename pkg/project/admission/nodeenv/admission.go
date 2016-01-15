@@ -28,7 +28,7 @@ type podNodeEnvironment struct {
 // Admit enforces that pod and its project node label selectors matches at least a node in the cluster.
 func (p *podNodeEnvironment) Admit(a admission.Attributes) (err error) {
 	resource := a.GetResource()
-	if resource != "pods" {
+	if resource.Resource != "pods" {
 		return nil
 	}
 	if a.GetSubresource() != "" {
@@ -50,7 +50,7 @@ func (p *podNodeEnvironment) Admit(a admission.Attributes) (err error) {
 	}
 	namespace, err := projects.GetNamespaceObject(a.GetNamespace())
 	if err != nil {
-		return apierrors.NewForbidden(resource, name, err)
+		return apierrors.NewForbidden(resource.Resource, name, err)
 	}
 	projectNodeSelector, err := projects.GetNodeSelectorMap(namespace)
 	if err != nil {
@@ -58,7 +58,7 @@ func (p *podNodeEnvironment) Admit(a admission.Attributes) (err error) {
 	}
 
 	if labelselector.Conflicts(projectNodeSelector, pod.Spec.NodeSelector) {
-		return apierrors.NewForbidden(resource, name, fmt.Errorf("pod node label selector conflicts with its project node label selector"))
+		return apierrors.NewForbidden(resource.Resource, name, fmt.Errorf("pod node label selector conflicts with its project node label selector"))
 	}
 
 	// modify pod node selector = project node selector + current pod node selector

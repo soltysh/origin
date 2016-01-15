@@ -9,11 +9,11 @@ import (
 	"github.com/spf13/cobra"
 	kapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
-	kclient "k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/client/transport"
 	kclientcmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/runtime"
-	kutil "k8s.io/kubernetes/pkg/util"
+	"k8s.io/kubernetes/pkg/util/intstr"
 
 	"github.com/openshift/origin/pkg/cmd/util/clientcmd"
 	"github.com/openshift/origin/pkg/cmd/util/variable"
@@ -210,7 +210,8 @@ func RunCmdRegistry(f *clientcmd.Factory, cmd *cobra.Command, out io.Writer, cfg
 		if err != nil {
 			return fmt.Errorf("registry does not exist; the provided credentials %q could not be used: %v", cfg.Credentials, err)
 		}
-		if err := kclient.LoadTLSFiles(config); err != nil {
+		transportCfg := config.TransportConfig()
+		if err := transport.LoadTLSFiles(transportCfg); err != nil {
 			return fmt.Errorf("registry does not exist; the provided credentials %q could not load certificate info: %v", cfg.Credentials, err)
 		}
 		insecure := "false"
@@ -224,9 +225,9 @@ func RunCmdRegistry(f *clientcmd.Factory, cmd *cobra.Command, out io.Writer, cfg
 
 		env := app.Environment{
 			"OPENSHIFT_MASTER":    config.Host,
-			"OPENSHIFT_CA_DATA":   string(config.CAData),
-			"OPENSHIFT_KEY_DATA":  string(config.KeyData),
-			"OPENSHIFT_CERT_DATA": string(config.CertData),
+			"OPENSHIFT_CA_DATA":   string(transportCfg.TLS.CAData),
+			"OPENSHIFT_KEY_DATA":  string(transportCfg.TLS.KeyData),
+			"OPENSHIFT_CERT_DATA": string(transportCfg.TLS.CertData),
 			"OPENSHIFT_INSECURE":  insecure,
 		}
 

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
@@ -36,7 +37,7 @@ type EditOptions struct {
 
 	ext       string
 	filenames []string
-	version   string
+	version   unversioned.GroupVersion
 	fullName  string
 }
 
@@ -144,8 +145,8 @@ func (o *EditOptions) Complete(fullName string, f *clientcmd.Factory, out io.Wri
 		return err
 	}
 
-	o.version = cmdutil.OutputVersion(cmd, clientConfig.Version)
-	return nil
+	o.version, err = cmdutil.OutputVersion(cmd, clientConfig.GroupVersion)
+	return err
 }
 
 // RunEdit contains all the necessary functionality for the OpenShift cli edit command.
@@ -157,7 +158,7 @@ func (o *EditOptions) RunEdit() error {
 		return err
 	}
 	for {
-		obj, err := resource.AsVersionedObject(infos, false, o.version)
+		obj, err := resource.AsVersionedObject(infos, false, o.version.String())
 		if err != nil {
 			return preservedFile(err, results.file, o.out)
 		}
@@ -331,7 +332,7 @@ type editResults struct {
 	file      string
 
 	delta   *jsonmerge.Delta
-	version string
+	version unversioned.GroupVersion
 }
 
 func (r *editResults) AddError(err error, info *resource.Info) string {
@@ -357,7 +358,7 @@ func (r *editResults) AddError(err error, info *resource.Info) string {
 	case errors.IsConflict(err):
 		if r.delta != nil {
 			v1 := info.ResourceVersion
-			if perr := applyPatch(r.delta, info, r.version); perr != nil {
+			if perr := applyPatch(r.delta, info, r.version.String()); perr != nil {
 				// the error was related to the patching process
 				if nerr, ok := perr.(patchError); ok {
 					r.conflict++

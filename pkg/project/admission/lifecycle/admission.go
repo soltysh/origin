@@ -65,12 +65,12 @@ func (e *lifecycle) Admit(a admission.Attributes) (err error) {
 	if isSubjectAccessReview(a) {
 		return nil
 	}
-	defaultVersion, kind, err := latest.RESTMapper.VersionAndKindForResource(a.GetResource())
+	gvk, err := latest.RESTMapper.KindFor(a.GetResource().Resource)
 	if err != nil {
 		glog.V(4).Infof("Ignoring life-cycle enforcement for resource %v; no associated default version and kind could be found.", a.GetResource())
 		return nil
 	}
-	mapping, err := latest.RESTMapper.RESTMapping(kind, defaultVersion)
+	mapping, err := latest.RESTMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
 		return admission.NewForbidden(a, err)
 	}
@@ -103,8 +103,8 @@ func (e *lifecycle) Admit(a admission.Attributes) (err error) {
 		return nil
 	}
 
-	if namespace.Status.Phase == kapi.NamespaceTerminating && !e.creatableResources.Has(strings.ToLower(a.GetResource())) {
-		return apierrors.NewForbidden(kind, name, fmt.Errorf("Namespace %s is terminating", a.GetNamespace()))
+	if namespace.Status.Phase == kapi.NamespaceTerminating && !e.creatableResources.Has(strings.ToLower(a.GetResource().Resource)) {
+		return apierrors.NewForbidden(gvk.Kind, name, fmt.Errorf("Namespace %s is terminating", a.GetNamespace()))
 	}
 
 	// in case of concurrency issues, we will retry this logic
@@ -144,6 +144,6 @@ func NewLifecycle(client client.Interface, creatableResources sets.String) (admi
 }
 
 func isSubjectAccessReview(a admission.Attributes) bool {
-	return a.GetResource() == "subjectaccessreviews" ||
-		a.GetResource() == "localsubjectaccessreviews"
+	return a.GetResource().Resource == "subjectaccessreviews" ||
+		a.GetResource().Resource == "localsubjectaccessreviews"
 }

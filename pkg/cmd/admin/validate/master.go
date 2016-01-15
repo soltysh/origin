@@ -83,7 +83,7 @@ func (o *ValidateMasterConfigOptions) Run() (bool, error) {
 		return true, err
 	}
 
-	results := validation.ValidateMasterConfig(masterConfig)
+	results := validation.ValidateMasterConfig(masterConfig, field.NewPath("masterConfig"))
 	writer := tabwriter.NewWriter(o.Out, minColumnWidth, tabWidth, padding, padchar, flags)
 	err = prettyPrintValidationResults(results, writer)
 	if err != nil {
@@ -129,18 +129,9 @@ func prettyPrintValidationErrorList(headings string, validationErrors field.Erro
 	if len(validationErrors) > 0 {
 		fmt.Fprintf(writer, headings)
 		for _, err := range validationErrors {
-			switch validationError := err.(type) {
-			case (*field.Error):
-				err := prettyPrintValidationError(validationError, writer)
-				if err != nil {
-					return err
-				}
-			default:
-				// This is not a validation error but we can grab the error message for details nonetheless
-				err := prettyPrintGenericError(validationError, writer)
-				if err != nil {
-					return err
-				}
+			err := prettyPrintValidationError(err, writer)
+			if err != nil {
+				return err
 			}
 		}
 	}

@@ -160,7 +160,7 @@ func ValidateNamedCertificates(fldPath *field.Path, namedCertificates []api.Name
 func ValidateHTTPServingInfo(info api.HTTPServingInfo, fldPath *field.Path) ValidationResults {
 	validationResults := ValidationResults{}
 
-	validationResults.Append(ValidateServingInfo(info.ServingInfo))
+	validationResults.Append(ValidateServingInfo(info.ServingInfo, fldPath))
 
 	if info.MaxRequestsInFlight < 0 {
 		validationResults.AddErrors(field.Invalid(fldPath.Child("maxRequestsInFlight"), info.MaxRequestsInFlight, "must be zero (no limit) or greater"))
@@ -263,7 +263,7 @@ func ValidateURL(urlString string, fldPath *field.Path) (*url.URL, field.ErrorLi
 	return urlObj, allErrs
 }
 
-func ValidateNamespace(namespace, fldPath *field.Path) field.ErrorList {
+func ValidateNamespace(namespace string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if len(namespace) == 0 {
@@ -303,7 +303,7 @@ func ValidateDir(path string, fldPath *field.Path) field.ErrorList {
 	return allErrs
 }
 
-func ValidateExtendedArguments(config api.ExtendedArguments, flagFunc func(*pflag.FlagSet), fldPath *fieldPath) field.ErrorList {
+func ValidateExtendedArguments(config api.ExtendedArguments, flagFunc func(*pflag.FlagSet), fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	// check extended arguments for errors

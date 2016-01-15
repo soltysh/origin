@@ -9,6 +9,7 @@ import (
 
 	kapi "k8s.io/kubernetes/pkg/api"
 	kerrors "k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	kclient "k8s.io/kubernetes/pkg/client/unversioned"
 	kclientcmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	clientcmdapi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
@@ -37,7 +38,7 @@ type LoginOptions struct {
 	Server      string
 	CAFile      string
 	InsecureTLS bool
-	APIVersion  string
+	APIVersion  unversioned.GroupVersion
 
 	// flags and printing helpers
 	Username string
@@ -165,8 +166,8 @@ func (o *LoginOptions) getClientConfig() (*kclient.Config, error) {
 	}
 
 	// check for matching api version
-	if len(o.APIVersion) > 0 {
-		clientConfig.Version = o.APIVersion
+	if o.APIVersion.IsEmpty() {
+		clientConfig.GroupVersion = &o.APIVersion
 	}
 
 	o.Config = clientConfig

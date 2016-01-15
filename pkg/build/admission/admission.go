@@ -46,7 +46,7 @@ const (
 )
 
 func (a *buildByStrategy) Admit(attr admission.Attributes) error {
-	if resource := attr.GetResource(); resource != buildsResource && resource != buildConfigsResource {
+	if resource := attr.GetResource(); resource.Resource != buildsResource && resource.Resource != buildConfigsResource {
 		return nil
 	}
 	// Explicitly exclude the builds/details subresource because it's only
@@ -116,7 +116,7 @@ func (a *buildByStrategy) checkBuildConfigAuthorization(buildConfig *buildapi.Bu
 }
 
 func (a *buildByStrategy) checkBuildRequestAuthorization(req *buildapi.BuildRequest, attr admission.Attributes) error {
-	switch attr.GetResource() {
+	switch attr.GetResource().Resource {
 	case buildsResource:
 		build, err := a.client.Builds(attr.GetNamespace()).Get(req.Name)
 		if err != nil {
