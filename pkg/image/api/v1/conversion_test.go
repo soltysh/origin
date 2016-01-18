@@ -7,12 +7,10 @@ import (
 	kapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/util"
 
-	_ "github.com/openshift/origin/pkg/api/latest"
 	newer "github.com/openshift/origin/pkg/image/api"
+	_ "github.com/openshift/origin/pkg/image/api/install"
 	testutil "github.com/openshift/origin/test/util/api"
 )
-
-var Convert = kapi.Scheme.Convert
 
 func TestRoundTripVersionedObject(t *testing.T) {
 	d := &newer.DockerImage{
