@@ -139,8 +139,8 @@ func ParseGroupVersion(gv string) (GroupVersion, error) {
 	// "v1" is the only special case. Otherwise GroupVersion is expected to contain
 	// one "/" dividing the string into two parts.
 	switch {
-	case len(s) == 1 && gv == "v1":
-		return GroupVersion{"", "v1"}, nil
+	case len(s) == 1 && (gv == "v1" || gv == "v1beta3" || gv == "pre012" || gv == "1.0"):
+		return GroupVersion{"", gv}, nil
 	case len(s) == 2:
 		return GroupVersion{s[0], s[1]}, nil
 	default:

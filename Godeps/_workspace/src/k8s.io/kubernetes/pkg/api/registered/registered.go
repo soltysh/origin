@@ -33,6 +33,8 @@ func init() {
 	validGroupVersions := map[unversioned.GroupVersion]bool{
 		unversioned.GroupVersion{Group: "", Version: "v1"}:                      true,
 		unversioned.GroupVersion{Group: "", Version: "v1beta3"}:                 true,
+		unversioned.GroupVersion{Group: "", Version: "pre012"}:                  true,
+		unversioned.GroupVersion{Group: "", Version: "1.0"}:                     true,
 		unversioned.GroupVersion{Group: "extensions", Version: "v1beta1"}:       true,
 		unversioned.GroupVersion{Group: "componentconfig", Version: "v1alpha1"}: true,
 		unversioned.GroupVersion{Group: "metrics", Version: "v1alpha1"}:         true,
@@ -41,9 +43,11 @@ func init() {
 	// The default list of supported api versions, in order of most preferred to the least.
 	supportedVersions := []unversioned.GroupVersion{
 		{Group: "", Version: "v1"},
+		{Group: "", Version: "v1beta3"},
+		{Group: "", Version: "pre012"},
+		{Group: "", Version: "1.0"},
 		{Group: "extensions", Version: "v1beta1"},
 		{Group: "componentconfig", Version: "v1alpha1"},
-		{Group: "", Version: "v1beta3"},
 	}
 
 	// Env var KUBE_API_VERSIONS is a comma separated list of API versions that should be registered in the scheme.
