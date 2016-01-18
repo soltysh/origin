@@ -4440,23 +4440,23 @@ func TestValidateSecurityContextConstraints(t *testing.T) {
 		},
 		"negative priority": {
 			scc:         negativePriority,
-			errorType:   errors.ValidationErrorTypeInvalid,
+			errorType:   field.ErrorTypeInvalid,
 			errorDetail: "priority cannot be negative",
 		},
 		"invalid required caps": {
 			scc:         requiredCapAddAndDrop,
-			errorType:   errors.ValidationErrorTypeInvalid,
+			errorType:   field.ErrorTypeInvalid,
 			errorDetail: "capability is listed in defaultAddCapabilities and requiredDropCapabilities",
 		},
 		"allowed cap listed in required drops": {
 			scc:         allowedCapListedInRequiredDrop,
-			errorType:   errors.ValidationErrorTypeInvalid,
+			errorType:   field.ErrorTypeInvalid,
 			errorDetail: "capability is listed in allowedCapabilities and requiredDropCapabilities",
 		},
 	}
 
 	for k, v := range errorCases {
-		if errs := ValidateSecurityContextConstraints(v.scc); len(errs) == 0 || errs[0].(*errors.ValidationError).Type != v.errorType || errs[0].(*errors.ValidationError).Detail != v.errorDetail {
+		if errs := ValidateSecurityContextConstraints(v.scc); len(errs) == 0 || errs[0].Type != v.errorType || errs[0].Detail != v.errorDetail {
 			t.Errorf("Expected error type %s with detail %s for %s, got %v", v.errorType, v.errorDetail, k, errs)
 		}
 	}
