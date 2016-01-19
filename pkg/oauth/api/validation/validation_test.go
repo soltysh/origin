@@ -139,10 +139,10 @@ func TestValidateClientAuthorization(t *testing.T) {
 			continue
 		}
 		for i := range errs {
-			if errs[i].(*field.Error).Type != v.T {
+			if errs[i].Type != v.T {
 				t.Errorf("%s: expected errors to have type %s: %v", k, v.T, errs[i])
 			}
-			if errs[i].(*field.Error).Field != v.F {
+			if errs[i].Field != v.F {
 				t.Errorf("%s: expected errors to have field %s: %v", k, v.F, errs[i])
 			}
 		}
@@ -180,10 +180,10 @@ func TestValidateClient(t *testing.T) {
 			continue
 		}
 		for i := range errs {
-			if errs[i].(*field.Error).Type != v.T {
+			if errs[i].Type != v.T {
 				t.Errorf("%s: expected errors to have type %s: %v", k, v.T, errs[i])
 			}
-			if errs[i].(*field.Error).Field != v.F {
+			if errs[i].Field != v.F {
 				t.Errorf("%s: expected errors to have field %s: %v", k, v.F, errs[i])
 			}
 		}
@@ -233,10 +233,10 @@ func TestValidateAccessTokens(t *testing.T) {
 			continue
 		}
 		for i := range errs {
-			if errs[i].(*field.Error).Type != v.T {
+			if errs[i].Type != v.T {
 				t.Errorf("%s: expected errors to have type %s: %v", k, v.T, errs[i])
 			}
-			if errs[i].(*field.Error).Field != v.F {
+			if errs[i].Field != v.F {
 				t.Errorf("%s: expected errors to have field %s: %v", k, v.F, errs[i])
 			}
 		}
@@ -313,10 +313,10 @@ func TestValidateAuthorizeTokens(t *testing.T) {
 			continue
 		}
 		for i := range errs {
-			if errs[i].(*field.Error).Type != v.T {
+			if errs[i].Type != v.T {
 				t.Errorf("%s: expected errors to have type %s: %v", k, v.T, errs[i])
 			}
-			if errs[i].(*field.Error).Field != v.F {
+			if errs[i].Field != v.F {
 				t.Errorf("%s: expected errors to have field %s: %v", k, v.F, errs[i])
 			}
 		}

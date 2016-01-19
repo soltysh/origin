@@ -143,7 +143,7 @@ func TestValidateBuildUpdate(t *testing.T) {
 				Status:     buildapi.BuildStatus{Phase: buildapi.BuildPhaseRunning},
 			},
 			T: field.ErrorTypeInvalid,
-			F: "status.Phase",
+			F: "status.phase",
 		},
 		"update from terminal2": {
 			Old: &buildapi.Build{
@@ -157,7 +157,7 @@ func TestValidateBuildUpdate(t *testing.T) {
 				Status:     buildapi.BuildStatus{Phase: buildapi.BuildPhaseRunning},
 			},
 			T: field.ErrorTypeInvalid,
-			F: "status.Phase",
+			F: "status.phase",
 		},
 		"update from terminal3": {
 			Old: &buildapi.Build{
@@ -171,7 +171,7 @@ func TestValidateBuildUpdate(t *testing.T) {
 				Status:     buildapi.BuildStatus{Phase: buildapi.BuildPhaseRunning},
 			},
 			T: field.ErrorTypeInvalid,
-			F: "status.Phase",
+			F: "status.phase",
 		},
 		"update from terminal4": {
 			Old: &buildapi.Build{
@@ -185,7 +185,7 @@ func TestValidateBuildUpdate(t *testing.T) {
 				Status:     buildapi.BuildStatus{Phase: buildapi.BuildPhaseRunning},
 			},
 			T: field.ErrorTypeInvalid,
-			F: "status.Phase",
+			F: "status.phase",
 		},
 	}
 
@@ -196,10 +196,10 @@ func TestValidateBuildUpdate(t *testing.T) {
 			continue
 		}
 		for i := range errs {
-			if errs[i].(*field.Error).Type != v.T {
+			if errs[i].Type != v.T {
 				t.Errorf("%s: expected errors to have type %s: %v", k, v.T, errs[i])
 			}
-			if errs[i].(*field.Error).Field != v.F {
+			if errs[i].Field != v.F {
 				t.Errorf("%s: expected errors to have field %s: %v", k, v.F, errs[i])
 			}
 		}
@@ -234,7 +234,7 @@ func TestBuildConfigGitSourceWithProxyFailure(t *testing.T) {
 	if len(errors) != 1 {
 		t.Errorf("Expected one error, got %d", len(errors))
 	}
-	err := errors[0].(*field.Error)
+	err := errors[0]
 	if err.Type != field.ErrorTypeInvalid {
 		t.Errorf("Expected invalid value validation error, got %q", err.Type)
 	}
@@ -280,10 +280,7 @@ func TestBuildConfigDockerStrategyImageChangeTrigger(t *testing.T) {
 	case 0:
 		t.Errorf("Expected validation error, got nothing")
 	case 1:
-		err, ok := errors[0].(*field.Error)
-		if !ok {
-			t.Fatalf("Expected error to be field.Error, got %T", errors[0])
-		}
+		err := errors[0]
 		if err.Type != field.ErrorTypeRequired {
 			t.Errorf("Expected error to be '%v', got '%v'", field.ErrorTypeRequired, err.Type)
 		}
@@ -319,7 +316,7 @@ func TestBuildConfigValidationFailureRequiredName(t *testing.T) {
 	if len(errors) != 1 {
 		t.Fatalf("Unexpected validation errors %v", errors)
 	}
-	err := errors[0].(*field.Error)
+	err := errors[0]
 	if err.Type != field.ErrorTypeRequired {
 		t.Errorf("Unexpected error type, expected %s, got %s", field.ErrorTypeRequired, err.Type)
 	}
@@ -564,11 +561,7 @@ func TestBuildConfigImageChangeTriggers(t *testing.T) {
 		}
 		// Check whether it's the expected error type
 		if len(errors) > 0 && tc.expectError && tc.errorType != "" {
-			verr, ok := errors[0].(*field.Error)
-			if !ok {
-				t.Errorf("%s: unexpected error: %#v. Expected ValidationError of type: %s", tc.name, errors[0], verr.Type)
-				continue
-			}
+			verr := errors[0]
 			if verr.Type != tc.errorType {
 				t.Errorf("%s: unexpected error type. Expected: %s. Got: %s", tc.name, tc.errorType, verr.Type)
 			}
@@ -620,7 +613,7 @@ func TestValidateBuildRequest(t *testing.T) {
 			t.Errorf("%s: Unexpected validation result: %v", desc, errors)
 		}
 		if len(desc) > 0 {
-			err := errors[0].(*field.Error)
+			err := errors[0]
 			errDesc := string(err.Type) + err.Field
 			if desc != errDesc {
 				t.Errorf("Unexpected validation result for %s: expected %s, got %s", err.Field, desc, errDesc)
@@ -855,7 +848,7 @@ func TestValidateSource(t *testing.T) {
 		},
 	}
 	for i, tc := range errorCases {
-		errors := validateSource(tc.source, false)
+		errors := validateSource(tc.source, false, field.NewRoot())
 		switch len(errors) {
 		case 0:
 			if !tc.ok {
@@ -873,17 +866,17 @@ func TestValidateSource(t *testing.T) {
 				continue
 			}
 		}
-		err := errors[0].(*field.Error)
+		err := errors[0]
 		if err.Type != tc.t {
-			t.Errorf("%d: Unexpected error type: %s", i, err.Type)
+			t.Errorf("%d: Expected error type %s, got %s", i, tc.t, err.Type)
 		}
 		if err.Field != tc.path {
-			t.Errorf("%d: Unexpected error path: %s", i, err.Field)
+			t.Errorf("%d: Expected error path %s, got %s", i, tc.path, err.Field)
 		}
 	}
 
 	errorCases[11].source.ContextDir = "."
-	validateSource(errorCases[11].source, false)
+	validateSource(errorCases[11].source, false, field.NewRoot())
 	if len(errorCases[11].source.ContextDir) != 0 {
 		t.Errorf("ContextDir was not cleaned: %s", errorCases[11].source.ContextDir)
 	}
@@ -909,7 +902,7 @@ func TestValidateStrategy(t *testing.T) {
 		},
 	}
 	for i, tc := range errorCases {
-		errors := validateStrategy(tc.strategy)
+		errors := validateStrategy(tc.strategy, field.NewRoot())
 		switch len(errors) {
 		case 0:
 			if !tc.ok {
@@ -927,7 +920,7 @@ func TestValidateStrategy(t *testing.T) {
 				continue
 			}
 		}
-		err := errors[0].(*field.Error)
+		err := errors[0]
 		if err.Type != tc.t {
 			t.Errorf("%d: Unexpected error type: %s", i, err.Type)
 		}
@@ -1302,12 +1295,12 @@ func TestValidateBuildSpec(t *testing.T) {
 		}}
 
 	for count, config := range errorCases {
-		errors := validateBuildSpec(config.BuildSpec)
+		errors := validateBuildSpec(config.BuildSpec, field.NewRoot())
 		if len(errors) != 1 {
 			t.Errorf("Test[%d] %s: Unexpected validation result: %v", count, config.err, errors)
 			continue
 		}
-		err := errors[0].(*field.Error)
+		err := errors[0]
 		errDesc := string(err.Type) + err.Field
 		if config.err != errDesc {
 			t.Errorf("Test[%d] Unexpected validation result for %s: expected %s, got %s", count, err.Field, config.err, errDesc)
@@ -1464,7 +1457,7 @@ func TestValidateBuildSpecSuccess(t *testing.T) {
 	}
 
 	for count, config := range testCases {
-		errors := validateBuildSpec(config.BuildSpec)
+		errors := validateBuildSpec(config.BuildSpec, field.NewRoot())
 		if len(errors) != 0 {
 			t.Errorf("Test[%d] Unexpected validation error: %v", count, errors)
 		}
@@ -1504,7 +1497,7 @@ func TestValidateDockerfilePath(t *testing.T) {
 	}
 
 	for count, test := range tests {
-		errors := validateDockerStrategy(test.strategy)
+		errors := validateDockerStrategy(test.strategy, field.NewRoot())
 		if len(errors) != 0 {
 			t.Errorf("Test[%d] Unexpected validation error: %v", count, errors)
 		}
@@ -1607,7 +1600,7 @@ func TestValidateTrigger(t *testing.T) {
 		},
 	}
 	for desc, test := range tests {
-		errors := validateTrigger(&test.trigger)
+		errors := validateTrigger(&test.trigger, field.NewRoot())
 		if len(test.expected) == 0 {
 			if len(errors) != 0 {
 				t.Errorf("%s: Got unexpected validation errors: %#v", desc, errors)
@@ -1617,18 +1610,18 @@ func TestValidateTrigger(t *testing.T) {
 		if len(errors) != 1 {
 			t.Errorf("%s: Expected one validation error, got %d", desc, len(errors))
 			for i, err := range errors {
-				validationError := err.(*field.Error)
+				validationError := err
 				t.Errorf("  %d. %v", i+1, validationError)
 			}
 			continue
 		}
 		err := errors[0]
-		validationError := err.(*field.Error)
+		validationError := err
 		if validationError.Type != test.expected[0].Type {
-			t.Errorf("%s: Unexpected error type: %s", desc, validationError.Type)
+			t.Errorf("%s: Expected error type %s, got %s", desc, test.expected[0].Type, validationError.Type)
 		}
 		if validationError.Field != test.expected[0].Field {
-			t.Errorf("%s: Unexpected error field: %s", desc, validationError.Field)
+			t.Errorf("%s: Expected error field %s, got %s", desc, test.expected[0].Field, validationError.Field)
 		}
 	}
 }
@@ -1639,11 +1632,11 @@ func TestValidateToImageReference(t *testing.T) {
 		Namespace: "somenamespace",
 		Kind:      "DockerImage",
 	}
-	errs := validateToImageReference(o)
+	errs := validateToImageReference(o, field.NewRoot())
 	if len(errs) != 1 {
 		t.Errorf("Wrong number of errors: %v", errs)
 	}
-	err := errs[0].(*field.Error)
+	err := errs[0]
 	if err.Type != field.ErrorTypeInvalid {
 		t.Errorf("Wrong error type, expected %v, got %v", field.ErrorTypeInvalid, err.Type)
 	}

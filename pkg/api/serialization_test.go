@@ -12,6 +12,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/meta"
 	apitesting "k8s.io/kubernetes/pkg/api/testing"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/api/validation"
 	"k8s.io/kubernetes/pkg/conversion"
 	"k8s.io/kubernetes/pkg/runtime"
@@ -20,7 +21,6 @@ import (
 	"k8s.io/kubernetes/pkg/util/intstr"
 	"k8s.io/kubernetes/pkg/util/sets"
 
-	osapi "github.com/openshift/origin/pkg/api"
 	_ "github.com/openshift/origin/pkg/api/latest"
 	"github.com/openshift/origin/pkg/api/v1"
 	"github.com/openshift/origin/pkg/api/v1beta3"
@@ -397,7 +397,7 @@ func TestSpecificKind(t *testing.T) {
 	defer api.Scheme.Log(nil)
 
 	kind := "DeploymentConfig"
-	item, err := api.Scheme.New("", kind)
+	item, err := api.Scheme.New(unversioned.GroupVersionKind{Group: "", Version: "", Kind: kind})
 	if err != nil {
 		t.Errorf("Couldn't make a %v? %v", kind, err)
 		return
@@ -406,7 +406,7 @@ func TestSpecificKind(t *testing.T) {
 	for i := 0; i < fuzzIters; i++ {
 		t.Logf(`About to test %v with ""`, kind)
 		fuzzInternalObject(t, "", item, seed)
-		roundTrip(t, osapi.Codec, item)
+		roundTrip(t, api.Codec, item)
 		t.Logf(`About to test %v with "v1beta3"`, kind)
 		fuzzInternalObject(t, "v1beta3", item, seed)
 		roundTrip(t, v1beta3.Codec, item)
@@ -421,7 +421,7 @@ var nonInternalRoundTrippableTypes = sets.NewString("List", "ListOptions", "PodE
 
 // TestTypes will try to roundtrip all OpenShift and Kubernetes stable api types
 func TestTypes(t *testing.T) {
-	for kind, reflectType := range api.Scheme.KnownTypes("") {
+	for kind, reflectType := range api.Scheme.KnownTypes(unversioned.GroupVersion{Group: "", Version: ""}) {
 		if !strings.Contains(reflectType.PkgPath(), "/origin/") && reflectType.PkgPath() != "k8s.io/kubernetes/pkg/api" {
 			continue
 		}
@@ -430,7 +430,7 @@ func TestTypes(t *testing.T) {
 		}
 		// Try a few times, since runTest uses random values.
 		for i := 0; i < fuzzIters; i++ {
-			item, err := api.Scheme.New("", kind)
+			item, err := api.Scheme.New(unversioned.GroupVersionKind{Group: "", Version: "", Kind: kind})
 			if err != nil {
 				t.Errorf("Couldn't make a %v? %v", kind, err)
 				continue
@@ -450,7 +450,7 @@ func TestTypes(t *testing.T) {
 			}
 			t.Logf(`About to test %v with ""`, kind)
 			fuzzInternalObject(t, "", item, seed)
-			roundTrip(t, osapi.Codec, item)
+			roundTrip(t, api.Codec, item)
 			t.Logf(`About to test %v with "v1beta3"`, kind)
 			fuzzInternalObject(t, "v1beta3", item, seed)
 			roundTrip(t, v1beta3.Codec, item)

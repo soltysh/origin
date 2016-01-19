@@ -56,7 +56,7 @@ func TestValidatePolicy(t *testing.T) {
 				},
 			},
 			T: field.ErrorTypeInvalid,
-			F: "roles.any1.metadata.name",
+			F: "roles[any1].metadata.name",
 		},
 	}
 	for k, v := range errorCases {
@@ -66,10 +66,10 @@ func TestValidatePolicy(t *testing.T) {
 			continue
 		}
 		for i := range errs {
-			if errs[i].(*field.Error).Type != v.T {
+			if errs[i].Type != v.T {
 				t.Errorf("%s: expected errors to have type %s: %v", k, v.T, errs[i])
 			}
-			if errs[i].(*field.Error).Field != v.F {
+			if errs[i].Field != v.F {
 				t.Errorf("%s: expected errors to have field %s: %v", k, v.F, errs[i])
 			}
 		}
@@ -129,7 +129,7 @@ func TestValidatePolicyBinding(t *testing.T) {
 				},
 			},
 			T: field.ErrorTypeRequired,
-			F: "roleBindings.any.roleRef.name",
+			F: "roleBindings[any].roleRef.name",
 		},
 		"mismatched name": {
 			A: authorizationapi.PolicyBinding{
@@ -143,7 +143,7 @@ func TestValidatePolicyBinding(t *testing.T) {
 				},
 			},
 			T: field.ErrorTypeInvalid,
-			F: "roleBindings.any1.metadata.name",
+			F: "roleBindings[any1].metadata.name",
 		},
 	}
 	for k, v := range errorCases {
@@ -153,10 +153,10 @@ func TestValidatePolicyBinding(t *testing.T) {
 			continue
 		}
 		for i := range errs {
-			if errs[i].(*field.Error).Type != v.T {
+			if errs[i].Type != v.T {
 				t.Errorf("%s: expected errors to have type %s: %v", k, v.T, errs[i])
 			}
-			if errs[i].(*field.Error).Field != v.F {
+			if errs[i].Field != v.F {
 				t.Errorf("%s: expected errors to have field %s: %v", k, v.F, errs[i])
 			}
 		}
@@ -281,10 +281,10 @@ func TestValidateRoleBinding(t *testing.T) {
 			continue
 		}
 		for i := range errs {
-			if errs[i].(*field.Error).Type != v.T {
+			if errs[i].Type != v.T {
 				t.Errorf("%s: expected errors to have type %s: %v", k, v.T, errs[i])
 			}
-			if errs[i].(*field.Error).Field != v.F {
+			if errs[i].Field != v.F {
 				t.Errorf("%s: expected errors to have field %s: %v", k, v.F, errs[i])
 			}
 		}
@@ -330,10 +330,10 @@ func TestValidateRoleBindingUpdate(t *testing.T) {
 			continue
 		}
 		for i := range errs {
-			if errs[i].(*field.Error).Type != v.T {
+			if errs[i].Type != v.T {
 				t.Errorf("%s: expected errors to have type %s: %v", k, v.T, errs[i])
 			}
-			if errs[i].(*field.Error).Field != v.F {
+			if errs[i].Field != v.F {
 				t.Errorf("%s: expected errors to have field %s: %v", k, v.F, errs[i])
 			}
 		}
@@ -378,10 +378,10 @@ func TestValidateRole(t *testing.T) {
 			continue
 		}
 		for i := range errs {
-			if errs[i].(*field.Error).Type != v.T {
+			if errs[i].Type != v.T {
 				t.Errorf("%s: expected errors to have type %s: %v", k, v.T, errs[i])
 			}
-			if errs[i].(*field.Error).Field != v.F {
+			if errs[i].Field != v.F {
 				t.Errorf("%s: expected errors to have field %s: %v", k, v.F, errs[i])
 			}
 		}
@@ -410,10 +410,10 @@ func TestValidateClusterPolicyBinding(t *testing.T) {
 			continue
 		}
 		for i := range errs {
-			if errs[i].(*field.Error).Type != v.T {
+			if errs[i].Type != v.T {
 				t.Errorf("%s: expected errors to have type %s: %v", k, v.T, errs[i])
 			}
-			if errs[i].(*field.Error).Field != v.F {
+			if errs[i].Field != v.F {
 				t.Errorf("%s: expected errors to have field %s: %v", k, v.F, errs[i])
 			}
 		}

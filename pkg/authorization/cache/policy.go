@@ -7,12 +7,11 @@ import (
 	"k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/client/cache"
-	"k8s.io/kubernetes/pkg/fields"
-	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/runtime"
 	kfield "k8s.io/kubernetes/pkg/util/validation/field"
 	"k8s.io/kubernetes/pkg/watch"
 
+	oapi "github.com/openshift/origin/pkg/api"
 	authorizationapi "github.com/openshift/origin/pkg/authorization/api"
 	"github.com/openshift/origin/pkg/authorization/client"
 	policyregistry "github.com/openshift/origin/pkg/authorization/registry/policy"
@@ -80,7 +79,7 @@ func (c *readOnlyPolicyCache) LastSyncResourceVersion() string {
 	return c.reflector.LastSyncResourceVersion()
 }
 
-func (c *readOnlyPolicyCache) List(label labels.Selector, field fields.Selector, namespace string) (*authorizationapi.PolicyList, error) {
+func (c *readOnlyPolicyCache) List(options *unversioned.ListOptions, namespace string) (*authorizationapi.PolicyList, error) {
 	var returnedList []interface{}
 	if namespace == kapi.NamespaceAll {
 		returnedList = c.indexer.List()
@@ -92,12 +91,13 @@ func (c *readOnlyPolicyCache) List(label labels.Selector, field fields.Selector,
 		}
 	}
 	policyList := &authorizationapi.PolicyList{}
+	matcher := policyregistry.Matcher(oapi.ListOptionsToSelectors(options))
 	for i := range returnedList {
 		policy, castOK := returnedList[i].(*authorizationapi.Policy)
 		if !castOK {
 			return policyList, errors.NewInvalid("PolicyList", "policyList", kfield.ErrorList{})
 		}
-		if label.Matches(labels.Set(policy.Labels)) && field.Matches(authorizationapi.PolicyToSelectableFields(policy)) {
+		if matches, err := matcher.Matches(policy); err == nil && matches {
 			policyList.Items = append(policyList.Items, *policy)
 		}
 	}
@@ -137,8 +137,8 @@ func newReadOnlyPolicies(cache readOnlyAuthorizationCache, namespace string) cli
 	}
 }
 
-func (p *readOnlyPolicies) List(label labels.Selector, field fields.Selector) (*authorizationapi.PolicyList, error) {
-	return p.readOnlyPolicyCache.List(label, field, p.namespace)
+func (p *readOnlyPolicies) List(options *unversioned.ListOptions) (*authorizationapi.PolicyList, error) {
+	return p.readOnlyPolicyCache.List(options, p.namespace)
 }
 
 func (p *readOnlyPolicies) Get(name string) (*authorizationapi.Policy, error) {

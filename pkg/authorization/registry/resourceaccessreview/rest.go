@@ -34,8 +34,8 @@ func (r *REST) Create(ctx kapi.Context, obj runtime.Object) (runtime.Object, err
 	if !ok {
 		return nil, kapierrors.NewBadRequest(fmt.Sprintf("not a resourceAccessReview: %#v", obj))
 	}
-	if err := authorizationvalidation.ValidateResourceAccessReview(resourceAccessReview); err != nil {
-		return nil, err.ToAggregate()
+	if errs := authorizationvalidation.ValidateResourceAccessReview(resourceAccessReview); len(errs) > 0 {
+		return nil, kapierrors.NewInvalid(resourceAccessReview.Kind, "", errs)
 	}
 	// if a namespace is present on the request, then the namespace on the on the RAR is overwritten.
 	// This is to support backwards compatibility.  To have gotten here in this state, it means that

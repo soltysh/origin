@@ -15,6 +15,7 @@ import (
 	kerrors "k8s.io/kubernetes/pkg/api/errors"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/util/sysctl"
+	"k8s.io/kubernetes/pkg/util/validation/field"
 
 	osdn "github.com/openshift/openshift-sdn/plugins/osdn/ovs"
 	"github.com/openshift/origin/pkg/cmd/server/admin"
@@ -163,7 +164,7 @@ func (o NodeOptions) RunNode() error {
 		return err
 	}
 
-	validationResults := validation.ValidateNodeConfig(nodeConfig)
+	validationResults := validation.ValidateNodeConfig(nodeConfig, field.NewRoot())
 	if len(validationResults.Warnings) != 0 {
 		for _, warning := range validationResults.Warnings {
 			glog.Warningf("%v", warning)

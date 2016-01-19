@@ -47,7 +47,7 @@ func (c *deploymentConfigs) List(opts kapi.ListOptions) (result *deployapi.Deplo
 	err = c.r.Get().
 		Namespace(c.ns).
 		Resource("deploymentConfigs").
-		VersionedParams(&opts, deployapi.Scheme).
+		VersionedParams(&opts, kapi.Scheme).
 		Do().
 		Into(result)
 	return
@@ -85,7 +85,7 @@ func (c *deploymentConfigs) Watch(opts kapi.ListOptions) (watch.Interface, error
 		Prefix("watch").
 		Namespace(c.ns).
 		Resource("deploymentConfigs").
-		VersionedParams(&opts, deployapi.Scheme).
+		VersionedParams(&opts, kapi.Scheme).
 		Watch()
 }
 

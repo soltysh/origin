@@ -42,7 +42,7 @@ func (c *projects) List(opts kapi.ListOptions) (result *projectapi.ProjectList, 
 	result = &projectapi.ProjectList{}
 	err = c.r.Get().
 		Resource("projects").
-		VersionedParams(&opts, projectapi.Scheme).
+		VersionedParams(&opts, kapi.Scheme).
 		Do().
 		Into(result)
 	return

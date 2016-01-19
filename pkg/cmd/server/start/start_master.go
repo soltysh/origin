@@ -19,6 +19,7 @@ import (
 	"k8s.io/kubernetes/pkg/capabilities"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	kubelettypes "k8s.io/kubernetes/pkg/kubelet/types"
+	"k8s.io/kubernetes/pkg/util/validation/field"
 
 	"github.com/openshift/origin/pkg/cmd/server/admin"
 	configapi "github.com/openshift/origin/pkg/cmd/server/api"
@@ -263,7 +264,7 @@ func (o MasterOptions) RunMaster() error {
 	// regardless of configuration. They aren't written to config file to
 	// prevent upgrade path issues.
 	masterConfig.DisabledFeatures.Add(o.DisabledFeatures...)
-	validationResults := validation.ValidateMasterConfig(masterConfig)
+	validationResults := validation.ValidateMasterConfig(masterConfig, field.NewRoot())
 	if len(validationResults.Warnings) != 0 {
 		for _, warning := range validationResults.Warnings {
 			glog.Warningf("%v", warning)

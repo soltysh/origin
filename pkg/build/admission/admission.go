@@ -7,6 +7,7 @@ import (
 
 	"k8s.io/kubernetes/pkg/admission"
 	kapi "k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	kclient "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/util/sets"
@@ -40,13 +41,13 @@ func NewBuildByStrategy(client client.Interface) admission.Interface {
 	}
 }
 
-const (
-	buildsResource       = "builds"
-	buildConfigsResource = "buildconfigs"
+var (
+	buildsResource       = unversioned.GroupResource{Group: "", Resource: "builds"}
+	buildConfigsResource = unversioned.GroupResource{Group: "", Resource: "buildconfigs"}
 )
 
 func (a *buildByStrategy) Admit(attr admission.Attributes) error {
-	if resource := attr.GetResource(); resource.Resource != buildsResource && resource.Resource != buildConfigsResource {
+	if resource := attr.GetResource(); resource != buildsResource && resource != buildConfigsResource {
 		return nil
 	}
 	// Explicitly exclude the builds/details subresource because it's only
@@ -116,7 +117,7 @@ func (a *buildByStrategy) checkBuildConfigAuthorization(buildConfig *buildapi.Bu
 }
 
 func (a *buildByStrategy) checkBuildRequestAuthorization(req *buildapi.BuildRequest, attr admission.Attributes) error {
-	switch attr.GetResource().Resource {
+	switch attr.GetResource() {
 	case buildsResource:
 		build, err := a.client.Builds(attr.GetNamespace()).Get(req.Name)
 		if err != nil {

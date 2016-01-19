@@ -414,42 +414,42 @@ func TestValidateDeploymentConfigMissingFields(t *testing.T) {
 			"spec.strategy.rollingParams.pre.failurePolicy",
 		},
 		"both maxSurge and maxUnavailable 0 spec.strategy.rollingParams.maxUnavailable": {
-			rollingConfigMax(kutil.NewIntOrStringFromInt(0), kutil.NewIntOrStringFromInt(0)),
+			rollingConfigMax(intstr.FromInt(0), intstr.FromInt(0)),
 			field.ErrorTypeInvalid,
 			"spec.strategy.rollingParams.maxUnavailable",
 		},
 		"invalid lower bound spec.strategy.rollingParams.maxUnavailable": {
-			rollingConfigMax(kutil.NewIntOrStringFromInt(0), kutil.NewIntOrStringFromInt(-100)),
+			rollingConfigMax(intstr.FromInt(0), intstr.FromInt(-100)),
 			field.ErrorTypeInvalid,
 			"spec.strategy.rollingParams.maxUnavailable",
 		},
 		"invalid lower bound spec.strategy.rollingParams.maxSurge": {
-			rollingConfigMax(kutil.NewIntOrStringFromInt(-1), kutil.NewIntOrStringFromInt(0)),
+			rollingConfigMax(intstr.FromInt(-1), intstr.FromInt(0)),
 			field.ErrorTypeInvalid,
 			"spec.strategy.rollingParams.maxSurge",
 		},
 		"both maxSurge and maxUnavailable 0 percent spec.strategy.rollingParams.maxUnavailable": {
-			rollingConfigMax(kutil.NewIntOrStringFromString("0%"), kutil.NewIntOrStringFromString("0%")),
+			rollingConfigMax(intstr.FromString("0%"), intstr.FromString("0%")),
 			field.ErrorTypeInvalid,
 			"spec.strategy.rollingParams.maxUnavailable",
 		},
 		"invalid lower bound percent spec.strategy.rollingParams.maxUnavailable": {
-			rollingConfigMax(kutil.NewIntOrStringFromInt(0), kutil.NewIntOrStringFromString("-1%")),
+			rollingConfigMax(intstr.FromInt(0), intstr.FromString("-1%")),
 			field.ErrorTypeInvalid,
 			"spec.strategy.rollingParams.maxUnavailable",
 		},
 		"invalid upper bound percent spec.strategy.rollingParams.maxUnavailable": {
-			rollingConfigMax(kutil.NewIntOrStringFromInt(0), kutil.NewIntOrStringFromString("101%")),
+			rollingConfigMax(intstr.FromInt(0), intstr.FromString("101%")),
 			field.ErrorTypeInvalid,
 			"spec.strategy.rollingParams.maxUnavailable",
 		},
 		"invalid percent spec.strategy.rollingParams.maxUnavailable": {
-			rollingConfigMax(kutil.NewIntOrStringFromInt(0), kutil.NewIntOrStringFromString("foo")),
+			rollingConfigMax(intstr.FromInt(0), intstr.FromString("foo")),
 			field.ErrorTypeInvalid,
 			"spec.strategy.rollingParams.maxUnavailable",
 		},
 		"invalid percent spec.strategy.rollingParams.maxSurge": {
-			rollingConfigMax(kutil.NewIntOrStringFromString("foo"), kutil.NewIntOrStringFromString("100%")),
+			rollingConfigMax(intstr.FromString("foo"), intstr.FromString("100%")),
 			field.ErrorTypeInvalid,
 			"spec.strategy.rollingParams.maxSurge",
 		},
@@ -469,10 +469,10 @@ func TestValidateDeploymentConfigMissingFields(t *testing.T) {
 			t.Errorf("%s: expected test failure, got success", testName)
 		}
 		for i := range errs {
-			if got, exp := errs[i].(*field.Error).Type, v.ErrorType; got != exp {
+			if got, exp := errs[i].Type, v.ErrorType; got != exp {
 				t.Errorf("%s: expected error \"%v\" to have type %q, but got %q", testName, errs[i], exp, got)
 			}
-			if got, exp := errs[i].(*field.Error).Field, v.Field; got != exp {
+			if got, exp := errs[i].Field, v.Field; got != exp {
 				t.Errorf("%s: expected error \"%v\" to have field %q, but got %q", testName, errs[i], exp, got)
 			}
 		}
@@ -524,10 +524,10 @@ func TestValidateDeploymentConfigUpdate(t *testing.T) {
 			t.Errorf("Expected update failure")
 		}
 		for i := range errs {
-			if errs[i].(*field.Error).Type != field.ErrorTypeInvalid {
+			if errs[i].Type != field.ErrorTypeInvalid {
 				t.Errorf("expected update error to have type %s: %v", field.ErrorTypeInvalid, errs[i])
 			}
-			if errs[i].(*field.Error).Field != "status.latestVersion" {
+			if errs[i].Field != "status.latestVersion" {
 				t.Errorf("expected update error to have field %s: %v", "latestVersion", errs[i])
 			}
 		}
@@ -596,10 +596,10 @@ func TestValidateDeploymentConfigRollbackInvalidFields(t *testing.T) {
 			t.Errorf("Expected failure for scenario %s", k)
 		}
 		for i := range errs {
-			if errs[i].(*field.Error).Type != v.T {
+			if errs[i].Type != v.T {
 				t.Errorf("%s: expected errors to have type %s: %v", k, v.T, errs[i])
 			}
-			if errs[i].(*field.Error).Field != v.F {
+			if errs[i].Field != v.F {
 				t.Errorf("%s: expected errors to have field %s: %v", k, v.F, errs[i])
 			}
 		}

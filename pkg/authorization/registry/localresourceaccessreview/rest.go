@@ -33,8 +33,8 @@ func (r *REST) Create(ctx kapi.Context, obj runtime.Object) (runtime.Object, err
 	if !ok {
 		return nil, kapierrors.NewBadRequest(fmt.Sprintf("not a localResourceAccessReview: %#v", obj))
 	}
-	if err := authorizationvalidation.ValidateLocalResourceAccessReview(localRAR); err != nil {
-		return nil, err.ToAggregate()
+	if errs := authorizationvalidation.ValidateLocalResourceAccessReview(localRAR); len(errs) > 0 {
+		return nil, kapierrors.NewInvalid(localRAR.Kind, "", errs)
 	}
 	if namespace := kapi.NamespaceValue(ctx); len(namespace) == 0 {
 		return nil, kapierrors.NewBadRequest(fmt.Sprintf("namespace is required on this type: %v", namespace))

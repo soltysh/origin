@@ -18,21 +18,17 @@ import (
 )
 
 // Version is the string that represents the current external default version.
-var Version = unversioned.GroupVersion{"", "v1"}
+var Version = v1.SchemeGroupVersion
 
 // OldestVersion is the string that represents the oldest server version supported,
 // for client code that wants to hardcode the lowest common denominator.
-var OldestVersion = unversioned.GroupVersion{"", "v1beta3"}
+var OldestVersion = v1beta3.SchemeGroupVersion
 
 // Versions is the list of versions that are recognized in code. The order provided
 // may be assumed to be least feature rich to most feature rich, and clients may
 // choose to prefer the latter items in the list over the former items when presented
 // with a set of versions to choose.
-var Versions = []unversioned.GroupVersion{Version, OldestVersion}
-
-// TODO: this should be removed, it's here to make the storage related stuff work
-// as before.
-var VersionsStrings = []string{"v1", "v1beta3"}
+var Versions = []unversioned.GroupVersion{v1.SchemeGroupVersion, v1beta3.SchemeGroupVersion}
 
 // Codec is the default codec for serializing output that should use
 // the latest supported version.  Use this Codec when writing to
@@ -102,11 +98,8 @@ func init() {
 	// api.RESTMapper, which is different than what you'd get from latest.
 	kubeMapper := api.RESTMapper
 
-	// list of versions we support on the server, in preferred order
-	versions := []unversioned.GroupVersion{Version, OldestVersion}
-
 	originMapper := kmeta.NewDefaultRESTMapper(
-		versions,
+		Versions,
 		func(version unversioned.GroupVersion) (*kmeta.VersionInterfaces, error) {
 			interfaces, err := InterfacesFor(version)
 			if err != nil {
@@ -147,7 +140,7 @@ func init() {
 	}
 
 	// enumerate all supported versions, get the kinds, and register with the mapper how to address our resources
-	for _, version := range versions {
+	for _, version := range Versions {
 		for kind, t := range api.Scheme.KnownTypes(version) {
 			if !strings.Contains(t.PkgPath(), "openshift/origin") {
 				if _, ok := kindToRootScope[kind]; !ok {

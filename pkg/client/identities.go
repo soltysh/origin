@@ -37,7 +37,7 @@ func (c *identities) List(opts kapi.ListOptions) (result *userapi.IdentityList, 
 	result = &userapi.IdentityList{}
 	err = c.r.Get().
 		Resource("identities").
-		VersionedParams(&opts, userapi.Scheme).
+		VersionedParams(&opts, kapi.Scheme).
 		Do().
 		Into(result)
 	return

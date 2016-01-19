@@ -16,6 +16,7 @@ import (
 	"k8s.io/kubernetes/pkg/admission"
 	kapi "k8s.io/kubernetes/pkg/api"
 	kapilatest "k8s.io/kubernetes/pkg/api/latest"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apiserver"
 	kclient "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/cloudprovider"
@@ -178,6 +179,16 @@ func BuildKubernetesMasterConfig(options configapi.MasterConfig, requestContextM
 		storageVersions[configapi.APIGroupExtensions] = enabledExtensionsVersions[0]
 	}
 
+	// Plumb disabled groupVersions into kube
+	apiGroupVersionOverrides := map[string]master.APIGroupVersionOverride{}
+	for group, versions := range options.KubernetesMasterConfig.DisabledAPIGroupVersions {
+		for _, version := range versions {
+			gv := unversioned.GroupVersion{Group: group, Version: version}
+			apiGroupVersionOverrides[gv.String()] = master.APIGroupVersionOverride{Disable: true}
+			// TODO: plumb disabled resources
+		}
+	}
+
 	m := &master.Config{
 		PublicAddress: net.ParseIP(options.KubernetesMasterConfig.MasterIP),
 		ReadWritePort: port,
@@ -204,8 +215,7 @@ func BuildKubernetesMasterConfig(options configapi.MasterConfig, requestContextM
 		Authorizer:       apiserver.NewAlwaysAllowAuthorizer(),
 		AdmissionControl: admissionController,
 
-		// EnableExp: len(enabledExtensionsVersions) > 0,
-		// DisableV1: !enabledKubeVersionSet.Has("v1"),
+		APIGroupVersionOverrides: apiGroupVersionOverrides,
 
 		// Set the TLS options for proxying to pods and services
 		// Proxying to nodes uses the kubeletClient TLS config (so can provide a different cert, and verify the node hostname)
@@ -215,9 +225,6 @@ func BuildKubernetesMasterConfig(options configapi.MasterConfig, requestContextM
 			Certificates:       proxyClientCerts,
 		},
 	}
-
-	// set for consistency -- Origin only used m.EnableExp
-	// cmserver.EnableExperimental = m.EnableExp
 
 	if options.DNSConfig != nil {
 		_, dnsPortStr, err := net.SplitHostPort(options.DNSConfig.BindAddress)

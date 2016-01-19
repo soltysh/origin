@@ -57,7 +57,7 @@ func TestValidateImageMissingFields(t *testing.T) {
 		}
 		match := false
 		for i := range errs {
-			if errs[i].(*field.Error).Type == v.T && errs[i].(*field.Error).Field == v.F {
+			if errs[i].Type == v.T && errs[i].Field == v.F {
 				match = true
 				break
 			}
@@ -167,7 +167,7 @@ func TestValidateImageStreamMappingNotOK(t *testing.T) {
 		}
 		match := false
 		for i := range errs {
-			if errs[i].(*field.Error).Type == v.T && errs[i].(*field.Error).Field == v.F {
+			if errs[i].Type == v.T && errs[i].Field == v.F {
 				match = true
 				break
 			}
@@ -383,10 +383,10 @@ func TestValidateISTUpdate(t *testing.T) {
 			continue
 		}
 		for i := range errs {
-			if errs[i].(*field.Error).Type != v.T {
+			if errs[i].Type != v.T {
 				t.Errorf("%s: expected errors to have type %s: %v", k, v.T, errs[i])
 			}
-			if errs[i].(*field.Error).Field != v.F {
+			if errs[i].Field != v.F {
 				t.Errorf("%s: expected errors to have field %s: %v", k, v.F, errs[i])
 			}
 		}

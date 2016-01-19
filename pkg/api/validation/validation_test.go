@@ -38,8 +38,8 @@ func TestNameFunc(t *testing.T) {
 
 			foundExpectedError := false
 			for _, err := range errList {
-				validationError, ok := err.(*field.Error)
-				if !ok || validationError.Type != field.ErrorTypeInvalid || validationError.Field != "metadata.name" {
+				validationError := err
+				if validationError.Type != field.ErrorTypeInvalid || validationError.Field != "metadata.name" {
 					continue
 				}
 
@@ -75,8 +75,8 @@ func TestNameFunc(t *testing.T) {
 
 			foundExpectedError := false
 			for _, err := range errList {
-				validationError, ok := err.(*field.Error)
-				if !ok || validationError.Type != field.ErrorTypeInvalid || validationError.Field != "metadata.name" {
+				validationError := err
+				if validationError.Type != field.ErrorTypeInvalid || validationError.Field != "metadata.name" {
 					continue
 				}
 
@@ -113,7 +113,7 @@ func TestObjectMeta(t *testing.T) {
 		}
 
 		errList := validationInfo.Validator.Validate(apiValue.Interface().(runtime.Object))
-		requiredErrors := validation.ValidateObjectMeta(apiObjectMeta.Addr().Interface().(*kapi.ObjectMeta), validationInfo.IsNamespaced, api.MinimalNameRequirements).Prefix("metadata")
+		requiredErrors := validation.ValidateObjectMeta(apiObjectMeta.Addr().Interface().(*kapi.ObjectMeta), validationInfo.IsNamespaced, api.MinimalNameRequirements, field.NewPath("metadata"))
 
 		if len(errList) == 0 {
 			t.Errorf("expected errors %v in %v not found amongst %v.  You probably need to call kube/validation.ValidateObjectMeta in your validator.", requiredErrors, apiType.Elem(), errList)
@@ -124,11 +124,7 @@ func TestObjectMeta(t *testing.T) {
 			foundExpectedError := false
 
 			for _, err := range errList {
-				validationError, ok := err.(*field.Error)
-				if !ok {
-					continue
-				}
-
+				validationError := err
 				if fmt.Sprintf("%v", validationError) == fmt.Sprintf("%v", requiredError) {
 					foundExpectedError = true
 					break
@@ -184,7 +180,7 @@ func TestObjectMetaUpdate(t *testing.T) {
 		newObjMeta := newAPIObjectMeta.Addr().Interface().(*kapi.ObjectMeta)
 
 		errList := validationInfo.Validator.ValidateUpdate(newObj, oldObj)
-		requiredErrors := validation.ValidateObjectMetaUpdate(newObjMeta, oldObjMeta).Prefix("metadata")
+		requiredErrors := validation.ValidateObjectMetaUpdate(newObjMeta, oldObjMeta, field.NewPath("metadata"))
 
 		if len(errList) == 0 {
 			t.Errorf("expected errors %v in %v not found amongst %v.  You probably need to call kube/validation.ValidateObjectMetaUpdate in your validator.", requiredErrors, apiType.Elem(), errList)
@@ -195,11 +191,7 @@ func TestObjectMetaUpdate(t *testing.T) {
 			foundExpectedError := false
 
 			for _, err := range errList {
-				validationError, ok := err.(*field.Error)
-				if !ok {
-					continue
-				}
-
+				validationError := err
 				if fmt.Sprintf("%v", validationError) == fmt.Sprintf("%v", requiredError) {
 					foundExpectedError = true
 					break

@@ -2,15 +2,12 @@ package etcd
 
 import (
 	kapi "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/errors"
-	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/registry/generic"
 	etcdgeneric "k8s.io/kubernetes/pkg/registry/generic/etcd"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/storage"
-	"k8s.io/kubernetes/pkg/watch"
 
 	"github.com/openshift/origin/pkg/image/api"
 	"github.com/openshift/origin/pkg/image/registry/image"
@@ -63,21 +60,4 @@ func NewREST(s storage.Interface) *REST {
 		Storage: s,
 	}
 	return &REST{store}
-}
-
-// Watch begins watching for new, changed, or deleted images.
-func (r *REST) Watch(ctx kapi.Context, options *unversioned.ListOptions) (watch.Interface, error) {
-	if options != nil && options.FieldSelector.Selector != nil {
-		return nil, errors.NewBadRequest("field selectors are not supported on images")
-	}
-	label := labels.Everything()
-	if options != nil && options.LabelSelector.Selector != nil {
-		label = options.LabelSelector.Selector
-	}
-	field := fields.Everything()
-	resourceVersion := ""
-	if options != nil {
-		resourceVersion = options.ResourceVersion
-	}
-	return r.WatchPredicate(ctx, image.MatchImage(label, field), resourceVersion)
 }

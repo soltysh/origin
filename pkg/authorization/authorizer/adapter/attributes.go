@@ -42,12 +42,13 @@ func OriginAuthorizerAttributes(kattrs kauthorizer.Attributes) (kapi.Context, oa
 		Resource: kattrs.GetResource(),
 		APIGroup: kattrs.GetAPIGroup(),
 
+		NonResourceURL: kattrs.IsResourceRequest() == false,
+		URL:            kattrs.GetPath(),
+
 		// TODO: add to kube authorizer attributes
 		// APIVersion        string
 		// ResourceName      string
 		// RequestAttributes interface{}
-		// NonResourceURL    bool
-		// URL               string
 	}
 	return ctx, oattrs
 }

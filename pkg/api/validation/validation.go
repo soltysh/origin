@@ -68,7 +68,7 @@ func (v *RuntimeObjectsValidator) Validate(obj runtime.Object) field.ErrorList {
 
 	specificValidationInfo, err := v.getSpecificValidationInfo(obj)
 	if err != nil {
-		allErrs = append(allErrs, err)
+		allErrs = append(allErrs, err.(*field.Error))
 		return allErrs
 	}
 
@@ -81,15 +81,17 @@ func (v *RuntimeObjectsValidator) ValidateUpdate(obj, old runtime.Object) field.
 		return field.ErrorList{}
 	}
 	if newType, oldType := reflect.TypeOf(obj), reflect.TypeOf(old); newType != oldType {
-		return field.ErrorList{validation.NewInvalidTypeError(oldType.Kind(), newType.Kind(), "runtime.Object")}
+		return field.ErrorList{field.Invalid(field.NewPath("kind"), newType.Kind(), validation.NewInvalidTypeError(oldType.Kind(), newType.Kind(), "runtime.Object").Error())}
 	}
 
 	allErrs := field.ErrorList{}
 
 	specificValidationInfo, err := v.getSpecificValidationInfo(obj)
 	if err != nil {
-		allErrs = append(allErrs, err)
-		return allErrs
+		if fieldErr, ok := err.(*field.Error); ok {
+			allErrs = append(allErrs, fieldErr)
+			return allErrs
+		}
 	}
 
 	allErrs = append(allErrs, specificValidationInfo.Validator.ValidateUpdate(obj, old)...)
@@ -114,12 +116,12 @@ func (v *RuntimeObjectsValidator) getSpecificValidationInfo(obj runtime.Object) 
 }
 
 func GetRequiresNamespace(obj runtime.Object) (bool, error) {
-	version, kind, err := kapi.Scheme.ObjectVersionAndKind(obj)
+	groupVersionKind, err := kapi.Scheme.ObjectKind(obj)
 	if err != nil {
 		return false, err
 	}
 
-	restMapping, err := latest.RESTMapper.RESTMapping(kind, version)
+	restMapping, err := latest.RESTMapper.RESTMapping(groupVersionKind.GroupKind())
 	if err != nil {
 		return false, err
 	}

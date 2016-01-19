@@ -7,6 +7,7 @@ import (
 	"k8s.io/kubernetes/pkg/admission"
 	kapi "k8s.io/kubernetes/pkg/api"
 	apierrors "k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/auth/user"
 	ktestclient "k8s.io/kubernetes/pkg/client/unversioned/testclient"
 	"k8s.io/kubernetes/pkg/runtime"
@@ -20,8 +21,8 @@ import (
 func TestBuildAdmission(t *testing.T) {
 	tests := []struct {
 		name             string
-		kind             string
-		resource         string
+		kind             unversioned.GroupKind
+		resource         unversioned.GroupResource
 		subResource      string
 		object           runtime.Object
 		responseObject   runtime.Object
@@ -33,7 +34,7 @@ func TestBuildAdmission(t *testing.T) {
 		{
 			name:             "allowed source build",
 			object:           testBuild(buildapi.BuildStrategy{SourceStrategy: &buildapi.SourceBuildStrategy{}}),
-			kind:             "Build",
+			kind:             unversioned.GroupKind{Group: "", Kind: "Build"},
 			resource:         buildsResource,
 			reviewResponse:   reviewResponse(true, ""),
 			expectedResource: authorizationapi.SourceBuildResource,
@@ -43,7 +44,7 @@ func TestBuildAdmission(t *testing.T) {
 			name:             "allowed source build clone",
 			object:           testBuildRequest("buildname"),
 			responseObject:   testBuild(buildapi.BuildStrategy{SourceStrategy: &buildapi.SourceBuildStrategy{}}),
-			kind:             "Build",
+			kind:             unversioned.GroupKind{Group: "", Kind: "Build"},
 			resource:         buildsResource,
 			subResource:      "clone",
 			reviewResponse:   reviewResponse(true, ""),
@@ -53,7 +54,7 @@ func TestBuildAdmission(t *testing.T) {
 		{
 			name:             "denied docker build",
 			object:           testBuild(buildapi.BuildStrategy{DockerStrategy: &buildapi.DockerBuildStrategy{}}),
-			kind:             "Build",
+			kind:             unversioned.GroupKind{Group: "", Kind: "Build"},
 			resource:         buildsResource,
 			reviewResponse:   reviewResponse(false, "cannot create build of type docker build"),
 			expectAccept:     false,
@@ -63,7 +64,7 @@ func TestBuildAdmission(t *testing.T) {
 			name:             "denied docker build clone",
 			object:           testBuildRequest("buildname"),
 			responseObject:   testBuild(buildapi.BuildStrategy{DockerStrategy: &buildapi.DockerBuildStrategy{}}),
-			kind:             "Build",
+			kind:             unversioned.GroupKind{Group: "", Kind: "Build"},
 			resource:         buildsResource,
 			subResource:      "clone",
 			reviewResponse:   reviewResponse(false, "cannot create build of type docker build"),
@@ -73,7 +74,7 @@ func TestBuildAdmission(t *testing.T) {
 		{
 			name:             "allowed custom build",
 			object:           testBuild(buildapi.BuildStrategy{CustomStrategy: &buildapi.CustomBuildStrategy{}}),
-			kind:             "Build",
+			kind:             unversioned.GroupKind{Group: "", Kind: "Build"},
 			resource:         buildsResource,
 			reviewResponse:   reviewResponse(true, ""),
 			expectedResource: authorizationapi.CustomBuildResource,
@@ -82,7 +83,7 @@ func TestBuildAdmission(t *testing.T) {
 		{
 			name:             "allowed build config",
 			object:           testBuildConfig(buildapi.BuildStrategy{DockerStrategy: &buildapi.DockerBuildStrategy{}}),
-			kind:             "BuildConfig",
+			kind:             unversioned.GroupKind{Group: "", Kind: "BuildConfig"},
 			resource:         buildConfigsResource,
 			reviewResponse:   reviewResponse(true, ""),
 			expectAccept:     true,
@@ -92,7 +93,7 @@ func TestBuildAdmission(t *testing.T) {
 			name:             "allowed build config instantiate",
 			responseObject:   testBuildConfig(buildapi.BuildStrategy{DockerStrategy: &buildapi.DockerBuildStrategy{}}),
 			object:           testBuildRequest("buildname"),
-			kind:             "BuildConfig",
+			kind:             unversioned.GroupKind{Group: "", Kind: "Build"},
 			resource:         buildConfigsResource,
 			subResource:      "instantiate",
 			reviewResponse:   reviewResponse(true, ""),
@@ -102,7 +103,7 @@ func TestBuildAdmission(t *testing.T) {
 		{
 			name:             "forbidden build config",
 			object:           testBuildConfig(buildapi.BuildStrategy{CustomStrategy: &buildapi.CustomBuildStrategy{}}),
-			kind:             "BuildConfig",
+			kind:             unversioned.GroupKind{Group: "", Kind: "Build"},
 			resource:         buildConfigsResource,
 			reviewResponse:   reviewResponse(false, ""),
 			expectAccept:     false,
@@ -112,7 +113,7 @@ func TestBuildAdmission(t *testing.T) {
 			name:             "forbidden build config instantiate",
 			responseObject:   testBuildConfig(buildapi.BuildStrategy{CustomStrategy: &buildapi.CustomBuildStrategy{}}),
 			object:           testBuildRequest("buildname"),
-			kind:             "BuildConfig",
+			kind:             unversioned.GroupKind{Group: "", Kind: "Build"},
 			resource:         buildConfigsResource,
 			subResource:      "instantiate",
 			reviewResponse:   reviewResponse(false, ""),
@@ -122,7 +123,7 @@ func TestBuildAdmission(t *testing.T) {
 		{
 			name:           "unrecognized request object",
 			object:         &fakeObject{},
-			kind:           "BuildConfig",
+			kind:           unversioned.GroupKind{Group: "", Kind: "BuildConfig"},
 			resource:       buildConfigsResource,
 			reviewResponse: reviewResponse(true, ""),
 			expectAccept:   false,
@@ -131,7 +132,7 @@ func TestBuildAdmission(t *testing.T) {
 		{
 			name:           "details on forbidden docker build",
 			object:         testBuild(buildapi.BuildStrategy{DockerStrategy: &buildapi.DockerBuildStrategy{}}),
-			kind:           "Build",
+			kind:           unversioned.GroupKind{Group: "", Kind: "Build"},
 			resource:       buildsResource,
 			subResource:    "details",
 			reviewResponse: reviewResponse(false, "cannot create build of type docker build"),

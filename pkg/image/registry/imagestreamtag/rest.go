@@ -8,10 +8,9 @@ import (
 	kapierrors "k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/api/rest"
 	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/fields"
-	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/runtime"
 
+	oapi "github.com/openshift/origin/pkg/api"
 	"github.com/openshift/origin/pkg/image/api"
 	"github.com/openshift/origin/pkg/image/registry/image"
 	"github.com/openshift/origin/pkg/image/registry/imagestream"
@@ -62,15 +61,7 @@ func (r *REST) List(ctx kapi.Context, options *unversioned.ListOptions) (runtime
 		return nil, err
 	}
 
-	label := labels.Everything()
-	if options != nil && options.LabelSelector.Selector != nil {
-		label = options.LabelSelector.Selector
-	}
-	field := fields.Everything()
-	if options != nil && options.FieldSelector.Selector != nil {
-		field = options.FieldSelector.Selector
-	}
-	matcher := MatchImageStreamTag(label, field)
+	matcher := MatchImageStreamTag(oapi.ListOptionsToSelectors(options))
 
 	list := &api.ImageStreamTagList{}
 	for _, currIS := range imageStreams.Items {

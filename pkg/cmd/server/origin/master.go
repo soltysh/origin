@@ -16,6 +16,7 @@ import (
 
 	kapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/rest"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apiserver"
 	kclient "k8s.io/kubernetes/pkg/client/unversioned"
 	kubeletclient "k8s.io/kubernetes/pkg/kubelet/client"
@@ -582,7 +583,7 @@ func (c *MasterConfig) api_v1beta3(all map[string]rest.Storage) *apiserver.APIGr
 	version := c.defaultAPIGroupVersion()
 	version.Root = LegacyOpenShiftAPIPrefix
 	version.Storage = storage
-	version.Version = OpenShiftAPIV1Beta3
+	version.GroupVersion = unversioned.GroupVersion{Group: "", Version: OpenShiftAPIV1Beta3}
 	version.Codec = v1beta3.Codec
 	version.NonDefaultGroupVersions["deploymentconfigs/scale"] = "extensions/v1beta1"
 	return version
@@ -599,7 +600,7 @@ func (c *MasterConfig) api_v1(all map[string]rest.Storage) *apiserver.APIGroupVe
 	}
 	version := c.defaultAPIGroupVersion()
 	version.Storage = storage
-	version.Version = OpenShiftAPIV1
+	version.GroupVersion = unversioned.GroupVersion{Group: "", Version: OpenShiftAPIV1}
 	version.Codec = v1.Codec
 	version.NonDefaultGroupVersions["deploymentconfigs/scale"] = "extensions/v1beta1"
 	return version

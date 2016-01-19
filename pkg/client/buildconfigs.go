@@ -55,7 +55,7 @@ func (c *buildConfigs) List(opts kapi.ListOptions) (result *buildapi.BuildConfig
 	err = c.r.Get().
 		Namespace(c.ns).
 		Resource("buildConfigs").
-		VersionedParams(&opts, buildapi.Scheme).
+		VersionedParams(&opts, kapi.Scheme).
 		Do().
 		Into(result)
 	return
@@ -106,7 +106,7 @@ func (c *buildConfigs) Watch(opts kapi.ListOptions) (watch.Interface, error) {
 		Prefix("watch").
 		Namespace(c.ns).
 		Resource("buildConfigs").
-		VersionedParams(&opts, buildapi.Scheme).
+		VersionedParams(&opts, kapi.Scheme).
 		Watch()
 }
 

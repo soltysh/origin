@@ -42,7 +42,7 @@ func (c *templates) List(opts kapi.ListOptions) (result *templateapi.TemplateLis
 	err = c.r.Get().
 		Namespace(c.ns).
 		Resource("templates").
-		VersionedParams(&opts, templateapi.Scheme).
+		VersionedParams(&opts, kapi.Scheme).
 		Do().
 		Into(result)
 	return
@@ -81,6 +81,6 @@ func (c *templates) Watch(opts kapi.ListOptions) (watch.Interface, error) {
 		Prefix("watch").
 		Namespace(c.ns).
 		Resource("templates").
-		VersionedParams(&opts, templateapi.Scheme).
+		VersionedParams(&opts, kapi.Scheme).
 		Watch()
 }

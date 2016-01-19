@@ -94,7 +94,7 @@ func ValidateClusterPolicyUpdate(policy *authorizationapi.ClusterPolicy, oldPoli
 func ValidatePolicy(policy *authorizationapi.Policy, isNamespaced bool) field.ErrorList {
 	allErrs := validation.ValidateObjectMeta(&policy.ObjectMeta, isNamespaced, ValidatePolicyName, field.NewPath("metadata"))
 
-	rolePath := field.NewPath("role")
+	rolePath := field.NewPath("roles")
 	for roleKey, role := range policy.Roles {
 		keyPath := rolePath.Key(roleKey)
 		if role == nil {
@@ -210,10 +210,13 @@ func ValidateRole(role *authorizationapi.Role, isNamespaced bool) field.ErrorLis
 }
 
 func validateRole(role *authorizationapi.Role, isNamespaced bool, fldPath *field.Path) field.ErrorList {
-	if fldPath != nil {
-		return validation.ValidateObjectMeta(&role.ObjectMeta, isNamespaced, oapi.MinimalNameRequirements, fldPath.Child("metadata"))
+	var metadataPath *field.Path
+	if fldPath == nil {
+		metadataPath = field.NewPath("metadata")
+	} else {
+		metadataPath = fldPath.Child("metadata")
 	}
-	return validation.ValidateObjectMeta(&role.ObjectMeta, isNamespaced, oapi.MinimalNameRequirements, field.NewPath("metadata"))
+	return validation.ValidateObjectMeta(&role.ObjectMeta, isNamespaced, oapi.MinimalNameRequirements, metadataPath)
 }
 
 func ValidateRoleUpdate(role *authorizationapi.Role, oldRole *authorizationapi.Role, isNamespaced bool) field.ErrorList {
@@ -245,19 +248,16 @@ func ValidateRoleBinding(roleBinding *authorizationapi.RoleBinding, isNamespaced
 
 func validateRoleBinding(roleBinding *authorizationapi.RoleBinding, isNamespaced bool, fldPath *field.Path) field.ErrorList {
 	var metadataPath *field.Path
+	var roleRefPath *field.Path
 	if fldPath != nil {
 		metadataPath = fldPath.Child("metadata")
+		roleRefPath = fldPath.Child("roleRef")
 	} else {
 		metadataPath = field.NewPath("metadata")
+		roleRefPath = field.NewPath("roleRef")
 	}
 	allErrs := validation.ValidateObjectMeta(&roleBinding.ObjectMeta, isNamespaced, oapi.MinimalNameRequirements, metadataPath)
 
-	var roleRefPath *field.Path
-	if fldPath != nil {
-		roleRefPath = fldPath.Child("roleRef")
-	} else {
-		roleRefPath = field.NewPath("roleRef")
-	}
 	// roleRef namespace is empty when referring to global policy.
 	if (len(roleBinding.RoleRef.Namespace) > 0) && !kvalidation.IsDNS1123Subdomain(roleBinding.RoleRef.Namespace) {
 		allErrs = append(allErrs, field.Invalid(roleRefPath.Child("namespace"), roleBinding.RoleRef.Namespace, "roleRef.namespace must be a valid subdomain"))

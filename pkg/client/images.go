@@ -36,7 +36,7 @@ func (c *images) List(opts kapi.ListOptions) (result *imageapi.ImageList, err er
 	result = &imageapi.ImageList{}
 	err = c.r.Get().
 		Resource("images").
-		VersionedParams(&opts, imageapi.Scheme).
+		VersionedParams(&opts, kapi.Scheme).
 		Do().
 		Into(result)
 	return

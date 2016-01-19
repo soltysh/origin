@@ -582,7 +582,7 @@ type fakeImageRegistry struct {
 	getImage    func(ctx kapi.Context, id string) (*api.Image, error)
 	createImage func(ctx kapi.Context, image *api.Image) error
 	deleteImage func(ctx kapi.Context, id string) error
-	watchImages func(ctx kapi.Context, label labels.Selector, field fields.Selector, resourceVersion string) (watch.Interface, error)
+	watchImages func(ctx kapi.Context, options *unversioned.ListOptions) (watch.Interface, error)
 }
 
 func (f *fakeImageRegistry) ListImages(ctx kapi.Context, selector labels.Selector) (*api.ImageList, error) {
@@ -597,7 +597,7 @@ func (f *fakeImageRegistry) CreateImage(ctx kapi.Context, image *api.Image) erro
 func (f *fakeImageRegistry) DeleteImage(ctx kapi.Context, id string) error {
 	return f.deleteImage(ctx, id)
 }
-func (f *fakeImageRegistry) WatchImages(ctx kapi.Context, label labels.Selector, field fields.Selector, resourceVersion string) (watch.Interface, error) {
+func (f *fakeImageRegistry) WatchImages(ctx kapi.Context, options *unversioned.ListOptions) (watch.Interface, error) {
 	return f.watchImages(ctx, label, field, resourceVersion)
 }
 
@@ -609,7 +609,7 @@ type fakeImageStreamRegistry struct {
 	updateImageStreamSpec   func(ctx kapi.Context, repo *api.ImageStream) (*api.ImageStream, error)
 	updateImageStreamStatus func(ctx kapi.Context, repo *api.ImageStream) (*api.ImageStream, error)
 	deleteImageStream       func(ctx kapi.Context, id string) (*unversioned.Status, error)
-	watchImageStreams       func(ctx kapi.Context, label labels.Selector, field fields.Selector, resourceVersion string) (watch.Interface, error)
+	watchImageStreams       func(ctx kapi.Context, options *unversioned.ListOptions) (watch.Interface, error)
 }
 
 func (f *fakeImageStreamRegistry) ListImageStreams(ctx kapi.Context, selector labels.Selector) (*api.ImageStreamList, error) {
@@ -633,6 +633,6 @@ func (f *fakeImageStreamRegistry) UpdateImageStreamStatus(ctx kapi.Context, repo
 func (f *fakeImageStreamRegistry) DeleteImageStream(ctx kapi.Context, id string) (*unversioned.Status, error) {
 	return f.deleteImageStream(ctx, id)
 }
-func (f *fakeImageStreamRegistry) WatchImageStreams(ctx kapi.Context, label labels.Selector, field fields.Selector, resourceVersion string) (watch.Interface, error) {
+func (f *fakeImageStreamRegistry) WatchImageStreams(ctx kapi.Context, options *unversioned.ListOptions) (watch.Interface, error) {
 	return f.watchImageStreams(ctx, label, field, resourceVersion)
 }
