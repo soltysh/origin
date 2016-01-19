@@ -550,7 +550,8 @@ func startControllers(oc *origin.MasterConfig, kc *kubernetes.MasterConfig) erro
 		kc.RunNodeController()
 		kc.RunScheduler()
 		kc.RunReplicationController(rcClient)
-		if kc.Master.EnableExp {
+		// TODO: detect or replace kc.Master.EnableExp
+		if true {
 			kc.RunJobController(jobClient)
 			kc.RunHPAController(hpaOClient, hpaKClient, oc.Options.PolicyConfig.OpenShiftInfrastructureNamespace)
 		}

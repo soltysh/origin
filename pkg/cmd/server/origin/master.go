@@ -565,9 +565,9 @@ func (c *MasterConfig) defaultAPIGroupVersion() *apiserver.APIGroupVersion {
 		Convertor: kapi.Scheme,
 		Linker:    latest.SelfLinker,
 
-		Admit:                   c.AdmissionControl,
-		Context:                 c.getRequestContextMapper(),
-		NonDefaultGroupVersions: map[string]string{},
+		Admit:   c.AdmissionControl,
+		Context: c.getRequestContextMapper(),
+		// TODO: NonDefaultGroupVersions: map[string]string{},
 	}
 }
 
@@ -585,7 +585,7 @@ func (c *MasterConfig) api_v1beta3(all map[string]rest.Storage) *apiserver.APIGr
 	version.Storage = storage
 	version.GroupVersion = unversioned.GroupVersion{Group: "", Version: OpenShiftAPIV1Beta3}
 	version.Codec = v1beta3.Codec
-	version.NonDefaultGroupVersions["deploymentconfigs/scale"] = "extensions/v1beta1"
+	// TODO: version.NonDefaultGroupVersions["deploymentconfigs/scale"] = "extensions/v1beta1"
 	return version
 }
 
@@ -602,7 +602,7 @@ func (c *MasterConfig) api_v1(all map[string]rest.Storage) *apiserver.APIGroupVe
 	version.Storage = storage
 	version.GroupVersion = unversioned.GroupVersion{Group: "", Version: OpenShiftAPIV1}
 	version.Codec = v1.Codec
-	version.NonDefaultGroupVersions["deploymentconfigs/scale"] = "extensions/v1beta1"
+	// TODO: version.NonDefaultGroupVersions["deploymentconfigs/scale"] = "extensions/v1beta1"
 	return version
 }
 
