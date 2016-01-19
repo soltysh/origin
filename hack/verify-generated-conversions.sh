@@ -11,7 +11,7 @@ cd "${OS_ROOT}"
 
 echo "===== Verifying Generated Conversions ====="
 echo "Building genconversion binary..."
-if ! buildout=`"${OS_ROOT}/hack/build-go.sh" cmd/genconversion 2>&1`
+if ! buildout=`"${OS_ROOT}/hack/build-go.sh" tools/genconversion 2>&1`
 then
   echo "FAILURE: Building genconversion binary failed:"
   echo "$buildout"
@@ -20,14 +20,14 @@ else
   echo "$buildout" | sed 's/^/   /'
 fi
 
-genconversion="${OS_ROOT}/_output/local/bin/$(os::build::host_platform)/genconversion"
+genconversion="$(os::build::find-binary genconversion)"
 
 echo "   Verifying genconversion binary..."
 if [[ ! -x "$genconversion" ]]; then
   {
     echo "FAILURE: It looks as if you don't have a compiled conversion binary."
     echo "If you are running from a clone of the git repo, please run:"
-    echo "'./hack/build-go.sh cmd/genconversion'."
+    echo "'./hack/build-go.sh tools/genconversion'."
   } >&2
   exit 1
 fi

@@ -1637,6 +1637,65 @@
     ]
    },
    {
+    "path": "/oapi/v1/namespaces/{namespace}/builds/{name}/details",
+    "description": "OpenShift REST API, version v1",
+    "operations": [
+     {
+      "type": "v1.Build",
+      "method": "PUT",
+      "summary": "replace details of the specified Build",
+      "nickname": "replaceNamespacedBuildDetails",
+      "parameters": [
+       {
+        "type": "string",
+        "paramType": "query",
+        "name": "pretty",
+        "description": "If 'true', then the output is pretty printed.",
+        "required": false,
+        "allowMultiple": false
+       },
+       {
+        "type": "v1.Build",
+        "paramType": "body",
+        "name": "body",
+        "description": "",
+        "required": true,
+        "allowMultiple": false
+       },
+       {
+        "type": "string",
+        "paramType": "path",
+        "name": "namespace",
+        "description": "object name and auth scope, such as for teams and projects",
+        "required": true,
+        "allowMultiple": false
+       },
+       {
+        "type": "string",
+        "paramType": "path",
+        "name": "name",
+        "description": "name of the Build",
+        "required": true,
+        "allowMultiple": false
+       }
+      ],
+      "responseMessages": [
+       {
+        "code": 200,
+        "message": "OK",
+        "responseModel": "v1.Build"
+       }
+      ],
+      "produces": [
+       "application/json"
+      ],
+      "consumes": [
+       "*/*"
+      ]
+     }
+    ]
+   },
+   {
     "path": "/oapi/v1/namespaces/{namespace}/builds/{name}/log",
     "description": "OpenShift REST API, version v1",
     "operations": [
@@ -14644,6 +14703,10 @@
       "$ref": "v1.GitBuildSource",
       "description": "optional information about git build source"
      },
+     "image": {
+      "$ref": "v1.ImageSource",
+      "description": "optional image build source.  EXPERIMENTAL: This will be changing to an array of images in the near future and no migration/compatibility will be provided.  Use at your own risk."
+     },
      "contextDir": {
       "type": "string",
       "description": "specifies sub-directory where the source code for the application exists, allows for sources to be built from a directory other than the root of a repository"
@@ -14684,6 +14747,47 @@
      "httpsProxy": {
       "type": "string",
       "description": "specifies a https proxy to be used during git clone operations"
+     }
+    }
+   },
+   "v1.ImageSource": {
+    "id": "v1.ImageSource",
+    "required": [
+     "from",
+     "paths"
+    ],
+    "properties": {
+     "from": {
+      "$ref": "v1.ObjectReference",
+      "description": "reference to ImageStreamTag, ImageStreamImage, or DockerImage"
+     },
+     "paths": {
+      "type": "array",
+      "items": {
+       "$ref": "v1.ImageSourcePath"
+      },
+      "description": "paths to copy from image"
+     },
+     "pullSecret": {
+      "$ref": "v1.LocalObjectReference",
+      "description": "overrides the default pull secret for the source image"
+     }
+    }
+   },
+   "v1.ImageSourcePath": {
+    "id": "v1.ImageSourcePath",
+    "required": [
+     "sourcePath",
+     "destinationDir"
+    ],
+    "properties": {
+     "sourcePath": {
+      "type": "string",
+      "description": "source path (directory or file) inside image"
+     },
+     "destinationDir": {
+      "type": "string",
+      "description": "relative destination directory in build home"
      }
     }
    },
@@ -14796,6 +14900,10 @@
      "forcePull": {
       "type": "boolean",
       "description": "forces the source build to pull the image if true"
+     },
+     "dockerfilePath": {
+      "type": "string",
+      "description": "path of the Dockerfile to use for building the Docker image, relative to the contextDir, if set"
      }
     }
    },
@@ -15137,6 +15245,13 @@
       "type": "integer",
       "format": "int32",
       "description": "LastVersion of the BuildConfig that triggered this build"
+     },
+     "env": {
+      "type": "array",
+      "items": {
+       "$ref": "v1.EnvVar"
+      },
+      "description": "additional environment variables you want to pass into a builder container"
      }
     }
    },
@@ -15239,7 +15354,7 @@
      },
      "cancelled": {
       "type": "boolean",
-      "description": "describes if a canceling event was triggered for the build"
+      "description": "describes if a cancel event was triggered for the build"
      },
      "reason": {
       "type": "string",
@@ -15836,6 +15951,14 @@
      "resources": {
       "$ref": "v1.ResourceRequirements",
       "description": "resource requirements to execute the deployment"
+     },
+     "labels": {
+      "type": "any",
+      "description": "labels for deployer and hook pods"
+     },
+     "annotations": {
+      "type": "any",
+      "description": "annotations for deployer and hook pods"
      }
     }
    },
@@ -15998,7 +16121,7 @@
      },
      "from": {
       "$ref": "v1.ObjectReference",
-      "description": "a reference to an ImageRepository, ImageStream, or ImageStreamTag to watch for changes"
+      "description": "a reference to an ImageStreamTag to watch for changes"
      },
      "lastTriggeredImage": {
       "type": "string",
@@ -18582,10 +18705,13 @@
    },
    "v1.TLSConfig": {
     "id": "v1.TLSConfig",
+    "required": [
+     "termination"
+    ],
     "properties": {
      "termination": {
       "type": "string",
-      "description": "indicates termination type.  if not set, any termination config will be ignored"
+      "description": "indicates termination type"
      },
      "certificate": {
       "type": "string",

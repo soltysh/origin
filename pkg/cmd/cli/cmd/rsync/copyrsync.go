@@ -3,12 +3,15 @@ package rsync
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	kerrors "k8s.io/kubernetes/pkg/util/errors"
+	"k8s.io/kubernetes/pkg/util/sets"
 
 	"github.com/openshift/origin/pkg/cmd/util/clientcmd"
 )
@@ -24,13 +27,19 @@ type rsyncStrategy struct {
 	RemoteExecutor executor
 }
 
+var rshExcludeFlags = sets.NewString("delete", "strategy", "quiet", "include", "exclude", "progress", "no-perms")
+
 func newRsyncStrategy(f *clientcmd.Factory, c *cobra.Command, o *RsyncOptions) (copyStrategy, error) {
 	// Determine the rsh command to pass to the local rsync command
 	rsh := siblingCommand(c, "rsh")
-	rshCmd := []string{rsh, "-n", o.Namespace}
-	if len(o.ContainerName) > 0 {
-		rshCmd = append(rshCmd, "-c", o.ContainerName)
-	}
+	rshCmd := []string{rsh}
+	// Append all original flags to rsh command
+	c.Flags().Visit(func(flag *pflag.Flag) {
+		if rshExcludeFlags.Has(flag.Name) {
+			return
+		}
+		rshCmd = append(rshCmd, fmt.Sprintf("--%s=%s", flag.Name, flag.Value.String()))
+	})
 	rshCmdStr := strings.Join(rshCmd, " ")
 	glog.V(4).Infof("Rsh command: %s", rshCmdStr)
 
@@ -39,19 +48,10 @@ func newRsyncStrategy(f *clientcmd.Factory, c *cobra.Command, o *RsyncOptions) (
 		return nil, err
 	}
 
-	// TODO: Expose more flags to send to the rsync command
-	// either as a special argument or any unrecognized arguments.
 	// The blocking-io flag is used to resolve a sync issue when
 	// copying from the pod to the local machine
 	flags := []string{"-a", "--blocking-io", "--omit-dir-times", "--numeric-ids"}
-	if o.Quiet {
-		flags = append(flags, "-q")
-	} else {
-		flags = append(flags, "-v")
-	}
-	if o.Delete {
-		flags = append(flags, "--delete")
-	}
+	flags = append(flags, rsyncFlagsFromOptions(o)...)
 
 	return &rsyncStrategy{
 		Flags:          flags,

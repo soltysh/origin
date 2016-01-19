@@ -87,7 +87,7 @@ func NewRollingDeploymentStrategy(namespace string, client kclient.Interface, co
 			updater := kubectl.NewRollingUpdater(namespace, client)
 			return updater.Update(config)
 		},
-		hookExecutor: stratsupport.NewHookExecutor(client, os.Stdout),
+		hookExecutor: stratsupport.NewHookExecutor(client, os.Stdout, codec),
 		getUpdateAcceptor: func(timeout time.Duration) strat.UpdateAcceptor {
 			return stratsupport.NewAcceptNewlyObservedReadyPods(client, timeout, AcceptorInterval)
 		},
@@ -100,7 +100,7 @@ func (s *RollingDeploymentStrategy) Deploy(from *kapi.ReplicationController, to 
 		return fmt.Errorf("couldn't decode DeploymentConfig from deployment %s: %v", deployutil.LabelForDeployment(to), err)
 	}
 
-	params := config.Template.Strategy.RollingParams
+	params := config.Spec.Strategy.RollingParams
 	updateAcceptor := s.getUpdateAcceptor(time.Duration(*params.TimeoutSeconds) * time.Second)
 
 	// If there's no prior deployment, delegate to another strategy since the

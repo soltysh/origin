@@ -9,6 +9,8 @@ import (
 	kapi "k8s.io/kubernetes/pkg/api"
 
 	"github.com/openshift/origin/pkg/build/api"
+	"github.com/openshift/origin/pkg/client/testclient"
+	"github.com/openshift/origin/pkg/generate/git"
 	s2iapi "github.com/openshift/source-to-image/pkg/api"
 	"github.com/openshift/source-to-image/pkg/api/validation"
 	s2ibuild "github.com/openshift/source-to-image/pkg/build"
@@ -31,6 +33,22 @@ func (client testDockerClient) PushImage(opts docker.PushImageOptions, auth dock
 }
 
 func (client testDockerClient) RemoveImage(name string) error {
+	return nil
+}
+
+func (client testDockerClient) CreateContainer(opts docker.CreateContainerOptions) (*docker.Container, error) {
+	return nil, nil
+}
+
+func (client testDockerClient) DownloadFromContainer(id string, opts docker.DownloadFromContainerOptions) error {
+	return nil
+}
+
+func (client testDockerClient) PullImage(opts docker.PullImageOptions, auth docker.AuthConfiguration) error {
+	return nil
+}
+
+func (client testDockerClient) RemoveContainer(opts docker.RemoveContainerOptions) error {
 	return nil
 }
 
@@ -66,13 +84,15 @@ func makeStiBuilder(
 	errPushImage error,
 	getStrategyErr error,
 	buildError error,
-	validationErrors []validation.ValidationError) STIBuilder {
-	return *newSTIBuilder(
+	validationErrors []validation.ValidationError) S2IBuilder {
+	return *newS2IBuilder(
 		testDockerClient{
 			errPushImage: errPushImage,
 		},
 		"/docker.socket",
+		testclient.NewSimpleFake().Builds(""),
 		makeBuild(),
+		git.NewRepository(),
 		testStiBuilderFactory{getStrategyErr: getStrategyErr, buildError: buildError},
 		testStiConfigValidator{errors: validationErrors},
 	)
@@ -87,12 +107,10 @@ func makeBuild() *api.Build {
 	return &api.Build{
 		Spec: api.BuildSpec{
 			Source: api.BuildSource{
-				Type: api.BuildSourceGit,
 				Git: &api.GitBuildSource{
 					URI: "http://localhost/123",
 				}},
 			Strategy: api.BuildStrategy{
-				Type: api.SourceBuildStrategyType,
 				SourceStrategy: &api.SourceBuildStrategy{
 					From: kapi.ObjectReference{
 						Kind: "DockerImage",

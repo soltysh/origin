@@ -952,6 +952,18 @@ func deepCopy_v1_BuildRequest(in apiv1.BuildRequest, out *apiv1.BuildRequest, c 
 	} else {
 		out.LastVersion = nil
 	}
+	if in.Env != nil {
+		out.Env = make([]pkgapiv1.EnvVar, len(in.Env))
+		for i := range in.Env {
+			if newVal, err := c.DeepCopy(in.Env[i]); err != nil {
+				return err
+			} else {
+				out.Env[i] = newVal.(pkgapiv1.EnvVar)
+			}
+		}
+	} else {
+		out.Env = nil
+	}
 	return nil
 }
 
@@ -978,6 +990,14 @@ func deepCopy_v1_BuildSource(in apiv1.BuildSource, out *apiv1.BuildSource, c *co
 		}
 	} else {
 		out.Git = nil
+	}
+	if in.Image != nil {
+		out.Image = new(apiv1.ImageSource)
+		if err := deepCopy_v1_ImageSource(*in.Image, out.Image, c); err != nil {
+			return err
+		}
+	} else {
+		out.Image = nil
 	}
 	out.ContextDir = in.ContextDir
 	if in.SourceSecret != nil {
@@ -1195,6 +1215,7 @@ func deepCopy_v1_DockerBuildStrategy(in apiv1.DockerBuildStrategy, out *apiv1.Do
 		out.Env = nil
 	}
 	out.ForcePull = in.ForcePull
+	out.DockerfilePath = in.DockerfilePath
 	return nil
 }
 
@@ -1229,6 +1250,40 @@ func deepCopy_v1_ImageChangeTrigger(in apiv1.ImageChangeTrigger, out *apiv1.Imag
 	} else {
 		out.From = nil
 	}
+	return nil
+}
+
+func deepCopy_v1_ImageSource(in apiv1.ImageSource, out *apiv1.ImageSource, c *conversion.Cloner) error {
+	if newVal, err := c.DeepCopy(in.From); err != nil {
+		return err
+	} else {
+		out.From = newVal.(pkgapiv1.ObjectReference)
+	}
+	if in.Paths != nil {
+		out.Paths = make([]apiv1.ImageSourcePath, len(in.Paths))
+		for i := range in.Paths {
+			if err := deepCopy_v1_ImageSourcePath(in.Paths[i], &out.Paths[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Paths = nil
+	}
+	if in.PullSecret != nil {
+		if newVal, err := c.DeepCopy(in.PullSecret); err != nil {
+			return err
+		} else {
+			out.PullSecret = newVal.(*pkgapiv1.LocalObjectReference)
+		}
+	} else {
+		out.PullSecret = nil
+	}
+	return nil
+}
+
+func deepCopy_v1_ImageSourcePath(in apiv1.ImageSourcePath, out *apiv1.ImageSourcePath, c *conversion.Cloner) error {
+	out.SourcePath = in.SourcePath
+	out.DestinationDir = in.DestinationDir
 	return nil
 }
 
@@ -1568,6 +1623,22 @@ func deepCopy_v1_DeploymentStrategy(in deployapiv1.DeploymentStrategy, out *depl
 		return err
 	} else {
 		out.Resources = newVal.(pkgapiv1.ResourceRequirements)
+	}
+	if in.Labels != nil {
+		out.Labels = make(map[string]string)
+		for key, val := range in.Labels {
+			out.Labels[key] = val
+		}
+	} else {
+		out.Labels = nil
+	}
+	if in.Annotations != nil {
+		out.Annotations = make(map[string]string)
+		for key, val := range in.Annotations {
+			out.Annotations[key] = val
+		}
+	} else {
+		out.Annotations = nil
 	}
 	return nil
 }
@@ -2782,6 +2853,8 @@ func init() {
 		deepCopy_v1_GitBuildSource,
 		deepCopy_v1_GitSourceRevision,
 		deepCopy_v1_ImageChangeTrigger,
+		deepCopy_v1_ImageSource,
+		deepCopy_v1_ImageSourcePath,
 		deepCopy_v1_SecretSpec,
 		deepCopy_v1_SourceBuildStrategy,
 		deepCopy_v1_SourceControlUser,

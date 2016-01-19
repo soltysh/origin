@@ -482,8 +482,12 @@ angular.module('openshiftConsole')
     };
   })
   .filter('projectOverviewURL', function(Navigate) {
-    return function(projectName) {
-      return Navigate.projectOverviewURL(projectName);
+    return function(project) {
+      return angular.isString(project) ?
+              Navigate.projectOverviewURL(project) :
+              angular.isObject(project) ?
+                Navigate.projectOverviewURL(project.metadata && project.metadata.name):
+                Navigate.projectOverviewURL(''); // fail case will invoke default route (projects list)
     };
   })
   .filter('createFromSourceURL', function() {
@@ -737,5 +741,39 @@ angular.module('openshiftConsole')
       }
 
       return false;
+    };
+  })
+  .filter('buildStrategy', function() {
+    return function(build) {
+      if (!build || !build.spec || !build.spec.strategy) {
+        return null;
+      }
+      switch (build.spec.strategy.type) {
+        case 'Source':
+          return build.spec.strategy.sourceStrategy;
+        case 'Docker':
+          return build.spec.strategy.dockerStrategy;
+        case 'Custom':
+          return build.spec.strategy.customStrategy;
+        default:
+          return null;
+      }
+    };
+  })
+  .filter('humanizeResourceType', function() {
+    return function(resourceType) {
+      var nameFormatMap = {
+        'build': 'Build',
+        'buildconfig': 'Build Config',
+        'deployment': 'Deployment',
+        'deploymentconfig': 'Deployment Config',
+        'imagestream': 'Image Stream',
+        'pod': 'Pod',
+        'project': 'Project',
+        'replicationcontroller': 'Replication Controller',
+        'route': 'Route',
+        'service': 'Service'
+      };
+      return nameFormatMap[resourceType] || resourceType;
     };
   });

@@ -13,6 +13,7 @@ import (
 	kclientcmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/runtime"
+	kutil "k8s.io/kubernetes/pkg/util"
 
 	"github.com/openshift/origin/pkg/cmd/util/clientcmd"
 	"github.com/openshift/origin/pkg/cmd/util/variable"
@@ -250,19 +251,17 @@ func RunCmdRegistry(f *clientcmd.Factory, cmd *cobra.Command, out io.Writer, cfg
 						SecurityContext: &kapi.SecurityContext{
 							Privileged: &mountHost,
 						},
-						// TODO reenable the liveness probe when we no longer support the v1 registry.
-						/*
-							LivenessProbe: &kapi.Probe{
-								InitialDelaySeconds: 3,
-								TimeoutSeconds:      5,
-								Handler: kapi.Handler{
-									HTTPGet: &kapi.HTTPGetAction{
-										Path: "/healthz",
-										Port: util.NewIntOrStringFromInt(5000),
-									},
+						LivenessProbe: &kapi.Probe{
+							InitialDelaySeconds: 3,
+							TimeoutSeconds:      5,
+							Handler: kapi.Handler{
+								HTTPGet: &kapi.HTTPGetAction{
+									// TODO: `/healthz` route is deprecated by `/`; remove it in future version
+									Path: "/healthz",
+									Port: kutil.NewIntOrStringFromInt(ports[0].ContainerPort),
 								},
 							},
-						*/
+						},
 					},
 				},
 				Volumes: []kapi.Volume{
@@ -285,19 +284,28 @@ func RunCmdRegistry(f *clientcmd.Factory, cmd *cobra.Command, out io.Writer, cfg
 					Name:   name,
 					Labels: label,
 				},
-				Triggers: []dapi.DeploymentTriggerPolicy{
-					{Type: dapi.DeploymentTriggerOnConfigChange},
-				},
-				Template: dapi.DeploymentTemplate{
-					ControllerTemplate: kapi.ReplicationControllerSpec{
-						Replicas: cfg.Replicas,
-						Selector: label,
-						Template: podTemplate,
+				Spec: dapi.DeploymentConfigSpec{
+					Replicas: cfg.Replicas,
+					Selector: label,
+					Triggers: []dapi.DeploymentTriggerPolicy{
+						{Type: dapi.DeploymentTriggerOnConfigChange},
 					},
+					Template: podTemplate,
 				},
 			},
 		}
 		objects = app.AddServices(objects, true)
+
+		// Set registry service's sessionAffinity to ClientIP to prevent push
+		// failures due to a use of poorly consistent storage shared by
+		// multiple replicas.
+		for _, obj := range objects {
+			switch t := obj.(type) {
+			case *kapi.Service:
+				t.Spec.SessionAffinity = kapi.ServiceAffinityClientIP
+			}
+		}
+
 		// TODO: label all created objects with the same label
 		list := &kapi.List{Items: objects}
 

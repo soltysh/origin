@@ -26,25 +26,30 @@ func tab(original string) string {
 const (
 	getLong = `Display one or many resources
 
-Possible resources include builds, buildConfigs, services, pods, etc.`
+Possible resources include builds, buildConfigs, services, pods, etc.
+Some resources may omit advanced details that you can see with '-o wide'.
+If you want an even more detailed view, use '%[1]s describe'.`
 
 	getExample = `  # List all pods in ps output format.
   $ %[1]s get pods
 
   # List a single replication controller with specified ID in ps output format.
-  $ %[1]s get replicationController 1234-56-7890-234234-456456
+  $ %[1]s get rc redis
+
+  # List all pods and show more details about them.
+  $ %[1]s get -o wide pods
 
   # List a single pod in JSON output format.
-  $ %[1]s get -o json pod 1234-56-7890-234234-456456
+  $ %[1]s get -o json pod redis-pod
 
   # Return only the status value of the specified pod.
-  $ %[1]s get -o template pod 1234-56-7890-234234-456456 --template={{.currentState.status}}`
+  $ %[1]s get -o template pod redis-pod --template={{.currentState.status}}`
 )
 
 // NewCmdGet is a wrapper for the Kubernetes cli get command
 func NewCmdGet(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
 	cmd := kcmd.NewCmdGet(f.Factory, out)
-	cmd.Long = getLong
+	cmd.Long = fmt.Sprintf(getLong, fullName)
 	cmd.Example = fmt.Sprintf(getExample, fullName)
 	cmd.SuggestFor = []string{"list"}
 	return cmd
@@ -160,6 +165,7 @@ const (
 // NewCmdExec is a wrapper for the Kubernetes cli exec command
 func NewCmdExec(fullName string, f *clientcmd.Factory, cmdIn io.Reader, cmdOut, cmdErr io.Writer) *cobra.Command {
 	cmd := kcmd.NewCmdExec(f.Factory, cmdIn, cmdOut, cmdErr)
+	cmd.Use = "exec POD [-c CONTAINER] [options] -- COMMAND [args...]"
 	cmd.Long = execLong
 	cmd.Example = fmt.Sprintf(execExample, fullName)
 	return cmd
@@ -195,8 +201,8 @@ const (
 This command joins many API calls together to form a detailed description of a
 given resource.`
 
-	describeExample = `  # Provide details about the ruby-20-centos7 image repository
-  $ %[1]s describe imageRepository ruby-20-centos7
+	describeExample = `  # Provide details about the ruby-22-centos7 image repository
+  $ %[1]s describe imageRepository ruby-22-centos7
 
   # Provide details about the ruby-sample-build build configuration
   $ %[1]s describe bc ruby-sample-build`
@@ -258,6 +264,7 @@ func NewCmdScale(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Co
 	cmd.Short = "Change the number of pods in a deployment"
 	cmd.Long = scaleLong
 	cmd.Example = fmt.Sprintf(scaleExample, fullName)
+	cmd.ValidArgs = []string{"deploymentconfig", "job", "replicationcontroller"}
 	return cmd
 }
 
@@ -309,7 +316,7 @@ foreground for an interactive container execution.  You may pass 'run-controller
   $ %[1]s run nginx --image=nginx --overrides='{ "apiVersion": "v1", "spec": { ... } }'
 
   # Start a single instance of nginx and keep it in the foreground, don't restart it if it exits.
-  $ %[1]s run -i -tty nginx --image=nginx --restart=Never`
+  $ %[1]s run -i --tty nginx --image=nginx --restart=Never`
 
 	// TODO: uncomment these when arguments are delivered upstream
 
@@ -343,7 +350,7 @@ terminal session. Can be used to debug containers and invoke interactive command
   $ %[1]s attach 123456-7890
 
   # Get output from ruby-container from pod 123456-7890
-  $ %[1]s attach 123456-7890 -c ruby-container date
+  $ %[1]s attach 123456-7890 -c ruby-container
 
   # Switch to raw terminal mode, sends stdin to 'bash' in ruby-container from pod 123456-780
   # and sends stdout/stderr from 'bash' back to the client

@@ -39,7 +39,7 @@ func NewCmdCancelBuild(fullName string, f *clientcmd.Factory, out io.Writer) *co
 		Short:      "Cancel a pending or running build",
 		Long:       cancelBuildLong,
 		Example:    fmt.Sprintf(cancelBuildExample, fullName),
-		SuggestFor: []string{"builds"},
+		SuggestFor: []string{"builds", "stop-build"},
 		Run: func(cmd *cobra.Command, args []string) {
 			err := RunCancelBuild(f, out, cmd, args)
 			cmdutil.CheckErr(err)
@@ -83,7 +83,7 @@ func RunCancelBuild(f *clientcmd.Factory, out io.Writer, cmd *cobra.Command, arg
 	if !ok {
 		return fmt.Errorf("%q is not a valid build", buildName)
 	}
-	if !isBuildCancellable(build) {
+	if !isBuildCancellable(build, out) {
 		return nil
 	}
 
@@ -92,11 +92,11 @@ func RunCancelBuild(f *clientcmd.Factory, out io.Writer, cmd *cobra.Command, arg
 		opts := buildapi.BuildLogOptions{
 			NoWait: true,
 		}
-		response, err := client.BuildLogs(namespace).Get(buildName, opts).Do().Raw()
+		response, err := client.BuildLogs(namespace).Get(build.Name, opts).Do().Raw()
 		if err != nil {
-			glog.Errorf("Could not fetch build logs for %s: %v", buildName, err)
+			glog.Errorf("Could not fetch build logs for %s: %v", build.Name, err)
 		} else {
-			glog.Infof("Build logs for %s:\n%v", buildName, string(response))
+			glog.Infof("Build logs for %s:\n%v", build.Name, string(response))
 		}
 	}
 
@@ -104,7 +104,7 @@ func RunCancelBuild(f *clientcmd.Factory, out io.Writer, cmd *cobra.Command, arg
 	for {
 		build.Status.Cancelled = true
 		if _, err = buildClient.Update(build); err != nil && errors.IsConflict(err) {
-			build, err = buildClient.Get(buildName)
+			build, err = buildClient.Get(build.Name)
 			if err != nil {
 				return err
 			}
@@ -115,7 +115,7 @@ func RunCancelBuild(f *clientcmd.Factory, out io.Writer, cmd *cobra.Command, arg
 		}
 		break
 	}
-	glog.V(2).Infof("Build %s was cancelled.", buildName)
+	fmt.Fprintf(out, "Build %s was cancelled.\n", build.Name)
 
 	// mapper, typer := f.Object()
 	// resourceMapper := &resource.Mapper{ObjectTyper: typer, RESTMapper: mapper, ClientMapper: f.ClientMapperForCommand()}
@@ -130,7 +130,7 @@ func RunCancelBuild(f *clientcmd.Factory, out io.Writer, cmd *cobra.Command, arg
 		if err != nil {
 			return err
 		}
-		glog.V(2).Infof("Restarted build %s.", buildName)
+		fmt.Fprintf(out, "Restarted build %s.\n", build.Name)
 		fmt.Fprintf(out, "%s\n", newBuild.Name)
 		// fmt.Fprintf(out, "%s\n", newBuild.Name)
 		// info, err := resourceMapper.InfoForObject(newBuild)
@@ -150,18 +150,19 @@ func RunCancelBuild(f *clientcmd.Factory, out io.Writer, cmd *cobra.Command, arg
 }
 
 // isBuildCancellable checks if another cancellation event was triggered, and if the build status is correct.
-func isBuildCancellable(build *buildapi.Build) bool {
+func isBuildCancellable(build *buildapi.Build, out io.Writer) bool {
+	if build.Status.Cancelled {
+		fmt.Fprintf(out, "A cancellation event was already triggered for the build %s.\n", build.Name)
+		return false
+	}
+
 	if build.Status.Phase != buildapi.BuildPhaseNew &&
 		build.Status.Phase != buildapi.BuildPhasePending &&
 		build.Status.Phase != buildapi.BuildPhaseRunning {
 
-		glog.V(2).Infof("A build can be cancelled only if it has new/pending/running status.")
+		fmt.Fprintf(out, "A build can be cancelled only if it has new/pending/running status.\n")
 		return false
 	}
 
-	if build.Status.Cancelled {
-		glog.V(2).Infof("A cancellation event was already triggered for the build %s.", build.Name)
-		return false
-	}
 	return true
 }

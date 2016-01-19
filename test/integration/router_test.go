@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -40,7 +41,7 @@ const (
 	dockerWaitSeconds = 1
 	dockerRetries     = 3
 
-	statsPort     = "1936"
+	statsPort     = 1936
 	statsUser     = "admin"
 	statsPassword = "e2e"
 )
@@ -73,7 +74,7 @@ func TestRouter(t *testing.T) {
 		t.Fatalf("Unable to get docker client: %v", err)
 	}
 
-	routerId, err := createAndStartRouterContainer(dockerCli, fakeMasterAndPod.MasterHttpAddr)
+	routerId, err := createAndStartRouterContainer(dockerCli, fakeMasterAndPod.MasterHttpAddr, statsPort)
 
 	if err != nil {
 		t.Fatalf("Error starting container %s : %v", getRouterImage(), err)
@@ -416,7 +417,7 @@ func TestRouterPathSpecificity(t *testing.T) {
 		t.Fatalf("Unable to get docker client: %v", err)
 	}
 
-	routerId, err := createAndStartRouterContainer(dockerCli, fakeMasterAndPod.MasterHttpAddr)
+	routerId, err := createAndStartRouterContainer(dockerCli, fakeMasterAndPod.MasterHttpAddr, statsPort)
 	if err != nil {
 		t.Fatalf("Error starting container %s : %v", getRouterImage(), err)
 	}
@@ -669,7 +670,7 @@ func TestRouterDuplications(t *testing.T) {
 		t.Fatalf("Unable to get docker client: %v", err)
 	}
 
-	routerId, err := createAndStartRouterContainer(dockerCli, fakeMasterAndPod.MasterHttpAddr)
+	routerId, err := createAndStartRouterContainer(dockerCli, fakeMasterAndPod.MasterHttpAddr, statsPort)
 	if err != nil {
 		t.Fatalf("Error starting container %s : %v", getRouterImage(), err)
 	}
@@ -811,13 +812,13 @@ func TestRouterStatsPort(t *testing.T) {
 		t.Fatalf("Unable to get docker client: %v", err)
 	}
 
-	routerId, err := createAndStartRouterContainer(dockerCli, fakeMasterAndPod.MasterHttpAddr)
+	routerId, err := createAndStartRouterContainer(dockerCli, fakeMasterAndPod.MasterHttpAddr, statsPort)
 	if err != nil {
 		t.Fatalf("Error starting container %s : %v", getRouterImage(), err)
 	}
 	defer cleanUp(dockerCli, routerId)
 
-	statsHostPort := fmt.Sprintf("%s:%s", "127.0.0.1", statsPort)
+	statsHostPort := fmt.Sprintf("%s:%d", "127.0.0.1", statsPort)
 	creds := fmt.Sprintf("%s:%s", statsUser, statsPassword)
 	auth := fmt.Sprintf("Basic: %s", base64.StdEncoding.EncodeToString([]byte(creds)))
 	headers := map[string]string{"Authorization": auth}
@@ -830,6 +831,149 @@ func TestRouterStatsPort(t *testing.T) {
 
 	if len(resp) < 1 {
 		t.Errorf("TestRouterStatsPort failed! No Response body.")
+	}
+}
+
+// TestRouterHealthzEndpoint tests that the router is listening on and
+// exposing the /healthz endpoint for the default haproxy router image.
+func TestRouterHealthzEndpoint(t *testing.T) {
+	testCases := []struct {
+		name string
+		port int
+	}{
+		{
+			name: "stats port enabled",
+			port: statsPort,
+		},
+		{
+			name: "stats port disabled",
+			port: 0,
+		},
+		{
+			name: "custom stats port",
+			port: 6391,
+		},
+	}
+
+	fakeMasterAndPod := tr.NewTestHttpService()
+	err := fakeMasterAndPod.Start()
+	if err != nil {
+		t.Fatalf("Unable to start http server: %v", err)
+	}
+	defer fakeMasterAndPod.Stop()
+
+	validateServer(fakeMasterAndPod, t)
+
+	dockerCli, err := testutil.NewDockerClient()
+	if err != nil {
+		t.Fatalf("Unable to get docker client: %v", err)
+	}
+
+	for _, tc := range testCases {
+		routerId, err := createAndStartRouterContainer(dockerCli, fakeMasterAndPod.MasterHttpAddr, tc.port)
+		if err != nil {
+			t.Fatalf("Test with %q error starting container %s : %v", tc.name, getRouterImage(), err)
+		}
+		defer cleanUp(dockerCli, routerId)
+
+		host := "127.0.0.1"
+		port := tc.port
+		if tc.port == 0 {
+			port = statsPort
+		}
+
+		uri := fmt.Sprintf("%s:%d/healthz", host, port)
+		resp, err := getRoute(uri, host, "http", nil, "")
+
+		if err != nil {
+			t.Errorf("Test with %q unable to verify response: %v", tc.name, err)
+		}
+
+		if len(resp) < 1 {
+			t.Errorf("TestRouterHealthzEndpoint with %q failed! No Response body.", tc.name)
+		}
+	}
+}
+
+// TestRouterServiceUnavailable tests that the router returns valid service
+// unavailable error pages with appropriate HTTP headers.`
+func TestRouterServiceUnavailable(t *testing.T) {
+	fakeMasterAndPod := tr.NewTestHttpService()
+	err := fakeMasterAndPod.Start()
+	if err != nil {
+		t.Fatalf("Unable to start http server: %v", err)
+	}
+	defer fakeMasterAndPod.Stop()
+
+	validateServer(fakeMasterAndPod, t)
+
+	dockerCli, err := testutil.NewDockerClient()
+	if err != nil {
+		t.Fatalf("Unable to get docker client: %v", err)
+	}
+
+	routerId, err := createAndStartRouterContainer(dockerCli, fakeMasterAndPod.MasterHttpAddr, statsPort)
+	if err != nil {
+		t.Fatalf("Error starting container %s : %v", getRouterImage(), err)
+	}
+	defer cleanUp(dockerCli, routerId)
+
+	schemes := []string{"http", "https"}
+	for _, scheme := range schemes {
+		uri := fmt.Sprintf("%s://%s", scheme, getRouteAddress())
+		hostAlias := fmt.Sprintf("www.route-%d.test", time.Now().UnixNano())
+		var tlsConfig *tls.Config
+		if scheme == "https" {
+			tlsConfig = &tls.Config{
+				InsecureSkipVerify: true,
+				ServerName:         hostAlias,
+			}
+		}
+
+		httpClient := &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: tlsConfig,
+			},
+		}
+		req, err := http.NewRequest("GET", uri, nil)
+		if err != nil {
+			t.Fatalf("Error creating %s request : %v", scheme, err)
+		}
+
+		req.Host = hostAlias
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			t.Fatalf("Error dispatching %s request : %v", scheme, err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != 503 {
+			t.Fatalf("Router %s response error, got %v expected 503.", scheme, resp.StatusCode)
+		}
+
+		headerNames := []string{"Pragma", "Cache-Control"}
+		for _, k := range headerNames {
+			value := resp.Header.Get(k)
+			if len(value) == 0 {
+				t.Errorf("Router %s response empty/no header %q",
+					scheme, k)
+			}
+
+			directive := "no-cache"
+			if !strings.Contains(value, directive) {
+				t.Errorf("Router %s response header %q missing %s response directive",
+					scheme, k, directive)
+			}
+		}
+
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			t.Errorf("Unable to verify router %s response: %v",
+				scheme, err)
+		}
+		if len(respBody) < 1 {
+			t.Errorf("Router %s response body was empty!", scheme)
+		}
 	}
 }
 
@@ -952,8 +1096,12 @@ func eventString(e *watch.Event) string {
 
 // createAndStartRouterContainer is responsible for deploying the router image in docker.  It assumes that all router images
 // will use a command line flag that can take --master which points to the master url
-func createAndStartRouterContainer(dockerCli *dockerClient.Client, masterIp string) (containerId string, err error) {
-	ports := []string{"80", "443", statsPort}
+func createAndStartRouterContainer(dockerCli *dockerClient.Client, masterIp string, routerStatsPort int) (containerId string, err error) {
+	ports := []string{"80", "443"}
+	if routerStatsPort > 0 {
+		ports = append(ports, fmt.Sprintf("%d", routerStatsPort))
+	}
+
 	portBindings := make(map[dockerClient.Port][]dockerClient.PortBinding)
 	exposedPorts := map[dockerClient.Port]struct{}{}
 
@@ -980,7 +1128,7 @@ func createAndStartRouterContainer(dockerCli *dockerClient.Client, masterIp stri
 	}
 
 	env := []string{
-		fmt.Sprintf("STATS_PORT=%s", statsPort),
+		fmt.Sprintf("STATS_PORT=%d", routerStatsPort),
 		fmt.Sprintf("STATS_USERNAME=%s", statsUser),
 		fmt.Sprintf("STATS_PASSWORD=%s", statsPassword),
 	}

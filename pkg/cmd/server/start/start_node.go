@@ -11,13 +11,12 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/openshift-sdn/plugins/osdn"
-	"github.com/openshift/openshift-sdn/plugins/osdn/flatsdn"
-	"github.com/openshift/openshift-sdn/plugins/osdn/multitenant"
 	"github.com/openshift/origin/pkg/cmd/server/kubernetes"
 	kerrors "k8s.io/kubernetes/pkg/api/errors"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/util/sysctl"
 
+	osdn "github.com/openshift/openshift-sdn/plugins/osdn/ovs"
 	"github.com/openshift/origin/pkg/cmd/server/admin"
 	configapi "github.com/openshift/origin/pkg/cmd/server/api"
 	configapilatest "github.com/openshift/origin/pkg/cmd/server/api/latest"
@@ -250,29 +249,6 @@ func (o NodeOptions) IsRunFromConfig() bool {
 	return (len(o.ConfigFile) > 0)
 }
 
-func RunSDNController(config *kubernetes.NodeConfig, nodeConfig configapi.NodeConfig) kubernetes.FilteringEndpointsConfigHandler {
-	oclient, _, err := configapi.GetOpenShiftClient(nodeConfig.MasterKubeConfig)
-	if err != nil {
-		glog.Fatal("Failed to get kube client for SDN")
-	}
-	registry := osdn.NewOsdnRegistryInterface(oclient, config.Client)
-
-	switch nodeConfig.NetworkConfig.NetworkPluginName {
-	case flatsdn.NetworkPluginName():
-		ch := make(chan struct{})
-		config.KubeletConfig.StartUpdates = ch
-		go flatsdn.Node(registry, nodeConfig.NodeName, nodeConfig.NodeIP, ch, nodeConfig.NetworkConfig.MTU)
-	case multitenant.NetworkPluginName():
-		ch := make(chan struct{})
-		config.KubeletConfig.StartUpdates = ch
-		plugin := multitenant.GetKubeNetworkPlugin()
-		config.KubeletConfig.NetworkPlugins = append(config.KubeletConfig.NetworkPlugins, plugin)
-		go multitenant.Node(registry, nodeConfig.NodeName, nodeConfig.NodeIP, ch, plugin, nodeConfig.NetworkConfig.MTU)
-		return registry
-	}
-	return nil
-}
-
 func StartNode(nodeConfig configapi.NodeConfig) error {
 	config, err := kubernetes.BuildKubernetesNodeConfig(nodeConfig)
 	if err != nil {
@@ -280,11 +256,24 @@ func StartNode(nodeConfig configapi.NodeConfig) error {
 	}
 	glog.Infof("Starting node %s (%s)", config.KubeletServer.HostnameOverride, version.Get().String())
 
-	endpointFilter := RunSDNController(config, nodeConfig)
+	// preconditions
 	config.EnsureVolumeDir()
 	config.EnsureDocker(docker.NewHelper())
-	config.RunProxy(endpointFilter)
+
+	// async starts
 	config.RunKubelet()
+	config.RunSDN()
+	config.RunProxy()
+
+	// HACK: RunProxy resets bridge-nf-call-iptables from what openshift-sdn requires
+	if config.SDNPlugin != nil {
+		sdnPluginName := nodeConfig.NetworkConfig.NetworkPluginName
+		if sdnPluginName == osdn.SingleTenantPluginName() || sdnPluginName == osdn.MultiTenantPluginName() {
+			if err := sysctl.SetSysctl("net/bridge/bridge-nf-call-iptables", 0); err != nil {
+				glog.Warningf("Could not set net.bridge.bridge-nf-call-iptables sysctl: %s", err)
+			}
+		}
+	}
 
 	return nil
 }

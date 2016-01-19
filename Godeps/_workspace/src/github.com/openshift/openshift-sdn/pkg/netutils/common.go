@@ -2,8 +2,10 @@ package netutils
 
 import (
 	"encoding/binary"
+	"fmt"
 	"net"
 
+	"github.com/golang/glog"
 	kerrors "k8s.io/kubernetes/pkg/util/errors"
 )
 
@@ -23,21 +25,26 @@ func GenerateDefaultGateway(sna *net.IPNet) net.IP {
 	return net.IPv4(ip[0], ip[1], ip[2], ip[3]|0x1)
 }
 
+// Return Host IP Networks
+// Ignores provided interfaces and filters loopback and non IPv4 addrs.
 func GetHostIPNetworks(skipInterfaces []string) ([]*net.IPNet, error) {
 	hostInterfaces, err := net.Interfaces()
 	if err != nil {
 		return nil, err
 	}
+
+	skipInterfaceMap := make(map[string]bool)
+	for _, ifaceName := range skipInterfaces {
+		skipInterfaceMap[ifaceName] = true
+	}
+
 	errList := []error{}
 	var hostIPNets []*net.IPNet
-
-CheckValidInterfaces:
 	for _, iface := range hostInterfaces {
-		for _, skipIface := range skipInterfaces {
-			if skipIface == iface.Name {
-				continue CheckValidInterfaces
-			}
+		if skipInterfaceMap[iface.Name] {
+			continue
 		}
+
 		ifAddrs, err := iface.Addrs()
 		if err != nil {
 			errList = append(errList, err)
@@ -49,11 +56,39 @@ CheckValidInterfaces:
 				errList = append(errList, err)
 				continue
 			}
-			// Skip IP addrs that doesn't belong to IPv4
-			if ip.To4() != nil {
+
+			// Skip loopback and non IPv4 addrs
+			if !ip.IsLoopback() && ip.To4() != nil {
 				hostIPNets = append(hostIPNets, ipNet)
 			}
 		}
 	}
 	return hostIPNets, kerrors.NewAggregate(errList)
+}
+
+func GetNodeIP(nodeName string) (string, error) {
+	ip := net.ParseIP(nodeName)
+	if ip == nil {
+		addrs, err := net.LookupIP(nodeName)
+		if err != nil {
+			return "", fmt.Errorf("Failed to lookup IP address for node %s: %v", nodeName, err)
+		}
+		for _, addr := range addrs {
+			// Skip loopback and non IPv4 addrs
+			if addr.IsLoopback() || addr.To4() == nil {
+				glog.V(5).Infof("Skipping loopback/non-IPv4 addr: %q for node %s", addr.String(), nodeName)
+				continue
+			}
+			ip = addr
+			break
+		}
+	} else if ip.IsLoopback() || ip.To4() == nil {
+		glog.V(5).Infof("Skipping loopback/non-IPv4 addr: %q for node %s", ip.String(), nodeName)
+		ip = nil
+	}
+
+	if ip == nil || len(ip.String()) == 0 {
+		return "", fmt.Errorf("Failed to obtain IP address from node name: %s", nodeName)
+	}
+	return ip.String(), nil
 }

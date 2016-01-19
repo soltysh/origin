@@ -7,6 +7,7 @@
   deploymentConfigId               - String. Optional. If present, indicates this replication controller came from a deployment.
   deploymentConfigMissing          - Boolean. Optional.
   deploymentConfigDifferentService - Boolean. Optional.
+  deploymentConfig                 - Object. Required for scaling deployments.
 
   imagesByDockerReference - map[dockerReference][]Image. Optional.
   builds                  - map[buildId]build. Optional.
@@ -33,7 +34,13 @@
             title="The deployment config this deployment was created from no longer exists." class="pficon pficon-warning-triangle-o" style="cursor: help;"></span>
         <span ng-if="deploymentConfigDifferentService" data-toggle="tooltip" data-placement="right"
             title="The deployment config this deployment was created from has changed. New deployments will not be included in this list." class="pficon pficon-warning-triangle-o" style="cursor: help;"></span>
+
+        <!-- Show status if not deployed or complete -->
         <span ng-if="rc | deploymentIsInProgress">&mdash; <i class="fa fa-refresh" aria-hidden="true"></i> In progress</span>
+        <span ng-switch="rc | deploymentStatus" class="hide-ng-leave">
+          <span ng-switch-when="Cancelled">&mdash; <span class="text-warning"><i class="fa fa-ban" aria-hidden="true"></i> Cancelled</span></span>
+          <span ng-switch-when="Failed">&mdash; <span class="text-danger"><i class="fa fa-times" aria-hidden="true"></i> Failed</span></span>
+        </span>
       </div>
     </div>
 
@@ -81,6 +88,15 @@
               ng-click="viewPodsForDeployment(rc)"
               ng-class="{ clickable: (pods | hashSize) > 0 }">
           </pod-status-chart>
+
+          <!-- Add a link for screen readers. -->
+          <a href=""
+             class="sr-only"
+             ng-click="viewPodsForDeployment(rc)"
+             ng-if="(pods | hashSize) > 0"
+             role="button">
+             View pods for {{rc | displayName}}
+          </a>
         </div>
 
         <div column class="scaling-controls">
@@ -88,7 +104,11 @@
           <div flex></div>
           <div column>
             <div>
-              <a href="" ng-click="scaleUp()" title="Scale up">
+              <a href=""
+                 ng-click="scaleUp()"
+                 ng-class="{ disabled: !scalable }"
+                 ng-attr-title="{{!scalable ? undefined : 'Scale up'}}"
+                 ng-attr-aria-disabled="{{!scalable ? 'true' : undefined}}">
                 <i class="fa fa-chevron-up"></i>
                 <span class="sr-only">Scale up</span>
               </a>
@@ -97,8 +117,10 @@
               <!-- Remove the title when disabled because the not-allowed styled cursor overlaps the tooltip on some browsers. -->
               <a href=""
                  ng-click="scaleDown()"
-                 ng-class="{ disabled: getDesiredReplicas() === 0 }"
-                 ng-attr-title="{{(getDesiredReplicas() === 0) ? undefined : 'Scale down'}}">
+                 ng-class="{ disabled: !scalable || getDesiredReplicas() === 0 }"
+                 ng-attr-title="{{(!scalable || getDesiredReplicas() === 0) ? undefined : 'Scale down'}}"
+                 ng-attr-aria-disabled="{{(!scalable || getDesiredReplicas() === 0) ? 'true' : undefined}}"
+                 role="button">
                 <i class="fa fa-chevron-down"></i>
                 <span class="sr-only">Scale down</span>
               </a>

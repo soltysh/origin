@@ -9,17 +9,17 @@ set -o pipefail
 OS_ROOT=$(dirname "${BASH_SOURCE}")/..
 source "${OS_ROOT}/hack/common.sh"
 
-"${OS_ROOT}/hack/build-go.sh" cmd/gendocs
+"${OS_ROOT}/hack/build-go.sh" tools/gendocs
 
 # Find binary
-gendocs=$( (ls -t _output/local/bin/$(os::build::host_platform)/gendocs) 2>/dev/null || true | head -1 )
+gendocs="$(os::build::find-binary gendocs)"
 
 if [[ -z "$gendocs" ]]; then
   {
     echo "It looks as if you don't have a compiled gendocs binary"
     echo
     echo "If you are running from a clone of the git repo, please run"
-    echo "'./hack/build-go.sh cmd/gendocs'."
+    echo "'./hack/build-go.sh tools/gendocs'."
   } >&2
   exit 1
 fi

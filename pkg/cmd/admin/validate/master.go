@@ -60,7 +60,7 @@ func NewCommandValidateMasterConfig(name, fullName string, out io.Writer) *cobra
 				os.Exit(1)
 			}
 
-			fmt.Fprintf(options.Out, "SUCCESS: Validation succeded for file: %s\n", options.MasterConfigFile)
+			fmt.Fprintf(options.Out, "SUCCESS: Validation succeeded for file: %s\n", options.MasterConfigFile)
 		},
 	}
 
@@ -76,7 +76,7 @@ func (o *ValidateMasterConfigOptions) Complete(args []string) error {
 }
 
 // Run runs the master config validation and returns the result of the validation as a boolean as well as any errors
-// that occured trying to validate the file
+// that occurred trying to validate the file
 func (o *ValidateMasterConfigOptions) Run() (bool, error) {
 	masterConfig, err := configapilatest.ReadAndResolveMasterConfig(o.MasterConfigFile)
 	if err != nil {

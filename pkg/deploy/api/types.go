@@ -36,6 +36,10 @@ type DeploymentStrategy struct {
 	RollingParams *RollingDeploymentStrategyParams
 	// Resources contains resource requirements to execute the deployment
 	Resources kapi.ResourceRequirements
+	// Labels is a set of key, value pairs added to custom deployer and lifecycle pre/post hook pods.
+	Labels map[string]string
+	// Annotations is a set of key, value pairs added to custom deployer and lifecycle pre/post hook pods.
+	Annotations map[string]string
 }
 
 // DeploymentStrategyType refers to a specific DeploymentStrategy implementation.
@@ -211,6 +215,9 @@ const (
 	// DeploymentCancelledAnnotation indicates that the deployment has been cancelled
 	// The annotation value does not matter and its mere presence indicates cancellation
 	DeploymentCancelledAnnotation = "openshift.io/deployment.cancelled"
+	// DeploymentReplicasAnnotation is for internal use only and is for
+	// detecting external modifications to deployment replica counts.
+	DeploymentReplicasAnnotation = "openshift.io/deployment.replicas"
 )
 
 // These constants represent the various reasons for cancelling a deployment
@@ -238,27 +245,44 @@ const DeploymentCancelledAnnotationValue = "true"
 type DeploymentConfig struct {
 	unversioned.TypeMeta
 	kapi.ObjectMeta
+
+	// Spec represents a desired deployment state and how to deploy to it.
+	Spec DeploymentConfigSpec
+
+	// Status represents the current deployment state.
+	Status DeploymentConfigStatus
+}
+
+// DeploymentConfigSpec represents the desired state of the deployment.
+type DeploymentConfigSpec struct {
+	// Strategy describes how a deployment is executed.
+	Strategy DeploymentStrategy
+
 	// Triggers determine how updates to a DeploymentConfig result in new deployments. If no triggers
 	// are defined, a new deployment can only occur as a result of an explicit client update to the
 	// DeploymentConfig with a new LatestVersion.
 	Triggers []DeploymentTriggerPolicy
-	// Template represents a desired deployment state and how to deploy it.
-	Template DeploymentTemplate
+
+	// Replicas is the number of desired replicas.
+	Replicas int
+
+	// Selector is a label query over pods that should match the Replicas count.
+	Selector map[string]string
+
+	// Template is the object that describes the pod that will be created if
+	// insufficient replicas are detected. Internally, this takes precedence over a
+	// TemplateRef.
+	Template *kapi.PodTemplateSpec
+}
+
+// DeploymentConfigStatus represents the current deployment state.
+type DeploymentConfigStatus struct {
 	// LatestVersion is used to determine whether the current deployment associated with a DeploymentConfig
 	// is out of sync.
 	LatestVersion int
 	// Details are the reasons for the update to this deployment config.
 	// This could be based on a change made by the user or caused by an automatic trigger
 	Details *DeploymentDetails
-}
-
-// DeploymentTemplate contains all the necessary information to create a deployment from a
-// DeploymentStrategy.
-type DeploymentTemplate struct {
-	// Strategy describes how a deployment is executed.
-	Strategy DeploymentStrategy
-	// ControllerTemplate is the desired replication state the deployment works to materialize.
-	ControllerTemplate kapi.ReplicationControllerSpec
 }
 
 // DeploymentTriggerPolicy describes a policy for a single trigger that results in a new deployment.
@@ -289,17 +313,10 @@ type DeploymentTriggerImageChangeParams struct {
 	Automatic bool
 	// ContainerNames is used to restrict tag updates to the specified set of container names in a pod.
 	ContainerNames []string
-	// RepositoryName is the identifier for a Docker image repository to watch for changes.
-	// DEPRECATED: will be removed in v1beta3.
-	RepositoryName string
-	// From is a reference to a Docker image repository to watch for changes. This field takes
-	// precedence over RepositoryName, which is deprecated and will be removed in v1beta3. The
-	// Kind may be left blank, in which case it defaults to "ImageRepository". The "Name" is
-	// the only required subfield - if Namespace is blank, the namespace of the current deployment
+	// From is a reference to an image stream tag to watch for changes. From.Name is the only
+	// required subfield - if From.Namespace is blank, the namespace of the current deployment
 	// trigger will be used.
 	From kapi.ObjectReference
-	// Tag is the name of an image repository tag to watch for changes.
-	Tag string
 	// LastTriggeredImage is the last image to be triggered.
 	LastTriggeredImage string
 }
@@ -322,10 +339,9 @@ type DeploymentCause struct {
 
 // DeploymentCauseImageTrigger contains information about a deployment caused by an image trigger
 type DeploymentCauseImageTrigger struct {
-	// RepositoryName is the identifier for a Docker image repository that was updated.
-	RepositoryName string
-	// Tag is the name of an image repository tag that is now pointing to a new image.
-	Tag string
+	// From is a reference to the changed object which triggered a deployment. The field may have
+	// the kinds DockerImage, ImageStreamTag, or ImageStreamImage.
+	From kapi.ObjectReference
 }
 
 // DeploymentConfigList is a collection of deployment configs.

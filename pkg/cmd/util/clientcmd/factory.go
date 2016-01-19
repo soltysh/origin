@@ -25,6 +25,7 @@ import (
 	"k8s.io/kubernetes/pkg/runtime"
 
 	"github.com/openshift/origin/pkg/api/latest"
+	authorizationreaper "github.com/openshift/origin/pkg/authorization/reaper"
 	buildapi "github.com/openshift/origin/pkg/build/api"
 	buildutil "github.com/openshift/origin/pkg/build/util"
 	"github.com/openshift/origin/pkg/client"
@@ -35,6 +36,7 @@ import (
 	deployscaler "github.com/openshift/origin/pkg/deploy/scaler"
 	deployutil "github.com/openshift/origin/pkg/deploy/util"
 	routegen "github.com/openshift/origin/pkg/route/generator"
+	authenticationreaper "github.com/openshift/origin/pkg/user/reaper"
 )
 
 // New creates a default Factory for commands that should share identical server
@@ -202,8 +204,28 @@ func NewFactory(clientConfig kclientcmd.ClientConfig) *Factory {
 			return nil, err
 		}
 
-		if mapping.Kind == "DeploymentConfig" {
+		switch mapping.Kind {
+		case "DeploymentConfig":
 			return deployreaper.NewDeploymentConfigReaper(oc, kc), nil
+		case "Role":
+			return authorizationreaper.NewRoleReaper(oc, oc), nil
+		case "ClusterRole":
+			return authorizationreaper.NewClusterRoleReaper(oc, oc, oc), nil
+		case "User":
+			return authenticationreaper.NewUserReaper(
+				client.UsersInterface(oc),
+				client.GroupsInterface(oc),
+				client.ClusterRoleBindingsInterface(oc),
+				client.RoleBindingsNamespacer(oc),
+				kclient.SecurityContextConstraintsInterface(kc),
+			), nil
+		case "Group":
+			return authenticationreaper.NewGroupReaper(
+				client.GroupsInterface(oc),
+				client.ClusterRoleBindingsInterface(oc),
+				client.RoleBindingsNamespacer(oc),
+				kclient.SecurityContextConstraintsInterface(kc),
+			), nil
 		}
 		return kReaperFunc(mapping)
 	}
@@ -218,7 +240,7 @@ func NewFactory(clientConfig kclientcmd.ClientConfig) *Factory {
 	w.PodSelectorForObject = func(object runtime.Object) (string, error) {
 		switch t := object.(type) {
 		case *deployapi.DeploymentConfig:
-			return kubectl.MakeLabels(t.Template.ControllerTemplate.Selector), nil
+			return kubectl.MakeLabels(t.Spec.Selector), nil
 		default:
 			return kPodSelectorForObjectFunc(object)
 		}
@@ -227,7 +249,7 @@ func NewFactory(clientConfig kclientcmd.ClientConfig) *Factory {
 	w.PortsForObject = func(object runtime.Object) ([]string, error) {
 		switch t := object.(type) {
 		case *deployapi.DeploymentConfig:
-			return getPorts(t.Template.ControllerTemplate.Template.Spec), nil
+			return getPorts(t.Spec.Template.Spec), nil
 		default:
 			return kPortsForObjectFunc(object)
 		}
@@ -261,11 +283,11 @@ func NewFactory(clientConfig kclientcmd.ClientConfig) *Factory {
 			if !ok {
 				return nil, errors.New("provided options object is not a BuildLogOptions")
 			}
-			buildsForBCSelector := labels.SelectorFromSet(map[string]string{buildapi.DeprecatedBuildConfigLabel: t.Name})
-			builds, err := oc.Builds(t.Namespace).List(buildsForBCSelector, fields.Everything())
+			builds, err := oc.Builds(t.Namespace).List(labels.Everything(), fields.Everything())
 			if err != nil {
 				return nil, err
 			}
+			builds.Items = buildapi.FilterBuilds(builds.Items, buildapi.ByBuildConfigLabelPredicate(t.Name))
 			if len(builds.Items) == 0 {
 				return nil, fmt.Errorf("no builds found for %s", t.Name)
 			}
@@ -301,7 +323,7 @@ func NewFactory(clientConfig kclientcmd.ClientConfig) *Factory {
 			var err error
 			var pods *api.PodList
 			for pods == nil || len(pods.Items) == 0 {
-				if t.LatestVersion == 0 {
+				if t.Status.LatestVersion == 0 {
 					time.Sleep(2 * time.Second)
 				}
 				if t, err = oc.DeploymentConfigs(t.Namespace).Get(t.Name); err != nil {
@@ -363,11 +385,11 @@ func (f *Factory) UpdatePodSpecForObject(obj runtime.Object, fn func(*api.PodSpe
 		}
 		return true, fn(&t.Spec.Template.Spec)
 	case *deployapi.DeploymentConfig:
-		template := t.Template.ControllerTemplate
-		if template.Template == nil {
-			template.Template = &api.PodTemplateSpec{}
+		template := t.Spec.Template
+		if template == nil {
+			template = &api.PodTemplateSpec{}
 		}
-		return true, fn(&template.Template.Spec)
+		return true, fn(&template.Spec)
 	default:
 		return false, fmt.Errorf("the object is not a pod or does not have a pod template")
 	}
@@ -488,6 +510,11 @@ func (c *clientCache) ClientConfigForVersion(version string) (*kclient.Config, e
 	config.Version = negotiatedVersion
 	client.SetOpenShiftDefaults(&config)
 	c.configs[version] = &config
+
+	// `version` does not necessarily equal `config.Version`.  However, we know that we call this method again with
+	// `config.Version`, we should get the the config we've just built.
+	configCopy := config
+	c.configs[config.Version] = &configCopy
 
 	return &config, nil
 }

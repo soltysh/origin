@@ -88,10 +88,6 @@ func (c Client) GetImageStreamTag(ctx kapi.Context, name string) (*imageapi.Imag
 	return c.GetImageStreamTagFunc(ctx, name)
 }
 
-type fatalError struct {
-	error
-}
-
 type streamRef struct {
 	ref *kapi.ObjectReference
 	tag string
@@ -164,6 +160,37 @@ func describeBuildRequest(request *buildapi.BuildRequest) string {
 	return desc
 }
 
+// updateBuildEnv updates the strategy environment
+// This will replace the existing variable definitions with provided env
+func updateBuildEnv(strategy *buildapi.BuildStrategy, env []kapi.EnvVar) {
+	var buildEnv *[]kapi.EnvVar
+
+	switch {
+	case strategy.SourceStrategy != nil:
+		buildEnv = &strategy.SourceStrategy.Env
+	case strategy.DockerStrategy != nil:
+		buildEnv = &strategy.DockerStrategy.Env
+	case strategy.CustomStrategy != nil:
+		buildEnv = &strategy.CustomStrategy.Env
+	}
+
+	newEnv := []kapi.EnvVar{}
+	for _, e := range *buildEnv {
+		exists := false
+		for _, n := range env {
+			if e.Name == n.Name {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			newEnv = append(newEnv, e)
+		}
+	}
+	newEnv = append(newEnv, env...)
+	*buildEnv = newEnv
+}
+
 // Instantiate returns new Build object based on a BuildRequest object
 func (g *BuildGenerator) Instantiate(ctx kapi.Context, request *buildapi.BuildRequest) (*buildapi.Build, error) {
 	glog.V(4).Infof("Generating Build from %s", describeBuildRequest(request))
@@ -183,6 +210,10 @@ func (g *BuildGenerator) Instantiate(ctx kapi.Context, request *buildapi.BuildRe
 	newBuild, err := g.generateBuildFromConfig(ctx, bc, request.Revision, request.Binary)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(request.Env) > 0 {
+		updateBuildEnv(&newBuild.Spec.Strategy, request.Env)
 	}
 	glog.V(4).Infof("Build %s/%s has been generated from %s/%s BuildConfig", newBuild.Namespace, newBuild.ObjectMeta.Name, bc.Namespace, bc.ObjectMeta.Name)
 
@@ -341,7 +372,6 @@ func (g *BuildGenerator) generateBuildFromConfig(ctx kapi.Context, bc *buildapi.
 	if binary != nil {
 		build.Spec.Source.Git = nil
 		build.Spec.Source.Binary = binary
-		build.Spec.Source.Type = buildapi.BuildSourceBinary
 		if build.Spec.Source.Dockerfile != nil && binary.AsFile == "Dockerfile" {
 			build.Spec.Source.Dockerfile = nil
 		}
@@ -355,7 +385,7 @@ func (g *BuildGenerator) generateBuildFromConfig(ctx kapi.Context, bc *buildapi.
 	if build.Labels == nil {
 		build.Labels = make(map[string]string)
 	}
-	build.Labels[buildapi.DeprecatedBuildConfigLabel] = bcCopy.Name
+	build.Labels[buildapi.BuildConfigLabelDeprecated] = bcCopy.Name
 	build.Labels[buildapi.BuildConfigLabel] = bcCopy.Name
 
 	builderSecrets, err := g.FetchServiceAccountSecrets(bc.Namespace, serviceAccount)
@@ -367,6 +397,19 @@ func (g *BuildGenerator) generateBuildFromConfig(ctx kapi.Context, bc *buildapi.
 	}
 	strategyImageChangeTrigger := getStrategyImageChangeTrigger(bc)
 
+	// Resolve image source if present
+	if build.Spec.Source.Image != nil {
+		if build.Spec.Source.Image.PullSecret == nil {
+			build.Spec.Source.Image.PullSecret = g.resolveImageSecret(ctx, builderSecrets, &build.Spec.Source.Image.From, bc.Namespace)
+		}
+		sourceImage, err := g.resolveImageStreamReference(ctx, build.Spec.Source.Image.From, bc.Namespace)
+		if err != nil {
+			return nil, err
+		}
+		build.Spec.Source.Image.From.Kind = "DockerImage"
+		build.Spec.Source.Image.From.Name = sourceImage
+	}
+
 	// If the Build is using a From reference instead of a resolved image, we need to resolve that From
 	// reference to a valid image so we can run the build.  Builds do not consume ImageStream references,
 	// only image specs.
@@ -374,8 +417,9 @@ func (g *BuildGenerator) generateBuildFromConfig(ctx kapi.Context, bc *buildapi.
 	if strategyImageChangeTrigger != nil {
 		image = strategyImageChangeTrigger.LastTriggeredImageID
 	}
+
 	switch {
-	case build.Spec.Strategy.Type == buildapi.SourceBuildStrategyType:
+	case build.Spec.Strategy.SourceStrategy != nil:
 		if image == "" {
 			image, err = g.resolveImageStreamReference(ctx, build.Spec.Strategy.SourceStrategy.From, build.Status.Config.Namespace)
 			if err != nil {
@@ -389,7 +433,7 @@ func (g *BuildGenerator) generateBuildFromConfig(ctx kapi.Context, bc *buildapi.
 		if build.Spec.Strategy.SourceStrategy.PullSecret == nil {
 			build.Spec.Strategy.SourceStrategy.PullSecret = g.resolveImageSecret(ctx, builderSecrets, &build.Spec.Strategy.SourceStrategy.From, bc.Namespace)
 		}
-	case build.Spec.Strategy.Type == buildapi.DockerBuildStrategyType &&
+	case build.Spec.Strategy.DockerStrategy != nil &&
 		build.Spec.Strategy.DockerStrategy.From != nil:
 		if image == "" {
 			image, err = g.resolveImageStreamReference(ctx, *build.Spec.Strategy.DockerStrategy.From, build.Status.Config.Namespace)
@@ -404,7 +448,7 @@ func (g *BuildGenerator) generateBuildFromConfig(ctx kapi.Context, bc *buildapi.
 		if build.Spec.Strategy.DockerStrategy.PullSecret == nil {
 			build.Spec.Strategy.DockerStrategy.PullSecret = g.resolveImageSecret(ctx, builderSecrets, build.Spec.Strategy.DockerStrategy.From, bc.Namespace)
 		}
-	case build.Spec.Strategy.Type == buildapi.CustomBuildStrategyType:
+	case build.Spec.Strategy.CustomStrategy != nil:
 		if image == "" {
 			image, err = g.resolveImageStreamReference(ctx, build.Spec.Strategy.CustomStrategy.From, build.Status.Config.Namespace)
 			if err != nil {
@@ -442,7 +486,7 @@ func (g *BuildGenerator) resolveImageStreamReference(ctx kapi.Context, from kapi
 			if errors.IsNotFound(err) {
 				return "", err
 			}
-			return "", fatalError{err}
+			return "", err
 		}
 		image := imageStreamImage.Image
 		glog.V(4).Infof("Resolved ImageStreamReference %s to image %s with reference %s in namespace %s", from.Name, image.Name, image.DockerImageReference, namespace)
@@ -454,7 +498,7 @@ func (g *BuildGenerator) resolveImageStreamReference(ctx kapi.Context, from kapi
 			if errors.IsNotFound(err) {
 				return "", err
 			}
-			return "", fatalError{err}
+			return "", err
 		}
 		image := imageStreamTag.Image
 		glog.V(4).Infof("Resolved ImageStreamTag %s to image %s with reference %s in namespace %s", from.Name, image.Name, image.DockerImageReference, namespace)
@@ -462,7 +506,7 @@ func (g *BuildGenerator) resolveImageStreamReference(ctx kapi.Context, from kapi
 	case "DockerImage":
 		return from.Name, nil
 	default:
-		return "", fatalError{fmt.Errorf("Unknown From Kind %s", from.Kind)}
+		return "", fmt.Errorf("Unknown From Kind %s", from.Kind)
 	}
 }
 
@@ -483,7 +527,7 @@ func (g *BuildGenerator) resolveImageStreamDockerRepository(ctx kapi.Context, fr
 			if errors.IsNotFound(err) {
 				return "", err
 			}
-			return "", fatalError{err}
+			return "", err
 		}
 		image := imageStreamImage.Image
 		glog.V(4).Infof("Resolved ImageStreamReference %s to image %s with reference %s in namespace %s", from.Name, image.Name, image.DockerImageReference, namespace)
@@ -496,7 +540,7 @@ func (g *BuildGenerator) resolveImageStreamDockerRepository(ctx kapi.Context, fr
 			if errors.IsNotFound(err) {
 				return "", err
 			}
-			return "", fatalError{err}
+			return "", err
 		}
 		image, err := imageapi.DockerImageReferenceForStream(is)
 		if err != nil {
@@ -508,7 +552,7 @@ func (g *BuildGenerator) resolveImageStreamDockerRepository(ctx kapi.Context, fr
 	case "DockerImage":
 		return from.Name, nil
 	default:
-		return "", fatalError{fmt.Errorf("Unknown From Kind %s", from.Kind)}
+		return "", fmt.Errorf("Unknown From Kind %s", from.Kind)
 	}
 }
 

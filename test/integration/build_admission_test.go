@@ -54,6 +54,15 @@ func TestPolicyBasedRestrictionOfBuildCreateAndCloneByStrategy(t *testing.T) {
 		}
 	}
 
+	// make sure build updates are rejected
+	for _, strategy := range buildStrategyTypes() {
+		for clientType, client := range clients {
+			if _, err := updateBuild(t, client.Builds(testutil.Namespace()), builds[string(strategy)+clientType]); !kapierror.IsForbidden(err) {
+				t.Errorf("expected forbidden for strategy %s and client %s: got %v", strategy, clientType, err)
+			}
+		}
+	}
+
 	// make sure clone is rejected
 	for _, strategy := range buildStrategyTypes() {
 		for clientType, client := range clients {
@@ -100,6 +109,15 @@ func TestPolicyBasedRestrictionOfBuildConfigCreateAndInstantiateByStrategy(t *te
 		}
 	}
 
+	// make sure buildconfig updates are rejected
+	for _, strategy := range buildStrategyTypes() {
+		for clientType, client := range clients {
+			if _, err := updateBuildConfig(t, client.BuildConfigs(testutil.Namespace()), buildConfigs[string(strategy)+clientType]); !kapierror.IsForbidden(err) {
+				t.Errorf("expected forbidden for strategy %s and client %s: got %v", strategy, clientType, err)
+			}
+		}
+	}
+
 	// make sure instantiate is rejected
 	for _, strategy := range buildStrategyTypes() {
 		for clientType, client := range clients {
@@ -110,8 +128,8 @@ func TestPolicyBasedRestrictionOfBuildConfigCreateAndInstantiateByStrategy(t *te
 	}
 }
 
-func buildStrategyTypes() []buildapi.BuildStrategyType {
-	return []buildapi.BuildStrategyType{buildapi.DockerBuildStrategyType, buildapi.SourceBuildStrategyType, buildapi.CustomBuildStrategyType}
+func buildStrategyTypes() []string {
+	return []string{"source", "docker", "custom"}
 }
 
 func setupBuildStrategyTest(t *testing.T) (clusterAdminClient, projectAdminClient, projectEditorClient *client.Client) {
@@ -202,37 +220,39 @@ func removeBuildStrategyPrivileges(t *testing.T, clusterRoleInterface client.Clu
 
 }
 
-func strategyForType(strategy buildapi.BuildStrategyType) buildapi.BuildStrategy {
+func strategyForType(strategy string) buildapi.BuildStrategy {
 	buildStrategy := buildapi.BuildStrategy{}
-	buildStrategy.Type = strategy
 	switch strategy {
-	case buildapi.DockerBuildStrategyType:
+	case "docker":
 		buildStrategy.DockerStrategy = &buildapi.DockerBuildStrategy{}
-	case buildapi.CustomBuildStrategyType:
+	case "custom":
 		buildStrategy.CustomStrategy = &buildapi.CustomBuildStrategy{}
 		buildStrategy.CustomStrategy.From.Name = "builderimage:latest"
-	case buildapi.SourceBuildStrategyType:
+	case "source":
 		buildStrategy.SourceStrategy = &buildapi.SourceBuildStrategy{}
 		buildStrategy.SourceStrategy.From.Name = "builderimage:latest"
 	}
 	return buildStrategy
 }
 
-func createBuild(t *testing.T, buildInterface client.BuildInterface, strategy buildapi.BuildStrategyType) (*buildapi.Build, error) {
+func createBuild(t *testing.T, buildInterface client.BuildInterface, strategy string) (*buildapi.Build, error) {
 	build := &buildapi.Build{}
 	build.GenerateName = strings.ToLower(string(strategy)) + "-build-"
 	build.Spec.Strategy = strategyForType(strategy)
-	build.Spec.Source.Type = buildapi.BuildSourceGit
 	build.Spec.Source.Git = &buildapi.GitBuildSource{URI: "example.org"}
 
 	return buildInterface.Create(build)
 }
 
-func createBuildConfig(t *testing.T, buildConfigInterface client.BuildConfigInterface, strategy buildapi.BuildStrategyType) (*buildapi.BuildConfig, error) {
+func updateBuild(t *testing.T, buildInterface client.BuildInterface, build *buildapi.Build) (*buildapi.Build, error) {
+	build.Labels = map[string]string{"updated": "true"}
+	return buildInterface.Update(build)
+}
+
+func createBuildConfig(t *testing.T, buildConfigInterface client.BuildConfigInterface, strategy string) (*buildapi.BuildConfig, error) {
 	buildConfig := &buildapi.BuildConfig{}
 	buildConfig.GenerateName = strings.ToLower(string(strategy)) + "-buildconfig-"
 	buildConfig.Spec.Strategy = strategyForType(strategy)
-	buildConfig.Spec.Source.Type = buildapi.BuildSourceGit
 	buildConfig.Spec.Source.Git = &buildapi.GitBuildSource{URI: "example.org"}
 
 	return buildConfigInterface.Create(buildConfig)
@@ -248,4 +268,9 @@ func instantiateBuildConfig(t *testing.T, buildConfigInterface client.BuildConfi
 	req := &buildapi.BuildRequest{}
 	req.Name = buildConfig.Name
 	return buildConfigInterface.Instantiate(req)
+}
+
+func updateBuildConfig(t *testing.T, buildConfigInterface client.BuildConfigInterface, buildConfig *buildapi.BuildConfig) (*buildapi.BuildConfig, error) {
+	buildConfig.Labels = map[string]string{"updated": "true"}
+	return buildConfigInterface.Update(buildConfig)
 }

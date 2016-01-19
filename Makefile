@@ -56,6 +56,7 @@ verify:
 else
 verify: build
 endif
+	hack/verify-upstream-commits.sh
 	hack/verify-gofmt.sh
 	hack/verify-govet.sh
 	hack/verify-generated-deep-copies.sh
@@ -101,7 +102,8 @@ ifeq ($(TEST_ASSETS), true)
 check-test:
 	hack/test-assets.sh
 else
-check-test: check-verify
+check-test: 
+	check-verify
 	hack/test-cmd.sh
 	KUBE_RACE=" " hack/test-integration.sh
 endif
@@ -135,6 +137,7 @@ test-int-plus: build
 endif
 test-int-plus:
 	hack/test-cmd.sh
+	hack/test-tools.sh
 	KUBE_RACE=" " hack/test-integration-docker.sh
 	hack/test-end-to-end-docker.sh
 ifeq ($(EXTENDED),true)

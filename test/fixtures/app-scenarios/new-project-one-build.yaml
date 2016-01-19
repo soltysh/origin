@@ -20,7 +20,7 @@ items:
       sourceStrategy:
         from:
           kind: DockerImage
-          name: openshift/ruby-20-centos7
+          name: centos/ruby-22-centos7
       type: Source
     triggers:
     - github:
@@ -62,7 +62,7 @@ items:
       sourceStrategy:
         from:
           kind: DockerImage
-          name: openshift/ruby-20-centos7
+          name: centos/ruby-22-centos7
       type: Source
   status:
     phase: Running
@@ -109,8 +109,8 @@ items:
         containerNames:
         - sinatra-example-1
         from:
-          kind: ImageRepository
-          name: sinatra-example-1
+          kind: ImageStreamTag
+          name: sinatra-example-1:latest
         lastTriggeredImage: ""
       type: ImageChange
   status: {}

@@ -83,7 +83,9 @@ angular.module('openshiftConsole')
     return {
       restrict: 'E',
       scope: {
-        triggers: '='
+        triggers: '=',
+        buildsByOutputImage: '=',
+        namespace: '='
       },
       link: function(scope) {
         scope.isBuildHidden = function(build) {
@@ -122,5 +124,15 @@ angular.module('openshiftConsole')
           scope.expandAnnotations = !scope.expandAnnotations;
         };
       }
+    };
+  })
+  .directive('volumes', function() {
+    return {
+      restrict: 'E',
+      scope: {
+        volumes: '=',
+        namespace: '='
+      },
+      templateUrl: 'views/_volumes.html'
     };
   });

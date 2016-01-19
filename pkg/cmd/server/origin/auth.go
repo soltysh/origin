@@ -10,11 +10,11 @@ import (
 	"net/url"
 	"path"
 
-	"code.google.com/p/go-uuid/uuid"
 	"github.com/RangelReale/osin"
 	"github.com/RangelReale/osincli"
 	"github.com/emicklei/go-restful"
 	"github.com/golang/glog"
+	"github.com/pborman/uuid"
 	kapi "k8s.io/kubernetes/pkg/api"
 	kerrs "k8s.io/kubernetes/pkg/api/errors"
 	kuser "k8s.io/kubernetes/pkg/auth/user"
@@ -100,9 +100,9 @@ func (c *AuthConfig) InstallAPI(container *restful.Container) []string {
 	// TODO: register into container
 	mux := container.ServeMux
 
-	accessTokenStorage := accesstokenetcd.NewREST(c.EtcdHelper)
+	accessTokenStorage := accesstokenetcd.NewREST(c.EtcdHelper, c.EtcdBackends...)
 	accessTokenRegistry := accesstokenregistry.NewRegistry(accessTokenStorage)
-	authorizeTokenStorage := authorizetokenetcd.NewREST(c.EtcdHelper)
+	authorizeTokenStorage := authorizetokenetcd.NewREST(c.EtcdHelper, c.EtcdBackends...)
 	authorizeTokenRegistry := authorizetokenregistry.NewRegistry(authorizeTokenStorage)
 	clientStorage := clientetcd.NewREST(c.EtcdHelper)
 	clientRegistry := clientregistry.NewRegistry(clientStorage)
@@ -500,7 +500,7 @@ func (c *AuthConfig) getPasswordAuthenticator(identityProvider configapi.Identit
 
 		opts := ldappassword.Options{
 			URL:                  url,
-			ClientConfig:         *clientConfig,
+			ClientConfig:         clientConfig,
 			UserAttributeDefiner: ldaputil.NewLDAPUserAttributeDefiner(provider.Attributes),
 		}
 		return ldappassword.New(identityProvider.Name, opts, identityMapper)

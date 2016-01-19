@@ -41,6 +41,8 @@ Getting Started
 
 ### Installation
 
+If you have downloaded the client tools, place the included binaries in your PATH.
+
 * For a quick install of Origin, see the [Getting Started Install guide](https://docs.openshift.org/latest/getting_started/administrators.html).
 * For an advanced installation using [Ansible](https://github.com/openshift/openshift-ansible), follow the [Advanced Installation guide](https://docs.openshift.org/latest/install_config/install/advanced_install.html)
 * To build and run from source, see [CONTRIBUTING.adoc](CONTRIBUTING.adoc)
@@ -156,7 +158,7 @@ If you want to run the test suite, make sure you have your environment set up, a
 # run the unit tests
 $ make check
 
-# run a simple server integration test
+# run a command-line integration test suite
 $ hack/test-cmd.sh
 
 # run the integration server test suite

@@ -1,17 +1,27 @@
 package builder
 
 import (
-	"os"
-
 	"github.com/golang/glog"
 
 	"github.com/openshift/origin/pkg/build/api"
+	"github.com/openshift/origin/pkg/client"
+	"github.com/openshift/origin/pkg/generate/git"
 )
 
-// A KeyValue can be used to build ordered lists of key-value pairs.
+const OriginalSourceURLAnnotationKey = "openshift.io/original-source-url"
+
+// KeyValue can be used to build ordered lists of key-value pairs.
 type KeyValue struct {
 	Key   string
 	Value string
+}
+
+// GitClient performs git operations
+type GitClient interface {
+	CloneWithOptions(dir string, url string, opts git.CloneOptions) error
+	Checkout(dir string, ref string) error
+	ListRemote(url string, args ...string) (string, string, error)
+	GetInfo(location string) (*git.SourceInfo, []error)
 }
 
 // buildInfo returns a slice of KeyValue pairs with build metadata to be
@@ -22,7 +32,11 @@ func buildInfo(build *api.Build) []KeyValue {
 		{"OPENSHIFT_BUILD_NAMESPACE", build.Namespace},
 	}
 	if build.Spec.Source.Git != nil {
-		kv = append(kv, KeyValue{"OPENSHIFT_BUILD_SOURCE", build.Spec.Source.Git.URI})
+		sourceURL := build.Spec.Source.Git.URI
+		if originalURL, ok := build.Annotations[OriginalSourceURLAnnotationKey]; ok {
+			sourceURL = originalURL
+		}
+		kv = append(kv, KeyValue{"OPENSHIFT_BUILD_SOURCE", sourceURL})
 		if build.Spec.Source.Git.Ref != "" {
 			kv = append(kv, KeyValue{"OPENSHIFT_BUILD_REFERENCE", build.Spec.Source.Git.Ref})
 		}
@@ -30,7 +44,7 @@ func buildInfo(build *api.Build) []KeyValue {
 			kv = append(kv, KeyValue{"OPENSHIFT_BUILD_COMMIT", build.Spec.Revision.Git.Commit})
 		}
 	}
-	if build.Spec.Strategy.Type == api.SourceBuildStrategyType {
+	if build.Spec.Strategy.SourceStrategy != nil {
 		env := build.Spec.Strategy.SourceStrategy.Env
 		for _, e := range env {
 			kv = append(kv, KeyValue{e.Name, e.Value})
@@ -39,46 +53,31 @@ func buildInfo(build *api.Build) []KeyValue {
 	return kv
 }
 
-// setHTTPProxy sets the system's environment variables to define the HTTP and
-// HTTPS proxies to be used by commands that respect those variables, e.g., git
-// clone performed to fetch source code to be built. It returns the original
-// values of all environment variables that were set.
-func setHTTPProxy(httpProxy, httpsProxy string) map[string]string {
-	originalProxies := make(map[string]string, 4)
-	if httpProxy != "" {
-		glog.V(2).Infof("Setting HTTP_PROXY to %s", httpProxy)
-		originalProxies["HTTP_PROXY"] = os.Getenv("HTTP_PROXY")
-		originalProxies["http_proxy"] = os.Getenv("http_proxy")
-		os.Setenv("HTTP_PROXY", httpProxy)
-		os.Setenv("http_proxy", httpProxy)
+func updateBuildRevision(c client.BuildInterface, build *api.Build, sourceInfo *git.SourceInfo) {
+	if build.Spec.Revision != nil {
+		return
 	}
-	if httpsProxy != "" {
-		glog.V(2).Infof("Setting HTTPS_PROXY to %s", httpsProxy)
-		originalProxies["HTTPS_PROXY"] = os.Getenv("HTTPS_PROXY")
-		originalProxies["https_proxy"] = os.Getenv("https_proxy")
-		os.Setenv("HTTPS_PROXY", httpsProxy)
-		os.Setenv("https_proxy", httpsProxy)
+	build.Spec.Revision = &api.SourceRevision{
+		Git: &api.GitSourceRevision{
+			Commit:  sourceInfo.CommitID,
+			Message: sourceInfo.Message,
+			Author: api.SourceControlUser{
+				Name:  sourceInfo.AuthorName,
+				Email: sourceInfo.AuthorEmail,
+			},
+			Committer: api.SourceControlUser{
+				Name:  sourceInfo.CommitterName,
+				Email: sourceInfo.CommitterEmail,
+			},
+		},
 	}
-	return originalProxies
-}
 
-// resetHTTPProxy sets the system's environment variables defined in
-// originalProxies. It should be used to undo the changes made by setHTTPProxy.
-func resetHTTPProxy(originalProxies map[string]string) {
-	if proxy, ok := originalProxies["HTTP_PROXY"]; ok {
-		glog.V(4).Infof("Resetting HTTP_PROXY to %s", proxy)
-		os.Setenv("HTTP_PROXY", proxy)
-	}
-	if proxy, ok := originalProxies["http_proxy"]; ok {
-		glog.V(4).Infof("Resetting http_proxy to %s", proxy)
-		os.Setenv("http_proxy", proxy)
-	}
-	if proxy, ok := originalProxies["HTTPS_PROXY"]; ok {
-		glog.V(4).Infof("Resetting HTTPS_PROXY to %s", proxy)
-		os.Setenv("HTTPS_PROXY", proxy)
-	}
-	if proxy, ok := originalProxies["https_proxy"]; ok {
-		glog.V(4).Infof("Resetting https_proxy to %s", proxy)
-		os.Setenv("https_proxy", proxy)
+	// Reset ResourceVersion to avoid a conflict with other updates to the build
+	build.ResourceVersion = ""
+
+	glog.V(4).Infof("Setting build revision to %#v", build.Spec.Revision.Git)
+	_, err := c.UpdateDetails(build)
+	if err != nil {
+		glog.Warningf("An error occurred saving build revision: %v", err)
 	}
 }

@@ -35,6 +35,10 @@ type DockerClient interface {
 	BuildImage(opts docker.BuildImageOptions) error
 	PushImage(opts docker.PushImageOptions, auth docker.AuthConfiguration) error
 	RemoveImage(name string) error
+	CreateContainer(opts docker.CreateContainerOptions) (*docker.Container, error)
+	DownloadFromContainer(id string, opts docker.DownloadFromContainerOptions) error
+	PullImage(opts docker.PullImageOptions, auth docker.AuthConfiguration) error
+	RemoveContainer(opts docker.RemoveContainerOptions) error
 }
 
 // pushImage pushes a docker image to the registry specified in its tag.
@@ -83,7 +87,7 @@ func removeImage(client DockerClient, name string) error {
 }
 
 // buildImage invokes a docker build on a particular directory
-func buildImage(client DockerClient, dir string, noCache bool, tag string, tar tar.Tar, pullAuth *docker.AuthConfigurations, forcePull bool) error {
+func buildImage(client DockerClient, dir string, dockerfilePath string, noCache bool, tag string, tar tar.Tar, pullAuth *docker.AuthConfigurations, forcePull bool) error {
 	// TODO: be able to pass a stream directly to the Docker build to avoid the double temp hit
 	r, w := io.Pipe()
 	go func() {
@@ -100,6 +104,7 @@ func buildImage(client DockerClient, dir string, noCache bool, tag string, tar t
 		RmTmpContainer: true,
 		OutputStream:   os.Stdout,
 		InputStream:    r,
+		Dockerfile:     dockerfilePath,
 		NoCache:        noCache,
 		Pull:           forcePull,
 	}

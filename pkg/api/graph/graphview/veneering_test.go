@@ -145,13 +145,13 @@ func TestBareBCGroup(t *testing.T) {
 	coveredNodes.Insert(coveredByBCs.List()...)
 
 	if e, a := 0, len(serviceGroups); e != a {
-		t.Errorf("expected %v, got %v", e, a)
+		t.Errorf("expected %v services, got %v", e, a)
 	}
 	if e, a := 0, len(bareDCPipelines); e != a {
-		t.Errorf("expected %v, got %v", e, a)
+		t.Errorf("expected %v deploymentConfigs, got %v", e, a)
 	}
 	if e, a := 1, len(bareBCPipelines); e != a {
-		t.Errorf("expected %v, got %v", e, a)
+		t.Errorf("expected %v buildConfigs, got %v", e, a)
 	}
 }
 
@@ -162,7 +162,7 @@ func TestGraph(t *testing.T) {
 		{
 			ObjectMeta: kapi.ObjectMeta{
 				Name:              "build1-1-abc",
-				Labels:            map[string]string{buildapi.DeprecatedBuildConfigLabel: "build1"},
+				Labels:            map[string]string{buildapi.BuildConfigLabelDeprecated: "build1"},
 				CreationTimestamp: unversioned.NewTime(now.Add(-10 * time.Second)),
 			},
 			Status: buildapi.BuildStatus{
@@ -172,7 +172,7 @@ func TestGraph(t *testing.T) {
 		{
 			ObjectMeta: kapi.ObjectMeta{
 				Name:              "build1-2-abc",
-				Labels:            map[string]string{buildapi.DeprecatedBuildConfigLabel: "build1"},
+				Labels:            map[string]string{buildapi.BuildConfigLabelDeprecated: "build1"},
 				CreationTimestamp: unversioned.NewTime(now.Add(-5 * time.Second)),
 			},
 			Status: buildapi.BuildStatus{
@@ -182,7 +182,7 @@ func TestGraph(t *testing.T) {
 		{
 			ObjectMeta: kapi.ObjectMeta{
 				Name:              "build1-3-abc",
-				Labels:            map[string]string{buildapi.DeprecatedBuildConfigLabel: "build1"},
+				Labels:            map[string]string{buildapi.BuildConfigLabelDeprecated: "build1"},
 				CreationTimestamp: unversioned.NewTime(now.Add(-15 * time.Second)),
 			},
 			Status: buildapi.BuildStatus{
@@ -204,7 +204,6 @@ func TestGraph(t *testing.T) {
 			},
 			BuildSpec: buildapi.BuildSpec{
 				Strategy: buildapi.BuildStrategy{
-					Type: buildapi.SourceBuildStrategyType,
 					SourceStrategy: &buildapi.SourceBuildStrategy{
 						From: kapi.ObjectReference{Kind: "ImageStreamTag", Name: "test:base-image"},
 					},
@@ -260,38 +259,35 @@ func TestGraph(t *testing.T) {
 	})
 	deploygraph.EnsureDeploymentConfigNode(g, &deployapi.DeploymentConfig{
 		ObjectMeta: kapi.ObjectMeta{Namespace: "other", Name: "deploy1"},
-		Triggers: []deployapi.DeploymentTriggerPolicy{
-			{
-				ImageChangeParams: &deployapi.DeploymentTriggerImageChangeParams{
-					From:           kapi.ObjectReference{Namespace: "default", Name: "other"},
-					ContainerNames: []string{"1", "2"},
-					Tag:            "tag1",
+		Spec: deployapi.DeploymentConfigSpec{
+			Triggers: []deployapi.DeploymentTriggerPolicy{
+				{
+					ImageChangeParams: &deployapi.DeploymentTriggerImageChangeParams{
+						From:           kapi.ObjectReference{Kind: "ImageStreamTag", Namespace: "default", Name: "other:tag1"},
+						ContainerNames: []string{"1", "2"},
+					},
 				},
 			},
-		},
-		Template: deployapi.DeploymentTemplate{
-			ControllerTemplate: kapi.ReplicationControllerSpec{
-				Template: &kapi.PodTemplateSpec{
-					ObjectMeta: kapi.ObjectMeta{
-						Labels: map[string]string{
-							"deploymentconfig": "deploy1",
-							"env":              "prod",
-						},
+			Template: &kapi.PodTemplateSpec{
+				ObjectMeta: kapi.ObjectMeta{
+					Labels: map[string]string{
+						"deploymentconfig": "deploy1",
+						"env":              "prod",
 					},
-					Spec: kapi.PodSpec{
-						Containers: []kapi.Container{
-							{
-								Name:  "1",
-								Image: "mycustom/repo/image",
-							},
-							{
-								Name:  "2",
-								Image: "mycustom/repo/image2",
-							},
-							{
-								Name:  "3",
-								Image: "mycustom/repo/image3",
-							},
+				},
+				Spec: kapi.PodSpec{
+					Containers: []kapi.Container{
+						{
+							Name:  "1",
+							Image: "mycustom/repo/image",
+						},
+						{
+							Name:  "2",
+							Image: "mycustom/repo/image2",
+						},
+						{
+							Name:  "3",
+							Image: "mycustom/repo/image3",
 						},
 					},
 				},
@@ -300,21 +296,19 @@ func TestGraph(t *testing.T) {
 	})
 	deploygraph.EnsureDeploymentConfigNode(g, &deployapi.DeploymentConfig{
 		ObjectMeta: kapi.ObjectMeta{Namespace: "default", Name: "deploy2"},
-		Template: deployapi.DeploymentTemplate{
-			ControllerTemplate: kapi.ReplicationControllerSpec{
-				Template: &kapi.PodTemplateSpec{
-					ObjectMeta: kapi.ObjectMeta{
-						Labels: map[string]string{
-							"deploymentconfig": "deploy2",
-							"env":              "dev",
-						},
+		Spec: deployapi.DeploymentConfigSpec{
+			Template: &kapi.PodTemplateSpec{
+				ObjectMeta: kapi.ObjectMeta{
+					Labels: map[string]string{
+						"deploymentconfig": "deploy2",
+						"env":              "dev",
 					},
-					Spec: kapi.PodSpec{
-						Containers: []kapi.Container{
-							{
-								Name:  "1",
-								Image: "someother/image:v1",
-							},
+				},
+				Spec: kapi.PodSpec{
+					Containers: []kapi.Container{
+						{
+							Name:  "1",
+							Image: "someother/image:v1",
 						},
 					},
 				},

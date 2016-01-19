@@ -17,7 +17,10 @@ import (
 	kubelettypes "k8s.io/kubernetes/pkg/kubelet/types"
 	"k8s.io/kubernetes/pkg/util"
 	"k8s.io/kubernetes/pkg/util/errors"
+	"k8s.io/kubernetes/pkg/util/oom"
 
+	osdnapi "github.com/openshift/openshift-sdn/plugins/osdn/api"
+	"github.com/openshift/openshift-sdn/plugins/osdn/factory"
 	configapi "github.com/openshift/origin/pkg/cmd/server/api"
 	"github.com/openshift/origin/pkg/cmd/server/crypto"
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
@@ -45,9 +48,20 @@ type NodeConfig struct {
 	KubeletConfig *kapp.KubeletConfig
 	// IPTablesSyncPeriod is how often iptable rules are refreshed
 	IPTablesSyncPeriod string
+
+	// Maximum transmission unit for the network packets
+	MTU uint
+	// SDNPlugin is an optional SDN plugin
+	SDNPlugin osdnapi.OsdnPlugin
+	// EndpointsFilterer is an optional endpoints filterer
+	FilteringEndpointsHandler osdnapi.FilteringEndpointsConfigHandler
 }
 
 func BuildKubernetesNodeConfig(options configapi.NodeConfig) (*NodeConfig, error) {
+	originClient, _, err := configapi.GetOpenShiftClient(options.MasterKubeConfig)
+	if err != nil {
+		return nil, err
+	}
 	kubeClient, _, err := configapi.GetKubeClient(options.MasterKubeConfig)
 	if err != nil {
 		return nil, err
@@ -108,14 +122,14 @@ func BuildKubernetesNodeConfig(options configapi.NodeConfig) (*NodeConfig, error
 	server.Config = path
 	server.RootDirectory = options.VolumeDirectory
 
-	// kubelet finds the node IP address by doing net.ParseIP(hostname) and if that fails,
-	// it does net.LookupIP(NodeName) and picks the first non-loopback address.
-	// Pass node IP as hostname to make kubelet use the desired IP address.
 	if len(options.NodeIP) > 0 {
-		server.HostnameOverride = options.NodeIP
-	} else {
-		server.HostnameOverride = options.NodeName
+		nodeIP := net.ParseIP(options.NodeIP)
+		if nodeIP == nil {
+			return nil, fmt.Errorf("Invalid Node IP: %s", options.NodeIP)
+		}
+		server.NodeIP = nodeIP
 	}
+	server.HostnameOverride = options.NodeName
 	server.AllowPrivileged = true
 	server.RegisterNode = true
 	server.Address = kubeAddress
@@ -156,9 +170,24 @@ func BuildKubernetesNodeConfig(options configapi.NodeConfig) (*NodeConfig, error
 
 	// provide any config overrides
 	cfg.NodeName = options.NodeName
-	cfg.StreamingConnectionIdleTimeout = 5 * time.Minute // TODO: should be set
 	cfg.KubeClient = kubeClient
 	cfg.DockerExecHandler = dockerExecHandler
+
+	// docker-in-docker (dind) deployments are used for testing
+	// networking plugins.  Running openshift under dind won't work
+	// with the real oom adjuster due to the state of the cgroups path
+	// in a dind container that uses systemd for init.  Similarly,
+	// cgroup manipulation of the nested docker daemon doesn't work
+	// properly under centos/rhel and should be disabled by setting
+	// the name of the container to an empty string.
+	//
+	// This workaround should become unnecessary once user namespaces
+	if value := cmdutil.Env("OPENSHIFT_DIND", ""); value == "true" {
+		glog.Warningf("Using FakeOOMAdjuster for docker-in-docker compatibility")
+		cfg.OOMAdjuster = oom.NewFakeOOMAdjuster()
+		glog.Warningf("Disabling cgroup manipulation of nested docker daemon for docker-in-docker compatibility")
+		cfg.DockerDaemonContainer = ""
+	}
 
 	// Setup auth
 	osClient, osClientConfig, err := configapi.GetOpenShiftClient(options.MasterKubeConfig)
@@ -228,6 +257,13 @@ func BuildKubernetesNodeConfig(options configapi.NodeConfig) (*NodeConfig, error
 	}
 	cfg.Cloud = cloud
 
+	sdnPlugin, endpointFilter, err := factory.NewPlugin(options.NetworkConfig.NetworkPluginName, originClient, kubeClient, options.NodeName, options.NodeIP)
+	if err != nil {
+		return nil, fmt.Errorf("SDN initialization failed: %v", err)
+	} else if sdnPlugin != nil {
+		cfg.NetworkPlugins = append(cfg.NetworkPlugins, sdnPlugin)
+	}
+
 	config := &NodeConfig{
 		BindAddress: options.ServingInfo.BindAddress,
 
@@ -241,6 +277,10 @@ func BuildKubernetesNodeConfig(options configapi.NodeConfig) (*NodeConfig, error
 		KubeletConfig: cfg,
 
 		IPTablesSyncPeriod: options.IPTablesSyncPeriod,
+		MTU:                options.NetworkConfig.MTU,
+
+		SDNPlugin:                 sdnPlugin,
+		FilteringEndpointsHandler: endpointFilter,
 	}
 
 	return config, nil

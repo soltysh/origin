@@ -74,9 +74,9 @@ echo "Log in as 'e2e-user' to see the 'test' project."
 install_router
 install_registry
 
-echo "[INFO] Pre-pulling and pushing ruby-20-centos7"
-docker pull openshift/ruby-20-centos7:latest
-echo "[INFO] Pulled ruby-20-centos7"
+echo "[INFO] Pre-pulling and pushing ruby-22-centos7"
+docker pull centos/ruby-22-centos7:latest
+echo "[INFO] Pulled ruby-22-centos7"
 
 echo "[INFO] Waiting for Docker registry pod to start"
 wait_for_registry
@@ -88,7 +88,9 @@ registry="$(dig @${API_HOST} "docker-registry.default.svc.cluster.local." +short
 [[ -n "${registry}" && "${registry}:5000" == "${DOCKER_REGISTRY}" ]]
 
 echo "[INFO] Verifying the docker-registry is up at ${DOCKER_REGISTRY}"
-wait_for_url_timed "http://${DOCKER_REGISTRY}/healthz" "[INFO] Docker registry says: " $((2*TIME_MIN))
+wait_for_url_timed "http://${DOCKER_REGISTRY}/" "[INFO] Docker registry says: " $((2*TIME_MIN))
+# ensure original healthz route works as well
+curl -f "http://${DOCKER_REGISTRY}/healthz"
 
 [ "$(dig @${API_HOST} "docker-registry.default.local." A)" ]
 
@@ -101,18 +103,32 @@ oc login -u e2e-user -p pass
 # make sure viewers can see oc status
 oc status -n default
 
+# check to make sure a project admin can push an image
 oc project cache
-token=$(oc config view --flatten -o template --template='{{with index .users 0}}{{.user.token}}{{end}}')
-[[ -n ${token} ]]
+e2e_user_token=$(oc config view --flatten --minify -o template --template='{{with index .users 0}}{{.user.token}}{{end}}')
+[[ -n ${e2e_user_token} ]]
 
 echo "[INFO] Docker login as e2e-user to ${DOCKER_REGISTRY}"
-docker login -u e2e-user -p ${token} -e e2e-user@openshift.com ${DOCKER_REGISTRY}
+docker login -u e2e-user -p ${e2e_user_token} -e e2e-user@openshift.com ${DOCKER_REGISTRY}
 echo "[INFO] Docker login successful"
 
-echo "[INFO] Tagging and pushing ruby-20-centos7 to ${DOCKER_REGISTRY}/cache/ruby-20-centos7:latest"
-docker tag -f openshift/ruby-20-centos7:latest ${DOCKER_REGISTRY}/cache/ruby-20-centos7:latest
-docker push ${DOCKER_REGISTRY}/cache/ruby-20-centos7:latest
-echo "[INFO] Pushed ruby-20-centos7"
+echo "[INFO] Tagging and pushing ruby-22-centos7 to ${DOCKER_REGISTRY}/cache/ruby-22-centos7:latest"
+docker tag -f centos/ruby-22-centos7:latest ${DOCKER_REGISTRY}/cache/ruby-22-centos7:latest
+docker push ${DOCKER_REGISTRY}/cache/ruby-22-centos7:latest
+echo "[INFO] Pushed ruby-22-centos7"
+
+# check to make sure an image-pusher can push an image
+oc policy add-role-to-user system:image-pusher pusher
+oc login -u pusher -p pass
+pusher_token=$(oc config view --flatten --minify -o template --template='{{with index .users 0}}{{.user.token}}{{end}}')
+[[ -n ${pusher_token} ]]
+
+echo "[INFO] Docker login as pusher to ${DOCKER_REGISTRY}"
+docker login -u e2e-user -p ${pusher_token} -e pusher@openshift.com ${DOCKER_REGISTRY}
+echo "[INFO] Docker login successful"
+
+# log back into docker as e2e-user again
+docker login -u e2e-user -p ${e2e_user_token} -e e2e-user@openshift.com ${DOCKER_REGISTRY}
 
 echo "[INFO] Back to 'default' project with 'admin' user..."
 oc project ${CLUSTER_ADMIN_CONTEXT}
@@ -139,25 +155,25 @@ oc whoami
 
 echo "[INFO] Running a CLI command in a container using the service account"
 oc policy add-role-to-user view -z default
-out=$(oc run cli-with-token --attach --env=POD_NAMESPACE=test --image=openshift/origin:${TAG} --restart=Never -- cli status --loglevel=4 2>&1)
-echo $out
-[ "$(echo $out | grep 'Using in-cluster configuration')" ]
-[ "$(echo $out | grep 'In project test')" ]
+oc run cli-with-token --attach --env=POD_NAMESPACE=test --image=openshift/origin:${TAG} --restart=Never -- cli status --loglevel=4 > ${LOG_DIR}/cli-with-token.log 2>&1
+cat ${LOG_DIR}/cli-with-token.log
+[ "$(cat ${LOG_DIR}/cli-with-token.log | grep 'Using in-cluster configuration')" ]
+[ "$(cat ${LOG_DIR}/cli-with-token.log | grep 'In project test')" ]
 oc delete pod cli-with-token
-out=$(oc run cli-with-token-2 --attach --env=POD_NAMESPACE=test --image=openshift/origin:${TAG} --restart=Never -- cli whoami --loglevel=4 2>&1)
-echo $out
-[ "$(echo $out | grep 'system:serviceaccount:test:default')" ]
+oc run cli-with-token-2 --attach --env=POD_NAMESPACE=test --image=openshift/origin:${TAG} --restart=Never -- cli whoami --loglevel=4 > ${LOG_DIR}/cli-with-token2.log 2>&1
+cat ${LOG_DIR}/cli-with-token2.log
+[ "$(cat ${LOG_DIR}/cli-with-token2.log | grep 'system:serviceaccount:test:default')" ]
 oc delete pod cli-with-token-2
-out=$(oc run kubectl-with-token --attach --env=POD_NAMESPACE=test --image=openshift/origin:${TAG} --restart=Never --command -- kubectl get pods --loglevel=4 2>&1)
-echo $out
-[ "$(echo $out | grep 'Using in-cluster configuration')" ]
-[ "$(echo $out | grep 'kubectl-with-token')" ]
+oc run kubectl-with-token --attach --env=POD_NAMESPACE=test --image=openshift/origin:${TAG} --restart=Never --command -- kubectl get pods --loglevel=4 > ${LOG_DIR}/kubectl-with-token.log 2>&1
+cat ${LOG_DIR}/kubectl-with-token.log
+[ "$(cat ${LOG_DIR}/kubectl-with-token.log | grep 'Using in-cluster configuration')" ]
+[ "$(cat ${LOG_DIR}/kubectl-with-token.log | grep 'kubectl-with-token')" ]
 
 echo "[INFO] Streaming the logs from a deployment twice..."
 oc create -f test/fixtures/failing-dc.yaml
 tryuntil oc get rc/failing-dc-1
 oc logs -f dc/failing-dc
-wait_for_command "oc get rc/failing-dc-1 --template={{.metadata.annotations}} | grep openshift.io/deployment.phase:Failed" $((20*TIME_SEC))
+wait_for_command "oc get rc/failing-dc-1 --template={{.metadata.annotations}} | grep openshift.io/deployment.phase:Failed" $((60*TIME_SEC))
 oc logs dc/failing-dc | grep 'test pre hook executed'
 oc deploy failing-dc --latest
 oc logs --version=1 dc/failing-dc
@@ -186,6 +202,15 @@ oc logs buildconfigs/ruby-sample-build --loglevel=6
 oc logs buildconfig/ruby-sample-build --loglevel=6
 echo "logs: ok"
 
+echo "[INFO] Starting a deployment to test scaling..."
+oc create -f test/integration/fixtures/test-deployment-config.json
+# scaling which might conflict with the deployment should work
+oc scale dc/test-deployment-config --replicas=2
+tryuntil '[ "$(oc get rc/test-deployment-config-1 -o yaml | grep Complete)" ]'
+# scale rc via deployment configuration
+oc scale dc/test-deployment-config --replicas=3 --timeout=1m
+oc delete dc/test-deployment-config
+echo "scale: ok"
 
 echo "[INFO] Starting build from ${STI_CONFIG_FILE} with non-existing commit..."
 set +e
@@ -318,7 +343,7 @@ if [[ "$TEST_ASSETS" == "true" ]]; then
   echo "[INFO] Running UI e2e tests at time..."
   echo `date`
   pushd ${OS_ROOT}/assets > /dev/null
-    grunt test-e2e
+    grunt test-integration
   echo "UI  e2e done at time "
   echo `date`
 

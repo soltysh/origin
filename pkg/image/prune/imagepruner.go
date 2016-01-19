@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/docker/distribution/registry/api/v2"
+	"github.com/docker/distribution/registry/api/errcode"
 	"github.com/golang/glog"
 	gonum "github.com/gonum/graph"
 	"github.com/openshift/origin/pkg/api/graph"
@@ -156,15 +156,16 @@ type defaultRegistryPinger struct {
 }
 
 func (drp *defaultRegistryPinger) ping(registry string) error {
-	healthzCheck := func(proto, registry string) error {
-		healthzResponse, err := drp.client.Get(fmt.Sprintf("%s://%s/healthz", proto, registry))
+	healthCheck := func(proto, registry string) error {
+		// TODO: `/healthz` route is deprecated by `/`; remove it in future versions
+		healthResponse, err := drp.client.Get(fmt.Sprintf("%s://%s/healthz", proto, registry))
 		if err != nil {
 			return err
 		}
-		defer healthzResponse.Body.Close()
+		defer healthResponse.Body.Close()
 
-		if healthzResponse.StatusCode != http.StatusOK {
-			return fmt.Errorf("unexpected status code %d", healthzResponse.StatusCode)
+		if healthResponse.StatusCode != http.StatusOK {
+			return fmt.Errorf("unexpected status code %d", healthResponse.StatusCode)
 		}
 
 		return nil
@@ -173,7 +174,7 @@ func (drp *defaultRegistryPinger) ping(registry string) error {
 	var err error
 	for _, proto := range []string{"https", "http"} {
 		glog.V(4).Infof("Trying %s for %s", proto, registry)
-		err = healthzCheck(proto, registry)
+		err = healthCheck(proto, registry)
 		if err == nil {
 			break
 		}
@@ -459,7 +460,7 @@ func addDeploymentConfigsToGraph(g graph.Graph, dcs *deployapi.DeploymentConfigL
 		dc := &dcs.Items[i]
 		glog.V(4).Infof("Examining DeploymentConfig %s/%s", dc.Namespace, dc.Name)
 		dcNode := deploygraph.EnsureDeploymentConfigNode(g, dc)
-		addPodSpecToGraph(g, &dc.Template.ControllerTemplate.Template.Spec, dcNode)
+		addPodSpecToGraph(g, &dc.Spec.Template.Spec, dcNode)
 	}
 }
 
@@ -494,8 +495,6 @@ func addBuildsToGraph(g graph.Graph, builds *buildapi.BuildList) {
 // to the image specified by strategy.from, as long as the image is managed by
 // OpenShift.
 func addBuildStrategyImageReferencesToGraph(g graph.Graph, strategy buildapi.BuildStrategy, predecessor gonum.Node) {
-	glog.V(4).Infof("Examining build strategy with type %q", strategy.Type)
-
 	from := buildutil.GetImageStreamForStrategy(strategy)
 	if from == nil {
 		glog.V(4).Infof("Unable to determine 'from' reference - skipping")
@@ -670,7 +669,12 @@ func pruneStreams(g graph.Graph, imageNodes []*imagegraph.ImageNode, streamPrune
 						updatedTags.Insert(tag)
 					}
 				}
-				stream.Status.Tags[tag] = newHistory
+				if len(newHistory.Items) == 0 {
+					glog.V(4).Infof("Removing tag %q from status.tags of ImageStream %s/%s", tag, stream.Namespace, stream.Name)
+					delete(stream.Status.Tags, tag)
+				} else {
+					stream.Status.Tags[tag] = newHistory
+				}
 			}
 
 			updatedStream, err := streamPruner.PruneImageStream(stream, imageNode.Image, updatedTags.List())
@@ -912,10 +916,10 @@ func deleteFromRegistry(registryClient *http.Client, url string) error {
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusNoContent {
+		if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusAccepted {
 			glog.V(1).Infof("Unexpected status code in response: %d", resp.StatusCode)
 			decoder := json.NewDecoder(resp.Body)
-			var response v2.Errors
+			var response errcode.Errors
 			decoder.Decode(&response)
 			glog.V(1).Infof("Response: %#v", response)
 			return &response
@@ -932,12 +936,12 @@ func deleteFromRegistry(registryClient *http.Client, url string) error {
 			return nil
 		}
 
-		if _, ok := err.(*v2.Errors); ok {
+		if _, ok := err.(*errcode.Errors); ok {
 			// we got a response back from the registry, so return it
 			return err
 		}
 
-		// we didn't get a success or a v2.Errors response back from the registry
+		// we didn't get a success or a errcode.Errors response back from the registry
 		glog.V(4).Infof("Error with %s for %s: %v", proto, url, err)
 	}
 	return err
@@ -956,7 +960,7 @@ func NewDeletingLayerPruner() LayerPruner {
 
 func (p *deletingLayerPruner) PruneLayer(registryClient *http.Client, registryURL, repoName, layer string) error {
 	glog.V(4).Infof("Pruning registry %q, repo %q, layer %q", registryURL, repoName, layer)
-	return deleteFromRegistry(registryClient, fmt.Sprintf("%s/admin/%s/layers/%s", registryURL, repoName, layer))
+	return deleteFromRegistry(registryClient, fmt.Sprintf("%s/v2/%s/blobs/%s", registryURL, repoName, layer))
 }
 
 // deletingBlobPruner deletes a blob from the registry.
@@ -988,5 +992,5 @@ func NewDeletingManifestPruner() ManifestPruner {
 
 func (p *deletingManifestPruner) PruneManifest(registryClient *http.Client, registryURL, repoName, manifest string) error {
 	glog.V(4).Infof("Pruning manifest for registry %q, repo %q, manifest %q", registryURL, repoName, manifest)
-	return deleteFromRegistry(registryClient, fmt.Sprintf("%s/admin/%s/manifests/%s", registryURL, repoName, manifest))
+	return deleteFromRegistry(registryClient, fmt.Sprintf("%s/v2/%s/manifests/%s", registryURL, repoName, manifest))
 }

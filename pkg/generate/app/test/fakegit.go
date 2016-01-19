@@ -2,6 +2,8 @@ package test
 
 import (
 	"io"
+
+	"github.com/openshift/origin/pkg/generate/git"
 )
 
 type FakeGit struct {
@@ -25,6 +27,11 @@ func (g *FakeGit) GetRef(dir string) string {
 }
 
 func (g *FakeGit) Clone(dir string, url string) error {
+	g.CloneCalled = true
+	return nil
+}
+
+func (g *FakeGit) CloneWithOptions(dir string, url string, opts git.CloneOptions) error {
 	g.CloneCalled = true
 	return nil
 }
@@ -65,4 +72,12 @@ func (f *FakeGit) AddRemote(source, remote, url string) error {
 
 func (f *FakeGit) ShowFormat(source, ref, format string) (string, error) {
 	return "", nil
+}
+
+func (f *FakeGit) ListRemote(url string, args ...string) (string, string, error) {
+	return "", "", nil
+}
+
+func (f *FakeGit) GetInfo(location string) (*git.SourceInfo, []error) {
+	return nil, nil
 }

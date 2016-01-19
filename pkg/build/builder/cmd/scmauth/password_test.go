@@ -6,6 +6,22 @@ import (
 	"testing"
 )
 
+func TestPasswordHandles(t *testing.T) {
+	tests := map[string]bool{
+		"username": true,
+		"user":     false,
+		"token":    true,
+		"ca.crt":   false,
+		"password": true,
+	}
+	up := UsernamePassword{}
+	for k, v := range tests {
+		if a := up.Handles(k); a != v {
+			t.Errorf("unexpected result for %s: %v", k, a)
+		}
+	}
+}
+
 func TestPassword(t *testing.T) {
 
 	testcases := map[string]struct {
@@ -86,7 +102,7 @@ func TestPassword(t *testing.T) {
 
 	for k, tc := range testcases {
 		u, _ := url.Parse(tc.URL)
-		sourceURL, configURL, err := doSetup(*u, tc.Username, tc.Password, tc.Token)
+		sourceURL, configURL, err := doSetup(*u, tc.Username, tc.Password, tc.Token, removeCredentials)
 		if err != nil {
 			t.Errorf("%s: unexpected error: %v", k, err)
 			continue

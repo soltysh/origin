@@ -14,34 +14,39 @@ import (
 	"github.com/golang/glog"
 	kapi "k8s.io/kubernetes/pkg/api"
 
-	s2iapi "github.com/openshift/source-to-image/pkg/api"
-	"github.com/openshift/source-to-image/pkg/scm/git"
 	"github.com/openshift/source-to-image/pkg/tar"
 	"github.com/openshift/source-to-image/pkg/util"
 
 	"github.com/openshift/origin/pkg/build/api"
 	"github.com/openshift/origin/pkg/build/builder/cmd/dockercfg"
+	"github.com/openshift/origin/pkg/client"
+	"github.com/openshift/origin/pkg/generate/git"
 	imageapi "github.com/openshift/origin/pkg/image/api"
 	"github.com/openshift/origin/pkg/util/docker/dockerfile"
 )
 
+// defaultDockerfilePath is the default path of the Dockerfile
+const defaultDockerfilePath = "Dockerfile"
+
 // DockerBuilder builds Docker images given a git repository URL
 type DockerBuilder struct {
 	dockerClient DockerClient
-	git          git.Git
+	gitClient    GitClient
 	tar          tar.Tar
 	build        *api.Build
 	urlTimeout   time.Duration
+	client       client.BuildInterface
 }
 
 // NewDockerBuilder creates a new instance of DockerBuilder
-func NewDockerBuilder(dockerClient DockerClient, build *api.Build) *DockerBuilder {
+func NewDockerBuilder(dockerClient DockerClient, buildsClient client.BuildInterface, build *api.Build, gitClient GitClient) *DockerBuilder {
 	return &DockerBuilder{
 		dockerClient: dockerClient,
 		build:        build,
-		git:          git.New(),
+		gitClient:    gitClient,
 		tar:          tar.New(),
 		urlTimeout:   urlCheckTimeout,
+		client:       buildsClient,
 	}
 }
 
@@ -53,8 +58,12 @@ func (d *DockerBuilder) Build() error {
 	if err != nil {
 		return err
 	}
-	if err := fetchSource(buildDir, d.build, d.urlTimeout, os.Stdin, d.git); err != nil {
+	sourceInfo, err := fetchSource(d.dockerClient, buildDir, d.build, d.urlTimeout, os.Stdin, d.gitClient)
+	if err != nil {
 		return err
+	}
+	if sourceInfo != nil {
+		updateBuildRevision(d.client, d.build, sourceInfo)
 	}
 	if err := d.addBuildParameters(buildDir); err != nil {
 		return err
@@ -96,9 +105,18 @@ func (d *DockerBuilder) Build() error {
 // If that's the case then change the Dockerfile to make the build with the given image.
 // Also append the environment variables and labels in the Dockerfile.
 func (d *DockerBuilder) addBuildParameters(dir string) error {
-	dockerfilePath := filepath.Join(dir, "Dockerfile")
+	var contextDirPath string
 	if d.build.Spec.Strategy.DockerStrategy != nil && len(d.build.Spec.Source.ContextDir) > 0 {
-		dockerfilePath = filepath.Join(dir, d.build.Spec.Source.ContextDir, "Dockerfile")
+		contextDirPath = filepath.Join(dir, d.build.Spec.Source.ContextDir)
+	} else {
+		contextDirPath = dir
+	}
+
+	var dockerfilePath string
+	if d.build.Spec.Strategy.DockerStrategy != nil && len(d.build.Spec.Strategy.DockerStrategy.DockerfilePath) > 0 {
+		dockerfilePath = filepath.Join(contextDirPath, d.build.Spec.Strategy.DockerStrategy.DockerfilePath)
+	} else {
+		dockerfilePath = filepath.Join(contextDirPath, defaultDockerfilePath)
 	}
 
 	f, err := os.Open(dockerfilePath)
@@ -169,14 +187,20 @@ func (d *DockerBuilder) buildInfo() []dockerfile.KeyValue {
 func (d *DockerBuilder) buildLabels(dir string) []dockerfile.KeyValue {
 	labels := map[string]string{}
 	// TODO: allow source info to be overriden by build
-	sourceInfo := &s2iapi.SourceInfo{}
+	sourceInfo := &git.SourceInfo{}
 	if d.build.Spec.Source.Git != nil {
-		sourceInfo = d.git.GetInfo(dir)
+		var errors []error
+		sourceInfo, errors = d.gitClient.GetInfo(dir)
+		if len(errors) > 0 {
+			for _, e := range errors {
+				glog.Warningf("Error getting git info: %v", e.Error())
+			}
+		}
 	}
 	if len(d.build.Spec.Source.ContextDir) > 0 {
 		sourceInfo.ContextDir = d.build.Spec.Source.ContextDir
 	}
-	labels = util.GenerateLabelsFromSourceInfo(labels, sourceInfo, api.DefaultDockerLabelNamespace)
+	labels = util.GenerateLabelsFromSourceInfo(labels, &sourceInfo.SourceInfo, api.DefaultDockerLabelNamespace)
 	kv := make([]dockerfile.KeyValue, 0, len(labels))
 	for k, v := range labels {
 		kv = append(kv, dockerfile.KeyValue{Key: k, Value: v})
@@ -201,9 +225,13 @@ func (d *DockerBuilder) setupPullSecret() (*docker.AuthConfigurations, error) {
 func (d *DockerBuilder) dockerBuild(dir string) error {
 	var noCache bool
 	var forcePull bool
+	dockerfilePath := defaultDockerfilePath
 	if d.build.Spec.Strategy.DockerStrategy != nil {
 		if d.build.Spec.Source.ContextDir != "" {
 			dir = filepath.Join(dir, d.build.Spec.Source.ContextDir)
+		}
+		if d.build.Spec.Strategy.DockerStrategy.DockerfilePath != "" {
+			dockerfilePath = d.build.Spec.Strategy.DockerStrategy.DockerfilePath
 		}
 		noCache = d.build.Spec.Strategy.DockerStrategy.NoCache
 		forcePull = d.build.Spec.Strategy.DockerStrategy.ForcePull
@@ -212,7 +240,7 @@ func (d *DockerBuilder) dockerBuild(dir string) error {
 	if err != nil {
 		return err
 	}
-	return buildImage(d.dockerClient, dir, noCache, d.build.Status.OutputDockerImageReference, d.tar, auth, forcePull)
+	return buildImage(d.dockerClient, dir, dockerfilePath, noCache, d.build.Status.OutputDockerImageReference, d.tar, auth, forcePull)
 }
 
 // replaceLastFrom changes the last FROM instruction of node to point to the

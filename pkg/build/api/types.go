@@ -15,6 +15,8 @@ const (
 	BuildNumberAnnotation = "openshift.io/build.number"
 	// BuildCloneAnnotation is an annotation whose value is the name of the build this build was cloned from
 	BuildCloneAnnotation = "openshift.io/build.clone-of"
+	// BuildPodNameAnnotation is an annotation whose value is the name of the pod running this build
+	BuildPodNameAnnotation = "openshift.io/build.pod-name"
 	// BuildLabel is the key of a Pod label whose value is the Name of a Build which is run.
 	BuildLabel = "openshift.io/build.name"
 	// DefaultDockerLabelNamespace is the key of a Build label, whose values are build metadata.
@@ -68,7 +70,7 @@ type BuildStatus struct {
 	// Phase is the point in the build lifecycle.
 	Phase BuildPhase
 
-	// Cancelled describes if a cancelling event was triggered for the build.
+	// Cancelled describes if a cancel event was triggered for the build.
 	Cancelled bool
 
 	// Reason is a brief CamelCase string that describes any failure and is meant for machine parsing and tidy display in the CLI.
@@ -164,24 +166,8 @@ const (
 	StatusReasonExceededRetryTimeout = "ExceededRetryTimeout"
 )
 
-// BuildSourceType is the type of SCM used.
-type BuildSourceType string
-
-// Valid values for BuildSourceType.
-const (
-	//BuildSourceGit instructs a build to use a Git source control repository as the build input.
-	BuildSourceGit BuildSourceType = "Git"
-	// BuildSourceDockerfile uses a Dockerfile as the start of a build
-	BuildSourceDockerfile BuildSourceType = "Dockerfile"
-	// BuildSourceBinary indicates the build will accept a Binary file as input.
-	BuildSourceBinary BuildSourceType = "Binary"
-)
-
 // BuildSource is the input used for the build.
 type BuildSource struct {
-	// Type of build input to accept
-	Type BuildSourceType
-
 	// Binary builds accept a binary as their input. The binary is generally assumed to be a tar,
 	// gzipped tar, or zip file depending on the strategy. For Docker builds, this is the build
 	// context and an optional Dockerfile may be specified to override any Dockerfile in the
@@ -202,6 +188,11 @@ type BuildSource struct {
 	// Git contains optional information about git build source
 	Git *GitBuildSource
 
+	// Image describes an image to be used to provide source for the build
+	// EXPERIMENTAL.  This will be changing to an array of images in the near future
+	// and no migration/compatibility will be provided.  Use at your own risk.
+	Image *ImageSource
+
 	// ContextDir specifies the sub-directory where the source code for the application exists.
 	// This allows to have buildable sources in directory other than root of
 	// repository.
@@ -212,7 +203,34 @@ type BuildSource struct {
 	// The secret contains valid credentials for remote repository, where the
 	// data's key represent the authentication method to be used and value is
 	// the base64 encoded credentials. Supported auth methods are: ssh-privatekey.
+	// TODO: This needs to move under the GitBuildSource struct since it's only
+	// used for git authentication
 	SourceSecret *kapi.LocalObjectReference
+}
+
+// ImageSource describes an image that is used as source for the build
+type ImageSource struct {
+	// From is a reference to an ImageStreamTag, ImageStreamImage, or DockerImage to
+	// copy source from.
+	From kapi.ObjectReference
+
+	// Paths is a list of source and destination paths to copy from the image.
+	Paths []ImageSourcePath
+
+	// PullSecret is a reference to a secret to be used to pull the image from a registry
+	// If the image is pulled from the OpenShift registry, this field does not need to be set.
+	PullSecret *kapi.LocalObjectReference
+}
+
+// ImageSourcePath describes a path to be copied from a source image and its destination within the build directory.
+type ImageSourcePath struct {
+	// SourcePath is the absolute path of the file or directory inside the image to
+	// copy to the build directory.
+	SourcePath string
+
+	// DestinationDir is the relative directory within the build directory
+	// where files copied from the image are placed.
+	DestinationDir string
 }
 
 type BinaryBuildSource struct {
@@ -227,9 +245,6 @@ type BinaryBuildSource struct {
 
 // SourceRevision is the revision or commit information from the source for the build
 type SourceRevision struct {
-	// Type of the build source
-	Type BuildSourceType
-
 	// Git contains information about git-based build source
 	Git *GitSourceRevision
 }
@@ -276,9 +291,6 @@ type SourceControlUser struct {
 
 // BuildStrategy contains the details of how to perform a build.
 type BuildStrategy struct {
-	// Type is the kind of build strategy.
-	Type BuildStrategyType
-
 	// DockerStrategy holds the parameters to the Docker build strategy.
 	DockerStrategy *DockerBuildStrategy
 
@@ -291,19 +303,6 @@ type BuildStrategy struct {
 
 // BuildStrategyType describes a particular way of performing a build.
 type BuildStrategyType string
-
-// Valid values for BuildStrategyType.
-const (
-	// DockerBuildStrategyType performs builds using a Dockerfile.
-	DockerBuildStrategyType BuildStrategyType = "Docker"
-
-	// SourceBuildStrategyType performs builds build using Source To Images with a Git repository
-	// and a builder image.
-	SourceBuildStrategyType BuildStrategyType = "Source"
-
-	// CustomBuildStrategyType performs builds using custom builder Docker image.
-	CustomBuildStrategyType BuildStrategyType = "Custom"
-)
 
 const (
 	// CustomBuildStrategyBaseImageKey is the environment variable that indicates the base image to be used when
@@ -359,6 +358,10 @@ type DockerBuildStrategy struct {
 
 	// ForcePull describes if the builder should pull the images from registry prior to building.
 	ForcePull bool
+
+	// DockerfilePath is the path of the Dockerfile that will be used to build the Docker image,
+	// relative to the root of the context (contextDir).
+	DockerfilePath string
 }
 
 // SourceBuildStrategy defines input parameters specific to an Source build.
@@ -405,9 +408,9 @@ const (
 	// BuildConfigLabel is the key of a Build label whose value is the ID of a BuildConfig
 	// on which the Build is based.
 	BuildConfigLabel = "openshift.io/build-config.name"
-	// DeprecatedBuildConfigLabel was used as BuildConfigLabel before adding namespaces.
+	// BuildConfigLabelDeprecated was used as BuildConfigLabel before adding namespaces.
 	// We keep it for backward compatibility.
-	DeprecatedBuildConfigLabel = "buildconfig"
+	BuildConfigLabelDeprecated = "buildconfig"
 )
 
 // BuildConfig is a template which can be used to create new builds.
@@ -524,10 +527,7 @@ type BuildConfigList struct {
 
 // GenericWebHookEvent is the payload expected for a generic webhook post
 type GenericWebHookEvent struct {
-	// Type is the type of source repository
-	Type BuildSourceType
-
-	// Git is the git information if the Type is BuildSourceGit
+	// Git is the git information, if any.
 	Git *GitInfo
 }
 
@@ -576,6 +576,9 @@ type BuildRequest struct {
 	// to generate the build. If the BuildConfig in the generator doesn't match, a build will
 	// not be generated.
 	LastVersion *int
+
+	// Env contains additional environment variables you want to pass into a builder container
+	Env []kapi.EnvVar
 }
 
 type BinaryBuildRequestOptions struct {

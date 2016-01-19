@@ -154,7 +154,7 @@ func describeBuildDuration(build *buildapi.Build) string {
 		(build.Status.Phase == buildapi.BuildPhaseCancelled ||
 			build.Status.Phase == buildapi.BuildPhaseFailed ||
 			build.Status.Phase == buildapi.BuildPhaseError) {
-		// time a build waited for its pod before ultimately being canceled before that pod was created
+		// time a build waited for its pod before ultimately being cancelled before that pod was created
 		return fmt.Sprintf("waited for %s", build.Status.CompletionTimestamp.Rfc3339Copy().Time.Sub(build.CreationTimestamp.Rfc3339Copy().Time))
 	} else if build.Status.StartTimestamp == nil && build.Status.Phase != buildapi.BuildPhaseCancelled {
 		// time a new build has been waiting for its pod to be created so it can run
@@ -172,18 +172,8 @@ type BuildConfigDescriber struct {
 	host string
 }
 
-// TODO: remove when internal SourceBuildStrategyType is refactored to "Source"
-func describeStrategy(strategyType buildapi.BuildStrategyType) buildapi.BuildStrategyType {
-	if strategyType == buildapi.SourceBuildStrategyType {
-		strategyType = buildapi.BuildStrategyType("Source")
-	}
-	return strategyType
-}
-
 func describeBuildSpec(p buildapi.BuildSpec, out *tabwriter.Writer) {
-	formatString(out, "Strategy", describeStrategy(p.Strategy.Type))
-
-	formatString(out, "Source Type", p.Source.Type)
+	formatString(out, "Strategy", buildapi.StrategyType(p.Strategy))
 	if p.Source.Dockerfile != nil {
 		if len(strings.TrimSpace(*p.Source.Dockerfile)) == 0 {
 			formatString(out, "Dockerfile", "")
@@ -225,12 +215,12 @@ func describeBuildSpec(p buildapi.BuildSpec, out *tabwriter.Writer) {
 		}
 	}
 
-	switch p.Strategy.Type {
-	case buildapi.DockerBuildStrategyType:
+	switch {
+	case p.Strategy.DockerStrategy != nil:
 		describeDockerStrategy(p.Strategy.DockerStrategy, out)
-	case buildapi.SourceBuildStrategyType:
+	case p.Strategy.SourceStrategy != nil:
 		describeSourceStrategy(p.Strategy.SourceStrategy, out)
-	case buildapi.CustomBuildStrategyType:
+	case p.Strategy.CustomStrategy != nil:
 		describeCustomStrategy(p.Strategy.CustomStrategy, out)
 	}
 
@@ -246,7 +236,7 @@ func describeBuildSpec(p buildapi.BuildSpec, out *tabwriter.Writer) {
 		formatString(out, "Push Secret", p.Output.PushSecret.Name)
 	}
 
-	if p.Revision != nil && p.Revision.Type == buildapi.BuildSourceGit && p.Revision.Git != nil {
+	if p.Revision != nil && p.Revision.Git != nil {
 		buildDescriber := &BuildDescriber{}
 
 		formatString(out, "Git Commit", p.Revision.Git.Commit)
@@ -291,6 +281,9 @@ func describeDockerStrategy(s *buildapi.DockerBuildStrategy, out *tabwriter.Writ
 		} else {
 			formatString(out, "From Image", fmt.Sprintf("%s %s", s.From.Kind, s.From.Name))
 		}
+	}
+	if len(s.DockerfilePath) != 0 {
+		formatString(out, "Dockerfile Path", s.DockerfilePath)
 	}
 	if s.PullSecret != nil {
 		formatString(out, "Pull Secret Name", s.PullSecret.Name)
@@ -377,10 +370,11 @@ func (d *BuildConfigDescriber) Describe(namespace, name string) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	buildList, err := d.Builds(namespace).List(labels.SelectorFromSet(labels.Set{buildapi.DeprecatedBuildConfigLabel: name}), fields.Everything())
+	buildList, err := d.Builds(namespace).List(labels.Everything(), fields.Everything())
 	if err != nil {
 		return "", err
 	}
+	buildList.Items = buildapi.FilterBuilds(buildList.Items, buildapi.ByBuildConfigLabelPredicate(name))
 
 	return tabbedString(func(out *tabwriter.Writer) error {
 		formatMeta(out, buildConfig.ObjectMeta)
@@ -980,7 +974,7 @@ func DescribePolicy(policy *authorizationapi.Policy) (string, error) {
 	})
 }
 
-const policyRuleHeadings = "Verbs\tResources\tResource Names\tNon-Resource URLs\tExtension"
+const policyRuleHeadings = "Verbs\tNon-Resource URLs\tExtension\tResource Names\tAPI Groups\tResources"
 
 func describePolicyRule(out *tabwriter.Writer, rule authorizationapi.PolicyRule, indent string) {
 	extensionString := ""
@@ -994,12 +988,14 @@ func describePolicyRule(out *tabwriter.Writer, rule authorizationapi.PolicyRule,
 		}
 	}
 
-	fmt.Fprintf(out, indent+"%v\t%v\t%v\t%v\t%v\n",
+	fmt.Fprintf(out, indent+"%v\t%v\t%v\t%v\t%v\t%v\n",
 		rule.Verbs.List(),
-		rule.Resources.List(),
-		rule.ResourceNames.List(),
 		rule.NonResourceURLs.List(),
-		extensionString)
+		extensionString,
+		rule.ResourceNames.List(),
+		rule.APIGroups,
+		rule.Resources.List(),
+	)
 }
 
 // RoleDescriber generates information about a Project

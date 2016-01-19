@@ -9,7 +9,9 @@ import (
 
 	kapi "k8s.io/kubernetes/pkg/api"
 	kapierror "k8s.io/kubernetes/pkg/api/errors"
+	kclient "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/util"
+	"k8s.io/kubernetes/pkg/util/wait"
 
 	"github.com/openshift/origin/pkg/cmd/admin/policy"
 
@@ -51,38 +53,35 @@ func (c *MasterConfig) ensureOpenShiftInfraNamespace() {
 		return
 	}
 
-	// Ensure service accounts exist
-	serviceAccounts := []string{
-		c.BuildControllerServiceAccount, c.DeploymentControllerServiceAccount, c.ReplicationControllerServiceAccount,
-		c.JobControllerServiceAccount, c.HPAControllerServiceAccount, c.PersistentVolumeControllerServiceAccount,
-	}
-	for _, serviceAccountName := range serviceAccounts {
-		_, err := c.KubeClient().ServiceAccounts(ns).Create(&kapi.ServiceAccount{ObjectMeta: kapi.ObjectMeta{Name: serviceAccountName}})
-		if err != nil && !kapierror.IsAlreadyExists(err) {
-			glog.Errorf("Error creating service account %s/%s: %v", ns, serviceAccountName, err)
-		}
-	}
-
-	// Ensure service account cluster role bindings exist
-	clusterRolesToSubjects := map[string][]kapi.ObjectReference{
-		bootstrappolicy.BuildControllerRoleName:            {{Namespace: ns, Name: c.BuildControllerServiceAccount, Kind: "ServiceAccount"}},
-		bootstrappolicy.DeploymentControllerRoleName:       {{Namespace: ns, Name: c.DeploymentControllerServiceAccount, Kind: "ServiceAccount"}},
-		bootstrappolicy.ReplicationControllerRoleName:      {{Namespace: ns, Name: c.ReplicationControllerServiceAccount, Kind: "ServiceAccount"}},
-		bootstrappolicy.JobControllerRoleName:              {{Namespace: ns, Name: c.JobControllerServiceAccount, Kind: "ServiceAccount"}},
-		bootstrappolicy.HPAControllerRoleName:              {{Namespace: ns, Name: c.HPAControllerServiceAccount, Kind: "ServiceAccount"}},
-		bootstrappolicy.PersistentVolumeControllerRoleName: {{Namespace: ns, Name: c.PersistentVolumeControllerServiceAccount, Kind: "ServiceAccount"}},
-	}
 	roleAccessor := policy.NewClusterRoleBindingAccessor(c.ServiceAccountRoleBindingClient())
-	for clusterRole, subjects := range clusterRolesToSubjects {
-		addRole := &policy.RoleModificationOptions{
-			RoleName:            clusterRole,
-			RoleBindingAccessor: roleAccessor,
-			Subjects:            subjects,
+	for _, saName := range bootstrappolicy.InfraSAs.GetServiceAccounts() {
+		_, err := c.KubeClient().ServiceAccounts(ns).Create(&kapi.ServiceAccount{ObjectMeta: kapi.ObjectMeta{Name: saName}})
+		if err != nil && !kapierror.IsAlreadyExists(err) {
+			glog.Errorf("Error creating service account %s/%s: %v", ns, saName, err)
 		}
-		if err := addRole.AddRole(); err != nil {
-			glog.Errorf("Could not add %v subjects to the %v cluster role: %v\n", subjects, clusterRole, err)
+
+		role, _ := bootstrappolicy.InfraSAs.RoleFor(saName)
+
+		reconcileRole := &policy.ReconcileClusterRolesOptions{
+			RolesToReconcile: []string{role.Name},
+			Confirmed:        true,
+			Union:            true,
+			Out:              ioutil.Discard,
+			RoleClient:       c.PrivilegedLoopbackOpenShiftClient.ClusterRoles(),
+		}
+		if err := reconcileRole.RunReconcileClusterRoles(nil, nil); err != nil {
+			glog.Errorf("Could not reconcile %v: %v\n", role.Name, err)
+		}
+
+		addRole := &policy.RoleModificationOptions{
+			RoleName:            role.Name,
+			RoleBindingAccessor: roleAccessor,
+			Subjects:            []kapi.ObjectReference{{Namespace: ns, Name: saName, Kind: "ServiceAccount"}},
+		}
+		if err := kclient.RetryOnConflict(kclient.DefaultRetry, func() error { return addRole.AddRole() }); err != nil {
+			glog.Errorf("Could not add %v service accounts to the %v cluster role: %v\n", saName, role.Name, err)
 		} else {
-			glog.V(2).Infof("Added %v subjects to the %v cluster role: %v\n", subjects, clusterRole, err)
+			glog.V(2).Infof("Added %v service accounts to the %v cluster role: %v\n", saName, role.Name, err)
 		}
 	}
 
@@ -131,7 +130,7 @@ func (c *MasterConfig) ensureNamespaceServiceAccountRoleBindings(namespace *kapi
 			RoleBindingAccessor: policy.NewLocalRoleBindingAccessor(namespace.Name, c.ServiceAccountRoleBindingClient()),
 			Subjects:            binding.Subjects,
 		}
-		if err := addRole.AddRole(); err != nil {
+		if err := kclient.RetryOnConflict(kclient.DefaultRetry, func() error { return addRole.AddRole() }); err != nil {
 			glog.Errorf("Could not add service accounts to the %v role in the %q namespace: %v\n", binding.RoleRef.Name, namespace.Name, err)
 			hasErrors = true
 		}
@@ -146,7 +145,8 @@ func (c *MasterConfig) ensureNamespaceServiceAccountRoleBindings(namespace *kapi
 		namespace.Annotations = map[string]string{}
 	}
 	namespace.Annotations[ServiceAccountRolesInitializedAnnotation] = "true"
-	if _, err := c.KubeClient().Namespaces().Update(namespace); err != nil {
+	// Log any error other than a conflict (the update will be retried and recorded again on next startup in that case)
+	if _, err := c.KubeClient().Namespaces().Update(namespace); err != nil && !kapierror.IsConflict(err) {
 		glog.Errorf("Error recording adding service account roles to %q namespace: %v", namespace.Name, err)
 	}
 }
@@ -183,6 +183,23 @@ func (c *MasterConfig) ensureComponentAuthorizationRules() {
 	} else {
 		glog.V(2).Infof("Ignoring bootstrap policy file because cluster policy found")
 	}
+
+	// Wait until the policy cache has caught up before continuing
+	review := &authorizationapi.SubjectAccessReview{Action: authorizationapi.AuthorizationAttributes{Verb: "get", Resource: "clusterpolicies"}}
+	err := wait.PollImmediate(100*time.Millisecond, 30*time.Second, func() (done bool, err error) {
+		result, err := c.PolicyClient().SubjectAccessReviews().Create(review)
+		if err == nil && result.Allowed {
+			return true, nil
+		}
+		if kapierror.IsForbidden(err) || (err == nil && !result.Allowed) {
+			glog.V(2).Infof("waiting for policy cache to initialize")
+			return false, nil
+		}
+		return false, err
+	})
+	if err != nil {
+		glog.Errorf("error waiting for policy cache to initialize: %v", err)
+	}
 }
 
 // ensureCORSAllowedOrigins takes a string list of origins and attempts to covert them to CORS origin
@@ -191,7 +208,7 @@ func (c *MasterConfig) ensureCORSAllowedOrigins() []*regexp.Regexp {
 	if len(c.Options.CORSAllowedOrigins) == 0 {
 		return []*regexp.Regexp{}
 	}
-	allowedOriginRegexps, err := util.CompileRegexps(util.StringList(c.Options.CORSAllowedOrigins))
+	allowedOriginRegexps, err := util.CompileRegexps(c.Options.CORSAllowedOrigins)
 	if err != nil {
 		glog.Fatalf("Invalid --cors-allowed-origins: %v", err)
 	}

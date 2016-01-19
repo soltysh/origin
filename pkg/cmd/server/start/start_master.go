@@ -19,7 +19,6 @@ import (
 	"k8s.io/kubernetes/pkg/capabilities"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	kubelettypes "k8s.io/kubernetes/pkg/kubelet/types"
-	"k8s.io/kubernetes/pkg/util/sets"
 
 	"github.com/openshift/origin/pkg/cmd/server/admin"
 	configapi "github.com/openshift/origin/pkg/cmd/server/api"
@@ -169,14 +168,6 @@ func (o *MasterOptions) Complete() error {
 	if !o.MasterArgs.ConfigDir.Provided() {
 		o.MasterArgs.ConfigDir.Default("openshift.local.config/master")
 	}
-
-	nodeList := sets.NewString()
-	// take everything toLower
-	for _, s := range o.MasterArgs.NodeList {
-		nodeList.Insert(strings.ToLower(s))
-	}
-
-	o.MasterArgs.NodeList = nodeList.List()
 
 	return nil
 }
@@ -384,7 +375,8 @@ func (m *Master) Start() error {
 		return err
 	}
 
-	if m.api {
+	switch {
+	case m.api:
 		glog.Infof("Starting master on %s (%s)", m.config.ServingInfo.BindAddress, version.Get().String())
 		glog.Infof("Public master address is %s", m.config.AssetConfig.MasterPublicURL)
 		if len(m.config.DisabledFeatures) > 0 {
@@ -395,18 +387,8 @@ func (m *Master) Start() error {
 		if err := startAPI(openshiftConfig, kubeMasterConfig); err != nil {
 			return err
 		}
-		if m.controllers {
-			// run controllers asynchronously (not required to be "ready")
-			go func() {
-				if err := startControllers(openshiftConfig, kubeMasterConfig); err != nil {
-					glog.Fatal(err)
-				}
-			}()
-		}
-		return nil
-	}
 
-	if m.controllers {
+	case m.controllers:
 		glog.Infof("Starting controllers on %s (%s)", m.config.ServingInfo.BindAddress, version.Get().String())
 		if len(m.config.DisabledFeatures) > 0 {
 			glog.V(4).Infof("Disabled features: %s", strings.Join(m.config.DisabledFeatures, ", "))
@@ -416,9 +398,15 @@ func (m *Master) Start() error {
 		if err := startHealth(openshiftConfig); err != nil {
 			return err
 		}
-		if err := startControllers(openshiftConfig, kubeMasterConfig); err != nil {
-			return err
-		}
+	}
+
+	if m.controllers {
+		// run controllers asynchronously (not required to be "ready")
+		go func() {
+			if err := startControllers(openshiftConfig, kubeMasterConfig); err != nil {
+				glog.Fatal(err)
+			}
+		}()
 	}
 
 	return nil
@@ -526,22 +514,32 @@ func startControllers(oc *origin.MasterConfig, kc *kubernetes.MasterConfig) erro
 	oc.RunSecurityAllocationController()
 
 	if kc != nil {
-		_, rcClient, err := oc.GetServiceAccountClients(oc.ReplicationControllerServiceAccount)
+		_, rcClient, err := oc.GetServiceAccountClients(bootstrappolicy.InfraReplicationControllerServiceAccountName)
 		if err != nil {
 			glog.Fatalf("Could not get client for replication controller: %v", err)
 		}
-		_, jobClient, err := oc.GetServiceAccountClients(oc.JobControllerServiceAccount)
+		_, jobClient, err := oc.GetServiceAccountClients(bootstrappolicy.InfraJobControllerServiceAccountName)
 		if err != nil {
 			glog.Fatalf("Could not get client for job controller: %v", err)
 		}
-		hpaOClient, hpaKClient, err := oc.GetServiceAccountClients(oc.HPAControllerServiceAccount)
+		hpaOClient, hpaKClient, err := oc.GetServiceAccountClients(bootstrappolicy.InfraHPAControllerServiceAccountName)
 		if err != nil {
 			glog.Fatalf("Could not get client for HPA controller: %v", err)
 		}
 
-		_, pvKClient, err := oc.GetServiceAccountClients(oc.PersistentVolumeControllerServiceAccount)
+		_, recyclerClient, err := oc.GetServiceAccountClients(bootstrappolicy.InfraPersistentVolumeRecyclerControllerServiceAccountName)
 		if err != nil {
-			glog.Fatalf("Could not get client for persistent volume controller: %v", err)
+			glog.Fatalf("Could not get client for persistent volume recycler controller: %v", err)
+		}
+
+		_, binderClient, err := oc.GetServiceAccountClients(bootstrappolicy.InfraPersistentVolumeBinderControllerServiceAccountName)
+		if err != nil {
+			glog.Fatalf("Could not get client for persistent volume binder controller: %v", err)
+		}
+
+		_, provisionerClient, err := oc.GetServiceAccountClients(bootstrappolicy.InfraPersistentVolumeProvisionerControllerServiceAccountName)
+		if err != nil {
+			glog.Fatalf("Could not get client for persistent volume provisioner controller: %v", err)
 		}
 
 		// called by admission control
@@ -557,8 +555,9 @@ func startControllers(oc *origin.MasterConfig, kc *kubernetes.MasterConfig) erro
 		}
 		kc.RunEndpointController()
 		kc.RunNamespaceController()
-		kc.RunPersistentVolumeClaimBinder()
-		kc.RunPersistentVolumeClaimRecycler(oc.ImageFor("recycler"), pvKClient)
+		kc.RunPersistentVolumeClaimBinder(binderClient)
+		kc.RunPersistentVolumeProvisioner(provisionerClient)
+		kc.RunPersistentVolumeClaimRecycler(oc.ImageFor("recycler"), recyclerClient)
 
 		glog.Infof("Started Kubernetes Controllers")
 	}

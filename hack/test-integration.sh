@@ -8,6 +8,7 @@ STARTTIME=$(date +%s)
 OS_ROOT=$(dirname "${BASH_SOURCE}")/..
 source "${OS_ROOT}/hack/common.sh"
 source "${OS_ROOT}/hack/util.sh"
+source "${OS_ROOT}/hack/text.sh"
 os::log::install_errexit
 
 # Go to the top of the tree.
@@ -53,8 +54,8 @@ package="${OS_TEST_PACKAGE:-test/integration}"
 tags="${OS_TEST_TAGS:-integration !docker etcd}"
 
 export GOMAXPROCS="$(grep "processor" -c /proc/cpuinfo 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || 1)"
-TMPDIR=${TMPDIR:-/tmp}
-export BASETMPDIR=${BASETMPDIR:-${TMPDIR}/openshift-integration}
+TMPDIR="${TMPDIR:-"/tmp"}"
+export BASETMPDIR="${BASETMPDIR:-${TMPDIR}/openshift-integration}"
 rm -rf ${BASETMPDIR} | true
 mkdir -p ${BASETMPDIR}
 
@@ -108,18 +109,13 @@ function exectest() {
 		result=$?
 	fi
 
-	tput cuu 1 # Move up one line
-	tput el		# Clear "running" line
+	os::text::clear_last_line
 
 	if [[ ${result} -eq 0 ]]; then
-		tput setaf 2 # green
-		echo "ok      $1"
-		tput sgr0		# reset
+		os::text::print_green "ok      $1"
 		exit 0
 	else
-		tput setaf 1 # red
-		echo "failed  $1"
-		tput sgr0		# reset
+		os::text::print_red "failed  $1"
 		echo "${out}"
 		exit 1
 	fi
@@ -129,6 +125,8 @@ export -f exectest
 export testexec
 export childargs
 
+loop="${TIMES:-1}"
+pushd "./${package}" &>/dev/null
 # $1 is passed to grep -E to filter the list of tests; this may be the name of a single test,
 # a fragment of a test name, or a regular expression.
 #
@@ -137,12 +135,16 @@ export childargs
 # hack/test-integration.sh WatchBuilds
 # hack/test-integration.sh Template*
 # hack/test-integration.sh "(WatchBuilds|Template)"
-
+tests=( $(go run "${OS_ROOT}/hack/listtests.go" -prefix="${OS_GO_PACKAGE}/${package}.Test" "${testdir}" | grep -E "${1-Test}") )
 # run each test as its own process
-pushd "./${package}" &>/dev/null
-time go run "${OS_ROOT}/hack/listtests.go" -prefix="${OS_GO_PACKAGE}/${package}.Test" "${testdir}" \
-	| grep --color=never -E "${1-Test}" \
-	| xargs -I {} -n 1 bash -c "exectest {} ${@:2}" # "${testexec}" -test.run="^{}$" "${@:2}"
+ret=0
+for test in "${tests[@]}"; do
+	for((i=0;i<${loop};i+=1)); do
+		if ! (exectest "${test}" ${@:2}); then 
+			ret=1
+		fi
+	done
+done
 popd &>/dev/null
 
-ret=$?; ENDTIME=$(date +%s); echo "$0 took $(($ENDTIME - $STARTTIME)) seconds"; exit "$ret"
+ENDTIME=$(date +%s); echo "$0 took $(($ENDTIME - $STARTTIME)) seconds"; exit "$ret"

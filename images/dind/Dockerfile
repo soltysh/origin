@@ -6,23 +6,38 @@
 
 FROM fedora:21
 
-RUN yum -y update && yum -y install supervisor git golang hg tar make \
-  hostname bind-utils iproute iputils which procps-ng \
+## Configure systemd to run in a container
+ENV container=docker
+
+RUN systemctl mask systemd-remount-fs.service dev-hugepages.mount \
+  sys-fs-fuse-connections.mount systemd-logind.service getty.target \
+  console-getty.service dnf-makecache.service lvm2-lvmetad.service \
+  systemd-udevd.service systemd-udev-hwdb-update.service \
+  systemd-udev-trigger.service docker-storage-setup.service
+RUN cp /usr/lib/systemd/system/dbus.service /etc/systemd/system/; \
+  sed -i 's/OOMScoreAdjust=-900//' /etc/systemd/system/dbus.service
+
+VOLUME ["/run", "/tmp"]
+
+## Install packages
+RUN yum -y update && yum -y install git golang hg tar make \
+  hostname bind-utils iproute iputils which procps-ng openssh-server \
   # Node-specific packages
   docker openvswitch bridge-utils ethtool \
   && yum clean all
 
-ENV DIND_COMMIT 4e899d64e020a67ca05f913d354aa8d99a341a7b
+# sshd should be enabled as needed
+RUN systemctl disable sshd.service
+
+## Configure dind
+ENV DIND_COMMIT 81aa1b507f51901eafcfaad70a656da376cf937d
 RUN curl -fL "https://raw.githubusercontent.com/docker/docker/${DIND_COMMIT}/hack/dind" \
   -o /usr/local/bin/dind && chmod +x /usr/local/bin/dind
+RUN mkdir -p /etc/systemd/system/docker.service.d
+COPY dind.conf /etc/systemd/system/docker.service.d/
 
-# Use a bash script to work around supervisord's inability to allow
-# arbitrary environment variables in command strings.
-ADD wrapdind /usr/local/bin/wrapdind
-RUN chmod +x /usr/local/bin/wrapdind
+RUN systemctl enable docker
 
 VOLUME /var/lib/docker
 
-ADD supervisord.conf /etc/supervisord.conf
-
-CMD [ "/usr/bin/supervisord" ]
+CMD ["/usr/sbin/init"]

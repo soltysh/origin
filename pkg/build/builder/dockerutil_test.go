@@ -13,7 +13,7 @@ type FakeDocker struct {
 }
 
 func (d *FakeDocker) BuildImage(opts docker.BuildImageOptions) error {
-	if d.pushImageFunc != nil {
+	if d.buildImageFunc != nil {
 		return d.buildImageFunc(opts)
 	}
 	return nil
@@ -30,6 +30,20 @@ func (d *FakeDocker) RemoveImage(name string) error {
 	if d.removeImageFunc != nil {
 		return d.removeImageFunc(name)
 	}
+	return nil
+}
+
+func (d *FakeDocker) CreateContainer(opts docker.CreateContainerOptions) (*docker.Container, error) {
+	return nil, nil
+}
+
+func (d *FakeDocker) DownloadFromContainer(id string, opts docker.DownloadFromContainerOptions) error {
+	return nil
+}
+func (d *FakeDocker) PullImage(opts docker.PullImageOptions, auth docker.AuthConfiguration) error {
+	return nil
+}
+func (d *FakeDocker) RemoveContainer(opts docker.RemoveContainerOptions) error {
 	return nil
 }
 

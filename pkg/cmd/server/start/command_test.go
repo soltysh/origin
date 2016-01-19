@@ -7,7 +7,9 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -164,39 +166,14 @@ func TestCommandBindingEtcdDir(t *testing.T) {
 	}
 }
 
-// explicit start master never modifies the NodeList
-func TestCommandBindingNodesForMaster(t *testing.T) {
-	valueToSet := "first,second,third"
-	actualCfg := executeMasterCommand([]string{"master", "--nodes=" + valueToSet})
-
-	expectedArgs := NewDefaultMasterArgs()
-	expectedArgs.NodeList.Set(valueToSet)
-
-	if expectedArgs.NodeList.String() != actualCfg.NodeList.String() {
-		t.Errorf("expected %v, got %v", expectedArgs.NodeList, actualCfg.NodeList)
-	}
-}
-
-// explicit start master never modifies the NodeList
-func TestCommandBindingNodesDefaultingMaster(t *testing.T) {
-	actualCfg := executeMasterCommand([]string{"master"})
-
-	expectedArgs := NewDefaultMasterArgs()
-	expectedArgs.NodeList.Set("")
-
-	if expectedArgs.NodeList.String() != actualCfg.NodeList.String() {
-		t.Errorf("expected %v, got %v", expectedArgs.NodeList, actualCfg.NodeList)
-	}
-}
-
 func TestCommandBindingCors(t *testing.T) {
 	valueToSet := "first,second,third"
 	actualCfg := executeMasterCommand([]string{"--cors-allowed-origins=" + valueToSet})
 
 	expectedArgs := NewDefaultMasterArgs()
-	expectedArgs.CORSAllowedOrigins.Set(valueToSet)
+	expectedArgs.CORSAllowedOrigins = append(expectedArgs.CORSAllowedOrigins, strings.Split(valueToSet, ",")...)
 
-	if expectedArgs.CORSAllowedOrigins.String() != actualCfg.CORSAllowedOrigins.String() {
+	if !reflect.DeepEqual(expectedArgs.CORSAllowedOrigins, actualCfg.CORSAllowedOrigins) {
 		t.Errorf("expected %v, got %v", expectedArgs.CORSAllowedOrigins, actualCfg.CORSAllowedOrigins)
 	}
 }

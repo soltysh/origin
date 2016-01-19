@@ -13,10 +13,11 @@ import (
 
 const (
 	// dockerSocketPath is the default path for the Docker socket inside the builder container
-	dockerSocketPath          = "/var/run/docker.sock"
-	DockerPushSecretMountPath = "/var/run/secrets/openshift.io/push"
-	DockerPullSecretMountPath = "/var/run/secrets/openshift.io/pull"
-	sourceSecretMountPath     = "/var/run/secrets/openshift.io/source"
+	dockerSocketPath               = "/var/run/docker.sock"
+	DockerPushSecretMountPath      = "/var/run/secrets/openshift.io/push"
+	DockerPullSecretMountPath      = "/var/run/secrets/openshift.io/pull"
+	SourceImagePullSecretMountPath = "/var/run/secrets/openshift.io/source-image"
+	sourceSecretMountPath          = "/var/run/secrets/openshift.io/source"
 )
 
 var whitelistEnvVarNames = []string{"BUILD_LOGLEVEL"}
@@ -49,8 +50,8 @@ func setupDockerSocket(podSpec *kapi.Pod) {
 func setupBuildEnv(build *buildapi.Build, pod *kapi.Pod) error {
 	vars := []kapi.EnvVar{}
 
-	switch build.Spec.Source.Type {
-	case buildapi.BuildSourceGit:
+	switch {
+	case build.Spec.Source.Git != nil:
 		vars = append(vars, kapi.EnvVar{Name: "SOURCE_URI", Value: build.Spec.Source.Git.URI})
 		vars = append(vars, kapi.EnvVar{Name: "SOURCE_REF", Value: build.Spec.Source.Git.Ref})
 	default:
@@ -97,13 +98,13 @@ func mountSecretVolume(pod *kapi.Pod, secretName, mountPath, volumePrefix string
 
 // setupDockerSecrets mounts Docker Registry secrets into Pod running the build,
 // allowing Docker to authenticate against private registries or Docker Hub.
-func setupDockerSecrets(pod *kapi.Pod, pushSecret, pullSecret *kapi.LocalObjectReference) {
+func setupDockerSecrets(pod *kapi.Pod, pushSecret, pullSecret, sourceImageSecret *kapi.LocalObjectReference) {
 	if pushSecret != nil {
 		mountSecretVolume(pod, pushSecret.Name, DockerPushSecretMountPath, "push")
 		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, []kapi.EnvVar{
 			{Name: "PUSH_DOCKERCFG_PATH", Value: filepath.Join(DockerPushSecretMountPath, kapi.DockerConfigKey)},
 		}...)
-		glog.V(3).Infof("%s be used for docker push in %s", DockerPullSecretMountPath, pod.Name)
+		glog.V(3).Infof("%s will be used for docker push in %s", DockerPullSecretMountPath, pod.Name)
 	}
 
 	if pullSecret != nil {
@@ -111,7 +112,16 @@ func setupDockerSecrets(pod *kapi.Pod, pushSecret, pullSecret *kapi.LocalObjectR
 		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, []kapi.EnvVar{
 			{Name: "PULL_DOCKERCFG_PATH", Value: filepath.Join(DockerPullSecretMountPath, kapi.DockerConfigKey)},
 		}...)
-		glog.V(3).Infof("%s be used for docker pull in %s", DockerPullSecretMountPath, pod.Name)
+		glog.V(3).Infof("%s will be used for docker pull in %s", DockerPullSecretMountPath, pod.Name)
+	}
+
+	if sourceImageSecret != nil {
+		mountSecretVolume(pod, sourceImageSecret.Name, SourceImagePullSecretMountPath, "source-image")
+		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, []kapi.EnvVar{
+			{Name: "PULL_SOURCE_DOCKERCFG_PATH", Value: filepath.Join(SourceImagePullSecretMountPath, kapi.DockerConfigKey)},
+		}...)
+		glog.V(3).Infof("%s will be used for docker pull in %s", SourceImagePullSecretMountPath, pod.Name)
+
 	}
 }
 

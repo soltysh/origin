@@ -36,6 +36,10 @@ type DeploymentStrategy struct {
 	RollingParams *RollingDeploymentStrategyParams `json:"rollingParams,omitempty" description:"input to the Rolling deployment strategy"`
 	// Compute resource requirements to execute the deployment
 	Resources kapi.ResourceRequirements `json:"resources,omitempty" description:"resource requirements to execute the deployment"`
+	// Labels is a set of key, value pairs added to custom deployer and lifecycle pre/post hook pods.
+	Labels map[string]string `json:"labels,omitempty" description:"labels for deployer and hook pods"`
+	// Annotations is a set of key, value pairs added to custom deployer and lifecycle pre/post hook pods.
+	Annotations map[string]string `json:"annotations,omitempty" description:"annotations for deployer and hook pods"`
 }
 
 // DeploymentStrategyType refers to a specific DeploymentStrategy implementation.
@@ -300,11 +304,10 @@ type DeploymentTriggerImageChangeParams struct {
 	Automatic bool `json:"automatic,omitempty" description:"whether detection of a new tag value should trigger a deployment"`
 	// ContainerNames is used to restrict tag updates to the specified set of container names in a pod.
 	ContainerNames []string `json:"containerNames,omitempty" description:"restricts tag updates to a set of container names in the pod"`
-	// From is a reference to a Docker image repository tag to watch for changes. The
-	// Kind may be left blank, in which case it defaults to "ImageStreamTag". The "Name" is
-	// the only required subfield - if Namespace is blank, the namespace of the current deployment
+	// From is a reference to an image stream tag to watch for changes. From.Name is the only
+	// required subfield - if From.Namespace is blank, the namespace of the current deployment
 	// trigger will be used.
-	From kapi.ObjectReference `json:"from" description:"a reference to an ImageRepository, ImageStream, or ImageStreamTag to watch for changes"`
+	From kapi.ObjectReference `json:"from" description:"a reference to an ImageStreamTag to watch for changes"`
 	// LastTriggeredImage is the last image to be triggered.
 	LastTriggeredImage string `json:"lastTriggeredImage" description:"the last image to be triggered"`
 }

@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"net/url"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/docker/docker/builder/parser"
@@ -13,11 +12,7 @@ import (
 	"github.com/openshift/origin/pkg/generate/dockerfile"
 	"github.com/openshift/origin/pkg/generate/git"
 	"github.com/openshift/origin/pkg/generate/source"
-)
-
-var (
-	argumentGit         = regexp.MustCompile("^(http://|https://|git@|git://).*(?:#([a-zA-Z0-9]*))?$")
-	argumentGitProtocol = regexp.MustCompile("^(git@|git://)")
+	s2igit "github.com/openshift/source-to-image/pkg/scm/git"
 )
 
 type Dockerfile interface {
@@ -67,7 +62,19 @@ func IsPossibleSourceRepository(s string) bool {
 
 // IsRemoteRepository checks whether the provided string is a remote repository or not
 func IsRemoteRepository(s string) bool {
-	return argumentGit.MatchString(s) || argumentGitProtocol.MatchString(s)
+	if !s2igit.New().ValidCloneSpecRemoteOnly(s) {
+		return false
+	}
+	url, err := url.Parse(s)
+	if err != nil {
+		return false
+	}
+	url.Fragment = ""
+	gitRepo := git.NewRepository()
+	if _, _, err := gitRepo.ListRemote(url.String()); err != nil {
+		return false
+	}
+	return true
 }
 
 // SourceRepository represents a code repository that may be the target of a build.
@@ -83,6 +90,8 @@ type SourceRepository struct {
 	buildWithDocker  bool
 	ignoreRepository bool
 	binary           bool
+
+	forceAddDockerfile bool
 }
 
 // NewSourceRepository creates a reference to a local or remote source code repository from
@@ -102,17 +111,11 @@ func NewSourceRepository(s string) (*SourceRepository, error) {
 // NewSourceRepositoryForDockerfile creates a source repository that is set up to use
 // the contents of a Dockerfile as the input of the build.
 func NewSourceRepositoryForDockerfile(contents string) (*SourceRepository, error) {
-	dockerfile, err := NewDockerfile(contents)
-	if err != nil {
-		return nil, err
-	}
-	return &SourceRepository{
-		buildWithDocker:  true,
+	s := &SourceRepository{
 		ignoreRepository: true,
-		info: &SourceRepositoryInfo{
-			Dockerfile: dockerfile,
-		},
-	}, nil
+	}
+	err := s.AddDockerfile(contents)
+	return s, err
 }
 
 // NewBinarySourceRepository creates a source repository that is configured for binary
@@ -155,7 +158,7 @@ func (r *SourceRepository) String() string {
 
 // Detect clones source locally if not already local and runs code detection
 // with the given detector.
-func (r *SourceRepository) Detect(d Detector) error {
+func (r *SourceRepository) Detect(d Detector, dockerStrategy bool) error {
 	if r.info != nil {
 		return nil
 	}
@@ -163,7 +166,7 @@ func (r *SourceRepository) Detect(d Detector) error {
 	if err != nil {
 		return err
 	}
-	r.info, err = d.Detect(path)
+	r.info, err = d.Detect(path, dockerStrategy)
 	if err != nil {
 		return err
 	}
@@ -245,6 +248,23 @@ func (r *SourceRepository) ContextDir() string {
 	return r.contextDir
 }
 
+// AddDockerfile adds the Dockerfile contents to the SourceRepository and
+// configure it to build with Docker strategy. Returns an error if the contents
+// are invalid.
+func (r *SourceRepository) AddDockerfile(contents string) error {
+	dockerfile, err := NewDockerfile(contents)
+	if err != nil {
+		return err
+	}
+	if r.info == nil {
+		r.info = &SourceRepositoryInfo{}
+	}
+	r.info.Dockerfile = dockerfile
+	r.buildWithDocker = true
+	r.forceAddDockerfile = true
+	return nil
+}
+
 // SourceRepositories is a list of SourceRepository objects
 type SourceRepositories []*SourceRepository
 
@@ -303,7 +323,7 @@ func (t *SourceLanguageType) Term() string {
 // Detector is an interface for detecting information about a
 // source repository
 type Detector interface {
-	Detect(dir string) (*SourceRepositoryInfo, error)
+	Detect(dir string, dockerStrategy bool) (*SourceRepositoryInfo, error)
 }
 
 // SourceRepositoryEnumerator implements the Detector interface
@@ -317,16 +337,21 @@ type SourceRepositoryEnumerator struct {
 var ErrNoLanguageDetected = fmt.Errorf("No language matched the source repository")
 
 // Detect extracts source code information about the provided source repository
-func (e SourceRepositoryEnumerator) Detect(dir string) (*SourceRepositoryInfo, error) {
+func (e SourceRepositoryEnumerator) Detect(dir string, dockerStrategy bool) (*SourceRepositoryInfo, error) {
 	info := &SourceRepositoryInfo{
 		Path: dir,
 	}
-	for _, d := range e.Detectors {
-		if detected, ok := d(dir); ok {
-			info.Types = append(info.Types, SourceLanguageType{
-				Platform: detected.Platform,
-				Version:  detected.Version,
-			})
+
+	// no point in doing source-type detection if the requested build strategy
+	// is docker
+	if !dockerStrategy {
+		for _, d := range e.Detectors {
+			if detected, ok := d(dir); ok {
+				info.Types = append(info.Types, SourceLanguageType{
+					Platform: detected.Platform,
+					Version:  detected.Version,
+				})
+			}
 		}
 	}
 	if path, ok, err := e.Tester.Has(dir); err == nil && ok {
@@ -336,6 +361,7 @@ func (e SourceRepositoryEnumerator) Detect(dir string) (*SourceRepositoryInfo, e
 		}
 		info.Dockerfile = dockerfile
 	}
+
 	if info.Dockerfile == nil && len(info.Types) == 0 {
 		return nil, ErrNoLanguageDetected
 	}
@@ -347,10 +373,6 @@ func (e SourceRepositoryEnumerator) Detect(dir string) (*SourceRepositoryInfo, e
 // TODO: user should be able to choose whether to download a remote source ref for
 // more info
 func StrategyAndSourceForRepository(repo *SourceRepository, image *ImageRef) (*BuildStrategyRef, *SourceRef, error) {
-	if image == nil {
-		return nil, nil, fmt.Errorf("an image ref is required to generate a strategy and sourceref")
-	}
-
 	strategy := &BuildStrategyRef{
 		Base:          image,
 		IsDockerBuild: repo.IsDockerBuild(),
@@ -359,7 +381,7 @@ func StrategyAndSourceForRepository(repo *SourceRepository, image *ImageRef) (*B
 		Binary: repo.binary,
 	}
 
-	if repo.ignoreRepository && repo.Info() != nil && repo.Info().Dockerfile != nil {
+	if (repo.ignoreRepository || repo.forceAddDockerfile) && repo.Info() != nil && repo.Info().Dockerfile != nil {
 		source.DockerfileContents = repo.Info().Dockerfile.Contents()
 	}
 	if !repo.ignoreRepository {

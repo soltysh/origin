@@ -31,6 +31,9 @@ func ValidateBuildUpdate(build *buildapi.Build, older *buildapi.Build) fielderro
 
 	allErrs = append(allErrs, ValidateBuild(build)...)
 
+	if buildutil.IsBuildComplete(older) && older.Status.Phase != build.Status.Phase {
+		allErrs = append(allErrs, fielderrors.NewFieldInvalid("status.Phase", build.Status.Phase, "phase cannot be updated from a terminal state"))
+	}
 	if !kapi.Semantic.DeepEqual(build.Spec, older.Spec) {
 		allErrs = append(allErrs, fielderrors.NewFieldInvalid("spec", "content of spec is not printed out, please refer to the \"details\"", "spec is immutable"))
 	}
@@ -79,7 +82,7 @@ func ValidateBuildConfig(config *buildapi.BuildConfig) fielderrors.ValidationErr
 
 	// validate ImageChangeTriggers of DockerStrategy builds
 	strategy := config.Spec.BuildSpec.Strategy
-	if strategy.Type == buildapi.DockerBuildStrategyType && strategy.DockerStrategy.From == nil {
+	if strategy.DockerStrategy != nil && strategy.DockerStrategy.From == nil {
 		for _, trigger := range config.Spec.Triggers {
 			if trigger.Type == buildapi.ImageChangeBuildTriggerType && (trigger.ImageChange == nil || trigger.ImageChange.From == nil) {
 				allErrs = append(allErrs, fielderrors.NewFieldRequired("imageChange.from"))
@@ -103,30 +106,19 @@ func ValidateBuildRequest(request *buildapi.BuildRequest) fielderrors.Validation
 	allErrs := fielderrors.ValidationErrorList{}
 	allErrs = append(allErrs, validation.ValidateObjectMeta(&request.ObjectMeta, true, oapi.MinimalNameRequirements).Prefix("metadata")...)
 
-	if request.Revision != nil {
-		allErrs = append(allErrs, validateRevision(request.Revision).Prefix("revision")...)
-	}
 	return allErrs
 }
 
 func validateBuildSpec(spec *buildapi.BuildSpec) fielderrors.ValidationErrorList {
 	allErrs := fielderrors.ValidationErrorList{}
-	hasSourceType := len(spec.Source.Type) != 0
-	switch t := spec.Strategy.Type; {
-	// 'source' is optional for Custom builds
-	case t == buildapi.CustomBuildStrategyType && hasSourceType:
-		allErrs = append(allErrs, validateSource(&spec.Source).Prefix("source")...)
-	case t == buildapi.SourceBuildStrategyType:
-		allErrs = append(allErrs, validateSource(&spec.Source).Prefix("source")...)
-		if spec.Source.Type == buildapi.BuildSourceDockerfile {
-			allErrs = append(allErrs, fielderrors.NewFieldInvalid("source.type", nil, "may not be type Dockerfile for source builds"))
-		}
-	case t == buildapi.DockerBuildStrategyType:
-		allErrs = append(allErrs, validateSource(&spec.Source).Prefix("source")...)
+	s := spec.Strategy
+
+	if s.CustomStrategy == nil && spec.Source.Git == nil && spec.Source.Binary == nil && spec.Source.Dockerfile == nil {
+		allErrs = append(allErrs, fielderrors.NewFieldInvalid("source", spec.Source, "must provide a value for at least one of source, binary, or dockerfile"))
 	}
-	if spec.Revision != nil {
-		allErrs = append(allErrs, validateRevision(spec.Revision).Prefix("revision")...)
-	}
+
+	allErrs = append(allErrs, validateSource(&spec.Source, s.CustomStrategy != nil).Prefix("source")...)
+
 	if spec.CompletionDeadlineSeconds != nil {
 		if *spec.CompletionDeadlineSeconds <= 0 {
 			allErrs = append(allErrs, fielderrors.NewFieldInvalid("completionDeadlineSeconds", spec.CompletionDeadlineSeconds, "completionDeadlineSeconds must be a positive integer greater than 0"))
@@ -142,51 +134,34 @@ func validateBuildSpec(spec *buildapi.BuildSpec) fielderrors.ValidationErrorList
 
 const maxDockerfileLengthBytes = 60 * 1000
 
-func validateSource(input *buildapi.BuildSource) fielderrors.ValidationErrorList {
+func hasProxy(source *buildapi.GitBuildSource) bool {
+	return len(source.HTTPProxy) > 0 || len(source.HTTPSProxy) > 0
+}
+
+func validateSource(input *buildapi.BuildSource, isCustomStrategy bool) fielderrors.ValidationErrorList {
 	allErrs := fielderrors.ValidationErrorList{}
-	switch input.Type {
-	case buildapi.BuildSourceGit:
-		if input.Git == nil {
-			allErrs = append(allErrs, fielderrors.NewFieldRequired("git"))
-		} else {
-			allErrs = append(allErrs, validateGitSource(input.Git).Prefix("git")...)
-		}
-		if input.Dockerfile != nil {
-			allErrs = append(allErrs, validateDockerfile(*input.Dockerfile)...)
-		}
-		if input.Binary != nil {
-			allErrs = append(allErrs, fielderrors.NewFieldInvalid("binary", "", "may not be set when type is Git"))
-		}
-	case buildapi.BuildSourceBinary:
-		if input.Binary == nil {
-			allErrs = append(allErrs, fielderrors.NewFieldRequired("binary"))
-		} else {
-			allErrs = append(allErrs, validateBinarySource(input.Binary).Prefix("binary")...)
-		}
-		if input.Dockerfile != nil {
-			allErrs = append(allErrs, validateDockerfile(*input.Dockerfile)...)
-		}
-		if input.Git != nil {
-			allErrs = append(allErrs, fielderrors.NewFieldInvalid("git", "", "may not be set when type is Binary"))
-		}
-	case buildapi.BuildSourceDockerfile:
-		if input.Dockerfile == nil {
-			allErrs = append(allErrs, fielderrors.NewFieldRequired("dockerfile"))
-		} else {
-			allErrs = append(allErrs, validateDockerfile(*input.Dockerfile)...)
-		}
-		switch {
-		case input.Git != nil && input.Binary != nil:
-			allErrs = append(allErrs, fielderrors.NewFieldInvalid("git", "", "may not be set when binary is also set"))
-			allErrs = append(allErrs, fielderrors.NewFieldInvalid("binary", "", "may not be set when git is also set"))
-		case input.Git != nil:
-			allErrs = append(allErrs, validateGitSource(input.Git).Prefix("git")...)
-		case input.Binary != nil:
-			allErrs = append(allErrs, validateBinarySource(input.Binary).Prefix("binary")...)
-		}
-	case "":
-		allErrs = append(allErrs, fielderrors.NewFieldRequired("type"))
+
+	// Ensure that Git and Binary source types are mutually exclusive.
+	if input.Git != nil && input.Binary != nil && !isCustomStrategy {
+		allErrs = append(allErrs, fielderrors.NewFieldInvalid("git", "", "may not be set when binary is also set"))
+		allErrs = append(allErrs, fielderrors.NewFieldInvalid("binary", "", "may not be set when git is also set"))
+		return allErrs
 	}
+
+	// Validate individual source type details
+	if input.Git != nil {
+		allErrs = append(allErrs, validateGitSource(input.Git).Prefix("git")...)
+	}
+	if input.Binary != nil {
+		allErrs = append(allErrs, validateBinarySource(input.Binary).Prefix("binary")...)
+	}
+	if input.Dockerfile != nil {
+		allErrs = append(allErrs, validateDockerfile(*input.Dockerfile)...)
+	}
+	if input.Image != nil {
+		allErrs = append(allErrs, validateImageSource(input.Image).Prefix("image")...)
+	}
+
 	allErrs = append(allErrs, validateSecretRef(input.SourceSecret).Prefix("sourceSecret")...)
 
 	if len(input.ContextDir) != 0 {
@@ -223,6 +198,14 @@ func validateSecretRef(ref *kapi.LocalObjectReference) fielderrors.ValidationErr
 	return allErrs
 }
 
+func isHTTPScheme(in string) bool {
+	u, err := url.Parse(in)
+	if err != nil {
+		return false
+	}
+	return u.Scheme == "http" || u.Scheme == "https"
+}
+
 func validateGitSource(git *buildapi.GitBuildSource) fielderrors.ValidationErrorList {
 	allErrs := fielderrors.ValidationErrorList{}
 	if len(git.URI) == 0 {
@@ -235,6 +218,21 @@ func validateGitSource(git *buildapi.GitBuildSource) fielderrors.ValidationError
 	}
 	if len(git.HTTPSProxy) != 0 && !isValidURL(git.HTTPSProxy) {
 		allErrs = append(allErrs, fielderrors.NewFieldInvalid("httpsproxy", git.HTTPSProxy, "proxy is not a valid url"))
+	}
+	if hasProxy(git) && !isHTTPScheme(git.URI) {
+		allErrs = append(allErrs, fielderrors.NewFieldInvalid("uri", git.URI, "only http:// and https:// GIT protocols are allowed with HTTP or HTTPS proxy set"))
+	}
+	return allErrs
+}
+
+func validateImageSource(imageSource *buildapi.ImageSource) fielderrors.ValidationErrorList {
+	allErrs := fielderrors.ValidationErrorList{}
+	allErrs = append(allErrs, validateFromImageReference(&imageSource.From).Prefix("from")...)
+	if imageSource.PullSecret != nil {
+		allErrs = append(allErrs, validateSecretRef(imageSource.PullSecret).Prefix("pullSecret")...)
+	}
+	if len(imageSource.Paths) == 0 {
+		allErrs = append(allErrs, fielderrors.NewFieldRequired("paths"))
 	}
 	return allErrs
 }
@@ -249,15 +247,6 @@ func validateBinarySource(source *buildapi.BinaryBuildSource) fielderrors.Valida
 			source.AsFile = cleaned
 		}
 	}
-	return allErrs
-}
-
-func validateRevision(revision *buildapi.SourceRevision) fielderrors.ValidationErrorList {
-	allErrs := fielderrors.ValidationErrorList{}
-	if len(revision.Type) == 0 {
-		allErrs = append(allErrs, fielderrors.NewFieldRequired("type"))
-	}
-	// TODO: validate other stuff
 	return allErrs
 }
 
@@ -347,32 +336,28 @@ func validateOutput(output *buildapi.BuildOutput) fielderrors.ValidationErrorLis
 func validateStrategy(strategy *buildapi.BuildStrategy) fielderrors.ValidationErrorList {
 	allErrs := fielderrors.ValidationErrorList{}
 
-	switch {
-	case len(strategy.Type) == 0:
-		allErrs = append(allErrs, fielderrors.NewFieldRequired("type"))
+	strategyCount := 0
+	if strategy.SourceStrategy != nil {
+		strategyCount++
+	}
+	if strategy.DockerStrategy != nil {
+		strategyCount++
+	}
+	if strategy.CustomStrategy != nil {
+		strategyCount++
+	}
+	if strategyCount != 1 {
+		return append(allErrs, fielderrors.NewFieldInvalid("", strategy, "must provide a value for exactly one of sourceStrategy, customStrategy, or dockerStrategy"))
+	}
 
-	case strategy.Type == buildapi.SourceBuildStrategyType:
-		if strategy.SourceStrategy == nil {
-			allErrs = append(allErrs, fielderrors.NewFieldRequired("stiStrategy"))
-		} else {
-			allErrs = append(allErrs, validateSourceStrategy(strategy.SourceStrategy).Prefix("stiStrategy")...)
-		}
-
-	case strategy.Type == buildapi.DockerBuildStrategyType:
-		if strategy.DockerStrategy == nil {
-			allErrs = append(allErrs, fielderrors.NewFieldRequired("dockerStrategy"))
-		} else {
-			allErrs = append(allErrs, validateDockerStrategy(strategy.DockerStrategy).Prefix("dockerStrategy")...)
-		}
-
-	case strategy.Type == buildapi.CustomBuildStrategyType:
-		if strategy.CustomStrategy == nil {
-			allErrs = append(allErrs, fielderrors.NewFieldRequired("customStrategy"))
-		} else {
-			allErrs = append(allErrs, validateCustomStrategy(strategy.CustomStrategy).Prefix("customStrategy")...)
-		}
-	default:
-		allErrs = append(allErrs, fielderrors.NewFieldInvalid("type", strategy.Type, "type is not in the enumerated list"))
+	if strategy.SourceStrategy != nil {
+		allErrs = append(allErrs, validateSourceStrategy(strategy.SourceStrategy).Prefix("sourceStrategy")...)
+	}
+	if strategy.DockerStrategy != nil {
+		allErrs = append(allErrs, validateDockerStrategy(strategy.DockerStrategy).Prefix("dockerStrategy")...)
+	}
+	if strategy.CustomStrategy != nil {
+		allErrs = append(allErrs, validateCustomStrategy(strategy.CustomStrategy).Prefix("customStrategy")...)
 	}
 
 	return allErrs
@@ -386,6 +371,22 @@ func validateDockerStrategy(strategy *buildapi.DockerBuildStrategy) fielderrors.
 	}
 
 	allErrs = append(allErrs, validateSecretRef(strategy.PullSecret).Prefix("pullSecret")...)
+
+	if len(strategy.DockerfilePath) != 0 {
+		cleaned := path.Clean(strategy.DockerfilePath)
+		switch {
+		case strings.HasPrefix(cleaned, "/"):
+			allErrs = append(allErrs, fielderrors.NewFieldInvalid("dockerfilePath", strategy.DockerfilePath, "dockerfilePath must not be an absolute path"))
+		case strings.HasPrefix(cleaned, ".."):
+			allErrs = append(allErrs, fielderrors.NewFieldInvalid("dockerfilePath", strategy.DockerfilePath, "dockerfilePath must not start with .."))
+		default:
+			if cleaned == "." {
+				cleaned = ""
+			}
+			strategy.DockerfilePath = cleaned
+		}
+	}
+
 	return allErrs
 }
 

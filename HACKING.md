@@ -69,6 +69,10 @@ or an individual package unit test with:
 
     $ hack/test-go.sh pkg/build
 
+or an individual package and all packages nested under it:
+
+    $ hack/test-go.sh pkg/build/...
+
 To run only a certain regex of tests in a package, use:
 
     $ hack/test-go.sh pkg/build -test.run=SynchronizeBuildRunning
@@ -100,7 +104,9 @@ To run tests without the go race detector, which is on by default, use:
 A line coverage report is run by default when testing a single package.
 To create a coverage report for all packages:
 
-    $ OUTPUT_COVERAGE=true hack/test-go.sh pkg/build
+    $ OUTPUT_COVERAGE=/path/to/dir hack/test-go.sh pkg/build
+
+After that you can open `/path/to/dir/coverage.html` in the browser.
 
 ### Integration tests
 
@@ -150,6 +156,11 @@ There is a CLI integration test suite which covers general non-Docker functional
 working against the API. Run it with:
 
     $ hack/test-cmd.sh
+
+This suite comprises many smaller suites, which are found under `test/cmd` and can be run individually by
+specifying them using a regex filter, passed through `grep -E` like with integration tests above:
+
+    $ hack/test-cmd.sh <regex>
 
 ### End-to-End (e2e) Tests
 

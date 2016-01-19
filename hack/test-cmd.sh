@@ -9,6 +9,7 @@ set -o pipefail
 
 STARTTIME=$(date +%s)
 OS_ROOT=$(dirname "${BASH_SOURCE}")/..
+cd "${OS_ROOT}"
 source "${OS_ROOT}/hack/util.sh"
 os::log::install_errexit
 
@@ -48,15 +49,16 @@ trap "cleanup" EXIT
 set -e
 
 function find_tests {
-  cd "${OS_ROOT}"
-  find "${1}" -name '*.sh' | sort -u
+  find "${OS_ROOT}/test/cmd" -name '*.sh' | grep -E "${1}" | sort -u
 }
-tests=( $(find_tests ${1:-test/cmd}) )
+tests=( $(find_tests ${1:-.*}) )
 
 # Setup environment
 
 # test-cmd specific defaults
-BASETMPDIR=${USE_TEMP:-$(mkdir -p /tmp/openshift-cmd && mktemp -d /tmp/openshift-cmd/XXXX)}
+TMPDIR="${TMPDIR:-"/tmp"}"
+BASETMPDIR="${BASETMPDIR:-${TMPDIR}/openshift-cmd}"
+LOG_DIR=${BASETMPDIR}/logs
 API_HOST=${API_HOST:-127.0.0.1}
 export API_PORT=${API_PORT:-28443}
 
@@ -66,10 +68,15 @@ export ETCD_PEER_PORT=${ETCD_PEER_PORT:-27001}
 setup_env_vars
 export SUDO=''
 mkdir -p "${ETCD_DATA_DIR}" "${VOLUME_DIR}" "${FAKE_HOME_DIR}" "${MASTER_CONFIG_DIR}" "${NODE_CONFIG_DIR}" "${LOG_DIR}"
+reset_tmp_dir
 
+echo "Logging to ${LOG_DIR}..."
 
 # Prevent user environment from colliding with the test setup
 unset KUBECONFIG
+
+# test wrapper functions
+${OS_ROOT}/hack/test-cmd_util.sh > ${BASETMPDIR}/wrappers.txt 2>&1
 
 
 # handle profiling defaults
@@ -149,7 +156,7 @@ os::util::sed "s/:7001$/:${ETCD_PEER_PORT}/g" ${SERVER_CONFIG_DIR}/master/master
 # Start openshift
 OPENSHIFT_ON_PANIC=crash openshift start master \
   --config=${MASTER_CONFIG_DIR}/master-config.yaml \
-  --loglevel=4 \
+  --loglevel=5 \
   &>"${LOG_DIR}/openshift.log" &
 OS_PID=$!
 
@@ -287,7 +294,8 @@ done
 # Done
 echo
 echo
-wait_for_url "${API_SCHEME}://${API_HOST}:${API_PORT}/metrics" "metrics: " 0.25 80
+wait_for_url "${API_SCHEME}://${API_HOST}:${API_PORT}/metrics" "metrics: " 0.25 80 > "${LOG_DIR}/metrics.log"
+grep "request_count" "${LOG_DIR}/metrics.log"
 echo
 echo
 echo "test-cmd: ok"

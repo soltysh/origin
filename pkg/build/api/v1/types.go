@@ -54,8 +54,8 @@ type BuildStatus struct {
 	// Phase is the point in the build lifecycle.
 	Phase BuildPhase `json:"phase" description:"observed point in the build lifecycle"`
 
-	// Cancelled describes if a cancelling event was triggered for the build.
-	Cancelled bool `json:"cancelled,omitempty" description:"describes if a canceling event was triggered for the build"`
+	// Cancelled describes if a cancel event was triggered for the build.
+	Cancelled bool `json:"cancelled,omitempty" description:"describes if a cancel event was triggered for the build"`
 
 	// Reason is a brief CamelCase string that describes any failure and is meant for machine parsing and tidy display in the CLI.
 	Reason StatusReason `json:"reason,omitempty" description:"brief CamelCase string describing a failure, meant for machine parsing and tidy display in the CLI"`
@@ -131,6 +131,8 @@ const (
 	BuildSourceDockerfile BuildSourceType = "Dockerfile"
 	// BuildSourceBinary indicates the build will accept a Binary file as input.
 	BuildSourceBinary BuildSourceType = "Binary"
+	// BuildSourceImage indicates the build will accept an image as input
+	BuildSourceImage BuildSourceType = "Image"
 )
 
 // BuildSource is the SCM used for the build.
@@ -158,6 +160,11 @@ type BuildSource struct {
 	// Git contains optional information about git build source
 	Git *GitBuildSource `json:"git,omitempty" description:"optional information about git build source"`
 
+	// Image describes an image to be used to provide source for the build
+	// EXPERIMENTAL.  This will be changing to an array of images in the near future
+	// and no migration/compatibility will be provided.  Use at your own risk.
+	Image *ImageSource `json:"image,omitempty" description:"optional image build source.  EXPERIMENTAL: This will be changing to an array of images in the near future and no migration/compatibility will be provided.  Use at your own risk."`
+
 	// ContextDir specifies the sub-directory where the source code for the application exists.
 	// This allows to have buildable sources in directory other than root of
 	// repository.
@@ -169,6 +176,31 @@ type BuildSource struct {
 	// data's key represent the authentication method to be used and value is
 	// the base64 encoded credentials. Supported auth methods are: ssh-privatekey.
 	SourceSecret *kapi.LocalObjectReference `json:"sourceSecret,omitempty" description:"supported auth methods are: ssh-privatekey"`
+}
+
+// ImageSource describes an image that is used as source for the build
+type ImageSource struct {
+	// From is a reference to an ImageStreamTag, ImageStreamImage, or DockerImage to
+	// copy source from.
+	From kapi.ObjectReference `json:"from" description:"reference to ImageStreamTag, ImageStreamImage, or DockerImage"`
+
+	// Paths is a list of source and destination paths to copy from the image.
+	Paths []ImageSourcePath `json:"paths" description:"paths to copy from image"`
+
+	// PullSecret is a reference to a secret to be used to pull the image from a registry
+	// If the image is pulled from the OpenShift registry, this field does not need to be set.
+	PullSecret *kapi.LocalObjectReference `json:"pullSecret,omitempty" description:"overrides the default pull secret for the source image"`
+}
+
+// ImageSourcePath describes a path to be copied from a source image and its destination within the build directory.
+type ImageSourcePath struct {
+	// SourcePath is the absolute path of the file or directory inside the image to
+	// copy to the build directory.
+	SourcePath string `json:"sourcePath" description:"source path (directory or file) inside image"`
+
+	// DestinationDir is the relative directory within the build directory
+	// where files copied from the image are placed.
+	DestinationDir string `json:"destinationDir" description:"relative destination directory in build home"`
 }
 
 type BinaryBuildSource struct {
@@ -309,6 +341,10 @@ type DockerBuildStrategy struct {
 
 	// ForcePull describes if the builder should pull the images from registry prior to building.
 	ForcePull bool `json:"forcePull,omitempty" description:"forces the source build to pull the image if true"`
+
+	// DockerfilePath is the path of the Dockerfile that will be used to build the Docker image,
+	// relative to the root of the context (contextDir).
+	DockerfilePath string `json:"dockerfilePath,omitempty" description:"path of the Dockerfile to use for building the Docker image, relative to the contextDir, if set"`
 }
 
 // SourceBuildStrategy defines input parameters specific to an Source build.
@@ -496,6 +532,9 @@ type BuildRequest struct {
 	// to generate the build. If the BuildConfig in the generator doesn't match, a build will
 	// not be generated.
 	LastVersion *int `json:"lastVersion,omitempty" description:"LastVersion of the BuildConfig that triggered this build"`
+
+	// Env contains additional environment variables you want to pass into a builder container
+	Env []kapi.EnvVar `json:"env,omitempty" description:"additional environment variables you want to pass into a builder container"`
 }
 
 type BinaryBuildRequestOptions struct {

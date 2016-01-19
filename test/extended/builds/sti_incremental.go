@@ -3,21 +3,26 @@ package builds
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 	"k8s.io/kubernetes/test/e2e"
 
 	exutil "github.com/openshift/origin/test/extended/util"
-	kapi "k8s.io/kubernetes/pkg/api"
 )
 
 var _ = g.Describe("builds: s2i incremental build with push and pull to authenticated registry", func() {
 	defer g.GinkgoRecover()
+
+	const (
+		buildTestPod     = "build-test-pod"
+		buildTestService = "build-test-svc"
+	)
+
 	var (
-		templateFixture = exutil.FixturePath("fixtures", "incremental-auth-build.json")
-		oc              = exutil.NewCLI("build-sti-env", exutil.KubeConfigPath())
+		templateFixture      = exutil.FixturePath("fixtures", "incremental-auth-build.json")
+		podAndServiceFixture = exutil.FixturePath("fixtures", "test-build-podsvc.json")
+		oc                   = exutil.NewCLI("build-sti-inc", exutil.KubeConfigPath())
 	)
 
 	g.JustBeforeEach(func() {
@@ -39,7 +44,7 @@ var _ = g.Describe("builds: s2i incremental build with push and pull to authenti
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			g.By("expecting the build is in Complete phase")
-			err = exutil.WaitForABuild(oc.REST().Builds(oc.Namespace()), buildName, exutil.CheckBuildSuccessFunc, exutil.CheckBuildFailedFunc)
+			err = exutil.WaitForABuild(oc.REST().Builds(oc.Namespace()), buildName, exutil.CheckBuildSuccessFn, exutil.CheckBuildFailedFn)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			g.By("starting a test build using the image produced by the last build")
@@ -47,42 +52,32 @@ var _ = g.Describe("builds: s2i incremental build with push and pull to authenti
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			g.By("expecting the build is in Complete phase")
-			err = exutil.WaitForABuild(oc.REST().Builds(oc.Namespace()), buildName, exutil.CheckBuildSuccessFunc, exutil.CheckBuildFailedFunc)
+			err = exutil.WaitForABuild(oc.REST().Builds(oc.Namespace()), buildName, exutil.CheckBuildSuccessFn, exutil.CheckBuildFailedFn)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			g.By("getting the Docker image reference from ImageStream")
 			imageName, err := exutil.GetDockerImageReference(oc.REST().ImageStreams(oc.Namespace()), "internal-image", "latest")
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			g.By("creating a pod for the new image")
-			pod := exutil.GetPodForContainer(kapi.Container{
-				Image: imageName,
-				Name:  "test",
-			})
-			_, err = oc.KubeREST().Pods(oc.Namespace()).Create(pod)
+			g.By("instantiating a pod and service with the new image")
+			err = oc.Run("new-app").Args("-f", podAndServiceFixture, "-p", "IMAGE_NAME="+imageName).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			g.By("expecting the pod to be running")
-			err = oc.KubeFramework().WaitForPodRunning(pod.Name)
+			g.By("waiting for the service to become available")
+			err = oc.KubeFramework().WaitForAnEndpoint(buildTestService)
 			o.Expect(err).NotTo(o.HaveOccurred())
-
-			// even though the pod is running, the app isn't always started
-			// so wait until webrick output is complete before curling.
-			logs := ""
-			count := 0
-			for strings.Contains(logs, "8080") && count < 10 {
-				logs, _ = oc.Run("logs").Args(pod.Name).Output()
-				time.Sleep(time.Second)
-				count++
-			}
 
 			g.By("expecting the pod container has saved artifacts")
-			out, err := oc.Run("exec").Args("-p", pod.Name, "--", "curl", "http://0.0.0.0:8080").Output()
+			out, err := oc.Run("exec").Args("-p", buildTestPod, "--", "curl", "http://0.0.0.0:8080").Output()
+			if err != nil {
+				logs, _ := oc.Run("logs").Args(buildTestPod).Output()
+				e2e.Failf("Failed to curl in application container: \n%q, pod logs: \n%q", out, logs)
+			}
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			if !strings.Contains(out, "artifacts exist") {
-				logs, _ = oc.Run("logs").Args(pod.Name).Output()
-				e2e.Failf("Pod %q does not contain expected artifacts: %q\n%q", pod.Name, out, logs)
+				logs, _ := oc.Run("logs").Args(buildTestPod).Output()
+				e2e.Failf("Pod %q does not contain expected artifacts: %q\n%q", buildTestPod, out, logs)
 			}
 		})
 	})

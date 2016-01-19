@@ -10,6 +10,7 @@ import (
 	"github.com/golang/glog"
 
 	osclient "github.com/openshift/origin/pkg/client"
+	kctrlmgr "k8s.io/kubernetes/cmd/kube-controller-manager/app"
 	kapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/record"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
@@ -24,7 +25,11 @@ import (
 	resourcequotacontroller "k8s.io/kubernetes/pkg/controller/resourcequota"
 	"k8s.io/kubernetes/pkg/master"
 	"k8s.io/kubernetes/pkg/util"
+	"k8s.io/kubernetes/pkg/util/io"
 	"k8s.io/kubernetes/pkg/volume"
+	"k8s.io/kubernetes/pkg/volume/aws_ebs"
+	"k8s.io/kubernetes/pkg/volume/cinder"
+	"k8s.io/kubernetes/pkg/volume/gce_pd"
 	"k8s.io/kubernetes/pkg/volume/host_path"
 	"k8s.io/kubernetes/pkg/volume/nfs"
 	"k8s.io/kubernetes/plugin/pkg/scheduler"
@@ -71,9 +76,31 @@ func (c *MasterConfig) RunNamespaceController() {
 }
 
 // RunPersistentVolumeClaimBinder starts the Kubernetes Persistent Volume Claim Binder
-func (c *MasterConfig) RunPersistentVolumeClaimBinder() {
-	binder := volumeclaimbinder.NewPersistentVolumeClaimBinder(c.KubeClient, c.ControllerManager.PVClaimBinderSyncPeriod)
+func (c *MasterConfig) RunPersistentVolumeClaimBinder(client *client.Client) {
+	binder := volumeclaimbinder.NewPersistentVolumeClaimBinder(client, c.ControllerManager.PVClaimBinderSyncPeriod)
 	binder.Run()
+}
+
+func (c *MasterConfig) RunPersistentVolumeProvisioner(client *client.Client) {
+	provisioner, err := kctrlmgr.NewVolumeProvisioner(c.CloudProvider, c.ControllerManager.VolumeConfigFlags)
+	if err != nil {
+		// a provisioner was expected but encountered an error
+		glog.Fatal(err)
+	}
+
+	// not all cloud providers have a provisioner.
+	if provisioner != nil {
+		allPlugins := []volume.VolumePlugin{}
+		allPlugins = append(allPlugins, aws_ebs.ProbeVolumePlugins()...)
+		allPlugins = append(allPlugins, gce_pd.ProbeVolumePlugins()...)
+		allPlugins = append(allPlugins, cinder.ProbeVolumePlugins()...)
+		controllerClient := volumeclaimbinder.NewControllerClient(client)
+		provisionerController, err := volumeclaimbinder.NewPersistentVolumeProvisionerController(controllerClient, c.ControllerManager.PVClaimBinderSyncPeriod, allPlugins, provisioner, c.CloudProvider)
+		if err != nil {
+			glog.Fatalf("Could not start Persistent Volume Provisioner: %+v", err)
+		}
+		provisionerController.Run()
+	}
 }
 
 func (c *MasterConfig) RunPersistentVolumeClaimRecycler(recyclerImageName string, client *client.Client) {
@@ -85,26 +112,63 @@ func (c *MasterConfig) RunPersistentVolumeClaimRecycler(recyclerImageName string
 	defaultScrubPod.Spec.Containers[0].SecurityContext = &kapi.SecurityContext{RunAsUser: &uid}
 	defaultScrubPod.Spec.Containers[0].ImagePullPolicy = kapi.PullIfNotPresent
 
+	volumeConfig := c.ControllerManager.VolumeConfigFlags
 	hostPathConfig := volume.VolumeConfig{
-		RecyclerMinimumTimeout:   30,
-		RecyclerTimeoutIncrement: 30,
+		RecyclerMinimumTimeout:   volumeConfig.PersistentVolumeRecyclerMinimumTimeoutHostPath,
+		RecyclerTimeoutIncrement: volumeConfig.PersistentVolumeRecyclerIncrementTimeoutHostPath,
 		RecyclerPodTemplate:      defaultScrubPod,
 	}
+
+	if len(volumeConfig.PersistentVolumeRecyclerPodTemplateFilePathHostPath) != 0 {
+		if err := attemptToLoadRecycler(volumeConfig.PersistentVolumeRecyclerPodTemplateFilePathHostPath, &hostPathConfig); err != nil {
+			glog.Fatalf("Could not create hostpath recycler pod from file %s: %+v", volumeConfig.PersistentVolumeRecyclerPodTemplateFilePathHostPath, err)
+		}
+	}
 	nfsConfig := volume.VolumeConfig{
-		RecyclerMinimumTimeout:   180,
-		RecyclerTimeoutIncrement: 30,
+		RecyclerMinimumTimeout:   volumeConfig.PersistentVolumeRecyclerMinimumTimeoutNFS,
+		RecyclerTimeoutIncrement: volumeConfig.PersistentVolumeRecyclerIncrementTimeoutNFS,
 		RecyclerPodTemplate:      defaultScrubPod,
+	}
+
+	if len(volumeConfig.PersistentVolumeRecyclerPodTemplateFilePathNFS) != 0 {
+		if err := attemptToLoadRecycler(volumeConfig.PersistentVolumeRecyclerPodTemplateFilePathNFS, &nfsConfig); err != nil {
+			glog.Fatalf("Could not create NFS recycler pod from file %s: %+v", volumeConfig.PersistentVolumeRecyclerPodTemplateFilePathNFS, err)
+		}
 	}
 
 	allPlugins := []volume.VolumePlugin{}
 	allPlugins = append(allPlugins, host_path.ProbeVolumePlugins(hostPathConfig)...)
 	allPlugins = append(allPlugins, nfs.ProbeVolumePlugins(nfsConfig)...)
 
-	recycler, err := volumeclaimbinder.NewPersistentVolumeRecycler(client, c.ControllerManager.PVClaimBinderSyncPeriod, allPlugins)
+	// dynamic provisioning allows deletion of volumes as a recycling operation after a claim is deleted
+	allPlugins = append(allPlugins, aws_ebs.ProbeVolumePlugins()...)
+	allPlugins = append(allPlugins, gce_pd.ProbeVolumePlugins()...)
+	allPlugins = append(allPlugins, cinder.ProbeVolumePlugins()...)
+
+	recycler, err := volumeclaimbinder.NewPersistentVolumeRecycler(client, c.ControllerManager.PVClaimBinderSyncPeriod, allPlugins, c.CloudProvider)
 	if err != nil {
 		glog.Fatalf("Could not start Persistent Volume Recycler: %+v", err)
 	}
 	recycler.Run()
+}
+
+// attemptToLoadRecycler tries decoding a pod from a filepath for use as a recycler for a volume.
+// If a path is not set as a CLI flag, no load will be attempted and no error returned.
+// If a path is set and the pod was successfully loaded, the recycler pod will be set on the config and no error returned.
+// Any failed attempt to load the recycler pod will return an error.
+// TODO: make this func re-usable upstream and use downstream.  No need to duplicate this function.
+func attemptToLoadRecycler(path string, config *volume.VolumeConfig) error {
+	glog.V(5).Infof("Attempting to load recycler pod file from %s", path)
+	recyclerPod, err := io.LoadPodFromFile(path)
+	if err != nil {
+		return err
+	}
+	if len(recyclerPod.Spec.Volumes) != 1 {
+		return fmt.Errorf("Recycler pod is expected to have exactly 1 volume to scrub, but found %d", len(recyclerPod.Spec.Volumes))
+	}
+	config.RecyclerPodTemplate = recyclerPod
+	glog.V(5).Infof("Recycler set to %s/%s", config.RecyclerPodTemplate.Namespace, config.RecyclerPodTemplate.Name)
+	return nil
 }
 
 // RunReplicationController starts the Kubernetes replication controller sync loop

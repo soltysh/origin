@@ -45,14 +45,12 @@ func fakeDeploymentConfig(name string, containers ...containerDesc) *deployapi.D
 		ObjectMeta: kapi.ObjectMeta{
 			Name: name,
 		},
-		Template: deployapi.DeploymentTemplate{
-			ControllerTemplate: kapi.ReplicationControllerSpec{
-				Replicas: 1,
-				Selector: map[string]string{"name": "test"},
-				Template: &kapi.PodTemplateSpec{
-					Spec: kapi.PodSpec{
-						Containers: specContainers,
-					},
+		Spec: deployapi.DeploymentConfigSpec{
+			Replicas: 1,
+			Selector: map[string]string{"name": "test"},
+			Template: &kapi.PodTemplateSpec{
+				Spec: kapi.PodSpec{
+					Containers: specContainers,
 				},
 			},
 		},
@@ -231,14 +229,5 @@ func TestAddServices(t *testing.T) {
 			t.Errorf("%s: did not get expected output.\nExpected:\n%s.\nGot:\n%s.",
 				test.name, objsToString(test.expectedServices), objsToString(services))
 		}
-	}
-}
-
-func TestNewBuildPipeline(t *testing.T) {
-	// If we cannot infer a name from user input, NewBuildPipeline should return
-	// ErrNameRequired.
-	_, err := NewBuildPipeline("test", nil, false, nil, nil, nil)
-	if err != ErrNameRequired {
-		t.Errorf("err = %#v; want %#v", err, ErrNameRequired)
 	}
 }

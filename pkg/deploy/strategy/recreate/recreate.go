@@ -51,7 +51,7 @@ func NewRecreateDeploymentStrategy(client kclient.Interface, codec runtime.Codec
 		},
 		scaler:       scaler,
 		codec:        codec,
-		hookExecutor: stratsupport.NewHookExecutor(client, os.Stdout),
+		hookExecutor: stratsupport.NewHookExecutor(client, os.Stdout, codec),
 		retryTimeout: 120 * time.Second,
 		retryPeriod:  1 * time.Second,
 	}
@@ -75,7 +75,7 @@ func (s *RecreateDeploymentStrategy) DeployWithAcceptor(from *kapi.ReplicationCo
 		return fmt.Errorf("couldn't decode config from deployment %s: %v", to.Name, err)
 	}
 
-	params := config.Template.Strategy.RecreateParams
+	params := config.Spec.Strategy.RecreateParams
 	retryParams := kubectl.NewRetryParams(s.retryPeriod, s.retryTimeout)
 	waitParams := kubectl.NewRetryParams(s.retryPeriod, s.retryTimeout)
 

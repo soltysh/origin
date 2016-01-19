@@ -3,6 +3,7 @@ package app
 import (
 	"net/url"
 	"os"
+	"reflect"
 	"testing"
 
 	kapi "k8s.io/kubernetes/pkg/api"
@@ -34,10 +35,22 @@ func TestBuildConfigOutput(t *testing.T) {
 	}
 	tests := []struct {
 		asImageStream bool
-		expectedKind  string
+		want          *kapi.ObjectReference
 	}{
-		{true, "ImageStreamTag"},
-		{false, "DockerImage"},
+		{
+			asImageStream: true,
+			want: &kapi.ObjectReference{
+				Kind: "ImageStreamTag",
+				Name: "origin:latest",
+			},
+		},
+		{
+			asImageStream: false,
+			want: &kapi.ObjectReference{
+				Kind: "DockerImage",
+				Name: "myregistry/openshift/origin",
+			},
+		},
 	}
 	for i, test := range tests {
 		output.AsImageStream = test.asImageStream
@@ -51,8 +64,8 @@ func TestBuildConfigOutput(t *testing.T) {
 		if config.Name != "origin" {
 			t.Errorf("(%d) unexpected name: %s", i, config.Name)
 		}
-		if config.Spec.Output.To.Name != "origin:latest" || config.Spec.Output.To.Kind != test.expectedKind {
-			t.Errorf("(%d) unexpected output image: %s/%s", i, config.Spec.Output.To.Kind, config.Spec.Output.To.Name)
+		if !reflect.DeepEqual(config.Spec.Output.To, test.want) {
+			t.Errorf("(%d) unexpected output image: %v; want %v", i, config.Spec.Output.To, test.want)
 		}
 		if len(config.Spec.Triggers) != 4 {
 			t.Errorf("(%d) unexpected number of triggers %d: %#v\n", i, len(config.Spec.Triggers), config.Spec.Triggers)
@@ -87,17 +100,17 @@ func TestSimpleDeploymentConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if config.Name != "origin" || len(config.Triggers) != 2 || config.Template.ControllerTemplate.Template.Spec.Containers[0].Image != image.Reference.String() {
+	if config.Name != "origin" || len(config.Spec.Triggers) != 2 || config.Spec.Template.Spec.Containers[0].Image != image.Reference.String() {
 		t.Errorf("unexpected value: %#v", config)
 	}
-	for _, trigger := range config.Triggers {
+	for _, trigger := range config.Spec.Triggers {
 		if trigger.Type == deployapi.DeploymentTriggerOnImageChange {
 			from := trigger.ImageChangeParams.From
-			if from.Kind != "ImageStream" {
-				t.Errorf("unexpected from kind in image change trigger")
+			if from.Kind != "ImageStreamTag" {
+				t.Errorf("unexpected from.kind in image change trigger: %s", from.Kind)
 			}
-			if from.Name != "origin" && from.Namespace != "openshift" {
-				t.Errorf("unexpected  from name and namespace in image change trigger: %s, %s", from.Name, from.Namespace)
+			if from.Name != "origin:latest" && from.Namespace != "openshift" {
+				t.Errorf("unexpected from.name %q and from.namespace %q in image change trigger", from.Name, from.Namespace)
 			}
 		}
 	}
@@ -335,7 +348,7 @@ func TestFromDockerfile(t *testing.T) {
 	}
 }
 
-const dockerFile = `FROM openshift/ruby-20-centos7
+const dockerFile = `FROM centos/ruby-22-centos7
 USER default
 EXPOSE 443
 ENV RACK_ENV production

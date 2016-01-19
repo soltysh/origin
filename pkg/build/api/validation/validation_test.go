@@ -15,14 +15,12 @@ func TestBuildValidationSuccess(t *testing.T) {
 		ObjectMeta: kapi.ObjectMeta{Name: "buildid", Namespace: "default"},
 		Spec: buildapi.BuildSpec{
 			Source: buildapi.BuildSource{
-				Type: buildapi.BuildSourceGit,
 				Git: &buildapi.GitBuildSource{
 					URI: "http://github.com/my/repository",
 				},
 				ContextDir: "context",
 			},
 			Strategy: buildapi.BuildStrategy{
-				Type:           buildapi.DockerBuildStrategyType,
 				DockerStrategy: &buildapi.DockerBuildStrategy{},
 			},
 			Output: buildapi.BuildOutput{
@@ -46,14 +44,12 @@ func TestBuildValidationFailure(t *testing.T) {
 		ObjectMeta: kapi.ObjectMeta{Name: "", Namespace: ""},
 		Spec: buildapi.BuildSpec{
 			Source: buildapi.BuildSource{
-				Type: buildapi.BuildSourceGit,
 				Git: &buildapi.GitBuildSource{
 					URI: "http://github.com/my/repository",
 				},
 				ContextDir: "context",
 			},
 			Strategy: buildapi.BuildStrategy{
-				Type:           buildapi.DockerBuildStrategyType,
 				DockerStrategy: &buildapi.DockerBuildStrategy{},
 			},
 			Output: buildapi.BuildOutput{
@@ -75,14 +71,12 @@ func TestBuildValidationFailure(t *testing.T) {
 func newDefaultParameters() buildapi.BuildSpec {
 	return buildapi.BuildSpec{
 		Source: buildapi.BuildSource{
-			Type: buildapi.BuildSourceGit,
 			Git: &buildapi.GitBuildSource{
 				URI: "http://github.com/my/repository",
 			},
 			ContextDir: "context",
 		},
 		Strategy: buildapi.BuildStrategy{
-			Type:           buildapi.DockerBuildStrategyType,
 			DockerStrategy: &buildapi.DockerBuildStrategy{},
 		},
 		Output: buildapi.BuildOutput{
@@ -94,16 +88,24 @@ func newDefaultParameters() buildapi.BuildSpec {
 	}
 }
 
+func newNonDefaultParameters() buildapi.BuildSpec {
+	o := newDefaultParameters()
+	o.Source.Git.URI = "changed"
+	return o
+}
+
 func TestValidateBuildUpdate(t *testing.T) {
 	old := &buildapi.Build{
 		ObjectMeta: kapi.ObjectMeta{Namespace: kapi.NamespaceDefault, Name: "my-build", ResourceVersion: "1"},
 		Spec:       newDefaultParameters(),
+		Status:     buildapi.BuildStatus{Phase: buildapi.BuildPhaseRunning},
 	}
 
 	errs := ValidateBuildUpdate(
 		&buildapi.Build{
 			ObjectMeta: kapi.ObjectMeta{Namespace: kapi.NamespaceDefault, Name: "my-build", ResourceVersion: "1"},
 			Spec:       newDefaultParameters(),
+			Status:     buildapi.BuildStatus{Phase: buildapi.BuildPhaseComplete},
 		},
 		old,
 	)
@@ -112,25 +114,85 @@ func TestValidateBuildUpdate(t *testing.T) {
 	}
 
 	errorCases := map[string]struct {
-		A *buildapi.Build
-		T fielderrors.ValidationErrorType
-		F string
+		Old    *buildapi.Build
+		Update *buildapi.Build
+		T      fielderrors.ValidationErrorType
+		F      string
 	}{
 		"changed spec": {
-			A: &buildapi.Build{
+			Old: &buildapi.Build{
 				ObjectMeta: kapi.ObjectMeta{Namespace: kapi.NamespaceDefault, Name: "my-build", ResourceVersion: "1"},
 				Spec:       newDefaultParameters(),
+			},
+			Update: &buildapi.Build{
+				ObjectMeta: kapi.ObjectMeta{Namespace: kapi.NamespaceDefault, Name: "my-build", ResourceVersion: "1"},
+				Spec:       newNonDefaultParameters(),
 			},
 			T: fielderrors.ValidationErrorTypeInvalid,
 			F: "spec",
 		},
+		"update from terminal1": {
+			Old: &buildapi.Build{
+				ObjectMeta: kapi.ObjectMeta{Namespace: kapi.NamespaceDefault, Name: "my-build", ResourceVersion: "1"},
+				Spec:       newDefaultParameters(),
+				Status:     buildapi.BuildStatus{Phase: buildapi.BuildPhaseComplete},
+			},
+			Update: &buildapi.Build{
+				ObjectMeta: kapi.ObjectMeta{Namespace: kapi.NamespaceDefault, Name: "my-build", ResourceVersion: "1"},
+				Spec:       newDefaultParameters(),
+				Status:     buildapi.BuildStatus{Phase: buildapi.BuildPhaseRunning},
+			},
+			T: fielderrors.ValidationErrorTypeInvalid,
+			F: "status.Phase",
+		},
+		"update from terminal2": {
+			Old: &buildapi.Build{
+				ObjectMeta: kapi.ObjectMeta{Namespace: kapi.NamespaceDefault, Name: "my-build", ResourceVersion: "1"},
+				Spec:       newDefaultParameters(),
+				Status:     buildapi.BuildStatus{Phase: buildapi.BuildPhaseCancelled},
+			},
+			Update: &buildapi.Build{
+				ObjectMeta: kapi.ObjectMeta{Namespace: kapi.NamespaceDefault, Name: "my-build", ResourceVersion: "1"},
+				Spec:       newDefaultParameters(),
+				Status:     buildapi.BuildStatus{Phase: buildapi.BuildPhaseRunning},
+			},
+			T: fielderrors.ValidationErrorTypeInvalid,
+			F: "status.Phase",
+		},
+		"update from terminal3": {
+			Old: &buildapi.Build{
+				ObjectMeta: kapi.ObjectMeta{Namespace: kapi.NamespaceDefault, Name: "my-build", ResourceVersion: "1"},
+				Spec:       newDefaultParameters(),
+				Status:     buildapi.BuildStatus{Phase: buildapi.BuildPhaseError},
+			},
+			Update: &buildapi.Build{
+				ObjectMeta: kapi.ObjectMeta{Namespace: kapi.NamespaceDefault, Name: "my-build", ResourceVersion: "1"},
+				Spec:       newDefaultParameters(),
+				Status:     buildapi.BuildStatus{Phase: buildapi.BuildPhaseRunning},
+			},
+			T: fielderrors.ValidationErrorTypeInvalid,
+			F: "status.Phase",
+		},
+		"update from terminal4": {
+			Old: &buildapi.Build{
+				ObjectMeta: kapi.ObjectMeta{Namespace: kapi.NamespaceDefault, Name: "my-build", ResourceVersion: "1"},
+				Spec:       newDefaultParameters(),
+				Status:     buildapi.BuildStatus{Phase: buildapi.BuildPhaseFailed},
+			},
+			Update: &buildapi.Build{
+				ObjectMeta: kapi.ObjectMeta{Namespace: kapi.NamespaceDefault, Name: "my-build", ResourceVersion: "1"},
+				Spec:       newDefaultParameters(),
+				Status:     buildapi.BuildStatus{Phase: buildapi.BuildPhaseRunning},
+			},
+			T: fielderrors.ValidationErrorTypeInvalid,
+			F: "status.Phase",
+		},
 	}
-	errorCases["changed spec"].A.Spec.Source.Git.URI = "different"
 
 	for k, v := range errorCases {
-		errs := ValidateBuildUpdate(v.A, old)
+		errs := ValidateBuildUpdate(v.Update, v.Old)
 		if len(errs) == 0 {
-			t.Errorf("expected failure %s for %v", k, v.A)
+			t.Errorf("expected failure %s for %v", k, v.Update)
 			continue
 		}
 		for i := range errs {
@@ -144,6 +206,43 @@ func TestValidateBuildUpdate(t *testing.T) {
 	}
 }
 
+func TestBuildConfigGitSourceWithProxyFailure(t *testing.T) {
+	buildConfig := &buildapi.BuildConfig{
+		ObjectMeta: kapi.ObjectMeta{Name: "config-id", Namespace: "namespace"},
+		Spec: buildapi.BuildConfigSpec{
+			BuildSpec: buildapi.BuildSpec{
+				Source: buildapi.BuildSource{
+					Git: &buildapi.GitBuildSource{
+						URI:        "git://github.com/my/repository",
+						HTTPProxy:  "127.0.0.1:3128",
+						HTTPSProxy: "127.0.0.1:3128",
+					},
+				},
+				Strategy: buildapi.BuildStrategy{
+					DockerStrategy: &buildapi.DockerBuildStrategy{},
+				},
+				Output: buildapi.BuildOutput{
+					To: &kapi.ObjectReference{
+						Kind: "DockerImage",
+						Name: "repository/data",
+					},
+				},
+			},
+		},
+	}
+	errors := ValidateBuildConfig(buildConfig)
+	if len(errors) != 1 {
+		t.Errorf("Expected one error, got %d", len(errors))
+	}
+	err := errors[0].(*fielderrors.ValidationError)
+	if err.Type != fielderrors.ValidationErrorTypeInvalid {
+		t.Errorf("Expected invalid value validation error, got %q", err.Type)
+	}
+	if err.Detail != "only http:// and https:// GIT protocols are allowed with HTTP or HTTPS proxy set" {
+		t.Errorf("Exptected git:// protocol with proxy validation error, got: %q", err.Detail)
+	}
+}
+
 // TestBuildConfigDockerStrategyImageChangeTrigger ensures that it is invalid to
 // have a BuildConfig with Docker strategy and an ImageChangeTrigger where
 // neither DockerStrategy.From nor ImageChange.From are defined.
@@ -153,14 +252,12 @@ func TestBuildConfigDockerStrategyImageChangeTrigger(t *testing.T) {
 		Spec: buildapi.BuildConfigSpec{
 			BuildSpec: buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 					ContextDir: "context",
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type:           buildapi.DockerBuildStrategyType,
 					DockerStrategy: &buildapi.DockerBuildStrategy{},
 				},
 				Output: buildapi.BuildOutput{
@@ -201,14 +298,12 @@ func TestBuildConfigValidationFailureRequiredName(t *testing.T) {
 		Spec: buildapi.BuildConfigSpec{
 			BuildSpec: buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 					ContextDir: "context",
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type:           buildapi.DockerBuildStrategyType,
 					DockerStrategy: &buildapi.DockerBuildStrategy{},
 				},
 				Output: buildapi.BuildOutput{
@@ -439,14 +534,12 @@ func TestBuildConfigImageChangeTriggers(t *testing.T) {
 			Spec: buildapi.BuildConfigSpec{
 				BuildSpec: buildapi.BuildSpec{
 					Source: buildapi.BuildSource{
-						Type: buildapi.BuildSourceGit,
 						Git: &buildapi.GitBuildSource{
 							URI: "http://github.com/my/repository",
 						},
 						ContextDir: "context",
 					},
 					Strategy: buildapi.BuildStrategy{
-						Type: buildapi.SourceBuildStrategyType,
 						SourceStrategy: &buildapi.SourceBuildStrategy{
 							From: kapi.ObjectReference{
 								Kind: "ImageStreamTag",
@@ -489,14 +582,12 @@ func TestBuildConfigValidationOutputFailure(t *testing.T) {
 		Spec: buildapi.BuildConfigSpec{
 			BuildSpec: buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 					ContextDir: "context",
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type:           buildapi.DockerBuildStrategyType,
 					DockerStrategy: &buildapi.DockerBuildStrategy{},
 				},
 				Output: buildapi.BuildOutput{
@@ -540,7 +631,6 @@ func TestValidateBuildRequest(t *testing.T) {
 
 func TestValidateSource(t *testing.T) {
 	dockerfile := "FROM something"
-	validGitURL := "https://github.com/some/server.git"
 	errorCases := []struct {
 		t        fielderrors.ValidationErrorType
 		path     string
@@ -548,109 +638,278 @@ func TestValidateSource(t *testing.T) {
 		ok       bool
 		multiple bool
 	}{
+		// 0
 		{
 			t:    fielderrors.ValidationErrorTypeRequired,
 			path: "git.uri",
 			source: &buildapi.BuildSource{
-				Type: buildapi.BuildSourceGit,
 				Git: &buildapi.GitBuildSource{
 					URI: "",
 				},
 			},
 		},
+		// 1
 		{
 			t:    fielderrors.ValidationErrorTypeInvalid,
 			path: "git.uri",
 			source: &buildapi.BuildSource{
-				Type: buildapi.BuildSourceGit,
 				Git: &buildapi.GitBuildSource{
 					URI: "::",
 				},
 			},
 		},
+		// 2
 		{
 			t:    fielderrors.ValidationErrorTypeInvalid,
 			path: "contextDir",
 			source: &buildapi.BuildSource{
-				Type:       buildapi.BuildSourceDockerfile,
 				Dockerfile: &dockerfile,
 				ContextDir: "../file",
 			},
 		},
+		// 3
 		{
 			t:    fielderrors.ValidationErrorTypeInvalid,
 			path: "git",
 			source: &buildapi.BuildSource{
-				Type:       buildapi.BuildSourceDockerfile,
-				Dockerfile: &dockerfile,
-				Git:        &buildapi.GitBuildSource{},
-				Binary:     &buildapi.BinaryBuildSource{},
-			},
-			multiple: true,
-		},
-		{
-			t:    fielderrors.ValidationErrorTypeInvalid,
-			path: "binary",
-			source: &buildapi.BuildSource{
-				Type: buildapi.BuildSourceGit,
 				Git: &buildapi.GitBuildSource{
-					URI: validGitURL,
+					URI: "https://example.com/repo.git",
 				},
 				Binary: &buildapi.BinaryBuildSource{},
 			},
+			multiple: true,
 		},
-		{
-			t:    fielderrors.ValidationErrorTypeInvalid,
-			path: "git",
-			source: &buildapi.BuildSource{
-				Type:   buildapi.BuildSourceBinary,
-				Git:    &buildapi.GitBuildSource{},
-				Binary: &buildapi.BinaryBuildSource{},
-			},
-		},
-		{
-			t:    fielderrors.ValidationErrorTypeRequired,
-			path: "binary",
-			source: &buildapi.BuildSource{
-				Type: buildapi.BuildSourceBinary,
-			},
-		},
+		// 4
 		{
 			t:    fielderrors.ValidationErrorTypeInvalid,
 			path: "binary.asFile",
 			source: &buildapi.BuildSource{
-				Type:   buildapi.BuildSourceBinary,
 				Binary: &buildapi.BinaryBuildSource{AsFile: "/a/path"},
 			},
 		},
+		// 5
 		{
 			t:    fielderrors.ValidationErrorTypeInvalid,
 			path: "binary.asFile",
 			source: &buildapi.BuildSource{
-				Type:   buildapi.BuildSourceBinary,
 				Binary: &buildapi.BinaryBuildSource{AsFile: "/"},
 			},
 		},
+		// 6
 		{
 			t:    fielderrors.ValidationErrorTypeInvalid,
 			path: "binary.asFile",
 			source: &buildapi.BuildSource{
-				Type:   buildapi.BuildSourceBinary,
 				Binary: &buildapi.BinaryBuildSource{AsFile: "a\\b"},
 			},
 		},
+		// 7
 		{
-			t:    fielderrors.ValidationErrorTypeInvalid,
-			path: "binary.asFile",
 			source: &buildapi.BuildSource{
-				Type:   buildapi.BuildSourceBinary,
 				Binary: &buildapi.BinaryBuildSource{AsFile: "/././file"},
 			},
 			ok: true,
 		},
+		// 8
+		{
+			source: &buildapi.BuildSource{
+				Binary:     &buildapi.BinaryBuildSource{AsFile: "/././file"},
+				Dockerfile: &dockerfile,
+			},
+			ok: true,
+		},
+		// 9
+		{
+			source: &buildapi.BuildSource{
+				Git: &buildapi.GitBuildSource{
+					URI: "https://example.com/repo.git",
+				},
+				Dockerfile: &dockerfile,
+			},
+			ok: true,
+		},
+		// 10
+		{
+			source: &buildapi.BuildSource{
+				Dockerfile: &dockerfile,
+			},
+			ok: true,
+		},
+		// 11
+		{
+			source: &buildapi.BuildSource{
+				Git: &buildapi.GitBuildSource{
+					URI: "https://example.com/repo.git",
+				},
+				ContextDir: "contextDir",
+			},
+			ok: true,
+		},
+		// 12
+		{
+			t:    fielderrors.ValidationErrorTypeRequired,
+			path: "sourceSecret.name",
+			source: &buildapi.BuildSource{
+				Git: &buildapi.GitBuildSource{
+					URI: "http://example.com/repo.git",
+				},
+				SourceSecret: &kapi.LocalObjectReference{},
+				ContextDir:   "contextDir/../somedir",
+			},
+		},
+		// 13
+		{
+			t:    fielderrors.ValidationErrorTypeInvalid,
+			path: "git.httpproxy",
+			source: &buildapi.BuildSource{
+				Git: &buildapi.GitBuildSource{
+					URI:       "https://example.com/repo.git",
+					HTTPProxy: "some!@#$%^&*()url",
+				},
+				ContextDir: "contextDir",
+			},
+		},
+		// 14
+		{
+			t:    fielderrors.ValidationErrorTypeInvalid,
+			path: "git.httpsproxy",
+			source: &buildapi.BuildSource{
+				Git: &buildapi.GitBuildSource{
+					URI:        "https://example.com/repo.git",
+					HTTPSProxy: "some!@#$%^&*()url",
+				},
+				ContextDir: "contextDir",
+			},
+		},
+		// 15
+		{
+			ok: true,
+			source: &buildapi.BuildSource{
+				Image: &buildapi.ImageSource{
+					From: kapi.ObjectReference{
+						Kind: "ImageStreamTag",
+						Name: "my-image:latest",
+					},
+					Paths: []buildapi.ImageSourcePath{
+						{
+							SourcePath:     "/some/path",
+							DestinationDir: "test/dir",
+						},
+					},
+				},
+			},
+		},
+		// 16
+		{
+			t:    fielderrors.ValidationErrorTypeRequired,
+			path: "image.paths",
+			source: &buildapi.BuildSource{
+				Image: &buildapi.ImageSource{
+					From: kapi.ObjectReference{
+						Kind: "ImageStreamTag",
+						Name: "my-image:latest",
+					},
+				},
+			},
+		},
+		// 17
+		{
+			t:    fielderrors.ValidationErrorTypeInvalid,
+			path: "image.from.kind",
+			source: &buildapi.BuildSource{
+				Image: &buildapi.ImageSource{
+					From: kapi.ObjectReference{
+						Kind: "InvalidKind",
+						Name: "my-image:latest",
+					},
+					Paths: []buildapi.ImageSourcePath{
+						{
+							SourcePath:     "/some/path",
+							DestinationDir: "test/dir",
+						},
+					},
+				},
+			},
+		},
+		// 18
+		{
+			t:    fielderrors.ValidationErrorTypeRequired,
+			path: "image.pullSecret.name",
+			source: &buildapi.BuildSource{
+				Image: &buildapi.ImageSource{
+					From: kapi.ObjectReference{
+						Kind: "DockerImage",
+						Name: "my-image:latest",
+					},
+					PullSecret: &kapi.LocalObjectReference{
+						Name: "",
+					},
+					Paths: []buildapi.ImageSourcePath{
+						{
+							SourcePath:     "/some/path",
+							DestinationDir: "test/dir",
+						},
+					},
+				},
+			},
+		},
 	}
 	for i, tc := range errorCases {
-		errors := validateSource(tc.source)
+		errors := validateSource(tc.source, false)
+		switch len(errors) {
+		case 0:
+			if !tc.ok {
+				t.Errorf("%d: Unexpected validation result: %v", i, errors)
+			}
+			continue
+		case 1:
+			if tc.ok || tc.multiple {
+				t.Errorf("%d: Unexpected validation result: %v", i, errors)
+				continue
+			}
+		default:
+			if tc.ok || !tc.multiple {
+				t.Errorf("%d: Unexpected validation result: %v", i, errors)
+				continue
+			}
+		}
+		err := errors[0].(*fielderrors.ValidationError)
+		if err.Type != tc.t {
+			t.Errorf("%d: Unexpected error type: %s", i, err.Type)
+		}
+		if err.Field != tc.path {
+			t.Errorf("%d: Unexpected error path: %s", i, err.Field)
+		}
+	}
+
+	errorCases[11].source.ContextDir = "."
+	validateSource(errorCases[11].source, false)
+	if len(errorCases[11].source.ContextDir) != 0 {
+		t.Errorf("ContextDir was not cleaned: %s", errorCases[11].source.ContextDir)
+	}
+}
+
+func TestValidateStrategy(t *testing.T) {
+	errorCases := []struct {
+		t        fielderrors.ValidationErrorType
+		path     string
+		strategy *buildapi.BuildStrategy
+		ok       bool
+		multiple bool
+	}{
+		// 0
+		{
+			t:    fielderrors.ValidationErrorTypeInvalid,
+			path: "",
+			strategy: &buildapi.BuildStrategy{
+				SourceStrategy: &buildapi.SourceBuildStrategy{},
+				DockerStrategy: &buildapi.DockerBuildStrategy{},
+				CustomStrategy: &buildapi.CustomBuildStrategy{},
+			},
+		},
+	}
+	for i, tc := range errorCases {
+		errors := validateStrategy(tc.strategy)
 		switch len(errors) {
 		case 0:
 			if !tc.ok {
@@ -691,14 +950,12 @@ func TestValidateBuildSpec(t *testing.T) {
 			string(fielderrors.ValidationErrorTypeInvalid) + "output.to.name",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 					ContextDir: "context",
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type:           buildapi.DockerBuildStrategyType,
 					DockerStrategy: &buildapi.DockerBuildStrategy{},
 				},
 				Output: buildapi.BuildOutput{
@@ -714,14 +971,12 @@ func TestValidateBuildSpec(t *testing.T) {
 			string(fielderrors.ValidationErrorTypeInvalid) + "output.to.kind",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 					ContextDir: "context",
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type:           buildapi.DockerBuildStrategyType,
 					DockerStrategy: &buildapi.DockerBuildStrategy{},
 				},
 				Output: buildapi.BuildOutput{
@@ -737,14 +992,12 @@ func TestValidateBuildSpec(t *testing.T) {
 			string(fielderrors.ValidationErrorTypeRequired) + "output.to.kind",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 					ContextDir: "context",
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type:           buildapi.DockerBuildStrategyType,
 					DockerStrategy: &buildapi.DockerBuildStrategy{},
 				},
 				Output: buildapi.BuildOutput{
@@ -757,14 +1010,12 @@ func TestValidateBuildSpec(t *testing.T) {
 			string(fielderrors.ValidationErrorTypeRequired) + "output.to.name",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 					ContextDir: "context",
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type:           buildapi.DockerBuildStrategyType,
 					DockerStrategy: &buildapi.DockerBuildStrategy{},
 				},
 				Output: buildapi.BuildOutput{
@@ -779,14 +1030,12 @@ func TestValidateBuildSpec(t *testing.T) {
 			string(fielderrors.ValidationErrorTypeInvalid) + "output.to.name",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 					ContextDir: "context",
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type:           buildapi.DockerBuildStrategyType,
 					DockerStrategy: &buildapi.DockerBuildStrategy{},
 				},
 				Output: buildapi.BuildOutput{
@@ -803,14 +1052,12 @@ func TestValidateBuildSpec(t *testing.T) {
 			string(fielderrors.ValidationErrorTypeInvalid) + "output.to.namespace",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 					ContextDir: "context",
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type:           buildapi.DockerBuildStrategyType,
 					DockerStrategy: &buildapi.DockerBuildStrategy{},
 				},
 				Output: buildapi.BuildOutput{
@@ -823,57 +1070,17 @@ func TestValidateBuildSpec(t *testing.T) {
 			},
 		},
 		// 6
-		{
-			string(fielderrors.ValidationErrorTypeInvalid) + "strategy.type",
-			&buildapi.BuildSpec{
-				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
-					Git: &buildapi.GitBuildSource{
-						URI: "http://github.com/my/repository",
-					},
-				},
-				Strategy: buildapi.BuildStrategy{Type: "invalid-type"},
-				Output: buildapi.BuildOutput{
-					To: &kapi.ObjectReference{
-						Kind: "DockerImage",
-						Name: "repository/data",
-					},
-				},
-			},
-		},
-		// 7
-		{
-			string(fielderrors.ValidationErrorTypeRequired) + "strategy.type",
-			&buildapi.BuildSpec{
-				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
-					Git: &buildapi.GitBuildSource{
-						URI: "http://github.com/my/repository",
-					},
-				},
-				Strategy: buildapi.BuildStrategy{},
-				Output: buildapi.BuildOutput{
-					To: &kapi.ObjectReference{
-						Kind: "DockerImage",
-						Name: "repository/data",
-					},
-				},
-			},
-		},
-		// 8
 		// invalid because from is not specified in the
 		// sti strategy definition
 		{
-			string(fielderrors.ValidationErrorTypeRequired) + "strategy.stiStrategy.from.kind",
+			string(fielderrors.ValidationErrorTypeRequired) + "strategy.sourceStrategy.from.kind",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type:           buildapi.SourceBuildStrategyType,
 					SourceStrategy: &buildapi.SourceBuildStrategy{},
 				},
 				Output: buildapi.BuildOutput{
@@ -884,19 +1091,17 @@ func TestValidateBuildSpec(t *testing.T) {
 				},
 			},
 		},
-		// 9
+		// 7
 		// Invalid because from.name is not specified
 		{
-			string(fielderrors.ValidationErrorTypeRequired) + "strategy.stiStrategy.from.name",
+			string(fielderrors.ValidationErrorTypeRequired) + "strategy.sourceStrategy.from.name",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type: buildapi.SourceBuildStrategyType,
 					SourceStrategy: &buildapi.SourceBuildStrategy{
 						From: kapi.ObjectReference{
 							Kind: "DockerImage",
@@ -911,19 +1116,17 @@ func TestValidateBuildSpec(t *testing.T) {
 				},
 			},
 		},
-		// 10
+		// 8
 		// invalid because from name is a bad format
 		{
-			string(fielderrors.ValidationErrorTypeInvalid) + "strategy.stiStrategy.from.name",
+			string(fielderrors.ValidationErrorTypeInvalid) + "strategy.sourceStrategy.from.name",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type: buildapi.SourceBuildStrategyType,
 					SourceStrategy: &buildapi.SourceBuildStrategy{
 						From: kapi.ObjectReference{Kind: "ImageStreamTag", Name: "bad format"},
 					},
@@ -936,20 +1139,18 @@ func TestValidateBuildSpec(t *testing.T) {
 				},
 			},
 		},
-		// 11
+		// 9
 		// invalid because from is not specified in the
 		// custom strategy definition
 		{
 			string(fielderrors.ValidationErrorTypeRequired) + "strategy.customStrategy.from.kind",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type:           buildapi.CustomBuildStrategyType,
 					CustomStrategy: &buildapi.CustomBuildStrategy{},
 				},
 				Output: buildapi.BuildOutput{
@@ -960,20 +1161,18 @@ func TestValidateBuildSpec(t *testing.T) {
 				},
 			},
 		},
-		// 12
+		// 10
 		// invalid because from.name is not specified in the
 		// custom strategy definition
 		{
 			string(fielderrors.ValidationErrorTypeInvalid) + "strategy.customStrategy.from.name",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type: buildapi.CustomBuildStrategyType,
 					CustomStrategy: &buildapi.CustomBuildStrategy{
 						From: kapi.ObjectReference{Kind: "ImageStreamTag", Name: "bad format"},
 					},
@@ -986,51 +1185,45 @@ func TestValidateBuildSpec(t *testing.T) {
 				},
 			},
 		},
-		// 13
+		// 11
 		{
 			string(fielderrors.ValidationErrorTypeInvalid) + "source.dockerfile",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type:       buildapi.BuildSourceDockerfile,
 					Dockerfile: &longString,
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type:           buildapi.DockerBuildStrategyType,
 					DockerStrategy: &buildapi.DockerBuildStrategy{},
 				},
 			},
 		},
-		// 14
+		// 12
 		{
 			string(fielderrors.ValidationErrorTypeInvalid) + "source.dockerfile",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type:       buildapi.BuildSourceGit,
 					Dockerfile: &longString,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type:           buildapi.DockerBuildStrategyType,
 					DockerStrategy: &buildapi.DockerBuildStrategy{},
 				},
 			},
 		},
-		// 15
+		// 13
 		// invalid because CompletionDeadlineSeconds <= 0
 		{
 			string(fielderrors.ValidationErrorTypeInvalid) + "completionDeadlineSeconds",
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 					ContextDir: "context",
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type:           buildapi.DockerBuildStrategyType,
 					DockerStrategy: &buildapi.DockerBuildStrategy{},
 				},
 				Output: buildapi.BuildOutput{
@@ -1042,7 +1235,71 @@ func TestValidateBuildSpec(t *testing.T) {
 				CompletionDeadlineSeconds: &zero,
 			},
 		},
-	}
+		// 14
+		// must provide some source input
+		{
+			string(fielderrors.ValidationErrorTypeInvalid) + "source",
+			&buildapi.BuildSpec{
+				Source: buildapi.BuildSource{},
+				Strategy: buildapi.BuildStrategy{
+					DockerStrategy: &buildapi.DockerBuildStrategy{},
+				},
+				Output: buildapi.BuildOutput{
+					To: &kapi.ObjectReference{
+						Kind: "DockerImage",
+						Name: "repository/data",
+					},
+				},
+			},
+		},
+		// 15
+		// dockerfilePath can't be an absolute path
+		{
+			string(fielderrors.ValidationErrorTypeInvalid) + "strategy.dockerStrategy.dockerfilePath",
+			&buildapi.BuildSpec{
+				Source: buildapi.BuildSource{
+					Git: &buildapi.GitBuildSource{
+						URI: "http://github.com/my/repository",
+					},
+					ContextDir: "context",
+				},
+				Strategy: buildapi.BuildStrategy{
+					DockerStrategy: &buildapi.DockerBuildStrategy{
+						DockerfilePath: "/myDockerfile",
+					},
+				},
+				Output: buildapi.BuildOutput{
+					To: &kapi.ObjectReference{
+						Kind: "DockerImage",
+						Name: "repository/data",
+					},
+				},
+			},
+		},
+		// 16
+		// dockerfilePath can't start with ..
+		{
+			string(fielderrors.ValidationErrorTypeInvalid) + "strategy.dockerStrategy.dockerfilePath",
+			&buildapi.BuildSpec{
+				Source: buildapi.BuildSource{
+					Git: &buildapi.GitBuildSource{
+						URI: "http://github.com/my/repository",
+					},
+					ContextDir: "context",
+				},
+				Strategy: buildapi.BuildStrategy{
+					DockerStrategy: &buildapi.DockerBuildStrategy{
+						DockerfilePath: "../someDockerfile",
+					},
+				},
+				Output: buildapi.BuildOutput{
+					To: &kapi.ObjectReference{
+						Kind: "DockerImage",
+						Name: "repository/data",
+					},
+				},
+			},
+		}}
 
 	for count, config := range errorCases {
 		errors := validateBuildSpec(config.BuildSpec)
@@ -1067,13 +1324,11 @@ func TestValidateBuildSpecSuccess(t *testing.T) {
 		{
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type: buildapi.SourceBuildStrategyType,
 					SourceStrategy: &buildapi.SourceBuildStrategy{
 						From: kapi.ObjectReference{
 							Kind: "DockerImage",
@@ -1093,13 +1348,11 @@ func TestValidateBuildSpecSuccess(t *testing.T) {
 		{
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type: buildapi.CustomBuildStrategyType,
 					CustomStrategy: &buildapi.CustomBuildStrategy{
 						From: kapi.ObjectReference{
 							Kind: "ImageStreamTag",
@@ -1119,13 +1372,11 @@ func TestValidateBuildSpecSuccess(t *testing.T) {
 		{
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type:           buildapi.DockerBuildStrategyType,
 					DockerStrategy: &buildapi.DockerBuildStrategy{},
 				},
 				Output: buildapi.BuildOutput{
@@ -1140,13 +1391,11 @@ func TestValidateBuildSpecSuccess(t *testing.T) {
 		{
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type: buildapi.BuildSourceGit,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type: buildapi.DockerBuildStrategyType,
 					DockerStrategy: &buildapi.DockerBuildStrategy{
 						From: &kapi.ObjectReference{
 							Kind: "ImageStreamImage",
@@ -1166,19 +1415,42 @@ func TestValidateBuildSpecSuccess(t *testing.T) {
 		{
 			&buildapi.BuildSpec{
 				Source: buildapi.BuildSource{
-					Type:       buildapi.BuildSourceDockerfile,
 					Dockerfile: &shortString,
 					Git: &buildapi.GitBuildSource{
 						URI: "http://github.com/my/repository",
 					},
 				},
 				Strategy: buildapi.BuildStrategy{
-					Type: buildapi.DockerBuildStrategyType,
 					DockerStrategy: &buildapi.DockerBuildStrategy{
 						From: &kapi.ObjectReference{
 							Kind: "ImageStreamImage",
 							Name: "imagestreamimage",
 						},
+					},
+				},
+				Output: buildapi.BuildOutput{
+					To: &kapi.ObjectReference{
+						Kind: "DockerImage",
+						Name: "repository/data",
+					},
+				},
+			},
+		},
+		// 5
+		{
+			&buildapi.BuildSpec{
+				Source: buildapi.BuildSource{
+					Git: &buildapi.GitBuildSource{
+						URI: "http://github.com/my/repository",
+					},
+				},
+				Strategy: buildapi.BuildStrategy{
+					DockerStrategy: &buildapi.DockerBuildStrategy{
+						From: &kapi.ObjectReference{
+							Kind: "ImageStreamImage",
+							Name: "imagestreamimage",
+						},
+						DockerfilePath: "dockerfiles/firstDockerfile",
 					},
 				},
 				Output: buildapi.BuildOutput{
@@ -1198,6 +1470,48 @@ func TestValidateBuildSpecSuccess(t *testing.T) {
 		}
 	}
 
+}
+
+func TestValidateDockerfilePath(t *testing.T) {
+	tests := []struct {
+		strategy               *buildapi.DockerBuildStrategy
+		expectedDockerfilePath string
+	}{
+		{
+			strategy: &buildapi.DockerBuildStrategy{
+				DockerfilePath: ".",
+			},
+			expectedDockerfilePath: "",
+		},
+		{
+			strategy: &buildapi.DockerBuildStrategy{
+				DockerfilePath: "somedir/..",
+			},
+			expectedDockerfilePath: "",
+		},
+		{
+			strategy: &buildapi.DockerBuildStrategy{
+				DockerfilePath: "somedir/../somedockerfile",
+			},
+			expectedDockerfilePath: "somedockerfile",
+		},
+		{
+			strategy: &buildapi.DockerBuildStrategy{
+				DockerfilePath: "somedir/somedockerfile",
+			},
+			expectedDockerfilePath: "somedir/somedockerfile",
+		},
+	}
+
+	for count, test := range tests {
+		errors := validateDockerStrategy(test.strategy)
+		if len(errors) != 0 {
+			t.Errorf("Test[%d] Unexpected validation error: %v", count, errors)
+		}
+		if test.strategy.DockerfilePath != test.expectedDockerfilePath {
+			t.Errorf("Test[%d] Unexpected DockerfilePath: %v (expected: %s)", count, test.strategy.DockerfilePath, test.expectedDockerfilePath)
+		}
+	}
 }
 
 func TestValidateTrigger(t *testing.T) {
@@ -1316,5 +1630,24 @@ func TestValidateTrigger(t *testing.T) {
 		if validationError.Field != test.expected[0].Field {
 			t.Errorf("%s: Unexpected error field: %s", desc, validationError.Field)
 		}
+	}
+}
+
+func TestValidateToImageReference(t *testing.T) {
+	o := &kapi.ObjectReference{
+		Name:      "somename",
+		Namespace: "somenamespace",
+		Kind:      "DockerImage",
+	}
+	errs := validateToImageReference(o)
+	if len(errs) != 1 {
+		t.Errorf("Wrong number of errors: %v", errs)
+	}
+	err := errs[0].(*fielderrors.ValidationError)
+	if err.Type != fielderrors.ValidationErrorTypeInvalid {
+		t.Errorf("Wrong error type, expected %v, got %v", fielderrors.ValidationErrorTypeInvalid, err.Type)
+	}
+	if err.Field != "namespace" {
+		t.Errorf("Error on wrong field, expected %s, got %s", "namespace", err.Field)
 	}
 }
