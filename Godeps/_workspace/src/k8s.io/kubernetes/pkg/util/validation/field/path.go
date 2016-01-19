@@ -29,6 +29,10 @@ type Path struct {
 	parent *Path  // nil if this is the root element
 }
 
+func NewRoot() *Path {
+	return &Path{}
+}
+
 // NewPath creates a root Path object.
 func NewPath(name string, moreNames ...string) *Path {
 	r := &Path{name: name, parent: nil}
@@ -77,13 +81,13 @@ func (p *Path) String() string {
 	buf := bytes.NewBuffer(nil)
 	for i := range elems {
 		p := elems[len(elems)-1-i]
-		if p.parent != nil && len(p.name) > 0 {
+		if p.parent != nil && len(p.name) > 0 && buf.Len() > 0 {
 			// This is either the root or it is a subscript.
 			buf.WriteString(".")
 		}
 		if len(p.name) > 0 {
 			buf.WriteString(p.name)
-		} else {
+		} else if len(p.index) > 0 {
 			fmt.Fprintf(buf, "[%s]", p.index)
 		}
 	}
