@@ -114,13 +114,18 @@ func (c *FlowController) Setup(localSubnetCIDR, clusterNetworkCIDR, servicesNetw
 	localSubnetMaskLength, _ := ipnet.Mask.Size()
 	localSubnetGateway := netutils.GenerateDefaultGateway(ipnet).String()
 
+	gwCIDR := fmt.Sprintf("%s/%d", localSubnetGateway, localSubnetMaskLength)
+	if alreadySetUp(c.multitenant, gwCIDR) {
+		return nil
+	}
+
 	itx := ipcmd.NewTransaction(LBR)
 	itx.SetLink("down")
 	itx.IgnoreError()
 	itx.DeleteLink()
 	itx.IgnoreError()
 	itx.AddLink("type", "bridge")
-	itx.AddAddress(fmt.Sprintf("%s/%d", localSubnetGateway, localSubnetMaskLength))
+	itx.AddAddress(gwCIDR)
 	itx.SetLink("up")
 	err = itx.EndTransaction()
 	if err != nil {
@@ -134,9 +139,6 @@ func (c *FlowController) Setup(localSubnetCIDR, clusterNetworkCIDR, servicesNetw
 		return err
 	}
 
-	if alreadySetUp(c.multitenant, fmt.Sprintf("%s/%s", localSubnetGateway, localSubnetMaskLength)) {
-		return nil
-	}
 	config := fmt.Sprintf("export OPENSHIFT_CLUSTER_SUBNET=%s", clusterNetworkCIDR)
 	err = ioutil.WriteFile("/run/openshift-sdn/config.env", []byte(config), 0644)
 	if err != nil {
@@ -238,7 +240,7 @@ func (c *FlowController) Setup(localSubnetCIDR, clusterNetworkCIDR, servicesNetw
 	}
 
 	itx = ipcmd.NewTransaction(TUN)
-	itx.AddAddress(localSubnetGateway)
+	itx.AddAddress(gwCIDR)
 	defer deleteLocalSubnetRoute(TUN, localSubnetCIDR)
 	itx.SetLink("up")
 	itx.AddRoute(clusterNetworkCIDR, "proto", "kernel", "scope", "link")
