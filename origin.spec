@@ -21,12 +21,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 45bc219e1f0a1642fa15071d8610bb8b41d93c24
+%global commit 8f5424a42cea3266d9164cd3ab42fb75b9bcc2c6
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.4-8-g45bc219 -X github.com/openshift/origin/pkg/version.commitFromGit 45bc219 -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.5-19-g3b669bd -X github.com/openshift/origin/pkg/version.commitFromGit 3b669bd -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.1.1.5
+Version:        3.1.1.6
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -466,6 +466,23 @@ fi
 
 
 %changelog
+* Mon Jan 25 2016 Troy Dawson <tdawson@redhat.com> 3.1.1.6
+- UPSTREAM: drop: Don't gratuitously destroy and recreate OVS bridge on startup
+  (danw@redhat.com)
+- UPSTREAM: 17973: Validate pod spec.nodeName (jliggitt@redhat.com)
+- Adding changelog entry (bleanhar@redhat.com)
+- Adding changelog entry (bleanhar@redhat.com)
+- Fix test registry resource location (ffranz@redhat.com)
+- UPSTREAM: 17886: pod log location must validate container if provided
+  (ffranz@redhat.com)
+- Adding the recycle tool to the specfile (bleanhar@redhat.com)
+- Update recycler image to use binary (jliggitt@redhat.com)
+- Updated pv recycler to work with uid:gid (mturansk@redhat.com)
+- Do not delete empty /var/lib/openshift directory on upgrade
+  (jdetiber@redhat.com)
+- Switch enterprise-3.1 to docs.openshift.com/enterprise/3.1
+  (sdodson@redhat.com)
+
 * Mon Jan 18 2016 Troy Dawson <tdawson@redhat.com> 3.1.1.5
 - More fixes and tweeks (tdawson@redhat.com)
 - Lock ace-builds version to 1.2.2 (spadgett@redhat.com)
