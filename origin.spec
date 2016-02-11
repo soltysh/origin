@@ -47,7 +47,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        3.1.1.6
-Release:        1%{?dist}
+Release:        3%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -466,6 +466,14 @@ fi
 
 
 %changelog
+* Fri Feb 05 2016 Troy Dawson <tdawson@redhat.com>
+ - Update release for hotfix (tdawson@redhat.com)
+ - Fix for BZ 1304752: EBS volume remains in 'detached' state (jsafrane@redhat.com)
+ - Preserve existing oauth client secrets on startup (jliggitt@redhat.com)
+ - ImageStreamImage returns incorrect image info (ccoleman@redhat.com)
+ - Bug 1293578 - The Router liveness/readiness probes should always use localhost (bleanhar@redhat.com)
+ - UPSTREAM: 20007: fix race on initial allocation (ccoleman@redhat.com)
+
 * Mon Jan 25 2016 Troy Dawson <tdawson@redhat.com> 3.1.1.6
 - UPSTREAM: drop: Don't gratuitously destroy and recreate OVS bridge on startup
   (danw@redhat.com)
