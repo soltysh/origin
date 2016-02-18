@@ -246,6 +246,7 @@ func (c *FlowController) Setup(localSubnetCIDR, clusterNetworkCIDR, servicesNetw
 	itx = ipcmd.NewTransaction(TUN)
 	itx.AddAddress(gwCIDR)
 	defer deleteLocalSubnetRoute(TUN, localSubnetCIDR)
+	itx.SetLink("mtu", mtuStr)
 	itx.SetLink("up")
 	itx.AddRoute(clusterNetworkCIDR, "proto", "kernel", "scope", "link")
 	itx.AddRoute(servicesNetworkCIDR)
