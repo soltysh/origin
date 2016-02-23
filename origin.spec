@@ -21,12 +21,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 8120d9af36a65a8705b2f464b825d2e166662e3e
+%global commit 37f147a1b03003b88276e11d9a22252b062a704f
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.6-15-g8120d9a -X github.com/openshift/origin/pkg/version.commitFromGit 8120d9a -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.6-20-g37f147a -X github.com/openshift/origin/pkg/version.commitFromGit 37f147a -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -466,6 +466,22 @@ fi
 
 
 %changelog
+* Tue Feb 23 2016 Troy Dawson <tdawson@redhat.com>
+- Set the right MTU on tun0 too (dcbw@redhat.com)
+- Set MTU on vovsbr/vlinuxbr (danw@redhat.com)
+- Update changelog for hotfix (tdawson@redhat.com)
+- Update release for hotfix (tdawson@redhat.com)
+- UPSTREAM: 20775: Set kube-proxy arg default values (jliggitt@redhat.com)
+- Add kube-proxy config, match upstream proxy startup (jliggitt@redhat.com)
+- allow either iptables-based or userspace-based proxy (danw@redhat.com)
+- Fix for BZ 1304752: EBS volume remains in 'detached' state
+  (jsafrane@redhat.com)
+- Preserve existing oauth client secrets on startup (jliggitt@redhat.com)
+- ImageStreamImage returns incorrect image info (ccoleman@redhat.com)
+- Bug 1293578 - The Router liveness/readiness probes should always use
+  localhost (bleanhar@redhat.com)
+- UPSTREAM: 20007: fix race on initial allocation (ccoleman@redhat.com)
+
 * Thu Feb 11 2016 Troy Dawson <tdawson@redhat.com>
 - Update release for hotfix (tdawson@redhat.com)
 - UPSTREAM: 20775: Set kube-proxy arg default values (jliggitt@redhat.com)
