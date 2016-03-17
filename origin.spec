@@ -21,12 +21,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 37f147a1b03003b88276e11d9a22252b062a704f
+%global commit 7f197a5af2dfd820a494a6d98699ff096e6ef965
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.6-20-g37f147a -X github.com/openshift/origin/pkg/version.commitFromGit 37f147a -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.6-27-g73a77fb -X github.com/openshift/origin/pkg/version.commitFromGit 73a77fb -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -466,6 +466,13 @@ fi
 
 
 %changelog
+* Thu Mar 17 2016 Scott Dodson <sdodson@redhat.com>
+- UPSTREAM: carry: Avoid collecting network stats for non root cgroups in raw
+  handler. (agoldste@redhat.com)
+- UPSTREAM: 22791: Remove the attached volumes cache (jsafrane@redhat.com)
+- UPSTREAM: 20197: Verify claim UID when releasing and binding volumes
+  (jsafrane@redhat.com)
+
 * Tue Feb 23 2016 Troy Dawson <tdawson@redhat.com>
 - Set the right MTU on tun0 too (dcbw@redhat.com)
 - Set MTU on vovsbr/vlinuxbr (danw@redhat.com)
