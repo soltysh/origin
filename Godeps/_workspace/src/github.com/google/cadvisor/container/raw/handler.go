@@ -329,7 +329,12 @@ func (self *rawContainerHandler) getFsStats(stats *info.ContainerStats) error {
 }
 
 func (self *rawContainerHandler) GetStats() (*info.ContainerStats, error) {
-	stats, err := libcontainer.GetStats(self.cgroupManager, self.rootFs, os.Getpid())
+	pid := 0
+	// Do not collect network stats for non root cgroups.
+	if self.name == "/" {
+		pid = 1
+	}
+	stats, err := libcontainer.GetStats(self.cgroupManager, self.rootFs, pid)
 	if err != nil {
 		return stats, err
 	}
