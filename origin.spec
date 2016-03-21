@@ -21,12 +21,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 7f197a5af2dfd820a494a6d98699ff096e6ef965
+%global commit 62002c6be32e68ed1f2c076b7efdd959a05bfc61
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.6-27-g73a77fb -X github.com/openshift/origin/pkg/version.commitFromGit 73a77fb -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.6-31-g629387e -X github.com/openshift/origin/pkg/version.commitFromGit 629387e -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -466,7 +466,8 @@ fi
 
 
 %changelog
-* Thu Mar 17 2016 Scott Dodson <sdodson@redhat.com>
+* Mon Mar 21 2016 Scott Dodson <sdodson@redhat.com>
+- UPSTREAM: 19600: Fixed cleanup of persistent volumes (pmorie@gmail.com)
 - UPSTREAM: carry: Avoid collecting network stats for non root cgroups in raw
   handler. (agoldste@redhat.com)
 - UPSTREAM: 22791: Remove the attached volumes cache (jsafrane@redhat.com)
