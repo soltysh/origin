@@ -21,12 +21,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 62002c6be32e68ed1f2c076b7efdd959a05bfc61
+%global commit 8dfe8d5384e36f6aa1dfcebdc58aa359f6fcb54f
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.6-31-g629387e -X github.com/openshift/origin/pkg/version.commitFromGit 629387e -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.6-34-g8dfe8d5 -X github.com/openshift/origin/pkg/version.commitFromGit 8dfe8d5 -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -47,7 +47,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        3.1.1.6
-Release:        4%{?dist}
+Release:        5%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -467,6 +467,9 @@ fi
 
 
 %changelog
+* Fri Apr 01 2016 Scott Dodson <sdodson@redhat.com>
+- OSE 3.1 requires exactly >= 1.8.2 but < 1.9 (sdodson@redhat.com)
+
 * Mon Mar 21 2016 Scott Dodson <sdodson@redhat.com>
 - UPSTREAM: 19600: Fixed cleanup of persistent volumes (pmorie@gmail.com)
 - UPSTREAM: carry: Avoid collecting network stats for non root cgroups in raw
