@@ -91,6 +91,7 @@ Obsoletes:      openshift-master < %{package_refector_version}
 Summary:        %{product_name} Node
 Requires:       %{name} = %{version}-%{release}
 Requires:       docker-io >= %{docker_version}
+Requires:       docker-io < 1.9
 Requires:       tuned-profiles-%{name}-node = %{version}-%{release}
 Requires:       util-linux
 Requires:       socat
