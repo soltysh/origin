@@ -21,12 +21,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 8dfe8d5384e36f6aa1dfcebdc58aa359f6fcb54f
+%global commit 0e623fa2aa517beb8bfc909dfab39a106781f5bf
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.6-34-g8dfe8d5 -X github.com/openshift/origin/pkg/version.commitFromGit 8dfe8d5 -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.6-42-g0e623fa -X github.com/openshift/origin/pkg/version.commitFromGit 0e623fa -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -470,6 +470,39 @@ fi
 
 
 %changelog
+* Thu Apr 28 2016 Troy Dawson <tdawson@redhat.com>
+- Update release for hotfix (tdawson@redhat.com)
+- Docker build: do not remove built image (cewong@redhat.com)
+- Make /etc/origin /etc/origin/master /etc/origin/node 0700
+  (sdodson@redhat.com)
+- Revert "OSE 3.1 requires exactly >= 1.8.2 but < 1.9" (sdodson@redhat.com)
+- Update specfile (sdodson@redhat.com)
+- OSE 3.1 requires exactly >= 1.8.2 but < 1.9 (sdodson@redhat.com)
+- Update changelog (sdodson@redhat.com)
+- UPSTREAM: 19600: Fixed cleanup of persistent volumes (pmorie@gmail.com)
+- Update for hotfix (sdodson@redhat.com)
+- UPSTREAM: carry: Avoid collecting network stats for non root cgroups in raw
+  handler. (agoldste@redhat.com)
+- UPSTREAM: 22791: Remove the attached volumes cache (jsafrane@redhat.com)
+- UPSTREAM: 20197: Verify claim UID when releasing and binding volumes
+  (jsafrane@redhat.com)
+- Update changelog for hotfix (tdawson@redhat.com)
+- Update release for hotfix (tdawson@redhat.com)
+- Set the right MTU on tun0 too (dcbw@redhat.com)
+- Set MTU on vovsbr/vlinuxbr (danw@redhat.com)
+- Update changelog for hotfix (tdawson@redhat.com)
+- Update release for hotfix (tdawson@redhat.com)
+- UPSTREAM: 20775: Set kube-proxy arg default values (jliggitt@redhat.com)
+- Add kube-proxy config, match upstream proxy startup (jliggitt@redhat.com)
+- allow either iptables-based or userspace-based proxy (danw@redhat.com)
+- Fix for BZ 1304752: EBS volume remains in 'detached' state
+  (jsafrane@redhat.com)
+- Preserve existing oauth client secrets on startup (jliggitt@redhat.com)
+- ImageStreamImage returns incorrect image info (ccoleman@redhat.com)
+- Bug 1293578 - The Router liveness/readiness probes should always use
+  localhost (bleanhar@redhat.com)
+- UPSTREAM: 20007: fix race on initial allocation (ccoleman@redhat.com)
+
 * Fri Apr 01 2016 Scott Dodson <sdodson@redhat.com>
 - OSE 3.1 requires exactly >= 1.8.2 but < 1.9 (sdodson@redhat.com)
 
