@@ -144,6 +144,12 @@ func (c *Client) SendRequest(rr *RawRequest) (*RawResponse, error) {
 		defer close(cancelRoutine)
 
 		go func() {
+			defer func() {
+				if err := recover(); err != nil {
+					logger.Debug("recovered panic canceling send.request: ", err)
+				}
+			}()
+
 			select {
 			case <-rr.Cancel:
 				cancelled <- true
