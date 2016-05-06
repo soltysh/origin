@@ -173,6 +173,7 @@ func NewMainKubelet(
 	imageGCPolicy ImageGCPolicy,
 	diskSpacePolicy DiskSpacePolicy,
 	cloud cloudprovider.Interface,
+	nodeLabels map[string]string,
 	nodeStatusUpdateFrequency time.Duration,
 	resourceContainer string,
 	osInterface kubecontainer.OSInterface,
@@ -292,6 +293,7 @@ func NewMainKubelet(
 		volumeManager:                  volumeManager,
 		cloud:                          cloud,
 		nodeRef:                        nodeRef,
+		nodeLabels:                     nodeLabels,
 		nodeStatusUpdateFrequency:      nodeStatusUpdateFrequency,
 		resourceContainer:              resourceContainer,
 		os:                             osInterface,
@@ -525,6 +527,9 @@ type Kubelet struct {
 	masterServiceNamespace string
 	serviceLister          serviceLister
 	nodeLister             nodeLister
+
+	// a list of node labels to register
+	nodeLabels map[string]string
 
 	// Last timestamp when runtime responded on ping.
 	// Mutex is used to protect this value.
@@ -918,6 +923,15 @@ func (kl *Kubelet) initialNodeStatus() (*api.Node, error) {
 			Unschedulable: !kl.registerSchedulable,
 		},
 	}
+
+	// @question: should this be place after the call to the cloud provider? which also applies labels
+	for k, v := range kl.nodeLabels {
+		if cv, found := node.ObjectMeta.Labels[k]; found {
+			glog.Warningf("the node label %s=%s will overwrite default setting %s", k, v, cv)
+		}
+		node.ObjectMeta.Labels[k] = v
+	}
+
 	if kl.cloud != nil {
 		instances, ok := kl.cloud.Instances()
 		if !ok {

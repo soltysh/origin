@@ -115,6 +115,7 @@ type KubeletServer struct {
 	NetworkPluginDir               string
 	NetworkPluginName              string
 	NodeStatusUpdateFrequency      time.Duration
+	NodeLabels                     map[string]string
 	OOMScoreAdj                    int
 	PodCIDR                        string
 	PodInfraContainerImage         string
@@ -204,6 +205,7 @@ func NewKubeletServer() *KubeletServer {
 		NetworkPluginDir:            "/usr/libexec/kubernetes/kubelet-plugins/net/exec/",
 		NetworkPluginName:           "",
 		NodeStatusUpdateFrequency:   10 * time.Second,
+		NodeLabels:                  make(map[string]string),
 		OOMScoreAdj:                 qos.KubeletOOMScoreAdj,
 		PodInfraContainerImage:      dockertools.PodInfraContainerImage,
 		Port:                           ports.KubeletPort,
@@ -273,6 +275,8 @@ func (s *KubeletServer) AddFlags(fs *pflag.FlagSet) {
 	fs.IPVar(&s.ClusterDNS, "cluster-dns", s.ClusterDNS, "IP address for a cluster DNS server.  If set, kubelet will configure all containers to use this for DNS resolution in addition to the host's DNS servers")
 	fs.DurationVar(&s.StreamingConnectionIdleTimeout, "streaming-connection-idle-timeout", s.StreamingConnectionIdleTimeout, "Maximum time a streaming connection can be idle before the connection is automatically closed.  Example: '5m'")
 	fs.DurationVar(&s.NodeStatusUpdateFrequency, "node-status-update-frequency", s.NodeStatusUpdateFrequency, "Specifies how often kubelet posts node status to master. Note: be cautious when changing the constant, it must work with nodeMonitorGracePeriod in nodecontroller. Default: 10s")
+	bindableNodeLabels := util.ConfigurationMap(s.NodeLabels)
+	fs.Var(&bindableNodeLabels, "node-labels", "<Warning: Alpha feature> Labels to add when registering the node in the cluster.  Labels must be key=value pairs separated by ','.")
 	fs.IntVar(&s.ImageGCHighThresholdPercent, "image-gc-high-threshold", s.ImageGCHighThresholdPercent, "The percent of disk usage after which image garbage collection is always run. Default: 90%%")
 	fs.IntVar(&s.ImageGCLowThresholdPercent, "image-gc-low-threshold", s.ImageGCLowThresholdPercent, "The percent of disk usage before which image garbage collection is never run. Lowest disk usage to garbage collect to. Default: 80%%")
 	fs.IntVar(&s.LowDiskSpaceThresholdMB, "low-diskspace-threshold-mb", s.LowDiskSpaceThresholdMB, "The absolute free disk space, in MB, to maintain. When disk space falls below this threshold, new pods would be rejected. Default: 256")
@@ -411,6 +415,7 @@ func (s *KubeletServer) UnsecuredKubeletConfig() (*KubeletConfig, error) {
 		ChmodRunner:               chmodRunner,
 		NetworkPluginName:         s.NetworkPluginName,
 		NetworkPlugins:            ProbeNetworkPlugins(s.NetworkPluginDir),
+		NodeLabels:                s.NodeLabels,
 		NodeStatusUpdateFrequency: s.NodeStatusUpdateFrequency,
 		OOMAdjuster:               oom.NewOOMAdjuster(),
 		OSInterface:               kubecontainer.RealOS{},
@@ -681,6 +686,7 @@ func SimpleKubelet(client *client.Client,
 		Mounter:                   mount.New(),
 		ChownRunner:               chown.New(),
 		ChmodRunner:               chmod.New(),
+		NodeLabels:                make(map[string]string),
 		NodeStatusUpdateFrequency: nodeStatusUpdateFrequency,
 		OOMAdjuster:               oom.NewFakeOOMAdjuster(),
 		OSInterface:               osInterface,
@@ -869,6 +875,7 @@ type KubeletConfig struct {
 	NetworkPluginName              string
 	NetworkPlugins                 []network.NetworkPlugin
 	NodeName                       string
+	NodeLabels                     map[string]string
 	NodeStatusUpdateFrequency      time.Duration
 	OOMAdjuster                    *oom.OOMAdjuster
 	OSInterface                    kubecontainer.OSInterface
@@ -954,6 +961,7 @@ func CreateAndInitKubelet(kc *KubeletConfig) (k KubeletBootstrap, pc *config.Pod
 		kc.ImageGCPolicy,
 		kc.DiskSpacePolicy,
 		kc.Cloud,
+		kc.NodeLabels,
 		kc.NodeStatusUpdateFrequency,
 		kc.ResourceContainer,
 		kc.OSInterface,
