@@ -58,7 +58,7 @@ func (d *sccExecRestrictions) Admit(a admission.Attributes) (err error) {
 	// create a synthentic admission attribute to check SCC admission status for this pod
 	// clear the SA name, so that any permissions MUST be based on your user's power, not the SAs power.
 	pod.Spec.ServiceAccountName = ""
-	createAttributes := admission.NewAttributesRecord(pod, "pods", a.GetNamespace(), a.GetName(), a.GetResource(), a.GetSubresource(), admission.Create, a.GetUserInfo())
+	createAttributes := admission.NewAttributesRecord(pod, "pods", a.GetNamespace(), a.GetName(), a.GetResource(), "", admission.Create, a.GetUserInfo())
 	if err := d.constraintAdmission.Admit(createAttributes); err != nil {
 		return admission.NewForbidden(a, err)
 	}
