@@ -22,12 +22,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit b8dfa089312e4a60fb65f506fe7a282ea9bd2077
+%global commit eea2eb5402a3973c4e141430ab0862ad638276eb
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.0.43-2-g1743f3b -X github.com/openshift/origin/pkg/version.commitFromGit 1743f3b -X k8s.io/kubernetes/pkg/version.gitCommit 1743f3b -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.0.44-14-geea2eb5 -X github.com/openshift/origin/pkg/version.commitFromGit eea2eb5 -X k8s.io/kubernetes/pkg/version.gitCommit eea2eb5 -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -47,7 +47,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.2.0.44
+Version:        3.2.0.45
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -486,6 +486,34 @@ fi
 
 
 %changelog
+* Wed May 25 2016 Scott Dodson <sdodson@redhat.com> 3.2.0.45
+- Fix extended validation test expected error count. Probably needs to do error
+  check rather than exact error count match. (smitram@gmail.com)
+-   o Add basic validation for route TLS configuration - checks that     input
+  is "syntactically" valid.   o Checkpoint initial code.   o Add support for
+  validating route tls config.   o Add option for validating route tls config.
+  o Validation fixes.   o Check private key + cert mismatches.   o Add tests.
+  o Record route rejection.   o Hook into add route processing + store invalid
+  service alias configs     in another place - easy to check prior errors on
+  readmission.   o Remove entry from invalid service alias configs upon route
+  removal.   o Add generated completions.   o Bug fixes.   o Recording
+  rejecting routes is not working completely.   o Fix status update problem -
+  we should set the status to admitted     only if we had no errors handling a
+  route.   o Rework to use a new controller - extended_validator as per
+  @smarterclayton comments.   o Cleanup validation as per @liggitt comments.
+  o Update bash completions.   o Fixup older validation unit tests.   o Changes
+  as per @liggitt review comments + cleanup tests.   o Fix failing test.
+  (smitram@gmail.com)
+- [RPMs] Refactor golang BuildRequires (sdodson@redhat.com)
+- UPSTREAM: 25907: Fix detection of docker cgroup on RHEL (agoldste@redhat.com)
+- UPSTREAM: 25690: Fixes panic on round tripper when TLS under a proxy
+  (ffranz@redhat.com)
+- platformmanagement_public_704: Added basic auditing (maszulik@redhat.com)
+- allow project request limits on system users and service accounts
+  (deads@redhat.com)
+- UPSTREAM: 25501: SplitHostPort is needed since Request.RemoteAddr has the
+  host:port format (maszulik@redhat.com)
+
 * Wed May 11 2016 Troy Dawson <tdawson@redhat.com> 3.2.0.44
 - Check for pod creation in scc exec admission (jliggitt@redhat.com)
 
