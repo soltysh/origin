@@ -162,7 +162,13 @@ func mockRegistryHandler(t *testing.T, count *int) http.Handler {
 		case "/v2/test/image/manifests/" + phpDigest:
 			w.Write([]byte(phpManifest))
 		case "/v2/test/image2/manifests/" + etcdDigest:
-			w.Write([]byte(etcdManifest))
+			if r.Method == "HEAD" {
+				w.Header().Set("Content-Length", fmt.Sprintf("%d", len(etcdManifest)))
+				w.Header().Set("Docker-Content-Digest", etcdDigest)
+				w.WriteHeader(http.StatusOK)
+			} else {
+				w.Write([]byte(etcdManifest))
+			}
 		default:
 			t.Fatalf("unexpected request %s: %#v", r.URL.Path, r)
 		}
@@ -346,21 +352,29 @@ func TestImageStreamImportScheduled(t *testing.T) {
 		case "/v2/":
 			w.Header().Set("Docker-Distribution-API-Version", "registry/2.0")
 			w.Write([]byte(`{}`))
-		case "/v2/test/image/manifests/latest":
+		case "/v2/test/image/manifests/latest", "/v2/test/image/manifests/" + etcdDigest, "/v2/test/image/manifests/" + phpDigest:
 			count++
 			t.Logf("serving %d", count)
-			var manifest string
+			var manifest, digest string
 			switch count {
-			case 1:
+			case 1, 2:
+				digest = etcdDigest
 				manifest = etcdManifest
-			case 2, 3:
+			case 3, 4, 5, 6:
+				digest = phpDigest
 				manifest = phpManifest
 			default:
 				w.WriteHeader(500)
 				return
 			}
-			written <- struct{}{}
+			if r.Method == "HEAD" {
+				w.Header().Set("Content-Length", fmt.Sprintf("%d", len(manifest)))
+				w.Header().Set("Docker-Content-Digest", digest)
+				w.WriteHeader(http.StatusOK)
+				return
+			}
 			w.Write([]byte(manifest))
+			written <- struct{}{}
 		default:
 			t.Fatalf("unexpected request %s: %#v", r.URL.Path, r)
 		}
