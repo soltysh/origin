@@ -3043,6 +3043,18 @@ func autoConvert_api_Image_To_v1beta3_Image(in *imageapi.Image, out *imageapiv1b
 	} else {
 		out.DockerImageLayers = nil
 	}
+	if in.DockerImageSignatures != nil {
+		out.DockerImageSignatures = make([][]uint8, len(in.DockerImageSignatures))
+		for i := range in.DockerImageSignatures {
+			if err := s.Convert(&in.DockerImageSignatures[i], &out.DockerImageSignatures[i], 0); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.DockerImageSignatures = nil
+	}
+	out.DockerImageManifestMediaType = in.DockerImageManifestMediaType
+	out.DockerImageConfig = in.DockerImageConfig
 	return nil
 }
 
@@ -3223,6 +3235,18 @@ func autoConvert_v1beta3_Image_To_api_Image(in *imageapiv1beta3.Image, out *imag
 	} else {
 		out.DockerImageLayers = nil
 	}
+	if in.DockerImageSignatures != nil {
+		out.DockerImageSignatures = make([][]uint8, len(in.DockerImageSignatures))
+		for i := range in.DockerImageSignatures {
+			if err := s.Convert(&in.DockerImageSignatures[i], &out.DockerImageSignatures[i], 0); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.DockerImageSignatures = nil
+	}
+	out.DockerImageManifestMediaType = in.DockerImageManifestMediaType
+	out.DockerImageConfig = in.DockerImageConfig
 	return nil
 }
 
