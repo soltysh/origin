@@ -22,12 +22,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 45459446465292391670ce8846b0af39306f5737
+%global commit bae93d0b280a0c7e29dfcf6e829c144dc01e419c
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.2-7-g4545944 -X github.com/openshift/origin/pkg/version.commitFromGit 4545944 -X k8s.io/kubernetes/pkg/version.gitCommit 4545944 -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit=3 -X github.com/openshift/origin/pkg/version.minorFromGit=2+ -X github.com/openshift/origin/pkg/version.versionFromGit=v3.2.1.3-37-g581af22 -X github.com/openshift/origin/pkg/version.commitFromGit=581af22 -X k8s.io/kubernetes/pkg/version.gitCommit=581af22 -X k8s.io/kubernetes/pkg/version.gitVersion=v1.2.0-36-g4a3f9c5
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -47,7 +47,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.2.1.3
+Version:        3.2.1.4
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -486,6 +486,9 @@ fi
 
 
 %changelog
+* Wed Jun 29 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.4
+- Clean up unused token secret (jliggitt@redhat.com)
+
 * Mon Jun 20 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.3
 - add mutation cache (deads@redhat.com)
 - convert dockercfg secret generator to a work queue (deads@redhat.com)
