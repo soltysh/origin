@@ -490,11 +490,11 @@ func GetBootstrapClusterRoles() []authorizationapi.ClusterRole {
 			Rules: []authorizationapi.PolicyRule{
 				{
 					Verbs:     sets.NewString("get", "delete"),
-					Resources: sets.NewString("images"),
+					Resources: sets.NewString("images", "imagestreamtags"),
 				},
 				{
 					Verbs:     sets.NewString("get"),
-					Resources: sets.NewString("imagestreamimages", "imagestreamtags", "imagestreams", "imagestreams/secrets"),
+					Resources: sets.NewString("imagestreamimages", "imagestreams", "imagestreams/secrets"),
 				},
 				{
 					Verbs:     sets.NewString("update"),
