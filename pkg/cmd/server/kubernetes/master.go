@@ -35,6 +35,9 @@ import (
 	kresourcequota "k8s.io/kubernetes/pkg/controller/resourcequota"
 	"k8s.io/kubernetes/pkg/master"
 	quotainstall "k8s.io/kubernetes/pkg/quota/install"
+	"k8s.io/kubernetes/pkg/registry/endpoint"
+	endpointsetcd "k8s.io/kubernetes/pkg/registry/endpoint/etcd"
+	"k8s.io/kubernetes/pkg/registry/generic"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/util"
 	"k8s.io/kubernetes/pkg/util/io"
@@ -53,6 +56,7 @@ import (
 
 	osclient "github.com/openshift/origin/pkg/client"
 	configapi "github.com/openshift/origin/pkg/cmd/server/api"
+	"github.com/openshift/origin/pkg/cmd/server/election"
 )
 
 const (
@@ -68,6 +72,29 @@ const (
 // a single string value).
 func (c *MasterConfig) InstallAPI(container *restful.Container) ([]string, error) {
 	c.Master.RestfulContainer = container
+
+	if c.Master.EnableCoreControllers {
+		glog.V(2).Info("Using the lease endpoint reconciler")
+		leaseStorage := c.Master.StorageDestinations.Get("", "apiServerIPInfo")
+
+		leaseTTL := uint64(master.DefaultEndpointReconcilerInterval + 5) // add 5 seconds for wiggle room
+		masterLeases := election.NewLeases(leaseStorage, "/masterleases/", leaseTTL)
+
+		storage := c.Master.StorageDestinations.Get("", "endpoints")
+		endpointsStorage := endpointsetcd.NewREST(generic.RESTOptions{
+			Storage:                 storage,
+			Decorator:               generic.UndecoratedStorage,
+			DeleteCollectionWorkers: 0,
+		})
+
+		endpointRegistry := endpoint.NewRegistry(endpointsStorage)
+
+		c.Master.EndpointReconcilerConfig = master.EndpointReconcilerConfig{
+			Reconciler: election.NewLeaseEndpointReconciler(endpointRegistry, masterLeases),
+			Interval:   master.DefaultEndpointReconcilerInterval,
+		}
+	}
+
 	_, err := master.New(c.Master)
 	if err != nil {
 		return nil, err
