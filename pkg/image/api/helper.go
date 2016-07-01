@@ -433,8 +433,8 @@ func ImageWithMetadata(image *Image) error {
 		image.DockerImageMetadata.Config = v1Metadata.Config
 		image.DockerImageMetadata.Architecture = v1Metadata.Architecture
 		if len(image.DockerImageLayers) > 0 {
-			layerSet := sets.NewString()
 			size := int64(0)
+			layerSet := sets.NewString()
 			for _, layer := range image.DockerImageLayers {
 				if layerSet.Has(layer.Name) {
 					continue
