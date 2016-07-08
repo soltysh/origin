@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"time"
 
 	"github.com/emicklei/go-restful"
 	"github.com/golang/glog"
@@ -19,6 +20,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/typed/dynamic"
 	coreunversioned "k8s.io/kubernetes/pkg/client/typed/generated/core/unversioned"
 	extensionsunversioned "k8s.io/kubernetes/pkg/client/typed/generated/extensions/unversioned"
+	"k8s.io/kubernetes/pkg/storage"
 
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/controller"
@@ -77,8 +79,7 @@ func (c *MasterConfig) InstallAPI(container *restful.Container) ([]string, error
 		glog.V(2).Info("Using the lease endpoint reconciler")
 		leaseStorage := c.Master.StorageDestinations.Get("", "apiServerIPInfo")
 
-		leaseTTL := uint64(master.DefaultEndpointReconcilerInterval + 5) // add 5 seconds for wiggle room
-		masterLeases := election.NewLeases(leaseStorage, "/masterleases/", leaseTTL)
+		masterLeases := newMasterLeases(leaseStorage)
 
 		storage := c.Master.StorageDestinations.Get("", "endpoints")
 		endpointsStorage := endpointsetcd.NewREST(generic.RESTOptions{
@@ -110,6 +111,12 @@ func (c *MasterConfig) InstallAPI(container *restful.Container) ([]string, error
 	}
 
 	return messages, nil
+}
+
+func newMasterLeases(storage storage.Interface) election.Leases {
+	// leaseTTL is in seconds, i.e. 15 means 15 seconds; do NOT do 15*time.Second!
+	leaseTTL := uint64((master.DefaultEndpointReconcilerInterval + 5*time.Second) / time.Second) // add 5 seconds for wiggle room
+	return election.NewLeases(storage, "/masterleases/", leaseTTL)
 }
 
 // RunNamespaceController starts the Kubernetes Namespace Manager
