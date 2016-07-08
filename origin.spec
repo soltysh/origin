@@ -22,12 +22,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 7661b3b322ab49c1b6cc505f286f9ec599c3b95e
+%global commit 2711ef45cc71a1aaa6eea4512896baae26e13b93
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.4-7-g7661b3b -X github.com/openshift/origin/pkg/version.commitFromGit 7661b3b -X k8s.io/kubernetes/pkg/version.gitCommit 7661b3b -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.5-5-g2711ef4 -X github.com/openshift/origin/pkg/version.commitFromGit 2711ef4 -X k8s.io/kubernetes/pkg/version.gitCommit 2711ef4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -47,7 +47,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.2.1.5
+Version:        3.2.1.6
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -486,6 +486,10 @@ fi
 
 
 %changelog
+* Fri Jul 08 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.6
+- Fix incorrect master leases ttl setting (agoldste@redhat.com)
+- Added events to PVC describe (mturansk@redhat.com)
+
 * Wed Jul 06 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.5
 - Handle client-side errors on debug pod creation (ffranz@redhat.com)
 - Add master lease endpoint reconciler (agoldste@redhat.com)
