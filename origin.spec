@@ -22,12 +22,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 2711ef45cc71a1aaa6eea4512896baae26e13b93
+%global commit 982f896d6b8dc6513c6bd6b561f1d1aa8e4b6e3f
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.5-5-g2711ef4 -X github.com/openshift/origin/pkg/version.commitFromGit 2711ef4 -X k8s.io/kubernetes/pkg/version.gitCommit 2711ef4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.6-5-g982f896 -X github.com/openshift/origin/pkg/version.commitFromGit 982f896 -X k8s.io/kubernetes/pkg/version.gitCommit 982f896 -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -47,7 +47,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.2.1.6
+Version:        3.2.1.8
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -486,17 +486,20 @@ fi
 
 
 %changelog
-* Fri Jul 08 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.6
+
+* Thu Jul 14 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.8
+- Bug 1343681 - Fix tagsChanged logic (maszulik@redhat.com)
 - Fix incorrect master leases ttl setting (agoldste@redhat.com)
 - Added events to PVC describe (mturansk@redhat.com)
-
-* Wed Jul 06 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.5
 - Handle client-side errors on debug pod creation (ffranz@redhat.com)
 - Add master lease endpoint reconciler (agoldste@redhat.com)
 - UPSTREAM: 28025: Add EndpointReconciler to master Config
   (agoldste@redhat.com)
 - UPSTREAM: 26915: Extract interface for master endpoints reconciler
   (agoldste@redhat.com)
+
+* Wed Jul 13 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.7
+- UPSTREAM: <carry>: Fix watch cache filtering (jliggitt@redhat.com)
 
 * Wed Jun 29 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.4
 - Clean up unused token secret (jliggitt@redhat.com)
