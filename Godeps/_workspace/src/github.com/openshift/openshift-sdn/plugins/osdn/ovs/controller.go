@@ -352,7 +352,8 @@ func (plugin *ovsPlugin) DeleteHostSubnetRules(subnet *osapi.HostSubnet) {
 
 	otx := ovs.NewTransaction(BR)
 	otx.DeleteFlows("table=1, tun_src=%s", subnet.HostIP)
-	otx.DeleteFlows("table=8, nw_dst=%s", subnet.Subnet)
+	otx.DeleteFlows("table=8, ip, nw_dst=%s", subnet.Subnet)
+	otx.DeleteFlows("table=8, arp, nw_dst=%s", subnet.Subnet)
 	err := otx.EndTransaction()
 	if err != nil {
 		glog.Errorf("Error deleting OVS flows: %v", err)
