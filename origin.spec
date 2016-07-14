@@ -22,12 +22,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 982f896d6b8dc6513c6bd6b561f1d1aa8e4b6e3f
+%global commit 7357d4eb843fed7541b7402dfd71f7dda15aa0ad
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.6-5-g982f896 -X github.com/openshift/origin/pkg/version.commitFromGit 982f896 -X k8s.io/kubernetes/pkg/version.gitCommit 982f896 -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.8-3-g7357d4e -X github.com/openshift/origin/pkg/version.commitFromGit 7357d4e -X k8s.io/kubernetes/pkg/version.gitCommit 7357d4e -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -47,7 +47,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.2.1.8
+Version:        3.2.1.9
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -486,6 +486,9 @@ fi
 
 
 %changelog
+* Thu Jul 14 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.9
+- Fully specify DeleteHostSubnet() rules (danw@redhat.com)
+
 
 * Thu Jul 14 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.8
 - Bug 1343681 - Fix tagsChanged logic (maszulik@redhat.com)
