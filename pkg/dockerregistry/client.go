@@ -675,7 +675,7 @@ func (repo *v2repository) unmarshalImageManifest(c *connection, body []byte) (*d
 		}
 		return unmarshalDockerImage([]byte(manifest.History[0].DockerV1Compatibility))
 	case 2:
-		config, err := repo.getImageConfig(c, manifest.Config.Digest)
+		config, err := repo.getImageConfig(c, manifest.Config.Digest.String())
 		if err != nil {
 			return nil, err
 		}
