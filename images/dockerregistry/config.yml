@@ -5,7 +5,7 @@ http:
   addr: :5000
 storage:
   cache:
-    layerinfo: inmemory
+    blobdescriptor: inmemory
   filesystem:
     rootdirectory: /registry
   delete:
@@ -21,5 +21,6 @@ middleware:
       options:
         acceptschema2: false
         pullthrough: true
+        blobrepositorycachettl: 10m
   storage:
     - name: openshift
