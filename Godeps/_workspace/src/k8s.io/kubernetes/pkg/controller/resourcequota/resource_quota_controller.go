@@ -61,7 +61,9 @@ type ResourceQuotaController struct {
 	// Watches changes to all resource quota
 	rqController *framework.Controller
 	// ResourceQuota objects that need to be synchronized
-	queue *workqueue.Type
+	queue workqueue.RateLimitingInterface
+	// missingUsageQueue holds objects that are missing the initial usage informatino
+	missingUsageQueue workqueue.RateLimitingInterface
 	// To allow injection of syncUsage for testing.
 	syncHandler func(key string) error
 	// function that controls full recalculation of quota usage
@@ -76,7 +78,8 @@ func NewResourceQuotaController(options *ResourceQuotaControllerOptions) *Resour
 	// build the resource quota controller
 	rq := &ResourceQuotaController{
 		kubeClient:               options.KubeClient,
-		queue:                    workqueue.New(),
+		queue:                    workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		missingUsageQueue:        workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
 		resyncPeriod:             options.ResyncPeriod,
 		registry:                 options.Registry,
 		replenishmentControllers: []*framework.Controller{},
@@ -98,7 +101,7 @@ func NewResourceQuotaController(options *ResourceQuotaControllerOptions) *Resour
 		&api.ResourceQuota{},
 		rq.resyncPeriod(),
 		framework.ResourceEventHandlerFuncs{
-			AddFunc: rq.enqueueResourceQuota,
+			AddFunc: rq.addQuota,
 			UpdateFunc: func(old, cur interface{}) {
 				// We are only interested in observing updates to quota.spec to drive updates to quota.status.
 				// We ignore all updates to quota.Status because they are all driven by this controller.
@@ -113,7 +116,7 @@ func NewResourceQuotaController(options *ResourceQuotaControllerOptions) *Resour
 				if quota.Equals(curResourceQuota.Spec.Hard, oldResourceQuota.Spec.Hard) {
 					return
 				}
-				rq.enqueueResourceQuota(curResourceQuota)
+				rq.addQuota(curResourceQuota)
 			},
 			// This will enter the sync loop and no-op, because the controller has been deleted from the store.
 			// Note that deleting a controller immediately after scaling it to 0 will not work. The recommended
@@ -157,22 +160,64 @@ func (rq *ResourceQuotaController) enqueueResourceQuota(obj interface{}) {
 	rq.queue.Add(key)
 }
 
+func (rq *ResourceQuotaController) addQuota(obj interface{}) {
+	key, err := controller.KeyFunc(obj)
+	if err != nil {
+		glog.Errorf("Couldn't get key for object %+v: %v", obj, err)
+		return
+	}
+
+	resourceQuota := obj.(*api.ResourceQuota)
+
+	// if we declared an intent that is not yet captured in status (prioritize it)
+	if !api.Semantic.DeepEqual(resourceQuota.Spec.Hard, resourceQuota.Status.Hard) {
+		rq.missingUsageQueue.Add(key)
+		return
+	}
+
+	// if we declared a constraint that has no usage (which this controller can calculate, prioritize it)
+	for constraint := range resourceQuota.Status.Hard {
+		if _, usageFound := resourceQuota.Status.Used[constraint]; !usageFound {
+			matchedResources := []api.ResourceName{constraint}
+
+			for _, evaluator := range rq.registry.Evaluators() {
+				if intersection := quota.Intersection(evaluator.MatchesResources(), matchedResources); len(intersection) != 0 {
+					rq.missingUsageQueue.Add(key)
+					return
+				}
+			}
+		}
+	}
+
+	// no special priority, go in normal recalc queue
+	rq.queue.Add(key)
+}
+
 // worker runs a worker thread that just dequeues items, processes them, and marks them done.
-// It enforces that the syncHandler is never invoked concurrently with the same key.
-func (rq *ResourceQuotaController) worker() {
-	for {
-		func() {
-			key, quit := rq.queue.Get()
-			if quit {
+func (rq *ResourceQuotaController) worker(queue workqueue.RateLimitingInterface) func() {
+	workFunc := func() bool {
+		key, quit := queue.Get()
+		if quit {
+			return true
+		}
+		defer queue.Done(key)
+		err := rq.syncHandler(key.(string))
+		if err == nil {
+			queue.Forget(key)
+			return false
+		}
+		utilruntime.HandleError(err)
+		queue.AddRateLimited(key)
+		return false
+	}
+
+	return func() {
+		for {
+			if quit := workFunc(); quit {
+				glog.Infof("resource quota controller worker shutting down")
 				return
 			}
-			defer rq.queue.Done(key)
-			err := rq.syncHandler(key.(string))
-			if err != nil {
-				utilruntime.HandleError(err)
-				rq.queue.Add(key)
-			}
-		}()
+		}
 	}
 }
 
@@ -186,13 +231,15 @@ func (rq *ResourceQuotaController) Run(workers int, stopCh <-chan struct{}) {
 	}
 	// the workers that chug through the quota calculation backlog
 	for i := 0; i < workers; i++ {
-		go wait.Until(rq.worker, time.Second, stopCh)
+		go wait.Until(rq.worker(rq.queue), time.Second, stopCh)
+		go wait.Until(rq.worker(rq.missingUsageQueue), time.Second, stopCh)
 	}
 	// the timer for how often we do a full recalculation across all quotas
 	go wait.Until(func() { rq.enqueueAll() }, rq.resyncPeriod(), stopCh)
 	<-stopCh
 	glog.Infof("Shutting down ResourceQuotaController")
 	rq.queue.ShutDown()
+	rq.missingUsageQueue.ShutDown()
 }
 
 // syncResourceQuotaFromKey syncs a quota key
