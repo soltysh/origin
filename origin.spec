@@ -22,12 +22,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 7357d4eb843fed7541b7402dfd71f7dda15aa0ad
+%global commit d82581f425f31a117c4a87b20acab14d160f95b8
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.8-3-g7357d4e -X github.com/openshift/origin/pkg/version.commitFromGit 7357d4e -X k8s.io/kubernetes/pkg/version.gitCommit 7357d4e -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.9-5-gd82581f -X github.com/openshift/origin/pkg/version.commitFromGit d82581f -X k8s.io/kubernetes/pkg/version.gitCommit d82581f -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -47,7 +47,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.2.1.9
+Version:        3.2.1.10
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -486,6 +486,11 @@ fi
 
 
 %changelog
+* Wed Jul 20 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.10
+- UPSTREAM: 29133: use a separate queue for initial quota calculation
+  (deads@redhat.com)
+- UPSTREAM: 29134: Improve quota controller performance (decarr@redhat.com)
+
 * Thu Jul 14 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.9
 - Fully specify DeleteHostSubnet() rules (danw@redhat.com)
 
