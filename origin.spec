@@ -198,7 +198,7 @@ export GOPATH=$(pwd)/_build:$(pwd)/_thirdpartyhacks:%{buildroot}%{gopath}:%{gopa
 # Build all linux components we care about
 for cmd in oc openshift dockerregistry recycle
 do
-        go install -ldflags "%{ldflags}" %{import_path}/cmd/${cmd}
+        go install -tags include_gcs -ldflags "%{ldflags}" %{import_path}/cmd/${cmd}
 done
 go test -c -o _build/bin/extended.test -ldflags "%{ldflags}" %{import_path}/test/extended
 
