@@ -22,12 +22,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 83b71c5f1c07ff1d307c47d89d6bdfed4d773451
+%global commit 459d2184402f5b6ff186edbc54ab5f823955f0ff
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.10-3-g83b71c5 -X github.com/openshift/origin/pkg/version.commitFromGit 83b71c5 -X k8s.io/kubernetes/pkg/version.gitCommit 83b71c5 -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.11-6-g459d218 -X github.com/openshift/origin/pkg/version.commitFromGit 459d218 -X k8s.io/kubernetes/pkg/version.gitCommit 459d218 -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -47,7 +47,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.2.1.11
+Version:        3.2.1.12
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -489,6 +489,11 @@ fi
 
 
 %changelog
+* Tue Jul 26 2016 Troy Dawson <tdawson@redhat.com> 3.2.1.12
+- Build dockerregistry with gcs (tdawson@redhat.com)
+- port kubernetes#28018 to 3.2 branch (hchen@redhat.com)
+- UPSTREAM: drop: Avoid go-etcd CancelRequest panic (agoldste@redhat.com)
+
 * Mon Jul 25 2016 Troy Dawson <tdawson@redhat.com> 3.2.1.11
 - GCS storage in registry requires a build tag in the spec file
   (ccoleman@redhat.com)
