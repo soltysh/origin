@@ -195,9 +195,12 @@ pushd _thirdpartyhacks
         $(dirs +1 -l)/Godeps/_workspace/src/ \
             src
 popd
-export GOPATH=$(pwd)/_build:$(pwd)/_thirdpartyhacks:%{buildroot}%{gopath}:%{gopath}
+# Build docker registry with gcs libraries
+export GOPATH=$(pwd)/Godeps/_workspace/src/github.com/docker/distribution/vendor:$(pwd)/_build:$(pwd)/_thirdpartyhacks:%{buildroot}%{gopath}:%{gopath}
+go install -tags include_gcs -ldflags "%{ldflags}" %{import_path}/cmd/dockerregistry
 # Build all linux components we care about
-for cmd in oc openshift dockerregistry recycle
+export GOPATH=$(pwd)/_build:$(pwd)/_thirdpartyhacks:%{buildroot}%{gopath}:%{gopath}
+for cmd in oc openshift recycle
 do
         go install -tags include_gcs -ldflags "%{ldflags}" %{import_path}/cmd/${cmd}
 done
