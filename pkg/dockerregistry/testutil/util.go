@@ -205,6 +205,49 @@ const SampleImageManifestSchema1 = `{
    ]
 }`
 
+// GetFakeImageGetHandler returns a reaction function for use with wake os client returning one of given image
+// objects if found.
+func GetFakeImageGetHandler(t *testing.T, iss ...imageapi.Image) ktestclient.ReactionFunc {
+	return func(action ktestclient.Action) (handled bool, ret runtime.Object, err error) {
+		switch a := action.(type) {
+		case ktestclient.GetAction:
+			for _, is := range iss {
+				if a.GetName() == is.Name {
+					t.Logf("images get handler: returning image %s", is.Name)
+					return true, &is, nil
+				}
+			}
+
+			err := kerrors.NewNotFound(kapi.Resource("images"), a.GetName())
+			t.Logf("image get handler: %v", err)
+			return true, nil, err
+		}
+		return false, nil, nil
+	}
+}
+
+// TestNewImageStreamObject returns a new image stream object filled with given values.
+func TestNewImageStreamObject(namespace, name, tag, imageName, dockerImageReference string) *imageapi.ImageStream {
+	return &imageapi.ImageStream{
+		ObjectMeta: kapi.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+		},
+		Status: imageapi.ImageStreamStatus{
+			Tags: map[string]imageapi.TagEventList{
+				tag: {
+					Items: []imageapi.TagEvent{
+						{
+							Image:                imageName,
+							DockerImageReference: dockerImageReference,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 // GetFakeImageStreamGetHandler creates a test handler to be used as a reactor with  ktestclient.Fake client
 // that handles Get request on image stream resource. Matching is from given image stream list will be
 // returned if found. Additionally, a shared image stream may be requested.
