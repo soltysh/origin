@@ -87,7 +87,7 @@ func init() {
 				panic(fmt.Sprintf("Configuration error: OpenShift storage driver middleware not activated"))
 			}
 
-			registryClient, quotaClient, err := DefaultRegistryClient.Clients()
+			registryClient, kClient, err := DefaultRegistryClient.Clients()
 			if err != nil {
 				return nil, err
 			}
