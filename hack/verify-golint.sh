@@ -3,21 +3,11 @@
 set -o errexit
 set -o pipefail
 
-if ! which golint &>/dev/null; then
-  echo "Unable to detect 'golint' package"
-  echo "To install it, run: 'go get github.com/golang/lint/golint'"
-  exit 1
-fi
-
-GO_VERSION=($(go version))
-
-if [[ -z $(echo "${GO_VERSION[2]}" | grep -E 'go1.6') && -z "${FORCE_VERIFY-}"  ]]; then
-  echo "Unknown go version '${GO_VERSION}', skipping golint."
-  exit 0
-fi
-
 OS_ROOT=$(dirname "${BASH_SOURCE}")/..
 source "${OS_ROOT}/hack/lib/init.sh"
+
+os::golang::verify_go_version
+os::golang::verify_golint_version
 
 cd "${OS_ROOT}"
 

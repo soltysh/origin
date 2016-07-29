@@ -3,15 +3,10 @@
 set -o nounset
 set -o pipefail
 
-GO_VERSION=($(go version))
-
-if [[ -z $(echo "${GO_VERSION[2]}" | grep -E 'go1.[6]') && -z "${FORCE_VERIFY-}" ]]; then
-  echo "Unknown go version '${GO_VERSION}', skipping go vet."
-  exit 0
-fi
-
 OS_ROOT=$(dirname "${BASH_SOURCE}")/..
 source "${OS_ROOT}/hack/lib/init.sh"
+
+os::golang::verify_go_version
 
 cd "${OS_ROOT}"
 mkdir -p _output/govet
