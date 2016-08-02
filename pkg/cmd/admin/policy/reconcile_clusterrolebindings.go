@@ -10,6 +10,7 @@ import (
 	kapi "k8s.io/kubernetes/pkg/api"
 	kapierrors "k8s.io/kubernetes/pkg/api/errors"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	kutilerrors "k8s.io/kubernetes/pkg/util/errors"
 	"k8s.io/kubernetes/pkg/util/sets"
 
 	authorizationapi "github.com/openshift/origin/pkg/authorization/api"
@@ -148,13 +149,18 @@ func (o *ReconcileClusterRoleBindingsOptions) Validate() error {
 
 // ReconcileClusterRoleBindingsOptions contains all the necessary functionality for the OpenShift cli reconcile-cluster-role-bindings command
 func (o *ReconcileClusterRoleBindingsOptions) RunReconcileClusterRoleBindings(cmd *cobra.Command, f *clientcmd.Factory) error {
-	changedClusterRoleBindings, err := o.ChangedClusterRoleBindings()
-	if err != nil {
-		return err
+	changedClusterRoleBindings, fetchErr := o.ChangedClusterRoleBindings()
+	if fetchErr != nil {
+		return fetchErr
 	}
 
 	if len(changedClusterRoleBindings) == 0 {
 		return nil
+	}
+
+	errs := []error{}
+	if fetchErr != nil {
+		errs = append(errs, fetchErr)
 	}
 
 	if (len(o.Output) != 0) && !o.Confirmed {
@@ -164,12 +170,16 @@ func (o *ReconcileClusterRoleBindingsOptions) RunReconcileClusterRoleBindings(cm
 		}
 		fn := cmdutil.VersionedPrintObject(f.PrintObject, cmd, o.Out)
 		if err := fn(list); err != nil {
-			return err
+			errs = append(errs, err)
+			return kutilerrors.NewAggregate(errs)
 		}
 	}
 
 	if o.Confirmed {
-		return o.ReplaceChangedRoleBindings(changedClusterRoleBindings)
+		if err := o.ReplaceChangedRoleBindings(changedClusterRoleBindings); err != nil {
+			errs = append(errs, err)
+			return kutilerrors.NewAggregate(errs)
+		}
 	}
 
 	return nil
