@@ -97,6 +97,9 @@ func TestUpdate(t *testing.T) {
 	ctx := kapi.WithUser(kapi.WithNamespace(kapi.NewContext(), "unittest"), &user.DefaultInfo{Name: "system:admin"})
 	realizedRoleObj, err := storage.Create(ctx, &authorizationapi.Role{
 		ObjectMeta: kapi.ObjectMeta{Name: "my-role"},
+		Rules: []authorizationapi.PolicyRule{
+			{Verbs: sets.NewString(authorizationapi.VerbAll)},
+		},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -105,7 +108,10 @@ func TestUpdate(t *testing.T) {
 	realizedRole := realizedRoleObj.(*authorizationapi.Role)
 
 	role := &authorizationapi.Role{
-		ObjectMeta: kapi.ObjectMeta{Name: "my-role", ResourceVersion: realizedRole.ResourceVersion},
+		ObjectMeta: realizedRole.ObjectMeta,
+		Rules: []authorizationapi.PolicyRule{
+			{Verbs: sets.NewString("list", "update")},
+		},
 	}
 
 	obj, created, err := storage.Update(ctx, role)
@@ -113,11 +119,134 @@ func TestUpdate(t *testing.T) {
 		t.Errorf("Unexpected error %v", err)
 	}
 
-	switch obj.(type) {
+	switch actual := obj.(type) {
 	case *unversioned.Status:
 		t.Errorf("Unexpected operation error: %v", obj)
 
 	case *authorizationapi.Role:
+		if realizedRole.ResourceVersion == actual.ResourceVersion {
+			t.Errorf("Expected change to role binding. Expected: %s, Got: %s", realizedRole.ResourceVersion, actual.ResourceVersion)
+		}
+		role.ResourceVersion = actual.ResourceVersion
+		if !reflect.DeepEqual(role, obj) {
+			t.Errorf("Updated role does not match input role."+
+				" Expected: %v, Got: %v", role, obj)
+		}
+	default:
+		t.Errorf("Unexpected result type: %v", obj)
+	}
+}
+
+func TestUnconditionalUpdate(t *testing.T) {
+	storage := makeLocalTestStorage()
+	ctx := kapi.WithUser(kapi.WithNamespace(kapi.NewContext(), "unittest"), &user.DefaultInfo{Name: "system:admin"})
+	realizedRoleObj, err := storage.Create(ctx, &authorizationapi.Role{
+		ObjectMeta: kapi.ObjectMeta{Name: "my-role"},
+		Rules: []authorizationapi.PolicyRule{
+			{Verbs: sets.NewString(authorizationapi.VerbAll)},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	realizedRole := realizedRoleObj.(*authorizationapi.Role)
+
+	role := &authorizationapi.Role{
+		ObjectMeta: realizedRole.ObjectMeta,
+		Rules: []authorizationapi.PolicyRule{
+			{Verbs: sets.NewString("list", "update")},
+		},
+	}
+	role.ResourceVersion = ""
+
+	obj, created, err := storage.Update(ctx, role)
+	if err != nil || created {
+		t.Errorf("Unexpected error %v", err)
+	}
+
+	switch actual := obj.(type) {
+	case *unversioned.Status:
+		t.Errorf("Unexpected operation error: %v", obj)
+
+	case *authorizationapi.Role:
+		if realizedRole.ResourceVersion == actual.ResourceVersion {
+			t.Errorf("Expected change to role binding. Expected: %s, Got: %s", realizedRole.ResourceVersion, actual.ResourceVersion)
+		}
+		role.ResourceVersion = actual.ResourceVersion
+		if !reflect.DeepEqual(role, obj) {
+			t.Errorf("Updated role does not match input role."+
+				" Expected: %v, Got: %v", role, obj)
+		}
+	default:
+		t.Errorf("Unexpected result type: %v", obj)
+	}
+}
+
+func TestConflictingUpdate(t *testing.T) {
+	storage := makeLocalTestStorage()
+	ctx := kapi.WithUser(kapi.WithNamespace(kapi.NewContext(), "unittest"), &user.DefaultInfo{Name: "system:admin"})
+	realizedRoleObj, err := storage.Create(ctx, &authorizationapi.Role{
+		ObjectMeta: kapi.ObjectMeta{Name: "my-role"},
+		Rules: []authorizationapi.PolicyRule{
+			{Verbs: sets.NewString(authorizationapi.VerbAll)},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	realizedRole := realizedRoleObj.(*authorizationapi.Role)
+
+	role := &authorizationapi.Role{
+		ObjectMeta: realizedRole.ObjectMeta,
+		Rules: []authorizationapi.PolicyRule{
+			{Verbs: sets.NewString("list", "update")},
+		},
+	}
+	role.ResourceVersion += "1"
+
+	_, _, err = storage.Update(ctx, role)
+	if err == nil || !kapierrors.IsConflict(err) {
+		t.Errorf("Expected conflict error, got: %#v", err)
+	}
+}
+
+func TestUpdateNoOp(t *testing.T) {
+	storage := makeLocalTestStorage()
+	ctx := kapi.WithUser(kapi.WithNamespace(kapi.NewContext(), "unittest"), &user.DefaultInfo{Name: "system:admin"})
+	realizedRoleObj, err := storage.Create(ctx, &authorizationapi.Role{
+		ObjectMeta: kapi.ObjectMeta{Name: "my-role"},
+		Rules: []authorizationapi.PolicyRule{
+			{Verbs: sets.NewString(authorizationapi.VerbAll)},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	realizedRole := realizedRoleObj.(*authorizationapi.Role)
+
+	role := &authorizationapi.Role{
+		ObjectMeta: realizedRole.ObjectMeta,
+		Rules: []authorizationapi.PolicyRule{
+			{Verbs: sets.NewString(authorizationapi.VerbAll)},
+		},
+	}
+
+	obj, created, err := storage.Update(ctx, role)
+	if err != nil || created {
+		t.Errorf("Unexpected error %v", err)
+	}
+
+	switch o := obj.(type) {
+	case *unversioned.Status:
+		t.Errorf("Unexpected operation error: %v", obj)
+
+	case *authorizationapi.Role:
+		if realizedRole.ResourceVersion != o.ResourceVersion {
+			t.Errorf("Expected no change to role binding. Expected: %s, Got: %s", realizedRole.ResourceVersion, o.ResourceVersion)
+		}
 		if !reflect.DeepEqual(role, obj) {
 			t.Errorf("Updated role does not match input role."+
 				" Expected: %v, Got: %v", role, obj)
