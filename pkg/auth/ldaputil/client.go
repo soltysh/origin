@@ -66,13 +66,13 @@ func (l *ldapClientConfig) Connect() (ldap.Client, error) {
 	// Ensure tlsConfig specifies the server we're connecting to
 	if tlsConfig != nil && !tlsConfig.InsecureSkipVerify && len(tlsConfig.ServerName) == 0 {
 		// Add to a copy of the tlsConfig to avoid mutating the original
-		c := tlsConfigClone(tlsConfig)
+		c := *tlsConfig
 		if host, _, err := net.SplitHostPort(l.host); err == nil {
 			c.ServerName = host
 		} else {
 			c.ServerName = l.host
 		}
-		tlsConfig = c
+		tlsConfig = &c
 	}
 
 	switch l.scheme {
@@ -116,34 +116,4 @@ func (l *ldapClientConfig) Host() string {
 // String implements Stringer for debugging purposes
 func (l *ldapClientConfig) String() string {
 	return fmt.Sprintf("{Scheme: %v Host: %v BindDN: %v len(BbindPassword): %v Insecure: %v}", l.scheme, l.host, l.bindDN, len(l.bindPassword), l.insecure)
-}
-
-// FIXME: this method should be replace with the appropriate one from go standard
-// library when https://github.com/golang/go/issues/15771 is resolved. Not sooner
-// than go 1.8, unfortunately.
-func tlsConfigClone(c *tls.Config) *tls.Config {
-	return &tls.Config{
-		Rand:                     c.Rand,
-		Time:                     c.Time,
-		Certificates:             c.Certificates,
-		NameToCertificate:        c.NameToCertificate,
-		GetCertificate:           c.GetCertificate,
-		RootCAs:                  c.RootCAs,
-		NextProtos:               c.NextProtos,
-		ServerName:               c.ServerName,
-		ClientAuth:               c.ClientAuth,
-		ClientCAs:                c.ClientCAs,
-		InsecureSkipVerify:       c.InsecureSkipVerify,
-		CipherSuites:             c.CipherSuites,
-		PreferServerCipherSuites: c.PreferServerCipherSuites,
-		SessionTicketsDisabled:   c.SessionTicketsDisabled,
-		SessionTicketKey:         c.SessionTicketKey,
-		ClientSessionCache:       c.ClientSessionCache,
-		MinVersion:               c.MinVersion,
-		MaxVersion:               c.MaxVersion,
-		CurvePreferences:         c.CurvePreferences,
-		// FIXME: add these two fields when we require Go 1.7
-		// DynamicRecordSizingDisabled: c.DynamicRecordSizingDisabled,
-		// Renegotiation:               c.Renegotiation,
-	}
 }
