@@ -668,7 +668,7 @@
 		},
 		{
 			"ImportPath": "github.com/docker/libtrust",
-			"Rev": "c54fbb67c1f1e68d7d6f8d2ad7c9360404616a41"
+			"Rev": "fa567046d9b14f6aa788882a950d69651d230b21"
 		},
 		{
 			"ImportPath": "github.com/docker/spdystream",
