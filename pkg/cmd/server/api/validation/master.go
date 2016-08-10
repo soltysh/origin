@@ -183,6 +183,10 @@ func ValidateMasterConfig(config *api.MasterConfig, fldPath *field.Path) Validat
 		validationResults.AddErrors(ValidateAdmissionPluginConfig(config.AdmissionConfig.PluginConfig, fldPath.Child("admissionConfig", "pluginConfig"))...)
 	}
 
+	if config.DeploymentControllerResyncMinutes < 1 {
+		validationResults.AddErrors(field.Invalid(fldPath.Child("deploymentControllerResyncMinutes"), config.DeploymentControllerResyncMinutes, "must be greater than 0"))
+	}
+
 	return validationResults
 }
 

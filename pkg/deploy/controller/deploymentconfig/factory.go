@@ -27,6 +27,8 @@ type DeploymentConfigControllerFactory struct {
 	KubeClient kclient.Interface
 	// Codec is used to encode/decode.
 	Codec runtime.Codec
+	// ResyncMinutes is how often to perform a full work queue resync.
+	ResyncMinutes int
 }
 
 // Create creates a DeploymentConfigController.
@@ -40,7 +42,7 @@ func (factory *DeploymentConfigControllerFactory) Create() controller.RunnableCo
 		},
 	}
 	queue := cache.NewFIFO(cache.MetaNamespaceKeyFunc)
-	cache.NewReflector(deploymentConfigLW, &deployapi.DeploymentConfig{}, queue, 2*time.Minute).Run()
+	cache.NewReflector(deploymentConfigLW, &deployapi.DeploymentConfig{}, queue, time.Duration(factory.ResyncMinutes)*time.Minute).Run()
 
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartRecordingToSink(factory.KubeClient.Events(""))

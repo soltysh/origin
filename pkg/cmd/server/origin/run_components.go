@@ -297,6 +297,7 @@ func (c *MasterConfig) RunDeploymentController() {
 		Environment:    env,
 		DeployerImage:  c.ImageFor("deployer"),
 		ServiceAccount: bootstrappolicy.DeployerServiceAccountName,
+		ResyncMinutes:  c.Options.DeploymentControllerResyncMinutes,
 	}
 
 	controller := factory.Create()
@@ -307,9 +308,10 @@ func (c *MasterConfig) RunDeploymentController() {
 func (c *MasterConfig) RunDeployerPodController() {
 	osclient, kclient := c.DeployerPodControllerClients()
 	factory := deployerpodcontroller.DeployerPodControllerFactory{
-		Client:     osclient,
-		KubeClient: kclient,
-		Codec:      c.EtcdHelper.Codec(),
+		Client:        osclient,
+		KubeClient:    kclient,
+		Codec:         c.EtcdHelper.Codec(),
+		ResyncMinutes: c.Options.DeploymentControllerResyncMinutes,
 	}
 
 	controller := factory.Create()
@@ -320,9 +322,10 @@ func (c *MasterConfig) RunDeployerPodController() {
 func (c *MasterConfig) RunDeploymentConfigController() {
 	osclient, kclient := c.DeploymentConfigControllerClients()
 	factory := deployconfigcontroller.DeploymentConfigControllerFactory{
-		Client:     osclient,
-		KubeClient: kclient,
-		Codec:      c.EtcdHelper.Codec(),
+		Client:        osclient,
+		KubeClient:    kclient,
+		Codec:         c.EtcdHelper.Codec(),
+		ResyncMinutes: c.Options.DeploymentControllerResyncMinutes,
 	}
 	controller := factory.Create()
 	controller.Run()
@@ -332,9 +335,10 @@ func (c *MasterConfig) RunDeploymentConfigController() {
 func (c *MasterConfig) RunDeploymentConfigChangeController() {
 	osclient, kclient := c.DeploymentConfigChangeControllerClients()
 	factory := configchangecontroller.DeploymentConfigChangeControllerFactory{
-		Client:     osclient,
-		KubeClient: kclient,
-		Codec:      c.EtcdHelper.Codec(),
+		Client:        osclient,
+		KubeClient:    kclient,
+		Codec:         c.EtcdHelper.Codec(),
+		ResyncMinutes: c.Options.DeploymentControllerResyncMinutes,
 	}
 	controller := factory.Create()
 	controller.Run()
@@ -343,7 +347,10 @@ func (c *MasterConfig) RunDeploymentConfigChangeController() {
 // RunDeploymentImageChangeTriggerController starts the image change trigger controller process.
 func (c *MasterConfig) RunDeploymentImageChangeTriggerController() {
 	osclient := c.DeploymentImageChangeTriggerControllerClient()
-	factory := imagechangecontroller.ImageChangeControllerFactory{Client: osclient}
+	factory := imagechangecontroller.ImageChangeControllerFactory{
+		Client:        osclient,
+		ResyncMinutes: c.Options.DeploymentControllerResyncMinutes,
+	}
 	controller := factory.Create()
 	controller.Run()
 }

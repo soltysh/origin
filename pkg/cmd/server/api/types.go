@@ -291,6 +291,10 @@ type MasterConfig struct {
 
 	// AuditConfig holds information related to auditing capabilities.
 	AuditConfig AuditConfig
+
+	// DeploymentControllerResyncMinutes is how often the deployment controllers
+	// should perform a full resync of their work queues.
+	DeploymentControllerResyncMinutes int
 }
 
 // AuditConfig holds configuration for the audit capabilities

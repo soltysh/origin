@@ -32,6 +32,8 @@ type DeploymentControllerFactory struct {
 	Environment []kapi.EnvVar
 	// DeployerImage specifies which Docker image can support the default strategies.
 	DeployerImage string
+	// ResyncMinutes is how often to perform a full work queue resync.
+	ResyncMinutes int
 }
 
 // Create creates a DeploymentController.
@@ -47,7 +49,7 @@ func (factory *DeploymentControllerFactory) Create() controller.RunnableControll
 		},
 	}
 	deploymentQueue := cache.NewFIFO(cache.MetaNamespaceKeyFunc)
-	cache.NewReflector(deploymentLW, &kapi.ReplicationController{}, deploymentQueue, 2*time.Minute).Run()
+	cache.NewReflector(deploymentLW, &kapi.ReplicationController{}, deploymentQueue, time.Duration(factory.ResyncMinutes)*time.Minute).Run()
 
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartRecordingToSink(factory.KubeClient.Events(""))

@@ -107,6 +107,7 @@ auditConfig:
 controllerLeaseTTL: 0
 controllers: ""
 corsAllowedOrigins: null
+deploymentControllerResyncMinutes: 15
 disabledFeatures: null
 dnsConfig:
   allowRecursiveQueries: false
@@ -672,6 +673,7 @@ func TestMasterConfig(t *testing.T) {
 		VolumeConfig: internal.MasterVolumeConfig{
 			DynamicProvisioningEnabled: false,
 		},
+		DeploymentControllerResyncMinutes: 15,
 	}
 	serializedConfig, err := writeYAML(config)
 	if err != nil {
