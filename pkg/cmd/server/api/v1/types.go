@@ -231,6 +231,10 @@ type MasterConfig struct {
 
 	// AuditConfig holds information related to auditing capabilities.
 	AuditConfig AuditConfig `json:"auditConfig"`
+
+	// DeploymentControllerResyncMinutes is how often the deployment controllers
+	// should perform a full resync of their work queues.
+	DeploymentControllerResyncMinutes int `json:"deploymentControllerResyncMinutes"`
 }
 
 // AuditConfig holds configuration for the audit capabilities

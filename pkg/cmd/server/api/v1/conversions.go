@@ -51,6 +51,10 @@ func addDefaultingFuncs(scheme *runtime.Scheme) {
 				// The final value of OAuthConfig.MasterCA should never be nil
 				obj.OAuthConfig.MasterCA = &s
 			}
+
+			if obj.DeploymentControllerResyncMinutes == 0 {
+				obj.DeploymentControllerResyncMinutes = 2
+			}
 		},
 		func(obj *KubernetesMasterConfig) {
 			if obj.MasterCount == 0 {

@@ -27,6 +27,8 @@ type DeployerPodControllerFactory struct {
 	KubeClient kclient.Interface
 	// Codec is used for encoding/decoding.
 	Codec runtime.Codec
+	// ResyncMinutes is how often to perform a full work queue resync.
+	ResyncMinutes int
 }
 
 // Create creates a DeployerPodController.
@@ -40,7 +42,7 @@ func (factory *DeployerPodControllerFactory) Create() controller.RunnableControl
 		},
 	}
 	deploymentStore := cache.NewStore(cache.MetaNamespaceKeyFunc)
-	cache.NewReflector(deploymentLW, &kapi.ReplicationController{}, deploymentStore, 2*time.Minute).Run()
+	cache.NewReflector(deploymentLW, &kapi.ReplicationController{}, deploymentStore, time.Duration(factory.ResyncMinutes)*time.Minute).Run()
 
 	// TODO: These should be filtered somehow to include only the primary
 	// deployer pod. For now, the controller is filtering.

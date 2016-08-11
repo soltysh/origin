@@ -21,6 +21,8 @@ import (
 type ImageChangeControllerFactory struct {
 	// Client is an OpenShift client.
 	Client osclient.Interface
+	// ResyncMinutes is how often to perform a full work queue resync.
+	ResyncMinutes int
 }
 
 // Create creates an ImageChangeController.
@@ -34,7 +36,7 @@ func (factory *ImageChangeControllerFactory) Create() controller.RunnableControl
 		},
 	}
 	queue := cache.NewFIFO(cache.MetaNamespaceKeyFunc)
-	cache.NewReflector(imageStreamLW, &imageapi.ImageStream{}, queue, 2*time.Minute).Run()
+	cache.NewReflector(imageStreamLW, &imageapi.ImageStream{}, queue, time.Duration(factory.ResyncMinutes)*time.Minute).Run()
 
 	deploymentConfigLW := &cache.ListWatch{
 		ListFunc: func(options kapi.ListOptions) (runtime.Object, error) {
@@ -45,7 +47,7 @@ func (factory *ImageChangeControllerFactory) Create() controller.RunnableControl
 		},
 	}
 	store := cache.NewStore(cache.MetaNamespaceKeyFunc)
-	cache.NewReflector(deploymentConfigLW, &deployapi.DeploymentConfig{}, store, 2*time.Minute).Run()
+	cache.NewReflector(deploymentConfigLW, &deployapi.DeploymentConfig{}, store, time.Duration(factory.ResyncMinutes)*time.Minute).Run()
 
 	changeController := &ImageChangeController{
 		deploymentConfigClient: &deploymentConfigClientImpl{
