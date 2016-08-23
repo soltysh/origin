@@ -324,6 +324,13 @@ func DeepCopy_componentconfig_KubeletConfiguration(in KubeletConfiguration, out 
 	out.EvictionMaxPodGracePeriod = in.EvictionMaxPodGracePeriod
 	out.PodsPerCore = in.PodsPerCore
 	out.EnableControllerAttachDetach = in.EnableControllerAttachDetach
+	if in.AllowedUnsafeSysctls != nil {
+		in, out := in.AllowedUnsafeSysctls, &out.AllowedUnsafeSysctls
+		*out = make([]string, len(in))
+		copy(*out, in)
+	} else {
+		out.AllowedUnsafeSysctls = nil
+	}
 	return nil
 }
 

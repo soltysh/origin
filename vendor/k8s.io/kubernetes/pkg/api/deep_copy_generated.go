@@ -183,6 +183,7 @@ func init() {
 		DeepCopy_api_ServiceSpec,
 		DeepCopy_api_ServiceStatus,
 		DeepCopy_api_SupplementalGroupsStrategyOptions,
+		DeepCopy_api_Sysctl,
 		DeepCopy_api_TCPSocketAction,
 		DeepCopy_api_Taint,
 		DeepCopy_api_Toleration,
@@ -3258,6 +3259,12 @@ func DeepCopy_api_SupplementalGroupsStrategyOptions(in SupplementalGroupsStrateg
 	} else {
 		out.Ranges = nil
 	}
+	return nil
+}
+
+func DeepCopy_api_Sysctl(in Sysctl, out *Sysctl, c *conversion.Cloner) error {
+	out.Name = in.Name
+	out.Value = in.Value
 	return nil
 }
 
