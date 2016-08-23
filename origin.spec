@@ -22,12 +22,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 2448301f02c214db5f3846aed102678906371024
+%global commit 1a26b057e60629965db0cbdba1259cb2fe0f9247
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.12-2-g275e885 -X github.com/openshift/origin/pkg/version.commitFromGit 275e885 -X k8s.io/kubernetes/pkg/version.gitCommit 275e885 -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit=3 -X github.com/openshift/origin/pkg/version.minorFromGit=2+ -X github.com/openshift/origin/pkg/version.versionFromGit=v3.2.1.13-11-ga929f51 -X github.com/openshift/origin/pkg/version.commitFromGit=a929f51 -X k8s.io/kubernetes/pkg/version.gitCommit=a929f51 -X k8s.io/kubernetes/pkg/version.gitVersion=v1.2.0-36-g4a3f9c5
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -47,7 +47,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.2.1.13
+Version:        3.2.1.14
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -489,6 +489,14 @@ fi
 
 
 %changelog
+* Tue Aug 23 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.14
+- Avoid using bsdtar for extraction during build (joesmith@redhat.com)
+- Configurable deployment controller resync interval (ironcladlou@gmail.com)
+- F5: Cleanup mockF5.close() calls in tests (miciah.masters@gmail.com)
+- UPSTREAM: <carry>: Fix edge case in QoS calculation where request=0 and limit
+  !=0 (decarr@redhat.com)
+- Enable PersistentVolumeLabel admission plugin (agoldste@redhat.com)
+
 * Thu Aug 04 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.13
 - Backport log archive link fix (admin@benjaminapetersen.me)
 
