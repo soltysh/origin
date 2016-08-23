@@ -14,6 +14,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 	"k8s.io/kubernetes/pkg/runtime"
 	utilerrors "k8s.io/kubernetes/pkg/util/errors"
+	utilruntime "k8s.io/kubernetes/pkg/util/runtime"
 	"k8s.io/kubernetes/pkg/util/sets"
 
 	"github.com/openshift/origin/pkg/api/latest"
@@ -122,7 +123,8 @@ func (r *REST) Create(ctx kapi.Context, obj runtime.Object) (runtime.Object, err
 	}
 
 	// we split out project creation separately so that in a case of racers for the same project, only one will win and create the rest of their template objects
-	if _, err := r.openshiftClient.Projects().Create(projectFromTemplate); err != nil {
+	createdProject, err := r.openshiftClient.Projects().Create(projectFromTemplate)
+	if err != nil {
 		return nil, err
 	}
 
@@ -141,6 +143,11 @@ func (r *REST) Create(ctx kapi.Context, obj runtime.Object) (runtime.Object, err
 		restMapper = meta.MultiRESTMapper(append(restMapper, groupMeta.RESTMapper))
 	}
 
+	// Stop on the first error, since we have to delete the whole project if any item in the template fails
+	stopOnErr := configcmd.AfterFunc(func(_ *resource.Info, err error) bool {
+		return err != nil
+	})
+
 	bulk := configcmd.Bulk{
 		Mapper: restMapper,
 		Typer:  kapi.Scheme,
@@ -150,8 +157,14 @@ func (r *REST) Create(ctx kapi.Context, obj runtime.Object) (runtime.Object, err
 			}
 			return r.kubeClient, nil
 		},
+		After: stopOnErr,
 	}
 	if err := utilerrors.NewAggregate(bulk.Create(objectsToCreate, projectName)); err != nil {
+		utilruntime.HandleError(fmt.Errorf("error creating items in requested project %q: %v", createdProject.Name, err))
+		// We have to clean up the project if any part of the project request template fails
+		if deleteErr := r.openshiftClient.Projects().Delete(createdProject.Name); deleteErr != nil {
+			utilruntime.HandleError(fmt.Errorf("error cleaning up requested project %q: %v", createdProject.Name, deleteErr))
+		}
 		return nil, kapierror.NewInternalError(err)
 	}
 
