@@ -21,12 +21,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 1b1c0d17b58a54a41c0237856054a06b467fd449
+%global commit 00c9b4e2320527814c5c741700d0d43ccc1e1a69
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.6-63-g1b1c0d1 -X github.com/openshift/origin/pkg/version.commitFromGit 1b1c0d1 -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.6-66-g23d473e -X github.com/openshift/origin/pkg/version.commitFromGit 23d473e -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -46,8 +46,8 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.1.1.6
-Release:        8%{?dist}
+Version:        3.1.1.7
+Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -470,6 +470,9 @@ fi
 
 
 %changelog
+* Tue Aug 23 2016 Scott Dodson <sdodson@redhat.com> 3.1.1.7
+- Avoid using bsdtar for extraction during build (joesmith@redhat.com)
+
 * Mon May 16 2016 Troy Dawson <tdawson@redhat.com>
 - Update release for hotfix (tdawson@redhat.com)
 - Check for pod creation in scc exec admission (jliggitt@redhat.com)
