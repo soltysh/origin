@@ -72,7 +72,7 @@ kubectl run nginx --image=nginx --command -- <cmd> <arg1> ... <argN>
 kubectl run pi --image=perl --restart=OnFailure -- perl -Mbignum=bpi -wle 'print bpi(2000)'
 
 # Start the scheduled job to compute π to 2000 places and print it out every 5 minutes.
-kubectl run pi --schedule="* 0/5 * * * ?" --image=perl --restart=OnFailure -- perl -Mbignum=bpi -wle 'print bpi(2000)'`
+kubectl run pi --schedule="0/5 * * * ?" --image=perl --restart=OnFailure -- perl -Mbignum=bpi -wle 'print bpi(2000)'`
 )
 
 type RunOptions struct {
