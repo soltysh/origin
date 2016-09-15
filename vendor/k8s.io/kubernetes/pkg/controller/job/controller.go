@@ -113,7 +113,7 @@ func NewJobController(podInformer framework.SharedIndexInformer, kubeClient clie
 		framework.ResourceEventHandlerFuncs{
 			AddFunc: jm.enqueueController,
 			UpdateFunc: func(old, cur interface{}) {
-				if job := cur.(*batch.Job); !isJobFinished(job) {
+				if job := cur.(*batch.Job); !IsJobFinished(job) {
 					jm.enqueueController(job)
 				}
 			},
@@ -348,7 +348,7 @@ func (jm *JobController) syncJob(key string) error {
 		job.Status.StartTime = &now
 	}
 	// if job was finished previously, we don't want to redo the termination
-	if isJobFinished(&job) {
+	if IsJobFinished(&job) {
 		return nil
 	}
 	if pastActiveDeadline(&job) {
@@ -558,15 +558,6 @@ func filterPods(pods []api.Pod, phase api.PodPhase) int {
 		}
 	}
 	return result
-}
-
-func isJobFinished(j *batch.Job) bool {
-	for _, c := range j.Status.Conditions {
-		if (c.Type == batch.JobComplete || c.Type == batch.JobFailed) && c.Status == api.ConditionTrue {
-			return true
-		}
-	}
-	return false
 }
 
 // byCreationTimestamp sorts a list by creation timestamp, using their names as a tie breaker.
