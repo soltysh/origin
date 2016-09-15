@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 4eb2ed57b341a154b2527d8214997006575b998b
+%global commit 877fd313e2ad5835c43ddb8e6e8da8d85f135f10
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.0.30
+Version:        3.3.0.31
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -476,6 +476,10 @@ fi
 %{_bindir}/pod
 
 %changelog
+* Thu Sep 15 2016 Troy Dawson <tdawson@redhat.com> 3.3.0.31
+- Add service account for attach-detach controller (pmorie@redhat.com)
+- tolerate multiple =s in a parameter value (bparees@redhat.com)
+
 * Tue Sep 06 2016 Troy Dawson <tdawson@redhat.com> 3.3.0.30
 - Fix wrong oadm document name in cli.md (li.xiaobing1@zte.com.cn)
 - Image size needs to add a size of manifest config file (miminar@redhat.com)
