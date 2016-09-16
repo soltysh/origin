@@ -104,6 +104,8 @@ items:
     resources:
     - jobs
     - jobs/status
+    - scheduledjobs
+    - scheduledjobs/status
     verbs:
     - get
     - list
@@ -471,6 +473,7 @@ items:
     attributeRestrictions: null
     resources:
     - jobs
+    - scheduledjobs
     verbs:
     - create
     - delete
@@ -855,6 +858,7 @@ items:
     attributeRestrictions: null
     resources:
     - jobs
+    - scheduledjobs
     verbs:
     - create
     - delete
@@ -1150,6 +1154,7 @@ items:
     attributeRestrictions: null
     resources:
     - jobs
+    - scheduledjobs
     verbs:
     - get
     - list
@@ -2609,6 +2614,7 @@ items:
     attributeRestrictions: null
     resources:
     - jobs
+    - scheduledjobs
     verbs:
     - list
     - watch
@@ -2618,7 +2624,18 @@ items:
     attributeRestrictions: null
     resources:
     - jobs/status
+    - scheduledjobs/status
     verbs:
+    - update
+  - apiGroups:
+    - extensions
+    - batch
+    attributeRestrictions: null
+    resources:
+    - jobs
+    verbs:
+    - create
+    - delete
     - update
   - apiGroups:
     - ""

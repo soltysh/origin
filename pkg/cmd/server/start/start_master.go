@@ -17,6 +17,7 @@ import (
 
 	cmapp "k8s.io/kubernetes/cmd/kube-controller-manager/app/options"
 	kerrors "k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/capabilities"
 	"k8s.io/kubernetes/pkg/client/typed/dynamic"
@@ -569,7 +570,7 @@ func startControllers(oc *origin.MasterConfig, kc *kubernetes.MasterConfig) erro
 		if err != nil {
 			glog.Fatalf("Could not get client for deployment controller: %v", err)
 		}
-		_, _, jobClient, err := oc.GetServiceAccountClients(bootstrappolicy.InfraJobControllerServiceAccountName)
+		jobConfig, _, jobClient, err := oc.GetServiceAccountClients(bootstrappolicy.InfraJobControllerServiceAccountName)
 		if err != nil {
 			glog.Fatalf("Could not get client for job controller: %v", err)
 		}
@@ -629,10 +630,12 @@ func startControllers(oc *origin.MasterConfig, kc *kubernetes.MasterConfig) erro
 
 		extensionsEnabled := len(configapi.GetEnabledAPIVersionsForGroup(kc.Options, extensions.GroupName)) > 0
 
-		// TODO: enable this check once the job controller can use the batch API if the extensions API is disabled
-		// batchEnabled := len(configapi.GetEnabledAPIVersionsForGroup(kc.Options, batch.GroupName)) > 0
-		if extensionsEnabled /*|| batchEnabled*/ {
+		batchEnabled := len(configapi.GetEnabledAPIVersionsForGroup(kc.Options, batch.GroupName)) > 0
+		if extensionsEnabled || batchEnabled {
 			kc.RunJobController(jobClient)
+		}
+		if batchEnabled {
+			kc.RunScheduledJobController(jobConfig)
 		}
 		// TODO: enable this check once the HPA controller can use the autoscaling API if the extensions API is disabled
 		// autoscalingEnabled := len(configapi.GetEnabledAPIVersionsForGroup(kc.Options, autoscaling.GroupName)) > 0
