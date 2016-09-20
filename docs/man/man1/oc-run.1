@@ -117,6 +117,10 @@ foreground for an interactive container execution.  You may pass 'run/v1' to
     If true, the configuration of current object will be saved in its annotation. This is useful when you want to perform kubectl apply on this object in the future.
 
 .PP
+\fB\-\-schedule\fP=""
+    A schedule in the Cron format the job should be run with.
+
+.PP
 \fB\-\-service\-generator\fP="service/v2"
     The name of the generator to use for creating a service.  Only used if \-\-expose is true
 
