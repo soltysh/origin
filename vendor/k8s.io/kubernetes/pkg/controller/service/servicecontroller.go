@@ -36,6 +36,7 @@ import (
 	"k8s.io/kubernetes/pkg/types"
 	"k8s.io/kubernetes/pkg/util/metrics"
 	"k8s.io/kubernetes/pkg/util/runtime"
+	"k8s.io/kubernetes/pkg/util/wait"
 )
 
 const (
@@ -149,12 +150,21 @@ func (s *ServiceController) Run(serviceSyncPeriod, nodeSyncPeriod time.Duration)
 	lw := cache.NewListWatchFromClient(s.kubeClient.(*clientset.Clientset).CoreClient, "services", api.NamespaceAll, fields.Everything())
 	cache.NewReflector(lw, &api.Service{}, serviceQueue, serviceSyncPeriod).Run()
 	for i := 0; i < workerGoroutines; i++ {
-		go s.watchServices(serviceQueue)
+		workFunc := func() {
+			s.watchServices(serviceQueue)
+		}
+		// we need to wrap this in a wait.Until to ensure panics don't result in dead workers.
+		go wait.Until(workFunc, time.Second, nil)
 	}
 
 	nodeLW := cache.NewListWatchFromClient(s.kubeClient.(*clientset.Clientset).CoreClient, "nodes", api.NamespaceAll, fields.Everything())
 	cache.NewReflector(nodeLW, &api.Node{}, s.nodeLister.Store, 0).Run()
-	go s.nodeSyncLoop(nodeSyncPeriod)
+
+	// in theory, node sync func runs forever, but we need to protect against a panic as well.
+	nodeSyncFunc := func() {
+		s.nodeSyncLoop(nodeSyncPeriod)
+	}
+	go wait.Until(nodeSyncFunc, time.Second, nil)
 	return nil
 }
 
@@ -229,9 +239,13 @@ func (s *ServiceController) processDelta(delta *cache.Delta) (error, time.Durati
 			return fmt.Errorf("Delta contained object that wasn't a service or a deleted key: %+v", delta), doNotRetry
 		}
 		cachedService, ok = s.cache.get(key.Key)
-		if !ok {
+		if !ok || cachedService == nil {
 			return fmt.Errorf("Service %s not in cache even though the watcher thought it was. Ignoring the deletion.", key), doNotRetry
 		}
+		if cachedService.lastState == nil {
+			return fmt.Errorf("Service %s not in cache with a known last state.  Ignoring the deletion.", key), doNotRetry
+		}
+
 		deltaService = cachedService.lastState
 		delta.Object = deltaService
 		namespacedName = types.NamespacedName{Namespace: deltaService.Namespace, Name: deltaService.Name}
