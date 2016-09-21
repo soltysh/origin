@@ -24,7 +24,7 @@
                     <div ng-if="cliDownloadURLPresent">
                       <label class="cli-download-label">Download <code>oc</code>:</label>
                       <div ng-repeat="(key, value) in cliDownloadURL">
-                        <a href="{{value}}" class="cli-download-link">
+                        <a href="{{value}}" class="cli-download-link" target="_self">
                           {{key}}
                           <i class="fa fa-external-link"></i>
                         </a>
