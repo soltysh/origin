@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 8198f04494422379ef4830fe8f9132c0cdbdea77
+%global commit 22e7a5b968fe638ce4ac81f4d5fc2158f04c8920
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.0.33
+Version:        3.3.0.34
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -476,6 +476,19 @@ fi
 %{_bindir}/pod
 
 %changelog
+* Fri Sep 30 2016 Scott Dodson <sdodson@redhat.com> 3.3.0.34
+- Fix issue#10853. Route cleanup does not need service key cleanup.
+  (rchopra@redhat.com)
+- use a unique volume name for each input image secret (bparees@redhat.com)
+- Remove terminating checks from origin namespace lifecycle admission
+  (jliggitt@redhat.com)
+- Ensure system:master has full permissions on non-resource-urls
+  (jliggitt@redhat.com)
+- UPSTREAM: 32719: compensate for raft/cache delay in namespace admission
+  (jliggitt@redhat.com)
+- Default qps/burst to historical values (jliggitt@redhat.com)
+- Allow annotation selector to match annotation values (jliggitt@redhat.com)
+
 * Wed Sep 28 2016 Scott Dodson <sdodson@redhat.com> 3.3.0.33
 - UPSTREAM: master: check both places to fix bug 1372618 (lmeyer@redhat.com)
 - Revert "Avoid using bsdtar for extraction during build" (bparees@redhat.com)
