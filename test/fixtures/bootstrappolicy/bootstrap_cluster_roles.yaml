@@ -893,6 +893,7 @@ items:
     attributeRestrictions: null
     resources:
     - images
+    - imagestreamtags
     verbs:
     - delete
     - get
@@ -902,7 +903,6 @@ items:
     - imagestreamimages
     - imagestreams
     - imagestreams/secrets
-    - imagestreamtags
     verbs:
     - get
   - apiGroups: null

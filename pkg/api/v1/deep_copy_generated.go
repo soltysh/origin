@@ -1926,6 +1926,22 @@ func deepCopy_v1_Image(in imageapiv1.Image, out *imageapiv1.Image, c *conversion
 	} else {
 		out.DockerImageLayers = nil
 	}
+	if in.DockerImageSignatures != nil {
+		out.DockerImageSignatures = make([][]uint8, len(in.DockerImageSignatures))
+		for i := range in.DockerImageSignatures {
+			if newVal, err := c.DeepCopy(in.DockerImageSignatures[i]); err != nil {
+				return err
+			} else if newVal == nil {
+				out.DockerImageSignatures[i] = nil
+			} else {
+				out.DockerImageSignatures[i] = newVal.([]uint8)
+			}
+		}
+	} else {
+		out.DockerImageSignatures = nil
+	}
+	out.DockerImageManifestMediaType = in.DockerImageManifestMediaType
+	out.DockerImageConfig = in.DockerImageConfig
 	return nil
 }
 
@@ -1972,6 +1988,7 @@ func deepCopy_v1_ImageImportStatus(in imageapiv1.ImageImportStatus, out *imageap
 func deepCopy_v1_ImageLayer(in imageapiv1.ImageLayer, out *imageapiv1.ImageLayer, c *conversion.Cloner) error {
 	out.Name = in.Name
 	out.Size = in.Size
+	out.MediaType = in.MediaType
 	return nil
 }
 

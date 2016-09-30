@@ -21,26 +21,49 @@ import (
 	imageapi "github.com/openshift/origin/pkg/image/api"
 )
 
+type deferredErrors map[string]error
+
+func (d deferredErrors) Add(namespace string, name string, err error) {
+	d[namespace+"/"+name] = err
+}
+func (d deferredErrors) Get(namespace string, name string) (error, bool) {
+	err, exists := d[namespace+"/"+name]
+	return err, exists
+}
+func (d deferredErrors) Empty() bool {
+	return len(d) == 0
+}
+
+// RegistryClient encapsulates getting access to the OpenShift API.
+type RegistryClient interface {
+	// Clients return the authenticated clients to use with the server.
+	Clients() (client.Interface, kclient.Interface, error)
+	// SafeClientConfig returns a client config without authentication info.
+	SafeClientConfig() restclient.Config
+}
+
 // DefaultRegistryClient is exposed for testing the registry with fake client.
 var DefaultRegistryClient = NewRegistryClient(clientcmd.NewConfig().BindToFile())
 
-// RegistryClient encapsulates getting access to the OpenShift API.
-type RegistryClient struct {
+// registryClient implements RegistryClient
+type registryClient struct {
 	config *clientcmd.Config
 }
 
+var _ RegistryClient = &registryClient{}
+
 // NewRegistryClient creates a registry client.
-func NewRegistryClient(config *clientcmd.Config) *RegistryClient {
-	return &RegistryClient{config: config}
+func NewRegistryClient(config *clientcmd.Config) RegistryClient {
+	return &registryClient{config: config}
 }
 
 // Client returns the authenticated client to use with the server.
-func (r *RegistryClient) Clients() (client.Interface, kclient.Interface, error) {
+func (r *registryClient) Clients() (client.Interface, kclient.Interface, error) {
 	return r.config.Clients()
 }
 
 // SafeClientConfig returns a client config without authentication info.
-func (r *RegistryClient) SafeClientConfig() restclient.Config {
+func (r *registryClient) SafeClientConfig() restclient.Config {
 	return clientcmd.AnonymousClientConfig(r.config.OpenShiftConfig())
 }
 
@@ -59,6 +82,27 @@ func WithUserClient(parent context.Context, userClient client.Interface) context
 func UserClientFrom(ctx context.Context) (client.Interface, bool) {
 	userClient, ok := ctx.Value(userClientKey).(client.Interface)
 	return userClient, ok
+}
+
+const authPerformedKey = "openshift.auth.performed"
+
+func WithAuthPerformed(parent context.Context) context.Context {
+	return context.WithValue(parent, authPerformedKey, true)
+}
+
+func AuthPerformed(ctx context.Context) bool {
+	authPerformed, ok := ctx.Value(authPerformedKey).(bool)
+	return ok && authPerformed
+}
+
+const deferredErrorsKey = "openshift.auth.deferredErrors"
+
+func WithDeferredErrors(parent context.Context, errs deferredErrors) context.Context {
+	return context.WithValue(parent, deferredErrorsKey, errs)
+}
+func DeferredErrorsFrom(ctx context.Context) (deferredErrors, bool) {
+	errs, ok := ctx.Value(deferredErrorsKey).(deferredErrors)
+	return errs, ok
 }
 
 type AccessController struct {
@@ -160,6 +204,11 @@ func (ac *AccessController) Authorized(ctx context.Context, accessRecords ...reg
 		}
 	}
 
+	// pushChecks remembers which ns/name pairs had push access checks done
+	pushChecks := map[string]bool{}
+	// possibleCrossMountErrors holds errors which may be related to cross mount errors
+	possibleCrossMountErrors := deferredErrors{}
+
 	verifiedPrune := false
 
 	// Validate all requested accessRecords
@@ -178,6 +227,7 @@ func (ac *AccessController) Authorized(ctx context.Context, accessRecords ...reg
 			switch access.Action {
 			case "push":
 				verb = "update"
+				pushChecks[imageStreamNS+"/"+imageStreamName] = true
 			case "pull":
 				verb = "get"
 			case "*":
@@ -197,7 +247,10 @@ func (ac *AccessController) Authorized(ctx context.Context, accessRecords ...reg
 				verifiedPrune = true
 			default:
 				if err := verifyImageStreamAccess(ctx, imageStreamNS, imageStreamName, verb, osClient); err != nil {
-					return nil, ac.wrapErr(err)
+					if access.Action != "pull" {
+						return nil, ac.wrapErr(err)
+					}
+					possibleCrossMountErrors.Add(imageStreamNS, imageStreamName, ac.wrapErr(err))
 				}
 			}
 
@@ -219,23 +272,27 @@ func (ac *AccessController) Authorized(ctx context.Context, accessRecords ...reg
 		}
 	}
 
-	return WithUserClient(ctx, osClient), nil
-}
+	// deal with any possible cross-mount errors
+	for namespaceAndName, err := range possibleCrossMountErrors {
+		// If we have no push requests, this can't be a cross-mount request, so error
+		if len(pushChecks) == 0 {
+			return nil, err
+		}
+		// If we also requested a push to this ns/name, this isn't a cross-mount request, so error
+		if pushChecks[namespaceAndName] {
+			return nil, err
+		}
+	}
 
-func getNamespaceName(resourceName string) (string, string, error) {
-	repoParts := strings.SplitN(resourceName, "/", 2)
-	if len(repoParts) != 2 {
-		return "", "", ErrNamespaceRequired
+	// Conditionally add auth errors we want to handle later to the context
+	if !possibleCrossMountErrors.Empty() {
+		context.GetLogger(ctx).Debugf("Origin auth: deferring errors: %#v", possibleCrossMountErrors)
+		ctx = WithDeferredErrors(ctx, possibleCrossMountErrors)
 	}
-	ns := repoParts[0]
-	if len(ns) == 0 {
-		return "", "", ErrNamespaceRequired
-	}
-	name := repoParts[1]
-	if len(name) == 0 {
-		return "", "", ErrNamespaceRequired
-	}
-	return ns, name, nil
+	// Always add a marker to the context so we know auth was run
+	ctx = WithAuthPerformed(ctx)
+
+	return WithUserClient(ctx, osClient), nil
 }
 
 func getToken(ctx context.Context, req *http.Request) (string, error) {

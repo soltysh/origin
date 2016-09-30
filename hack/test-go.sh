@@ -38,10 +38,17 @@ function exit_trap() {
     exit "${return_code}"
 }
 
+function absolute_path() {
+  pushd . > /dev/null
+  [ -d "$1" ] && cd "$1" && dirs -l +0
+  popd > /dev/null
+}
+
 trap exit_trap EXIT
 
 start_time=$(date +%s)
 OS_ROOT=$(dirname "${BASH_SOURCE}")/..
+OS_EXTRA_GOPATH=`absolute_path ${OS_ROOT}/Godeps/_workspace/src/github.com/docker/distribution/vendor`
 source "${OS_ROOT}/hack/common.sh"
 source "${OS_ROOT}/hack/util.sh"
 source "${OS_ROOT}/hack/lib/util/environment.sh"

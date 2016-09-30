@@ -122,3 +122,7 @@ done
 popd &>/dev/null
 
 ENDTIME=$(date +%s); echo "$0 took $(($ENDTIME - $STARTTIME)) seconds"; exit "$ret"
+
+export OS_TEST_TAGS='integration-dockerregistry'
+export OS_EXTRA_GOPATH="${OS_ROOT}/Godeps/_workspace/src/github.com/docker/distribution/vendor"
+exec "$@"
