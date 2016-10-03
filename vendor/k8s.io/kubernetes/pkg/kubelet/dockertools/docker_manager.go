@@ -645,6 +645,22 @@ func (dm *DockerManager) runContainer(
 		SecurityOpt: securityOpts,
 	}
 
+	// Set sysctls if requested
+	sysctls, unsafeSysctls, err := api.SysctlsFromPodAnnotations(pod.Annotations)
+	if err != nil {
+		dm.recorder.Eventf(ref, api.EventTypeWarning, kubecontainer.FailedToCreateContainer, "Failed to create docker container %q of pod %q with error: %v", container.Name, format.Pod(pod), err)
+		return kubecontainer.ContainerID{}, err
+	}
+	if len(sysctls)+len(unsafeSysctls) > 0 {
+		hc.Sysctls = make(map[string]string, len(sysctls)+len(unsafeSysctls))
+		for _, c := range sysctls {
+			hc.Sysctls[c.Name] = c.Value
+		}
+		for _, c := range unsafeSysctls {
+			hc.Sysctls[c.Name] = c.Value
+		}
+	}
+
 	// If current api version is newer than docker 1.10 requested, set OomScoreAdj to HostConfig
 	result, err := dm.checkDockerAPIVersion(dockerV110APIVersion)
 	if err != nil {
