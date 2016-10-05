@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 22e7a5b968fe638ce4ac81f4d5fc2158f04c8920
+%global commit feb9b7bba20824d621360b3eda404081ecc3aa37
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.0.34
+Version:        3.3.1.0
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -476,6 +476,16 @@ fi
 %{_bindir}/pod
 
 %changelog
+* Wed Oct 05 2016 Scott Dodson <sdodson@redhat.com> 3.3.1.0
+- Merge remote-tracking branch upstream/enterprise-3.3, bump origin-web-console
+  360cf95 (sdodson@redhat.com)
+- Login must ignore some SSL cert errors when --insecure (ffranz@redhat.com)
+- sdn: set veth TX queue length to unblock QoS (dcbw@redhat.com)
+- Update generated files (sttts@redhat.com)
+- Adapt TestKubeletDefaults test (sttts@redhat.com)
+- UPSTREAM: 27180: Cherry-picked (sttts@redhat.com)
+- Fix clusterresourcequota annotations validation (ffranz@redhat.com)
+
 * Fri Sep 30 2016 Scott Dodson <sdodson@redhat.com> 3.3.0.34
 - Fix issue#10853. Route cleanup does not need service key cleanup.
   (rchopra@redhat.com)
