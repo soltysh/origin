@@ -22,12 +22,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit aa601518ff6f192df73166008f00e87d5640f454
+%global commit 6c813e0cafeda5e74118725bbd2b6412b7df2c73
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.14 -X github.com/openshift/origin/pkg/version.commitFromGit aa60151 -X k8s.io/kubernetes/pkg/version.gitCommit aa60151 -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.15-56-gc999fa4 -X github.com/openshift/origin/pkg/version.commitFromGit c999fa4 -X k8s.io/kubernetes/pkg/version.gitCommit c999fa4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -47,7 +47,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.2.1.15
+Version:        3.2.1.16
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -489,6 +489,78 @@ fi
 
 
 %changelog
+* Wed Oct 05 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.16
+- Revert "Avoid using bsdtar for extraction during build" (bparees@redhat.com)
+- Set target="_self" on CLI download link to force download from server
+  (spadgett@redhat.com)
+- Image size needs to add a size of manifest config file (miminar@redhat.com)
+- New e2e test: fetch manifest schema 2 with old client (miminar@redhat.com)
+- Pullthrough blobs using Get() as well (miminar@redhat.com)
+- Remember image with matching config reference (miminar@redhat.com)
+- Make the test suite compile with distribution dependencies
+  (miminar@redhat.com)
+- Automatically check and update docker-registry configuration
+  (agladkov@redhat.com)
+- UPSTREAM: docker/distribution: 1703: GCS: FileWriter.Size: include number of
+  buffered bytes if the FileWriter is not closed (mfojtik@redhat.com)
+- Remove NotV2Registry check from redhat registry import test
+  (mfojtik@redhat.com)
+- Fix pullthrough serve blob (miminar@redhat.com)
+- Pullthrough logging improvements (miminar@redhat.com)
+- Allow to pull from insecure registries for unit tests (miminar@redhat.com)
+- Make import image more efficient (miminar@redhat.com)
+- Added unit tests for repository and blobdescriptorservice
+  (miminar@redhat.com)
+- Allow to mock default registry client (miminar@redhat.com)
+- e2e: added tests for cross-repo mounting (miminar@redhat.com)
+- e2e: speed-up docker repository pull tests (miminar@redhat.com)
+- Configurable blobrepositorycachettl value (miminar@redhat.com)
+- Cache blob <-> repository entries in registry with TTL (miminar@redhat.com)
+- Check for blob existence before serving (miminar@redhat.com)
+- Store media type in image (miminar@redhat.com)
+- bump(github.com/docker/libtrust): fa567046d9b14f6aa788882a950d69651d230b21
+  (miminar@redhat.com)
+- UPSTREAM: docker/distribution: 1857: Provide stat descriptor for Create
+  method during cross-repo mount (jliggitt@redhat.com)
+- UPSTREAM: docker/distribution: 1757: Export storage.CreateOptions in top-
+  level package (miminar@redhat.com)
+- Fix test registry client with images of different versions
+  (agladkov@redhat.com)
+- Parse v2 schema manifest (agladkov@redhat.com)
+- Add test for image import and conversion v2 schema to v1 schema
+  (agladkov@redhat.com)
+- Revert "Allow size of image to be zero when schema1 from Hub"
+  (agladkov@redhat.com)
+- Fix image size calculation in importer (agladkov@redhat.com)
+- Add test for DockerImageConfig parsing and counting size of image layers
+  (agladkov@redhat.com)
+- Fix parsing DockerImageConfig (agladkov@redhat.com)
+- Unify counting of image layers in our helper and registry
+  (agladkov@redhat.com)
+- Registry auth cleanup (jliggitt@redhat.com)
+- Add system:registry permission to delete imagestreamtags
+  (agladkov@redhat.com)
+- Force build system to use vendor directory in dockerregistry
+  (agladkov@redhat.com)
+- Fix tests (agladkov@redhat.com)
+- Delegate enforcement of cross-repo mount auth errors to blobstore
+  (jliggitt@redhat.com)
+- UPSTREAM: docker/distribution: <carry>: export storage.CreateOptions
+  (jliggitt@redhat.com)
+- Regenerate conversions, deep copy and swagger docs (agladkov@redhat.com)
+- Use docker/distribution v2.4.0+ (agladkov@redhat.com)
+- Remove incompatible dependencies (agladkov@redhat.com)
+- bump(github.com/docker/distribution):
+  596ca8b86acd3feebedae6bc08abf2a48d403a14 (agladkov@redhat.com)
+- Skip pulp test in integration (ccoleman@redhat.com)
+- Improve bootstrap policy overwrite error handling (jliggitt@redhat.com)
+- Aggregate reconcile errors (jliggitt@redhat.com)
+- Make AddRole tolerate races on role additions (jliggitt@redhat.com)
+- Improve role/rolebinding virtual storage (jliggitt@redhat.com)
+- Fix panic in rolebinding reconcile error message (jliggitt@redhat.com)
+- Clean up requested project if there are errors creating template items
+  (jliggitt@redhat.com)
+
 * Tue Aug 23 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.15
 - Update ldflags for golang-1.4 vs golang-1.6 differences
 
