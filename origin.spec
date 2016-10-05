@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit feb9b7bba20824d621360b3eda404081ecc3aa37
+%global commit b542df031d23e0a398be7f71178138de76dbd06e
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.0
+Version:        3.3.1.1
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -476,6 +476,9 @@ fi
 %{_bindir}/pod
 
 %changelog
+* Wed Oct 05 2016 Scott Dodson <sdodson@redhat.com> 3.3.1.1
+- add /spec access for node (deads@redhat.com)
+
 * Wed Oct 05 2016 Scott Dodson <sdodson@redhat.com> 3.3.1.0
 - Merge remote-tracking branch upstream/enterprise-3.3, bump origin-web-console
   360cf95 (sdodson@redhat.com)
