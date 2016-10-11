@@ -137,6 +137,9 @@ func createTestDockerManager(fakeHTTPClient *fakeHTTP, fakeDocker *FakeDockerCli
 		fakeHTTPClient,
 		flowcontrol.NewBackOff(time.Second, 300*time.Second))
 
+	// default this to an empty result, so that we never have a nil non-error response from InspectImage
+	fakeDocker.Image = &dockertypes.ImageInspect{}
+
 	return dockerManager, fakeDocker
 }
 
@@ -396,6 +399,23 @@ func TestListImages(t *testing.T) {
 	if !reflect.DeepEqual(expected.List(), actual.List()) {
 		t.Errorf("expected %#v, got %#v", expected.List(), actual.List())
 	}
+}
+
+func TestDeleteImage(t *testing.T) {
+	manager, fakeDocker := newTestDockerManager()
+	fakeDocker.Image = &dockertypes.ImageInspect{ID: "1111", RepoTags: []string{"foo"}}
+	manager.RemoveImage(kubecontainer.ImageSpec{Image: "1111"})
+	fakeDocker.AssertCallDetails([]calledDetail{{name: "inspect_image"}, {name: "remove_image",
+		arguments: []interface{}{"1111", dockertypes.ImageRemoveOptions{PruneChildren: true}}}})
+}
+
+func TestDeleteImageWithMultipleTags(t *testing.T) {
+	manager, fakeDocker := newTestDockerManager()
+	fakeDocker.Image = &dockertypes.ImageInspect{ID: "1111", RepoTags: []string{"foo", "bar"}}
+	manager.RemoveImage(kubecontainer.ImageSpec{Image: "1111"})
+	fakeDocker.AssertCallDetails([]calledDetail{{name: "inspect_image"},
+		{name: "remove_image", arguments: []interface{}{"foo", dockertypes.ImageRemoveOptions{PruneChildren: true}}},
+		{name: "remove_image", arguments: []interface{}{"bar", dockertypes.ImageRemoveOptions{PruneChildren: true}}}})
 }
 
 func TestKillContainerInPod(t *testing.T) {
