@@ -37,28 +37,34 @@ func New(opts x509.VerifyOptions, user UserConversion) *Authenticator {
 
 // AuthenticateRequest authenticates the request using presented client certificates
 func (a *Authenticator) AuthenticateRequest(req *http.Request) (user.Info, bool, error) {
-	if req.TLS == nil {
+	if req.TLS == nil || len(req.TLS.PeerCertificates) == 0 {
 		return nil, false, nil
 	}
 
+	// Use intermediates, if provided
+	optsCopy := a.opts
+	if optsCopy.Intermediates == nil && len(req.TLS.PeerCertificates) > 1 {
+		optsCopy.Intermediates = x509.NewCertPool()
+		for _, intermediate := range req.TLS.PeerCertificates[1:] {
+			optsCopy.Intermediates.AddCert(intermediate)
+		}
+	}
+
+	chains, err := req.TLS.PeerCertificates[0].Verify(optsCopy)
+	if err != nil {
+		return nil, false, err
+	}
+
 	var errlist []error
-	for _, cert := range req.TLS.PeerCertificates {
-		chains, err := cert.Verify(a.opts)
+	for _, chain := range chains {
+		user, ok, err := a.user.User(chain)
 		if err != nil {
 			errlist = append(errlist, err)
 			continue
 		}
 
-		for _, chain := range chains {
-			user, ok, err := a.user.User(chain)
-			if err != nil {
-				errlist = append(errlist, err)
-				continue
-			}
-
-			if ok {
-				return user, ok, err
-			}
+		if ok {
+			return user, ok, err
 		}
 	}
 	return nil, false, kerrors.NewAggregate(errlist)
@@ -74,22 +80,25 @@ func NewVerifier(opts x509.VerifyOptions, auth authenticator.Request) authentica
 	return &Verifier{opts, auth}
 }
 
-// AuthenticateRequest verifies the presented client certificates, then delegates to the wrapped auth
+// AuthenticateRequest verifies the presented client certificate, then delegates to the wrapped auth
 func (a *Verifier) AuthenticateRequest(req *http.Request) (user.Info, bool, error) {
-	if req.TLS == nil {
+	if req.TLS == nil || len(req.TLS.PeerCertificates) == 0 {
 		return nil, false, nil
 	}
 
-	var errlist []error
-	for _, cert := range req.TLS.PeerCertificates {
-		_, err := cert.Verify(a.opts)
-		if err != nil {
-			errlist = append(errlist, err)
-			continue
+	// Use intermediates, if provided
+	optsCopy := a.opts
+	if optsCopy.Intermediates == nil && len(req.TLS.PeerCertificates) > 1 {
+		optsCopy.Intermediates = x509.NewCertPool()
+		for _, intermediate := range req.TLS.PeerCertificates[1:] {
+			optsCopy.Intermediates.AddCert(intermediate)
 		}
-		return a.auth.AuthenticateRequest(req)
 	}
-	return nil, false, kerrors.NewAggregate(errlist)
+
+	if _, err := req.TLS.PeerCertificates[0].Verify(optsCopy); err != nil {
+		return nil, false, err
+	}
+	return a.auth.AuthenticateRequest(req)
 }
 
 // DefaultVerifyOptions returns VerifyOptions that use the system root certificates, current time,
