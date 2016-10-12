@@ -327,22 +327,23 @@ func (s *ServiceController) createLoadBalancerIfNeeded(namespacedName types.Name
 	previousState := api.LoadBalancerStatusDeepCopy(&service.Status.LoadBalancer)
 
 	if !wantsLoadBalancer(service) {
+		if appliedState == nil {
+			// There is no cached service, and therefore no prior state to
+			// compare against; NOP.
+			return nil, notRetryable
+		}
+
 		needDelete := true
-		if appliedState != nil {
-			if !wantsLoadBalancer(appliedState) {
-				needDelete = false
-			}
-		} else {
-			// If we don't have any cached memory of the load balancer, we have to ask
-			// the cloud provider for what it knows about it.
-			// Technically EnsureLoadBalancerDeleted can cope, but we want to post meaningful events
-			_, exists, err := s.balancer.GetLoadBalancer(service)
-			if err != nil {
-				return fmt.Errorf("Error getting LB for service %s: %v", namespacedName, err), retryable
-			}
-			if !exists {
-				needDelete = false
-			}
+		glog.V(3).Infof("Getting load balancer for %v", namespacedName)
+		// If we don't have any cached memory of the load balancer, we have to ask
+		// the cloud provider for what it knows about it.
+		// Technically EnsureLoadBalancerDeleted can cope, but we want to post meaningful events
+		_, exists, err := s.balancer.GetLoadBalancer(service)
+		if err != nil {
+			return fmt.Errorf("Error getting LB for service %s: %v", namespacedName, err), retryable
+		}
+		if !exists {
+			needDelete = false
 		}
 
 		if needDelete {
