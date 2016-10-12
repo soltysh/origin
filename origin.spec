@@ -21,12 +21,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 00c9b4e2320527814c5c741700d0d43ccc1e1a69
+%global commit 2b74b13761ed7c075ba6c2e55a3970f6196a6e72
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.6-66-g23d473e -X github.com/openshift/origin/pkg/version.commitFromGit 23d473e -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.7-5-g125f1d5 -X github.com/openshift/origin/pkg/version.commitFromGit 125f1d5 -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.1.1.7
+Version:        3.1.1.8
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -470,6 +470,11 @@ fi
 
 
 %changelog
+* Wed Oct 12 2016 Scott Dodson <sdodson@redhat.com> 3.1.1.8
+- UPSTREAM: 34524: Test x509 intermediates correctly (jliggitt@redhat.com)
+- Test x509 intermediates correctly (jliggitt@redhat.com)
+- Revert "Avoid using bsdtar for extraction during build" (bparees@redhat.com)
+
 * Tue Aug 23 2016 Scott Dodson <sdodson@redhat.com> 3.1.1.7
 - Avoid using bsdtar for extraction during build (joesmith@redhat.com)
 
