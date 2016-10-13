@@ -37,6 +37,7 @@ import (
 	"k8s.io/kubernetes/cmd/kube-controller-manager/app/options"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
+	"k8s.io/kubernetes/pkg/apis/batch"
 	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/leaderelection"
 	"k8s.io/kubernetes/pkg/client/record"
@@ -63,6 +64,7 @@ import (
 	replicationcontroller "k8s.io/kubernetes/pkg/controller/replication"
 	resourcequotacontroller "k8s.io/kubernetes/pkg/controller/resourcequota"
 	routecontroller "k8s.io/kubernetes/pkg/controller/route"
+	"k8s.io/kubernetes/pkg/controller/scheduledjob"
 	servicecontroller "k8s.io/kubernetes/pkg/controller/service"
 	serviceaccountcontroller "k8s.io/kubernetes/pkg/controller/serviceaccount"
 	"k8s.io/kubernetes/pkg/controller/volume/attachdetach"
@@ -387,6 +389,27 @@ func StartControllers(s *options.CMServer, kubeClient *client.Client, kubeconfig
 			).Run(1, wait.NeverStop)
 			time.Sleep(wait.Jitter(s.ControllerStartInterval.Duration, ControllerStartJitter))
 		}
+	}
+
+	groupVersion = "batch/v2alpha1"
+	resources, found = resourceMap[groupVersion]
+	if containsVersion(versions, groupVersion) && found {
+		glog.Infof("Starting %s apis", groupVersion)
+		if containsResource(resources, "scheduledjobs") {
+			glog.Infof("Starting scheduledjob controller")
+			// TODO: this is a temp fix for allowing kubeClient list v2alpha1 sj, should switch to using clientset
+			kubeconfig.ContentConfig.GroupVersion = &unversioned.GroupVersion{Group: batch.GroupName, Version: "v2alpha1"}
+			kubeClient, err := client.New(kubeconfig)
+			if err != nil {
+				glog.Fatalf("Invalid API configuration: %v", err)
+			}
+			go scheduledjob.NewScheduledJobController(kubeClient).
+				Run(wait.NeverStop)
+			time.Sleep(wait.Jitter(s.ControllerStartInterval.Duration, ControllerStartJitter))
+			time.Sleep(wait.Jitter(s.ControllerStartInterval.Duration, ControllerStartJitter))
+		}
+	} else {
+		glog.Infof("Not starting %s apis", groupVersion)
 	}
 
 	provisioner, err := NewVolumeProvisioner(cloud, s.VolumeConfiguration)

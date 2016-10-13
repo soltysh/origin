@@ -178,6 +178,11 @@ func BuildKubernetesMasterConfig(options configapi.MasterConfig, requestContextM
 		autoscaling.SchemeGroupVersion,
 	)
 
+	storageGroupsToEncodingVersion, err := server.StorageGroupsToEncodingVersion()
+	if err != nil {
+		return nil, err
+	}
+
 	etcdConfig := storagebackend.Config{
 		Prefix:     options.EtcdStorageConfig.KubernetesStoragePrefix,
 		ServerList: options.EtcdClientInfo.URLs,
@@ -186,7 +191,20 @@ func BuildKubernetesMasterConfig(options configapi.MasterConfig, requestContextM
 		CAFile:     options.EtcdClientInfo.CA,
 		DeserializationCacheSize: genericapiserveroptions.DefaultDeserializationCacheSize,
 	}
-	storageFactory := genericapiserver.NewDefaultStorageFactory(etcdConfig, "", kapi.Codecs, resourceEncodingConfig, master.DefaultAPIResourceConfigSource())
+	// storageFactory := genericapiserver.NewDefaultStorageFactory(etcdConfig, "", kapi.Codecs, resourceEncodingConfig, master.DefaultAPIResourceConfigSource())
+	storageFactory, err := genericapiserver.BuildDefaultStorageFactory(
+		etcdConfig,
+		server.DefaultStorageMediaType,
+		kapi.Codecs,
+		genericapiserver.NewDefaultResourceEncodingConfig(),
+		storageGroupsToEncodingVersion,
+		// FIXME: this GroupVersionResource override should be configurable
+		[]unversioned.GroupVersionResource{batch.Resource("scheduledjobs").WithVersion("v2alpha1")},
+		master.DefaultAPIResourceConfigSource(), server.RuntimeConfig,
+	)
+	if err != nil {
+		return nil, err
+	}
 	// the order here is important, it defines which version will be used for storage
 	storageFactory.AddCohabitatingResources(extensions.Resource("jobs"), batch.Resource("jobs"))
 	storageFactory.AddCohabitatingResources(extensions.Resource("horizontalpodautoscalers"), autoscaling.Resource("horizontalpodautoscalers"))

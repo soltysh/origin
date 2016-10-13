@@ -17,12 +17,16 @@ import (
 	"k8s.io/kubernetes/pkg/api/v1"
 	appsv1alpha1 "k8s.io/kubernetes/pkg/apis/apps/v1alpha1"
 	autoscalingv1 "k8s.io/kubernetes/pkg/apis/autoscaling/v1"
+	"k8s.io/kubernetes/pkg/apis/batch"
 	batchv1 "k8s.io/kubernetes/pkg/apis/batch/v1"
+	batchv2alpha1 "k8s.io/kubernetes/pkg/apis/batch/v2alpha1"
 	"k8s.io/kubernetes/pkg/apis/componentconfig"
 	extv1beta1 "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/record"
+	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/typed/dynamic"
+	kclient "k8s.io/kubernetes/pkg/client/unversioned"
 	clientadapter "k8s.io/kubernetes/pkg/client/unversioned/adapters/internalclientset"
 	"k8s.io/kubernetes/pkg/controller/deployment"
 	"k8s.io/kubernetes/pkg/master"
@@ -42,6 +46,7 @@ import (
 	"k8s.io/kubernetes/pkg/controller/podautoscaler/metrics"
 	replicasetcontroller "k8s.io/kubernetes/pkg/controller/replicaset"
 	replicationcontroller "k8s.io/kubernetes/pkg/controller/replication"
+	"k8s.io/kubernetes/pkg/controller/scheduledjob"
 	servicecontroller "k8s.io/kubernetes/pkg/controller/service"
 	attachdetachcontroller "k8s.io/kubernetes/pkg/controller/volume/attachdetach"
 	persistentvolumecontroller "k8s.io/kubernetes/pkg/controller/volume/persistentvolume"
@@ -123,6 +128,7 @@ func (c *MasterConfig) InstallAPI(container *restful.Container) ([]string, error
 	versions := []unversioned.GroupVersion{
 		extv1beta1.SchemeGroupVersion,
 		batchv1.SchemeGroupVersion,
+		batchv2alpha1.SchemeGroupVersion,
 		autoscalingv1.SchemeGroupVersion,
 		appsv1alpha1.SchemeGroupVersion,
 		federationv1beta1.SchemeGroupVersion,
@@ -277,6 +283,17 @@ func (c *MasterConfig) RunDeploymentController(client *client.Client) {
 func (c *MasterConfig) RunJobController(client *client.Client) {
 	controller := jobcontroller.NewJobController(c.Informers.Pods().Informer(), clientadapter.FromUnversionedClient(client))
 	go controller.Run(int(c.ControllerManager.ConcurrentJobSyncs), utilwait.NeverStop)
+}
+
+// RunScheduledJobController starts the Kubernetes scheduled job controller sync loop
+func (c *MasterConfig) RunScheduledJobController(config *restclient.Config) {
+	// TODO: this is a temp fix for allowing kubeClient list v2alpha1 jobs, should switch to using clientset
+	config.ContentConfig.GroupVersion = &unversioned.GroupVersion{Group: batch.GroupName, Version: "v2alpha1"}
+	client, err := kclient.New(config)
+	if err != nil {
+		glog.Fatalf("Unable to configure scheduled job controller: %v", err)
+	}
+	go scheduledjob.NewScheduledJobController(client).Run(utilwait.NeverStop)
 }
 
 // RunHPAController starts the Kubernetes hpa controller sync loop

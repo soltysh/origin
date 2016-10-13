@@ -274,21 +274,21 @@ func RunGet(f *cmdutil.Factory, out io.Writer, cmd *cobra.Command, args []string
 			return err
 		}
 
-		allErrs := []error{}
+		// the outermost object will be converted to the output-version, but inner
+		// objects can use their mappings
+		version, err := cmdutil.OutputVersion(cmd, clientConfig.GroupVersion)
+		if err != nil {
+			return err
+		}
+
+		var errs []error
 		singular := false
 		infos, err := r.IntoSingular(&singular).Infos()
 		if err != nil {
 			if singular {
 				return err
 			}
-			allErrs = append(allErrs, err)
-		}
-
-		// the outermost object will be converted to the output-version, but inner
-		// objects can use their mappings
-		version, err := cmdutil.OutputVersion(cmd, clientConfig.GroupVersion)
-		if err != nil {
-			return err
+			errs = append(errs, err)
 		}
 
 		obj, err := resource.AsVersionedObject(infos, !singular, version, f.JSONEncoder())
@@ -297,9 +297,11 @@ func RunGet(f *cmdutil.Factory, out io.Writer, cmd *cobra.Command, args []string
 		}
 
 		if err := printer.PrintObj(obj, out); err != nil {
-			allErrs = append(allErrs, err)
+			errs = append(errs, err)
 		}
-		return utilerrors.NewAggregate(allErrs)
+		// we can receive multiple layers of aggregates, so attempt to flatten them as much
+		// as is possible before returning.
+		return utilerrors.Reduce(utilerrors.Flatten(utilerrors.NewAggregate(errs)))
 	}
 
 	allErrs := []error{}

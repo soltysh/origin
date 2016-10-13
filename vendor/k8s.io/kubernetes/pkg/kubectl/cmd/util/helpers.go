@@ -114,6 +114,10 @@ func checkErr(err error, handleErr func(string)) {
 	if err == nil {
 		return
 	}
+	// unwrap aggregates of 1
+	if agg, ok := err.(utilerrors.Aggregate); ok && len(agg.Errors()) == 1 {
+		err = agg.Errors()[0]
+	}
 
 	if kerrors.IsInvalid(err) {
 		details := err.(*kerrors.StatusError).Status().Details

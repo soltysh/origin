@@ -40,7 +40,13 @@ func NewREST(opts generic.RESTOptions) (*REST, *StatusREST) {
 
 	newListFunc := func() runtime.Object { return &batch.ScheduledJobList{} }
 	storageInterface := opts.Decorator(
-		opts.Storage, cachesize.GetWatchCacheSizeByResource(cachesize.ScheduledJobs), &batch.ScheduledJob{}, prefix, scheduledjob.Strategy, newListFunc)
+		opts.Storage,
+		cachesize.GetWatchCacheSizeByResource(cachesize.ScheduledJobs),
+		&batch.ScheduledJob{},
+		prefix,
+		scheduledjob.Strategy,
+		newListFunc,
+	)
 
 	store := &registry.Store{
 		NewFunc: func() runtime.Object { return &batch.ScheduledJob{} },
