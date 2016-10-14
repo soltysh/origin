@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit b542df031d23e0a398be7f71178138de76dbd06e
+%global commit 9e69fa643d37b6041701e09df6f7fde06c5bf7f1
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.1
+Version:        3.3.1.2
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -476,6 +476,50 @@ fi
 %{_bindir}/pod
 
 %changelog
+* Fri Oct 14 2016 Scott Dodson <sdodson@redhat.com> 3.3.1.2
+- Update Vagrantfile (dmcphers@redhat.com)
+- Bump origin-web-console af1dbbd (sdodson@redhat.com)
+- UPSTREAM: 34271: Remove unnecessary cloud provider calls from service
+  controller (pmorie@redhat.com)
+- UPSTREAM: 34524: Test x509 intermediates correctly (jliggitt@redhat.com)
+- Test x509 intermediates correctly (jliggitt@redhat.com)
+- UPSTREAM: 33014: Kubelet: Use RepoDigest for ImageID when available
+  (sross@redhat.com)
+- UPSTREAM: 29316: Clear tags to remove images with multiple tags
+  (ronl@google.com)
+- Add logging to project request failures (jliggitt@redhat.com)
+- ScheduledJob - generated changes (maszulik@redhat.com)
+- Enable ScheduledJob controller (maszulik@redhat.com)
+- UPSTREAM: 32462: ScheduledJob controller is too chatty (maszulik@redhat.com)
+- UPSTREAM: 32449: Unwrap aggregates of size 1 when writing errors
+  (maszulik@redhat.com)
+- UPSTREAM: 31951: Fix errors.NewAggregate nil pointer panic
+  (maszulik@redhat.com)
+- UPSTREAM: 31476: Fix the bug that SJ sees finished jobs as unexpected
+  (maszulik@redhat.com)
+- UPSTREAM: 31354: Update sj on UpdateStatus return value (maszulik@redhat.com)
+- UPSTREAM: 30575: Scheduledjobs e2e (maszulik@redhat.com)
+- UPSTREAM: 30451: Remove pods along with jobs when Replace ConcurrentPolicy is
+  set (maszulik@redhat.com)
+- UPSTREAM: 30420: Name jobs created by sj deterministically
+  (maszulik@redhat.com)
+- UPSTREAM: 30328: Fix incorrect logging format in sj controller
+  (maszulik@redhat.com)
+- UPSTREAM: 30327: Use unversioned client in scheduledjobs and set group
+  version to batch/v2alpha1 (maszulik@redhat.com)
+- UPSTREAM: 30227: Remove seconds from scheduled jobs cron format
+  (maszulik@redhat.com)
+- UPSTREAM: 29137: Scheduledjob controller (maszulik@redhat.com)
+- UPSTREAM: 25816: ScheduledJob kubectl (maszulik@redhat.com)
+- UPSTREAM: 29187: Create client from API version passed in config or use
+  default (maszulik@redhat.com)
+- UPSTREAM: 29796(part): only changes to master storage (maszulik@redhat.com)
+- UPSTREAM: 29674: separate out api group storage registration
+  (maszulik@redhat.com)
+- UPSTREAM: 27554: make addition group RESTStorage registration easier
+  (maszulik@redhat.com)
+- UPSTREAM: 27157: Scheduledjob test cont. (maszulik@redhat.com)
+
 * Wed Oct 05 2016 Scott Dodson <sdodson@redhat.com> 3.3.1.1
 - add /spec access for node (deads@redhat.com)
 
