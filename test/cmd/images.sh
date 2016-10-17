@@ -120,16 +120,15 @@ os::cmd::expect_success_and_text 'oc import-image mysql:latest' "sha256:"
 os::cmd::expect_success_and_text 'oc import-image mysql:external --from=docker.io/mysql' "sha256:"
 os::cmd::expect_success_and_text "oc get istag/mysql:external --template='{{.tag.from.kind}}'" 'DockerImage'
 os::cmd::expect_success_and_text "oc get istag/mysql:external --template='{{.tag.from.name}}'" 'docker.io/mysql'
-os::cmd::expect_success 'oc delete is/mysql'
 # import creates new image stream with single tag
-os::cmd::expect_failure_and_text 'oc import-image mysql:latest --from=docker.io/mysql:latest' '\-\-confirm'
-os::cmd::expect_success_and_text 'oc import-image mysql:latest --from=docker.io/mysql:latest --confirm' 'sha256:'
-os::cmd::expect_success_and_text "oc get is/mysql --template='{{(len .spec.tags)}}'" '1'
-os::cmd::expect_success 'oc delete is/mysql'
+os::cmd::expect_failure_and_text 'oc import-image mysql-new-single:latest --from=docker.io/mysql:latest' '\-\-confirm'
+os::cmd::expect_success_and_text 'oc import-image mysql-new-single:latest --from=docker.io/mysql:latest --confirm' 'sha256:'
+os::cmd::expect_success_and_text "oc get is/mysql-new-single --template='{{(len .spec.tags)}}'" '1'
+os::cmd::expect_success 'oc delete is/mysql-new-single'
 # import creates new image stream with all tags
-os::cmd::expect_failure_and_text 'oc import-image mysql --from=mysql --all' '\-\-confirm'
-os::cmd::expect_success_and_text 'oc import-image mysql --from=mysql --all --confirm' 'sha256:'
-name=$(oc get istag/mysql:latest --template='{{ .image.metadata.name }}')
+os::cmd::expect_failure_and_text 'oc import-image mysql-new-all --from=mysql --all' '\-\-confirm'
+os::cmd::expect_success_and_text 'oc import-image mysql-new-all --from=mysql --all --confirm' 'sha256:'
+name=$(oc get istag/mysql-new-all:latest --template='{{ .image.metadata.name }}')
 echo "import-image: ok"
 os::test::junit::declare_suite_end
 
