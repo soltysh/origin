@@ -20,11 +20,10 @@ func RouteLessThan(route1, route2 *Route) bool {
 	if route1.CreationTimestamp.Before(route2.CreationTimestamp) {
 		return true
 	}
-	if route1.CreationTimestamp == route2.CreationTimestamp && route1.UID < route2.UID {
-		return true
+	if route2.CreationTimestamp.Before(route1.CreationTimestamp) {
+		return false
 	}
-	if route1.Namespace < route2.Namespace {
-		return true
-	}
-	return route1.Name < route2.Name
+	// In the event that timestamps are equal, use UID as a tie-breaker.
+	// Creation timestamps are in RFC3339 format, only accurate to the second.
+	return route1.UID < route2.UID
 }
