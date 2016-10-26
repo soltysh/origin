@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -13,13 +12,11 @@ import (
 	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/manifest/schema1"
 	repomw "github.com/docker/distribution/registry/middleware/repository"
-	"github.com/docker/libtrust"
 
 	kapi "k8s.io/kubernetes/pkg/api"
 	kerrors "k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	kclient "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/util/sets"
 
 	"github.com/openshift/origin/pkg/client"
 	imageapi "github.com/openshift/origin/pkg/image/api"
@@ -318,14 +315,17 @@ func (r *repository) pullthroughGetByTag(image *imageapi.Image, ref imageapi.Doc
 
 // Put creates or updates the named manifest.
 func (r *repository) Put(manifest *schema1.SignedManifest) error {
-	// Resolve the payload in the manifest.
-	payload, err := manifest.Payload()
+	mh, err := NewManifestHandler(r, manifest)
+	if err != nil {
+		return err
+	}
+	payload, canonical, err := mh.Payload()
 	if err != nil {
 		return err
 	}
 
 	// Calculate digest
-	dgst, err := digest.FromBytes(payload)
+	dgst, err := digest.FromBytes(canonical)
 	if err != nil {
 		return err
 	}
@@ -345,11 +345,11 @@ func (r *repository) Put(manifest *schema1.SignedManifest) error {
 				},
 			},
 			DockerImageReference: fmt.Sprintf("%s/%s/%s@%s", r.registryAddr, r.namespace, r.name, dgst.String()),
-			DockerImageManifest:  string(manifest.Raw),
+			DockerImageManifest:  string(payload),
 		},
 	}
 
-	if err := r.fillImageWithMetadata(manifest, &ism.Image); err != nil {
+	if err = mh.FillImageMetadata(r.ctx, &ism.Image); err != nil {
 		return err
 	}
 
@@ -412,40 +412,6 @@ func (r *repository) Put(manifest *schema1.SignedManifest) error {
 	return nil
 }
 
-// fillImageWithMetadata fills a given image with metadata. Also correct layer sizes with blob sizes. Newer
-// Docker client versions don't set layer sizes in the manifest at all. Origin master needs correct layer
-// sizes for proper image quota support. That's why we need to fill the metadata in the registry.
-func (r *repository) fillImageWithMetadata(manifest *schema1.SignedManifest, image *imageapi.Image) error {
-	if err := imageapi.ImageWithMetadata(image); err != nil {
-		return err
-	}
-
-	layerSet := sets.NewString()
-	size := int64(0)
-
-	blobs := r.Blobs(r.ctx)
-	for i := range image.DockerImageLayers {
-		layer := &image.DockerImageLayers[i]
-		// DockerImageLayers represents manifest.Manifest.FSLayers in reversed order
-		desc, err := blobs.Stat(r.ctx, manifest.Manifest.FSLayers[len(image.DockerImageLayers)-i-1].BlobSum)
-		if err != nil {
-			context.GetLogger(r.ctx).Errorf("Failed to stat blobs %s of image %s", layer.Name, image.DockerImageReference)
-			return err
-		}
-		layer.Size = desc.Size
-		// count empty layer just once (empty layer may actually have non-zero size)
-		if !layerSet.Has(layer.Name) {
-			size += desc.Size
-			layerSet.Insert(layer.Name)
-		}
-	}
-
-	image.DockerImageMetadata.Size = size
-	context.GetLogger(r.ctx).Infof("Total size of image %s with docker ref %s: %d", image.Name, image.DockerImageReference, size)
-
-	return nil
-}
-
 // Delete deletes the manifest with digest `dgst`. Note: Image resources
 // in OpenShift are deleted via 'oadm prune images'. This function deletes
 // the content related to the manifest in the registry's storage (signatures).
@@ -504,51 +470,12 @@ func (r *repository) rememberLayers(manifest *schema1.SignedManifest, cacheName 
 
 // manifestFromImageWithCachedLayers loads the image and then caches any located layers
 func (r *repository) manifestFromImageWithCachedLayers(image *imageapi.Image, cacheName string) (*schema1.SignedManifest, error) {
-	manifest, err := r.manifestFromImage(image)
+	mh, err := NewManifestHandlerFromImage(r, image)
 	if err != nil {
 		return nil, err
 	}
+
+	manifest := mh.Manifest()
 	r.rememberLayers(manifest, cacheName)
 	return manifest, nil
-}
-
-// manifestFromImage converts an Image to a SignedManifest.
-func (r *repository) manifestFromImage(image *imageapi.Image) (*schema1.SignedManifest, error) {
-	dgst, err := digest.ParseDigest(image.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	raw := []byte(image.DockerImageManifest)
-
-	// prefer signatures from the manifest
-	if _, err := libtrust.ParsePrettySignature(raw, "signatures"); err == nil {
-		sm := schema1.SignedManifest{Raw: raw}
-		if err := json.Unmarshal(raw, &sm); err == nil {
-			return &sm, nil
-		}
-	}
-
-	// Fetch the signatures for the manifest
-	signatures, err := r.Signatures().Get(dgst)
-	if err != nil {
-		return nil, err
-	}
-
-	jsig, err := libtrust.NewJSONSignature(raw, signatures...)
-	if err != nil {
-		return nil, err
-	}
-
-	// Extract the pretty JWS
-	raw, err = jsig.PrettySignature("signatures")
-	if err != nil {
-		return nil, err
-	}
-
-	var sm schema1.SignedManifest
-	if err := json.Unmarshal(raw, &sm); err != nil {
-		return nil, err
-	}
-	return &sm, err
 }
