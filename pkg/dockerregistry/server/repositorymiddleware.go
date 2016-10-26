@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -13,7 +12,7 @@ import (
 	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/manifest/schema1"
 	repomw "github.com/docker/distribution/registry/middleware/repository"
-	"github.com/docker/libtrust"
+
 	kapi "k8s.io/kubernetes/pkg/api"
 	kerrors "k8s.io/kubernetes/pkg/api/errors"
 
@@ -121,7 +120,12 @@ func (r *repository) Get(dgst digest.Digest) (*schema1.SignedManifest, error) {
 		return nil, err
 	}
 
-	return r.manifestFromImage(image)
+	mh, err := NewManifestHandlerFromImage(r, image)
+	if err != nil {
+		return nil, err
+	}
+
+	return mh.Manifest(), nil
 }
 
 // Enumerate retrieves digests of manifest revisions in particular repository
@@ -155,19 +159,27 @@ func (r *repository) GetByTag(tag string, options ...distribution.ManifestServic
 		return nil, err
 	}
 
-	return r.manifestFromImage(image)
+	mh, err := NewManifestHandlerFromImage(r, image)
+	if err != nil {
+		return nil, err
+	}
+
+	return mh.Manifest(), nil
 }
 
 // Put creates or updates the named manifest.
 func (r *repository) Put(manifest *schema1.SignedManifest) error {
-	// Resolve the payload in the manifest.
-	payload, err := manifest.Payload()
+	mh, err := NewManifestHandler(r, manifest)
+	if err != nil {
+		return err
+	}
+	_, canonical, err := mh.Payload()
 	if err != nil {
 		return err
 	}
 
 	// Calculate digest
-	dgst, err := digest.FromBytes(payload)
+	dgst, err := digest.FromBytes(canonical)
 	if err != nil {
 		return err
 	}
@@ -187,7 +199,7 @@ func (r *repository) Put(manifest *schema1.SignedManifest) error {
 				},
 			},
 			DockerImageReference: fmt.Sprintf("%s/%s/%s@%s", r.registryAddr, r.namespace, r.name, dgst.String()),
-			DockerImageManifest:  string(payload),
+			DockerImageManifest:  string(canonical),
 		},
 	}
 
@@ -276,35 +288,4 @@ func (r *repository) getImageStreamTag(tag string) (*imageapi.ImageStreamTag, er
 // associated with r. This ensures the image belongs to the image stream.
 func (r *repository) getImageStreamImage(dgst digest.Digest) (*imageapi.ImageStreamImage, error) {
 	return r.registryClient.ImageStreamImages(r.namespace).Get(r.name, dgst.String())
-}
-
-// manifestFromImage converts an Image to a SignedManifest.
-func (r *repository) manifestFromImage(image *imageapi.Image) (*schema1.SignedManifest, error) {
-	dgst, err := digest.ParseDigest(image.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	// Fetch the signatures for the manifest
-	signatures, err := r.Signatures().Get(dgst)
-	if err != nil {
-		return nil, err
-	}
-
-	jsig, err := libtrust.NewJSONSignature([]byte(image.DockerImageManifest), signatures...)
-	if err != nil {
-		return nil, err
-	}
-
-	// Extract the pretty JWS
-	raw, err := jsig.PrettySignature("signatures")
-	if err != nil {
-		return nil, err
-	}
-
-	var sm schema1.SignedManifest
-	if err := json.Unmarshal(raw, &sm); err != nil {
-		return nil, err
-	}
-	return &sm, err
 }
