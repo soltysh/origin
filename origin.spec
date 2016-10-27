@@ -22,12 +22,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 910ff364468162c3f25d3d53186c7d8c706effa5
+%global commit 3f20d1eb387a56d8c5f4c55284a8d3dc57b83d63
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.2.0-3-g4ca011f -X github.com/openshift/origin/pkg/version.commitFromGit 4ca011f -X k8s.io/kubernetes/pkg/version.gitCommit 4ca011f -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.2.1 -X github.com/openshift/origin/pkg/version.commitFromGit 3f20d1e -X k8s.io/kubernetes/pkg/version.gitCommit 3f20d1e -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -47,7 +47,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.2.2.1
+Version:        3.2.2.2
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -489,6 +489,9 @@ fi
 
 
 %changelog
+* Wed Oct 26 2016 Scott Dodson <sdodson@redhat.com> 3.2.2.2
+- Clear ldflags 
+
 * Wed Oct 26 2016 Scott Dodson <sdodson@redhat.com> 3.2.2.1
 - Remove dependence on external mysql image tag order (jliggitt@redhat.com)
 - Allow to get signatures (miminar@redhat.com)
