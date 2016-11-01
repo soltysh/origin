@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit c385f6aa0adcc3138b39c70ef4500002629b17c3
+%global commit 619284b67e3cf511424b549a210c2b45dad217e0
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.3
+Version:        3.3.1.4
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -476,6 +476,10 @@ fi
 %{_bindir}/pod
 
 %changelog
+* Tue Nov 01 2016 Scott Dodson <sdodson@redhat.com> 3.3.1.4
+- Remove dependence on external mysql image tag order (jliggitt@redhat.com)
+- Fix faulty route ordering (marun@redhat.com)
+
 * Tue Oct 18 2016 Scott Dodson <sdodson@redhat.com> 3.3.1.3
 - Allow job controller to get jobs (maszulik@redhat.com)
 
