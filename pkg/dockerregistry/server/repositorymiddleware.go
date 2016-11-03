@@ -324,6 +324,10 @@ func (r *repository) Put(manifest *schema1.SignedManifest) error {
 		return err
 	}
 
+	if err := mh.Verify(r.ctx, false); err != nil {
+		return err
+	}
+
 	// Calculate digest
 	dgst, err := digest.FromBytes(canonical)
 	if err != nil {
