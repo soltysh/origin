@@ -7,6 +7,7 @@ import (
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/digest"
+	"github.com/docker/distribution/registry/storage"
 )
 
 // errorBlobStore wraps a distribution.BlobStore for a particular repo.
@@ -87,8 +88,8 @@ func (r *errorBlobStore) Delete(ctx context.Context, dgst digest.Digest) error {
 }
 
 // Find out what the blob creation options are going to do by dry-running them
-func effectiveCreateOptions(options []distribution.BlobCreateOption) (*distribution.CreateOptions, error) {
-	opts := &distribution.CreateOptions{}
+func effectiveCreateOptions(options []distribution.BlobCreateOption) (*storage.CreateOptions, error) {
+	opts := &storage.CreateOptions{}
 	for _, createOptions := range options {
 		err := createOptions.Apply(opts)
 		if err != nil {
@@ -98,7 +99,7 @@ func effectiveCreateOptions(options []distribution.BlobCreateOption) (*distribut
 	return opts, nil
 }
 
-func checkPendingCrossMountErrors(ctx context.Context, opts *distribution.CreateOptions) error {
+func checkPendingCrossMountErrors(ctx context.Context, opts *storage.CreateOptions) error {
 	if !opts.Mount.ShouldMount {
 		return nil
 	}
@@ -117,7 +118,7 @@ type guardCreateOptions struct {
 var _ distribution.BlobCreateOption = guardCreateOptions{}
 
 func (f guardCreateOptions) Apply(v interface{}) error {
-	opts, ok := v.(*distribution.CreateOptions)
+	opts, ok := v.(*storage.CreateOptions)
 	if !ok {
 		return fmt.Errorf("Unexpected create options: %#v", v)
 	}
