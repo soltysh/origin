@@ -41,7 +41,7 @@ type mockRepository struct {
 
 	blobs *mockBlobStore
 
-	manifest distribution.Manifest
+	manifest *schema1.SignedManifest
 	tags     map[string]string
 }
 
@@ -79,8 +79,6 @@ func (r *mockRepository) Tags(ctx context.Context) distribution.TagService {
 type mockBlobStore struct {
 	distribution.BlobStore
 
-	blobs map[digest.Digest][]byte
-
 	statErr, serveErr, openErr error
 }
 
@@ -94,14 +92,6 @@ func (r *mockBlobStore) ServeBlob(ctx context.Context, w http.ResponseWriter, re
 
 func (r *mockBlobStore) Open(ctx context.Context, dgst digest.Digest) (distribution.ReadSeekCloser, error) {
 	return nil, r.openErr
-}
-
-func (r *mockBlobStore) Get(ctx context.Context, dgst digest.Digest) ([]byte, error) {
-	b, exists := r.blobs[dgst]
-	if !exists {
-		return nil, distribution.ErrBlobUnknown
-	}
-	return b, nil
 }
 
 type mockTagService struct {

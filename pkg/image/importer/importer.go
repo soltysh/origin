@@ -310,15 +310,15 @@ func formatRepositoryError(repository *importRepository, refName string, refID s
 func (isi *ImageStreamImporter) calculateImageSize(ctx gocontext.Context, repo distribution.Repository, image *api.Image) error {
 	bs := repo.Blobs(ctx)
 
-	blobSet := sets.NewString()
+	layerSet := sets.NewString()
 	size := int64(0)
 	for i := range image.DockerImageLayers {
 		layer := &image.DockerImageLayers[i]
 
-		if blobSet.Has(layer.Name) {
+		if layerSet.Has(layer.Name) {
 			continue
 		}
-		blobSet.Insert(layer.Name)
+		layerSet.Insert(layer.Name)
 
 		if layerSize, ok := isi.digestToLayerSizeCache[layer.Name]; ok {
 			size += layerSize
@@ -333,11 +333,6 @@ func (isi *ImageStreamImporter) calculateImageSize(ctx gocontext.Context, repo d
 		isi.digestToLayerSizeCache[layer.Name] = desc.Size
 		layer.Size = desc.Size
 		size += desc.Size
-	}
-
-	if len(image.DockerImageConfig) > 0 && !blobSet.Has(image.DockerImageMetadata.ID) {
-		blobSet.Insert(image.DockerImageMetadata.ID)
-		size += int64(len(image.DockerImageConfig))
 	}
 
 	image.DockerImageMetadata.Size = size
