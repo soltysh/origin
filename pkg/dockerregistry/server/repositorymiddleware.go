@@ -47,7 +47,7 @@ var (
 )
 
 func init() {
-	cache, err := newDigestToRepositoryCache(2048)
+	cache, err := newDigestToRepositoryCache(1024)
 	if err != nil {
 		panic(err)
 	}
@@ -142,6 +142,16 @@ func newRepositoryWithClient(registryClient client.Interface, quotaClient kclien
 	}, nil
 }
 
+func getBoolOption(name string, defval bool, options map[string]interface{}) bool {
+	if value, ok := options[name]; ok {
+		var b bool
+		if b, ok = value.(bool); ok {
+			return b
+		}
+	}
+	return defval
+}
+
 // Manifests returns r, which implements distribution.ManifestService.
 func (r *repository) Manifests(ctx context.Context, options ...distribution.ManifestServiceOption) (distribution.ManifestService, error) {
 	if r.ctx == ctx {
@@ -229,13 +239,7 @@ func (r *repository) Get(ctx context.Context, dgst digest.Digest, options ...dis
 	}
 
 	ref := imageapi.DockerImageReference{Namespace: r.namespace, Name: r.name, Registry: r.registryAddr}
-	if managed := image.Annotations[imageapi.ManagedByOpenShiftAnnotation]; managed == "true" {
-		ref.Registry = ""
-	} else {
-		ref = ref.DockerClientDefaults()
-	}
-
-	manifest, err := r.manifestFromImageWithCachedLayers(image, ref.Exact())
+	manifest, err := r.manifestFromImageWithCachedLayers(image, ref.DockerClientDefaults().Exact())
 
 	return manifest, err
 }
@@ -436,7 +440,6 @@ func (r *repository) Delete(ctx context.Context, dgst digest.Digest) error {
 	if err != nil {
 		return err
 	}
-	ctx = WithRepository(ctx, r)
 	return ms.Delete(ctx, dgst)
 }
 
@@ -468,29 +471,11 @@ func (r *repository) getImageStreamImage(dgst digest.Digest) (*imageapi.ImageStr
 	return r.registryClient.ImageStreamImages(r.namespace).Get(r.name, dgst.String())
 }
 
-// rememberLayersOfImage caches the layer digests of given image
-func (r *repository) rememberLayersOfImage(image *imageapi.Image, cacheName string) {
-	if len(image.DockerImageLayers) == 0 && len(image.DockerImageManifestMediaType) > 0 {
-		// image has no layers
+// rememberLayers caches the provided layers
+func (r *repository) rememberLayers(manifest distribution.Manifest, cacheName string) {
+	if !r.pullthrough {
 		return
 	}
-
-	if len(image.DockerImageLayers) > 0 {
-		for _, layer := range image.DockerImageLayers {
-			r.cachedLayers.RememberDigest(digest.Digest(layer.Name), cacheName)
-		}
-		return
-	}
-
-	manifest, err := r.getManifestFromImage(image)
-	if err != nil {
-		context.GetLogger(r.ctx).Errorf("cannot remember layers of image %q: %v", image.Name, err)
-	}
-	r.rememberLayersOfManifest(manifest, cacheName)
-}
-
-// rememberLayersOfManifest caches the layer digests of given manifest
-func (r *repository) rememberLayersOfManifest(manifest distribution.Manifest, cacheName string) {
 	// remember the layers in the cache as an optimization to avoid searching all remote repositories
 	for _, layer := range manifest.References() {
 		r.cachedLayers.RememberDigest(layer.Digest, cacheName)
@@ -499,25 +484,17 @@ func (r *repository) rememberLayersOfManifest(manifest distribution.Manifest, ca
 
 // manifestFromImageWithCachedLayers loads the image and then caches any located layers
 func (r *repository) manifestFromImageWithCachedLayers(image *imageapi.Image, cacheName string) (manifest distribution.Manifest, err error) {
-	manifest, err = r.getManifestFromImage(image)
+	if image.DockerImageManifestMediaType == schema2.MediaTypeManifest {
+		manifest, err = r.deserializedManifestFromImage(image)
+	} else {
+		manifest, err = r.signedManifestFromImage(image)
+	}
+
 	if err != nil {
 		return
 	}
 
-	r.rememberLayersOfManifest(manifest, cacheName)
-	return
-}
-
-// getManifestFromImage returns a manifest object constructed from a blob stored in the given image.
-func (r *repository) getManifestFromImage(image *imageapi.Image) (manifest distribution.Manifest, err error) {
-	switch image.DockerImageManifestMediaType {
-	case schema2.MediaTypeManifest:
-		manifest, err = deserializedManifestFromImage(image)
-	case schema1.MediaTypeManifest, "":
-		manifest, err = r.signedManifestFromImage(image)
-	default:
-		err = regapi.ErrorCodeManifestInvalid.WithDetail(fmt.Errorf("unknown manifest media type %q", image.DockerImageManifestMediaType))
-	}
+	r.rememberLayers(manifest, cacheName)
 	return
 }
 

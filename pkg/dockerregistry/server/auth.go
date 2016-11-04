@@ -295,6 +295,22 @@ func (ac *AccessController) Authorized(ctx context.Context, accessRecords ...reg
 	return WithUserClient(ctx, osClient), nil
 }
 
+func getNamespaceName(resourceName string) (string, string, error) {
+	repoParts := strings.SplitN(resourceName, "/", 2)
+	if len(repoParts) != 2 {
+		return "", "", ErrNamespaceRequired
+	}
+	ns := repoParts[0]
+	if len(ns) == 0 {
+		return "", "", ErrNamespaceRequired
+	}
+	name := repoParts[1]
+	if len(name) == 0 {
+		return "", "", ErrNamespaceRequired
+	}
+	return ns, name, nil
+}
+
 func getToken(ctx context.Context, req *http.Request) (string, error) {
 	authParts := strings.SplitN(req.Header.Get("Authorization"), " ", 2)
 	if len(authParts) != 2 || strings.ToLower(authParts[0]) != "basic" {

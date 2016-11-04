@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,12 +18,17 @@ import (
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/manifest/schema1"
+	registryauth "github.com/docker/distribution/registry/auth"
 	//"github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/handlers"
+	_ "github.com/docker/distribution/registry/storage"
 	_ "github.com/docker/distribution/registry/storage/driver/inmemory"
 
+	"k8s.io/kubernetes/pkg/client/restclient"
+	kclient "k8s.io/kubernetes/pkg/client/unversioned"
 	ktestclient "k8s.io/kubernetes/pkg/client/unversioned/testclient"
 
+	osclient "github.com/openshift/origin/pkg/client"
 	"github.com/openshift/origin/pkg/client/testclient"
 	registrytest "github.com/openshift/origin/pkg/dockerregistry/testutil"
 )
@@ -376,4 +382,148 @@ func (fr *testBlobFileReader) Seek(offset int64, whence int) (int64, error) {
 func (fr *testBlobFileReader) Close() error {
 	fr.bs.calls["ReadSeakCloser.Close"]++
 	return nil
+}
+
+type testBlobDescriptorManager struct {
+	mu              sync.Mutex
+	cond            *sync.Cond
+	stats           map[string]int
+	unsetRepository bool
+}
+
+// NewTestBlobDescriptorManager allows to control blobDescriptorService and collects statistics of called
+// methods.
+func NewTestBlobDescriptorManager() *testBlobDescriptorManager {
+	m := &testBlobDescriptorManager{
+		stats: make(map[string]int),
+	}
+	m.cond = sync.NewCond(&m.mu)
+	return m
+}
+
+func (m *testBlobDescriptorManager) clearStats() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for k := range m.stats {
+		delete(m.stats, k)
+	}
+}
+
+func (m *testBlobDescriptorManager) methodInvoked(methodName string) int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	newCount := m.stats[methodName] + 1
+	m.stats[methodName] = newCount
+	m.cond.Signal()
+
+	return newCount
+}
+
+// unsetRepository returns true if the testBlobDescriptorService should unset repository from context before
+// passing down the call
+func (m *testBlobDescriptorManager) getUnsetRepository() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return m.unsetRepository
+}
+
+// changeUnsetRepository allows to configure whether the testBlobDescriptorService should unset repository
+// from context before passing down the call
+func (m *testBlobDescriptorManager) changeUnsetRepository(unset bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.unsetRepository = unset
+}
+
+// getStats waits until blob descriptor service's methods are called specified number of times and returns
+// collected numbers of invocations per each method watched. An error will be returned if a given timeout is
+// reached without satisfying minimum limit.s
+func (m *testBlobDescriptorManager) getStats(minimumLimits map[string]int, timeout time.Duration) (map[string]int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var err error
+	end := time.Now().Add(timeout)
+
+	if len(minimumLimits) > 0 {
+	Loop:
+		for !statsGreaterThanOrEqual(m.stats, minimumLimits) {
+			c := make(chan struct{})
+			go func() { m.cond.Wait(); c <- struct{}{} }()
+
+			now := time.Now()
+			select {
+			case <-time.After(end.Sub(now)):
+				err = fmt.Errorf("timeout while waiting on expected stats")
+				break Loop
+			case <-c:
+				continue Loop
+			}
+		}
+	}
+
+	stats := make(map[string]int)
+	for k, v := range m.stats {
+		stats[k] = v
+	}
+
+	return stats, err
+}
+
+func statsGreaterThanOrEqual(stats, minimumLimits map[string]int) bool {
+	for key, val := range minimumLimits {
+		if val > stats[key] {
+			return false
+		}
+	}
+	return true
+}
+
+const fakeAuthorizerName = "fake"
+
+// installFakeAccessController installs an authorizer that allows access anywhere to anybody.
+func installFakeAccessController(t *testing.T) {
+	registryauth.Register(fakeAuthorizerName, registryauth.InitFunc(
+		func(options map[string]interface{}) (registryauth.AccessController, error) {
+			t.Log("instantiating fake access controller")
+			return &fakeAccessController{t: t}, nil
+		}))
+}
+
+type fakeAccessController struct {
+	t *testing.T
+}
+
+var _ registryauth.AccessController = &fakeAccessController{}
+
+func (f *fakeAccessController) Authorized(ctx context.Context, access ...registryauth.Access) (context.Context, error) {
+	for _, access := range access {
+		f.t.Logf("fake authorizer: authorizing access to %s:%s:%s", access.Resource.Type, access.Resource.Name, access.Action)
+	}
+
+	ctx = WithAuthPerformed(ctx)
+	return ctx, nil
+}
+
+func makeFakeRegistryClient(client osclient.Interface, kClient kclient.Interface) RegistryClient {
+	return &fakeRegistryClient{
+		client:  client,
+		kClient: kClient,
+	}
+}
+
+type fakeRegistryClient struct {
+	client  osclient.Interface
+	kClient kclient.Interface
+}
+
+func (f *fakeRegistryClient) Clients() (osclient.Interface, kclient.Interface, error) {
+	return f.client, f.kClient, nil
+}
+func (f *fakeRegistryClient) SafeClientConfig() restclient.Config {
+	return (&registryClient{}).SafeClientConfig()
 }
