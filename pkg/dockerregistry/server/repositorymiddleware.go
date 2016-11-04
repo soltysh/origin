@@ -643,7 +643,7 @@ func (r *repository) getSignatures(dgst digest.Digest) ([]digest.Digest, error) 
 		return nil, fmt.Errorf("unable to convert ManifestService into SignaturesGetter")
 	}
 
-	return signaturesGetter.GetSignatures(WithRepository(r.ctx, r), dgst)
+	return signaturesGetter.GetSignatures(r.ctx, dgst)
 }
 
 // deserializedManifestFromImage converts an Image to a DeserializedManifest.
