@@ -1,4 +1,4 @@
-// +build integration-dockerregistry
+// +build integration
 
 package integration
 
