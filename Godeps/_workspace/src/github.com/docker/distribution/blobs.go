@@ -198,7 +198,6 @@ type CreateOptions struct {
 	Mount struct {
 		ShouldMount bool
 		From        reference.Canonical
-		Stat        *Descriptor
 	}
 }
 
