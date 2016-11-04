@@ -18,8 +18,6 @@ import (
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/manifest/schema1"
-	registryauth "github.com/docker/distribution/registry/auth"
-	//"github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/handlers"
 	_ "github.com/docker/distribution/registry/storage"
 	_ "github.com/docker/distribution/registry/storage/driver/inmemory"
@@ -35,8 +33,6 @@ import (
 
 func TestPullthroughServeBlob(t *testing.T) {
 	ctx := context.Background()
-
-	installFakeAccessController(t)
 
 	testImage, err := registrytest.NewImageForManifest("user/app", registrytest.SampleImageManifestSchema1, false)
 	if err != nil {
@@ -56,9 +52,6 @@ func TestPullthroughServeBlob(t *testing.T) {
 	// pullthrough middleware will attempt to pull from this registry instance
 	remoteRegistryApp := handlers.NewApp(ctx, &configuration.Configuration{
 		Loglevel: "debug",
-		Auth: map[string]configuration.Parameters{
-			fakeAuthorizerName: {"realm": fakeAuthorizerName},
-		},
 		Storage: configuration.Storage{
 			"inmemory": configuration.Parameters{},
 			"cache": configuration.Parameters{
@@ -481,32 +474,6 @@ func statsGreaterThanOrEqual(stats, minimumLimits map[string]int) bool {
 		}
 	}
 	return true
-}
-
-const fakeAuthorizerName = "fake"
-
-// installFakeAccessController installs an authorizer that allows access anywhere to anybody.
-func installFakeAccessController(t *testing.T) {
-	registryauth.Register(fakeAuthorizerName, registryauth.InitFunc(
-		func(options map[string]interface{}) (registryauth.AccessController, error) {
-			t.Log("instantiating fake access controller")
-			return &fakeAccessController{t: t}, nil
-		}))
-}
-
-type fakeAccessController struct {
-	t *testing.T
-}
-
-var _ registryauth.AccessController = &fakeAccessController{}
-
-func (f *fakeAccessController) Authorized(ctx context.Context, access ...registryauth.Access) (context.Context, error) {
-	for _, access := range access {
-		f.t.Logf("fake authorizer: authorizing access to %s:%s:%s", access.Resource.Type, access.Resource.Name, access.Action)
-	}
-
-	ctx = WithAuthPerformed(ctx)
-	return ctx, nil
 }
 
 func makeFakeRegistryClient(client osclient.Interface, kClient kclient.Interface) RegistryClient {
