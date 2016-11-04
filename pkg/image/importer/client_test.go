@@ -45,7 +45,8 @@ type mockRepository struct {
 	tags     map[string]string
 }
 
-func (r *mockRepository) Name() string { return "test" }
+var _ distribution.Repository = &mockRepository{}
+
 func (r *mockRepository) Named() reference.Named {
 	named, _ := reference.WithName("test")
 	return named
