@@ -52,21 +52,13 @@ function wait_for_app() {
 }
 
 if [[ -z "${TAG:-}" ]]; then
-	if [[ "$USE_IMAGES" =~ {component}:(.+) ]]; then
+	if [[ "${USE_IMAGES}" =~ {component}:(.+) ]]; then
 		TAG="${BASH_REMATCH[1]}"
 	else
-		TAG=latest
+		TAG="latest"
 	fi
 fi
-echo "TAG=$TAG"
-
-function remove_docker_images() {
-    local name="$1"
-    local tag="${2:-\S\+}"
-    local imageids=$(docker images | sed -n "s,^.*$name\s\+$tag\s\+\(\S\+\).*,\1,p" | sort -u | tr '\n' ' ')
-    os::cmd::expect_success_and_text "echo '${imageids}' | wc -w" '^[1-9][0-9]*$'
-    os::cmd::expect_success "docker rmi -f ${imageids}"
-}
+echo "TAG=${TAG}"
 
 os::test::junit::declare_suite_start "end-to-end/core"
 # service dns entry is visible via master service
@@ -144,13 +136,6 @@ echo "[INFO] Tagging and pushing ruby-22-centos7 to ${DOCKER_REGISTRY}/cache/rub
 os::cmd::expect_success "docker tag -f centos/ruby-22-centos7:latest ${DOCKER_REGISTRY}/cache/ruby-22-centos7:latest"
 os::cmd::expect_success "docker push ${DOCKER_REGISTRY}/cache/ruby-22-centos7:latest"
 echo "[INFO] Pushed ruby-22-centos7"
-
-# get image's digest
-rubyimagedigest=$(oc get -o jsonpath='{.status.tags[?(@.tag=="latest")].items[0].image}' is/ruby-22-centos7)
-echo "[INFO] Ruby image digest: $rubyimagedigest"
-# get a random, non-empty blob
-rubyimageblob=$(oc get isimage -o go-template='{{range .image.dockerImageLayers}}{{if gt .size 1024.}}{{.name}},{{end}}{{end}}' ruby-22-centos7@${rubyimagedigest} | cut -d , -f 1)
-echo "[INFO] Ruby's testing blob digest: $rubyimageblob"
 
 # verify remote images can be pulled directly from the local registry
 echo "[INFO] Docker pullthrough"
@@ -265,8 +250,8 @@ echo "[INFO] Cross namespace pull successful"
 # check to make sure an image-pusher can push an image
 os::cmd::expect_success 'oc policy add-role-to-user system:image-pusher -n cache pusher'
 os::cmd::expect_success 'oc login -u pusher -p pass'
-pusher_token=$(oc config view --flatten --minify -o template --template='{{with index .users 0}}{{.user.token}}{{end}}')
-os::cmd::expect_success_and_text "echo 'Pusher token: ${pusher_token}'" '.+'
+pusher_token="$(oc whoami -t)"
+os::cmd::expect_success_and_text "echo ${pusher_token}" '.+'
 
 echo "[INFO] Docker login as pusher to ${DOCKER_REGISTRY}"
 os::cmd::expect_success "docker login -u e2e-user -p ${pusher_token} -e pusher@openshift.com ${DOCKER_REGISTRY}"
@@ -275,36 +260,9 @@ echo "[INFO] Docker login successful"
 # log back into docker as e2e-user again
 os::cmd::expect_success "docker login -u e2e-user -p ${e2e_user_token} -e e2e-user@openshift.com ${DOCKER_REGISTRY}"
 
-os::cmd::expect_success "oc new-project crossmount"
-os::cmd::expect_success "oc create imagestream repo"
-
 echo "[INFO] Back to 'default' project with 'admin' user..."
 os::cmd::expect_success "oc project ${CLUSTER_ADMIN_CONTEXT}"
 os::cmd::expect_success_and_text 'oc whoami' 'system:admin'
-os::cmd::expect_success "oc tag --source docker centos/ruby-22-centos7:latest -n custom ruby-22-centos7:latest"
-os::cmd::expect_success 'oc policy add-role-to-user registry-viewer pusher -n custom'
-os::cmd::expect_success 'oc policy add-role-to-user system:image-pusher pusher -n crossmount'
-
-echo "[INFO] Docker cross-repo mount"
-os::cmd::expect_success_and_text "curl -I -X HEAD -u 'pusher:${pusher_token}' '${DOCKER_REGISTRY}/v2/cache/ruby-22-centos7/blobs/$rubyimageblob'" "200 OK"
-os::cmd::try_until_text "oc get -n custom is/ruby-22-centos7 -o 'jsonpath={.status.tags[*].tag}'" "latest" $((20*TIME_SEC))
-os::cmd::expect_success_and_text "curl -I -X HEAD -u 'pusher:${pusher_token}' '${DOCKER_REGISTRY}/v2/custom/ruby-22-centos7/blobs/$rubyimageblob'" "200 OK"
-os::cmd::try_until_text "oc policy who-can update imagestreams/layers -n crossmount" "\bpusher\b"
-os::cmd::expect_success_and_text "curl -I -X HEAD -u 'pusher:${pusher_token}' '${DOCKER_REGISTRY}/v2/crossmount/repo/blobs/$rubyimageblob'" "404 Not Found"
-# 202 means that cross-repo mount has failed (in this case because of blob doesn't exist in the source repository), client needs to reupload the blob
-os::cmd::expect_success_and_text "curl -I -X POST -u 'pusher:${pusher_token}' '${DOCKER_REGISTRY}/v2/crossmount/repo/blobs/uploads/?mount=$rubyimageblob&from=cache/hello-world'" "202 Accepted"
-# 201 means that blob has been cross mounted from given repository
-os::cmd::expect_success_and_text "curl -I -X POST -u 'pusher:${pusher_token}' '${DOCKER_REGISTRY}/v2/crossmount/repo/blobs/uploads/?mount=$rubyimageblob&from=cache/ruby-22-centos7'" "201 Created"
-# check that the blob is linked now
-os::cmd::expect_success_and_text "curl -I -X HEAD -u 'pusher:${pusher_token}' '${DOCKER_REGISTRY}/v2/crossmount/repo/blobs/$rubyimageblob'" "200 OK"
-os::cmd::expect_success "oc project ${CLUSTER_ADMIN_CONTEXT}"
-# remove pusher's permissions to read from the source repository
-os::cmd::expect_success "oc policy remove-role-from-user system:image-pusher pusher -n cache"
-os::cmd::try_until_failure "oc policy who-can get imagestreams/layers -n cache | grep -Eq '\bpusher\b'"
-# cross-repo mount failed because of access denied
-os::cmd::expect_success_and_text "curl -I -X POST -u 'pusher:${pusher_token}' '${DOCKER_REGISTRY}/v2/crossmount/repo/blobs/uploads/?mount=$rubyimageblob&from=cache/ruby-22-centos7'" "202 Accepted"
-echo "[INFO] Docker cross-repo mount successful"
-
 
 # The build requires a dockercfg secret in the builder service account in order
 # to be able to push to the registry.  Make sure it exists first.
