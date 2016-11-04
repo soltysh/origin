@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"runtime"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -19,7 +18,6 @@ import (
 	"github.com/docker/distribution/health"
 	"github.com/docker/distribution/health/checks"
 	"github.com/docker/distribution/notifications"
-	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/api/errcode"
 	"github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/auth"
@@ -32,8 +30,6 @@ import (
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/distribution/registry/storage/driver/factory"
 	storagemiddleware "github.com/docker/distribution/registry/storage/driver/middleware"
-	"github.com/docker/distribution/version"
-	"github.com/docker/libtrust"
 	"github.com/garyburd/redigo/redis"
 	"github.com/gorilla/mux"
 	"golang.org/x/net/context"
@@ -71,27 +67,22 @@ type App struct {
 
 	redis *redis.Pool
 
-	// trustKey is a deprecated key used to sign manifests converted to
-	// schema1 for backward compatibility. It should not be used for any
-	// other purposes.
-	trustKey libtrust.PrivateKey
-
-	// isCache is true if this registry is configured as a pull through cache
+	// true if this registry is configured as a pull through cache
 	isCache bool
 
-	// readOnly is true if the registry is in a read-only maintenance mode
+	// true if the registry is in a read-only maintenance mode
 	readOnly bool
 }
 
 // NewApp takes a configuration and returns a configured app, ready to serve
 // requests. The app only implements ServeHTTP and can be wrapped in other
 // handlers accordingly.
-func NewApp(ctx context.Context, config *configuration.Configuration) *App {
+func NewApp(ctx context.Context, configuration *configuration.Configuration) *App {
 	app := &App{
-		Config:  config,
+		Config:  configuration,
 		Context: ctx,
-		router:  v2.RouterWithPrefix(config.HTTP.Prefix),
-		isCache: config.Proxy.RemoteURL != "",
+		router:  v2.RouterWithPrefix(configuration.HTTP.Prefix),
+		isCache: configuration.Proxy.RemoteURL != "",
 	}
 
 	// Register the handler dispatchers.
@@ -105,15 +96,8 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 	app.register(v2.RouteNameBlobUpload, blobUploadDispatcher)
 	app.register(v2.RouteNameBlobUploadChunk, blobUploadDispatcher)
 
-	// override the storage driver's UA string for registry outbound HTTP requests
-	storageParams := config.Storage.Parameters()
-	if storageParams == nil {
-		storageParams = make(configuration.Parameters)
-	}
-	storageParams["useragent"] = fmt.Sprintf("docker-distribution/%s %s", version.Version, runtime.Version())
-
 	var err error
-	app.driver, err = factory.Create(config.Storage.Type(), storageParams)
+	app.driver, err = factory.Create(configuration.Storage.Type(), configuration.Storage.Parameters())
 	if err != nil {
 		// TODO(stevvooe): Move the creation of a service into a protected
 		// method, where this is created lazily. Its status can be queried via
@@ -122,7 +106,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 	}
 
 	purgeConfig := uploadPurgeDefaultConfig()
-	if mc, ok := config.Storage["maintenance"]; ok {
+	if mc, ok := configuration.Storage["maintenance"]; ok {
 		if v, ok := mc["uploadpurging"]; ok {
 			purgeConfig, ok = v.(map[interface{}]interface{})
 			if !ok {
@@ -145,62 +129,43 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 
 	startUploadPurger(app, app.driver, ctxu.GetLogger(app), purgeConfig)
 
-	app.driver, err = applyStorageMiddleware(app.driver, config.Middleware["storage"])
+	app.driver, err = applyStorageMiddleware(app.driver, configuration.Middleware["storage"])
 	if err != nil {
 		panic(err)
 	}
 
-	app.configureSecret(config)
-	app.configureEvents(config)
-	app.configureRedis(config)
-	app.configureLogHook(config)
+	app.configureSecret(configuration)
+	app.configureEvents(configuration)
+	app.configureRedis(configuration)
+	app.configureLogHook(configuration)
 
-	if config.Compatibility.Schema1.TrustKey != "" {
-		app.trustKey, err = libtrust.LoadKeyFile(config.Compatibility.Schema1.TrustKey)
-		if err != nil {
-			panic(fmt.Sprintf(`could not load schema1 "signingkey" parameter: %v`, err))
-		}
-	} else {
-		// Generate an ephemeral key to be used for signing converted manifests
-		// for clients that don't support schema2.
-		app.trustKey, err = libtrust.GenerateECP256PrivateKey()
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	if config.HTTP.Host != "" {
-		u, err := url.Parse(config.HTTP.Host)
+	if configuration.HTTP.Host != "" {
+		u, err := url.Parse(configuration.HTTP.Host)
 		if err != nil {
 			panic(fmt.Sprintf(`could not parse http "host" parameter: %v`, err))
 		}
 		app.httpHost = *u
 	}
 
-	options := registrymiddleware.GetRegistryOptions()
+	options := []storage.RegistryOption{}
 
 	if app.isCache {
 		options = append(options, storage.DisableDigestResumption)
 	}
 
-	if config.Compatibility.Schema1.DisableSignatureStore {
-		options = append(options, storage.DisableSchema1Signatures)
-		options = append(options, storage.Schema1SigningKey(app.trustKey))
-	}
-
 	// configure deletion
-	if d, ok := config.Storage["delete"]; ok {
+	if d, ok := configuration.Storage["delete"]; ok {
 		e, ok := d["enabled"]
 		if ok {
 			if deleteEnabled, ok := e.(bool); ok && deleteEnabled {
-				options = append(options, storage.EnableDelete)
+				options = append(options, storage.EnableDelete, storage.RemoveParentsOnDelete)
 			}
 		}
 	}
 
 	// configure redirects
 	var redirectDisabled bool
-	if redirectConfig, ok := config.Storage["redirect"]; ok {
+	if redirectConfig, ok := configuration.Storage["redirect"]; ok {
 		v := redirectConfig["disable"]
 		switch v := v.(type) {
 		case bool:
@@ -216,7 +181,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 	}
 
 	// configure storage caches
-	if cc, ok := config.Storage["cache"]; ok {
+	if cc, ok := configuration.Storage["cache"]; ok {
 		v, ok := cc["blobdescriptor"]
 		if !ok {
 			// Backwards compatible: "layerinfo" == "blobdescriptor"
@@ -245,7 +210,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			ctxu.GetLogger(app).Infof("using inmemory blob descriptor cache")
 		default:
 			if v != "" {
-				ctxu.GetLogger(app).Warnf("unknown cache type %q, caching disabled", config.Storage["cache"])
+				ctxu.GetLogger(app).Warnf("unknown cache type %q, caching disabled", configuration.Storage["cache"])
 			}
 		}
 	}
@@ -258,15 +223,15 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 		}
 	}
 
-	app.registry, err = applyRegistryMiddleware(app, app.registry, config.Middleware["registry"])
+	app.registry, err = applyRegistryMiddleware(app.Context, app.registry, configuration.Middleware["registry"])
 	if err != nil {
 		panic(err)
 	}
 
-	authType := config.Auth.Type()
+	authType := configuration.Auth.Type()
 
 	if authType != "" {
-		accessController, err := auth.GetAccessController(config.Auth.Type(), config.Auth.Parameters())
+		accessController, err := auth.GetAccessController(configuration.Auth.Type(), configuration.Auth.Parameters())
 		if err != nil {
 			panic(fmt.Sprintf("unable to configure authorization (%s): %v", authType, err))
 		}
@@ -275,13 +240,13 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 	}
 
 	// configure as a pull through cache
-	if config.Proxy.RemoteURL != "" {
-		app.registry, err = proxy.NewRegistryPullThroughCache(ctx, app.registry, app.driver, config.Proxy)
+	if configuration.Proxy.RemoteURL != "" {
+		app.registry, err = proxy.NewRegistryPullThroughCache(ctx, app.registry, app.driver, configuration.Proxy)
 		if err != nil {
 			panic(err.Error())
 		}
 		app.isCache = true
-		ctxu.GetLogger(app).Info("Registry configured as a proxy cache to ", config.Proxy.RemoteURL)
+		ctxu.GetLogger(app).Info("Registry configured as a proxy cache to ", configuration.Proxy.RemoteURL)
 	}
 
 	return app
@@ -391,6 +356,11 @@ func (app *App) register(routeName string, dispatch dispatchFunc) {
 	app.RegisterRoute(app.router.GetRoute(routeName), dispatch, app.nameRequired, NoCustomAccessRecords)
 }
 
+// Namespace returns a namespace instance representing application's registry storage.
+func (app *App) Namespace() distribution.Namespace {
+	return app.registry
+}
+
 func (app *App) RegisterRoute(route *mux.Route, dispatch dispatchFunc, nameRequired nameRequiredFunc, accessRecords customAccessRecordsFunc) {
 	// TODO(stevvooe): This odd dispatcher/route registration is by-product of
 	// some limitations in the gorilla/mux router. We are using it to keep
@@ -425,7 +395,7 @@ func (app *App) configureEvents(configuration *configuration.Configuration) {
 		sinks = append(sinks, endpoint)
 	}
 
-	// NOTE(stevvooe): Moving to a new queuing implementation is as easy as
+	// NOTE(stevvooe): Moving to a new queueing implementation is as easy as
 	// replacing broadcaster with a rabbitmq implementation. It's recommended
 	// that the registry instances also act as the workers to keep deployment
 	// simple.
@@ -629,22 +599,10 @@ func (app *App) dispatcher(dispatch dispatchFunc, nameRequired nameRequiredFunc,
 		}
 
 		// Add username to request logging
-		context.Context = ctxu.WithLogger(context.Context, ctxu.GetLogger(context.Context, auth.UserNameKey))
+		context.Context = ctxu.WithLogger(context.Context, ctxu.GetLogger(context.Context, "auth.user.name"))
 
 		if nameRequired(r) {
-			nameRef, err := reference.ParseNamed(getName(context))
-			if err != nil {
-				ctxu.GetLogger(context).Errorf("error parsing reference from context: %v", err)
-				context.Errors = append(context.Errors, distribution.ErrRepositoryNameInvalid{
-					Name:   getName(context),
-					Reason: err,
-				})
-				if err := errcode.ServeJSON(w, context.Errors); err != nil {
-					ctxu.GetLogger(context).Errorf("error serving error json: %v (from %v)", err, context.Errors)
-				}
-				return
-			}
-			repository, err := app.registry.Repository(context, nameRef)
+			repository, err := app.registry.Repository(context, getName(context))
 
 			if err != nil {
 				ctxu.GetLogger(context).Errorf("error resolving repository: %v", err)
@@ -667,7 +625,7 @@ func (app *App) dispatcher(dispatch dispatchFunc, nameRequired nameRequiredFunc,
 				repository,
 				app.eventBridge(context, r))
 
-			context.Repository, err = applyRepoMiddleware(app, context.Repository, app.Config.Middleware["repository"])
+			context.Repository, err = applyRepoMiddleware(context.Context, context.Repository, app.Config.Middleware["repository"])
 			if err != nil {
 				ctxu.GetLogger(context).Errorf("error initializing repository middleware: %v", err)
 				context.Errors = append(context.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
@@ -741,9 +699,9 @@ func (app *App) context(w http.ResponseWriter, r *http.Request) *Context {
 		// A "host" item in the configuration takes precedence over
 		// X-Forwarded-Proto and X-Forwarded-Host headers, and the
 		// hostname in the request.
-		context.urlBuilder = v2.NewURLBuilder(&app.httpHost, false)
+		context.urlBuilder = v2.NewURLBuilder(&app.httpHost)
 	} else {
-		context.urlBuilder = v2.NewURLBuilderFromRequest(r, app.Config.HTTP.RelativeURLs)
+		context.urlBuilder = v2.NewURLBuilderFromRequest(r)
 	}
 
 	return context
@@ -765,12 +723,8 @@ func (app *App) authorized(w http.ResponseWriter, r *http.Request, context *Cont
 
 	if repo != "" {
 		accessRecords = appendAccessRecords(accessRecords, r.Method, repo)
-		if fromRepo := r.FormValue("from"); fromRepo != "" {
-			// mounting a blob from one repository to another requires pull (GET)
-			// access to the source repository.
-			accessRecords = appendAccessRecords(accessRecords, "GET", fromRepo)
-		}
 	}
+
 	if len(accessRecords) == 0 {
 		// Only allow the name not to be set on the base route.
 		if nameRequired(r) {

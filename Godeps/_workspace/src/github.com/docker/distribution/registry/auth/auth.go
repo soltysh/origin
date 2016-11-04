@@ -39,16 +39,6 @@ import (
 	"github.com/docker/distribution/context"
 )
 
-const (
-	// UserKey is used to get the user object from
-	// a user context
-	UserKey = "auth.user"
-
-	// UserNameKey is used to get the user name from
-	// a user context
-	UserNameKey = "auth.user.name"
-)
-
 // UserInfo carries information about
 // an autenticated/authorized client.
 type UserInfo struct {
@@ -112,9 +102,9 @@ type userInfoContext struct {
 
 func (uic userInfoContext) Value(key interface{}) interface{} {
 	switch key {
-	case UserKey:
+	case "auth.user":
 		return uic.user
-	case UserNameKey:
+	case "auth.user.name":
 		return uic.user.Name
 	}
 

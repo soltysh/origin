@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"io"
 	"path"
 
 	"github.com/docker/distribution"
@@ -14,11 +15,17 @@ import (
 // intentionally a leaky abstraction, providing utility methods that support
 // creating and traversing backend links.
 type blobStore struct {
-	driver  driver.StorageDriver
-	statter distribution.BlobStatter
+	driver        driver.StorageDriver
+	statter       distribution.BlobDescriptorService
+	deleteEnabled bool
+	// Causes directory containing blob's data to be removed recursively upon
+	// Delete.
+	removeParentsOnDelete bool
 }
 
-var _ distribution.BlobProvider = &blobStore{}
+var _ distribution.BlobService = &blobStore{}
+var _ distribution.BlobEnumerator = &blobStore{}
+var _ distribution.BlobDeleter = &blobStore{}
 
 // Get implements the BlobReadService.Get call.
 func (bs *blobStore) Get(ctx context.Context, dgst digest.Digest) ([]byte, error) {
@@ -58,7 +65,12 @@ func (bs *blobStore) Open(ctx context.Context, dgst digest.Digest) (distribution
 // content is already present, only the digest will be returned. This should
 // only be used for small objects, such as manifests. This implemented as a convenience for other Put implementations
 func (bs *blobStore) Put(ctx context.Context, mediaType string, p []byte) (distribution.Descriptor, error) {
-	dgst := digest.FromBytes(p)
+	dgst, err := digest.FromBytes(p)
+	if err != nil {
+		context.GetLogger(ctx).Errorf("blobStore: error digesting content: %v, %s", err, string(p))
+		return distribution.Descriptor{}, err
+	}
+
 	desc, err := bs.statter.Stat(ctx, dgst)
 	if err == nil {
 		// content already present
@@ -87,34 +99,62 @@ func (bs *blobStore) Put(ctx context.Context, mediaType string, p []byte) (distr
 	}, bs.driver.PutContent(ctx, bp, p)
 }
 
-func (bs *blobStore) Enumerate(ctx context.Context, ingester func(dgst digest.Digest) error) error {
+func (bs *blobStore) Enumerate(ctx context.Context, ingest func(digest.Digest) error) error {
+	context.GetLogger(ctx).Debug("(*blobStore).Enumerate")
+	rootPath := path.Join(storagePathRoot, storagePathVersion, "blobs")
 
-	specPath, err := pathFor(blobsPathSpec{})
+	walkFn, err := makeBlobStoreWalkFunc(rootPath, true, ingest)
 	if err != nil {
 		return err
 	}
 
-	err = Walk(ctx, bs.driver, specPath, func(fileInfo driver.FileInfo) error {
-		// skip directories
-		if fileInfo.IsDir() {
+	err = Walk(ctx, bs.driver, rootPath, walkFn)
+	if err != nil {
+		switch err.(type) {
+		case driver.PathNotFoundError:
+			return io.EOF
+		}
+		if err == ErrFinishedWalk {
 			return nil
 		}
+		return err
+	}
 
-		currentPath := fileInfo.Path()
-		// we only want to parse paths that end with /data
-		_, fileName := path.Split(currentPath)
-		if fileName != "data" {
-			return nil
-		}
+	return io.EOF
+}
 
-		digest, err := digestFromPath(currentPath)
-		if err != nil {
-			return err
-		}
+func (bs *blobStore) Create(ctx context.Context) (distribution.BlobWriter, error) {
+	return nil, distribution.ErrUnsupported
+}
 
-		return ingester(digest)
-	})
-	return err
+func (bs *blobStore) Resume(ctx context.Context, id string) (distribution.BlobWriter, error) {
+	return nil, distribution.ErrUnsupported
+}
+
+func (bs *blobStore) Delete(ctx context.Context, dgst digest.Digest) error {
+	var (
+		blobPath string
+		err      error
+	)
+	if !bs.deleteEnabled {
+		return distribution.ErrUnsupported
+	}
+
+	if bs.removeParentsOnDelete {
+		blobPath, err = pathFor(blobPathSpec{digest: dgst})
+	} else {
+		blobPath, err = pathFor(blobDataPathSpec{digest: dgst})
+	}
+	if err != nil {
+		return err
+	}
+
+	context.GetLogger(ctx).Infof("Deleting blob path: %s", blobPath)
+	return bs.driver.Delete(ctx, blobPath)
+}
+
+func (bs *blobStore) Stat(ctx context.Context, dgst digest.Digest) (distribution.Descriptor, error) {
+	return bs.statter.Stat(ctx, dgst)
 }
 
 // path returns the canonical path for the blob identified by digest. The blob
