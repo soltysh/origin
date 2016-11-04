@@ -39,11 +39,6 @@ const (
 	// on manifest put requests.
 	AcceptSchema2EnvVar = "REGISTRY_MIDDLEWARE_REPOSITORY_OPENSHIFT_ACCEPTSCHEMA2"
 
-	// BlobRepositoryCacheTTLEnvVar  is an environment variable specifying an eviction timeout for <blob
-	// belongs to repository> entries. The higher the value, the faster queries but also a higher risk of
-	// leaking a blob that is no longer tagged in given repository.
-	BlobRepositoryCacheTTLEnvVar = "REGISTRY_MIDDLEWARE_REPOSITORY_OPENSHIFT_BLOBREPOSITORYCACHETTL"
-
 	// Default values
 
 	defaultDigestToRepositoryCacheSize = 2048
@@ -91,8 +86,7 @@ func init() {
 			if err != nil {
 				return nil, err
 			}
-
-			return newRepositoryWithClient(registryClient, kClient, ctx, repo, options)
+			return newRepositoryWithClient(registryClient, quotaClient, ctx, repo, options)
 		},
 	)
 
@@ -143,17 +137,14 @@ func newRepositoryWithClient(
 		return nil, fmt.Errorf("%s is required", DockerRegistryURLEnvVar)
 	}
 
-	acceptschema2, err := getBoolOption(AcceptSchema2EnvVar, "acceptschema2", false, options)
-	if err != nil {
-		context.GetLogger(ctx).Error(err)
-	}
-	blobrepositorycachettl, err := getDurationOption(BlobRepositoryCacheTTLEnvVar, "blobrepositorycachettl", defaultBlobRepositoryCacheTTL, options)
-	if err != nil {
-		context.GetLogger(ctx).Error(err)
-	}
-	pullthrough, err := getBoolOption("", "pullthrough", false, options)
-	if err != nil {
-		context.GetLogger(ctx).Error(err)
+	pullthrough := getBoolOption("pullthrough", false, options)
+
+	acceptschema2 := false
+
+	if os.Getenv(AcceptSchema2EnvVar) != "" {
+		acceptschema2 = os.Getenv(AcceptSchema2EnvVar) == "true"
+	} else {
+		acceptschema2 = getBoolOption("acceptschema2", false, options)
 	}
 
 	nameParts := strings.SplitN(repo.Named().Name(), "/", 2)
@@ -171,7 +162,7 @@ func newRepositoryWithClient(
 		namespace:              nameParts[0],
 		name:                   nameParts[1],
 		acceptschema2:          acceptschema2,
-		blobrepositorycachettl: blobrepositorycachettl,
+		blobrepositorycachettl: defaultBlobRepositoryCacheTTL,
 		pullthrough:            pullthrough,
 		cachedLayers:           cachedLayers,
 	}, nil
