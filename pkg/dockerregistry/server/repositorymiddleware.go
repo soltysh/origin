@@ -2,11 +2,11 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
@@ -29,31 +29,14 @@ import (
 )
 
 const (
-	// Environment variables
-
-	// DockerRegistryURLEnvVar is a mandatory environment variable name specifying url of internal docker
-	// registry. All references to pushed images will be prefixed with its value.
-	DockerRegistryURLEnvVar = "DOCKER_REGISTRY_URL"
-
 	// AcceptSchema2EnvVar is a boolean environment variable that allows to accept manifest schema v2
 	// on manifest put requests.
 	AcceptSchema2EnvVar = "REGISTRY_MIDDLEWARE_REPOSITORY_OPENSHIFT_ACCEPTSCHEMA2"
-
-	// Default values
-
-	defaultDigestToRepositoryCacheSize = 2048
-	defaultBlobRepositoryCacheTTL      = time.Minute * 10
 )
 
 var (
-	// cachedLayers is a shared cache of blob digests to repositories that have previously been identified as
-	// containing that blob. Thread safe and reused by all middleware layers. It contains two kinds of
-	// associations:
-	//  1. <blobdigest> <-> <registry>/<namespace>/<name>
-	//  2. <blobdigest> <-> <namespace>/<name>
-	// The first associates a blob with a remote repository. Such an entry is set and used by pullthrough
-	// middleware. The second associates a blob with a local repository. Such a blob is expected to reside on
-	// local storage. It's set and used by blobDescriptorService middleware.
+	// cachedLayers is a shared cache of blob digests to remote repositories that have previously
+	// been identified as containing that blob. Thread safe and reused by all middleware layers.
 	cachedLayers digestToRepositoryCache
 	// secureTransport is the transport pool used for pullthrough to remote registries marked as
 	// secure.
@@ -64,7 +47,7 @@ var (
 )
 
 func init() {
-	cache, err := newDigestToRepositoryCache(defaultDigestToRepositoryCacheSize)
+	cache, err := newDigestToRepositoryCache(2048)
 	if err != nil {
 		panic(err)
 	}
@@ -86,7 +69,7 @@ func init() {
 			if err != nil {
 				return nil, err
 			}
-			return newRepositoryWithClient(registryClient, quotaClient, ctx, repo, options)
+			return newRepositoryWithClient(registryClient, kClient, ctx, repo, options)
 		},
 	)
 
@@ -114,8 +97,6 @@ type repository struct {
 	pullthrough bool
 	// acceptschema2 allows to refuse the manifest schema version 2
 	acceptschema2 bool
-	// blobrepositorycachettl is an eviction timeout for <blob belongs to repository> entries of cachedLayers
-	blobrepositorycachettl time.Duration
 	// cachedLayers remembers a mapping of layer digest to repositories recently seen with that image to avoid
 	// having to check every potential upstream repository when a blob request is made. The cache is useful only
 	// when session affinity is on for the registry, but in practice the first pull will fill the cache.
@@ -125,16 +106,10 @@ type repository struct {
 var _ distribution.ManifestService = &repository{}
 
 // newRepositoryWithClient returns a new repository middleware.
-func newRepositoryWithClient(
-	registryClient client.Interface,
-	quotaClient kclient.ResourceQuotasNamespacer,
-	ctx context.Context,
-	repo distribution.Repository,
-	options map[string]interface{},
-) (distribution.Repository, error) {
-	registryAddr := os.Getenv(DockerRegistryURLEnvVar)
+func newRepositoryWithClient(registryClient client.Interface, quotaClient kclient.ResourceQuotasNamespacer, ctx context.Context, repo distribution.Repository, options map[string]interface{}) (distribution.Repository, error) {
+	registryAddr := os.Getenv("DOCKER_REGISTRY_URL")
 	if len(registryAddr) == 0 {
-		return nil, fmt.Errorf("%s is required", DockerRegistryURLEnvVar)
+		return nil, errors.New("DOCKER_REGISTRY_URL is required")
 	}
 
 	pullthrough := getBoolOption("pullthrough", false, options)
@@ -155,16 +130,15 @@ func newRepositoryWithClient(
 	return &repository{
 		Repository: repo,
 
-		ctx:                    ctx,
-		quotaClient:            quotaClient,
-		registryClient:         registryClient,
-		registryAddr:           registryAddr,
-		namespace:              nameParts[0],
-		name:                   nameParts[1],
-		acceptschema2:          acceptschema2,
-		blobrepositorycachettl: defaultBlobRepositoryCacheTTL,
-		pullthrough:            pullthrough,
-		cachedLayers:           cachedLayers,
+		ctx:            ctx,
+		quotaClient:    quotaClient,
+		registryClient: registryClient,
+		registryAddr:   registryAddr,
+		namespace:      nameParts[0],
+		name:           nameParts[1],
+		pullthrough:    pullthrough,
+		acceptschema2:  acceptschema2,
+		cachedLayers:   cachedLayers,
 	}, nil
 }
 
@@ -256,12 +230,9 @@ func (r *repository) Get(ctx context.Context, dgst digest.Digest, options ...dis
 
 	ref := imageapi.DockerImageReference{Namespace: r.namespace, Name: r.name, Registry: r.registryAddr}
 	if managed := image.Annotations[imageapi.ManagedByOpenShiftAnnotation]; managed == "true" {
-		// Repository without a registry part is refers to repository containing locally managed images.
-		// Such an entry is retrieved, checked and set by blobDescriptorService operating only on local blobs.
 		ref.Registry = ""
 	} else {
-		// Repository with a registry points to remote repository. This is used by pullthrough middleware.
-		ref = ref.DockerClientDefaults().AsRepository()
+		ref = ref.DockerClientDefaults()
 	}
 
 	manifest, err := r.manifestFromImageWithCachedLayers(image, ref.Exact())
@@ -506,7 +477,7 @@ func (r *repository) rememberLayersOfImage(image *imageapi.Image, cacheName stri
 
 	if len(image.DockerImageLayers) > 0 {
 		for _, layer := range image.DockerImageLayers {
-			r.cachedLayers.RememberDigest(digest.Digest(layer.Name), r.blobrepositorycachettl, cacheName)
+			r.cachedLayers.RememberDigest(digest.Digest(layer.Name), cacheName)
 		}
 		return
 	}
@@ -514,7 +485,6 @@ func (r *repository) rememberLayersOfImage(image *imageapi.Image, cacheName stri
 	manifest, err := r.getManifestFromImage(image)
 	if err != nil {
 		context.GetLogger(r.ctx).Errorf("cannot remember layers of image %q: %v", image.Name, err)
-		return
 	}
 	r.rememberLayersOfManifest(manifest, cacheName)
 }
@@ -523,7 +493,7 @@ func (r *repository) rememberLayersOfImage(image *imageapi.Image, cacheName stri
 func (r *repository) rememberLayersOfManifest(manifest distribution.Manifest, cacheName string) {
 	// remember the layers in the cache as an optimization to avoid searching all remote repositories
 	for _, layer := range manifest.References() {
-		r.cachedLayers.RememberDigest(layer.Digest, r.blobrepositorycachettl, cacheName)
+		r.cachedLayers.RememberDigest(layer.Digest, cacheName)
 	}
 }
 

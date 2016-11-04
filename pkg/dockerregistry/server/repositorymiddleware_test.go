@@ -33,8 +33,10 @@ import (
 
 const (
 	// testImageLayerCount says how many layers to generate per image
-	testImageLayerCount        = 2
-	testBlobRepositoryCacheTTL = time.Millisecond * 500
+	testImageLayerCount                = 2
+	testBlobRepositoryCacheTTL         = time.Millisecond * 500
+	defaultDigestToRepositoryCacheSize = 1024
+	defaultBlobRepositoryCacheTTL      = 10 * time.Minute
 )
 
 func TestRepositoryBlobStat(t *testing.T) {
@@ -704,9 +706,8 @@ func (r *testRegistry) Repository(ctx context.Context, ref reference.Named) (dis
 		registryAddr:   "localhost:5000",
 		namespace:      parts[0],
 		name:           parts[1],
-		blobrepositorycachettl: r.blobrepositorycachettl,
-		cachedLayers:           cachedLayers,
-		pullthrough:            r.pullthrough,
+		cachedLayers:   cachedLayers,
+		pullthrough:    r.pullthrough,
 	}, nil
 }
 
