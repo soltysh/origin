@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,8 +15,7 @@ import (
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/digest"
-	"github.com/docker/distribution/manifest"
-	"github.com/docker/distribution/reference"
+	"github.com/docker/distribution/manifest/schema1"
 	distclient "github.com/docker/distribution/registry/client"
 
 	kapi "k8s.io/kubernetes/pkg/api"
@@ -29,12 +27,18 @@ import (
 )
 
 func NewImageForManifest(repoName string, rawManifest string, managedByOpenShift bool) (*imageapi.Image, error) {
-	var versioned manifest.Versioned
-	if err := json.Unmarshal([]byte(rawManifest), &versioned); err != nil {
+	sm := schema1.SignedManifest{}
+	if err := sm.UnmarshalJSON([]byte(rawManifest)); err != nil {
 		return nil, err
 	}
 
-	_, desc, err := distribution.UnmarshalManifest(versioned.MediaType, []byte(rawManifest))
+	payload, err := sm.Payload()
+	if err != nil {
+		return nil, err
+	}
+
+	// Calculate digest
+	dgst, err := digest.FromBytes(payload)
 	if err != nil {
 		return nil, err
 	}
@@ -46,10 +50,10 @@ func NewImageForManifest(repoName string, rawManifest string, managedByOpenShift
 
 	img := &imageapi.Image{
 		ObjectMeta: kapi.ObjectMeta{
-			Name:        desc.Digest.String(),
+			Name:        dgst.String(),
 			Annotations: annotations,
 		},
-		DockerImageReference: fmt.Sprintf("localhost:5000/%s@%s", repoName, desc.Digest.String()),
+		DockerImageReference: fmt.Sprintf("localhost:5000/%s@%s", repoName, dgst),
 		DockerImageManifest:  string(rawManifest),
 	}
 
@@ -69,11 +73,7 @@ func UploadTestBlob(serverURL *url.URL, repoName string) (distribution.Descripto
 	dgst := digest.Digest(ds)
 
 	ctx := context.Background()
-	ref, err := reference.ParseNamed(repoName)
-	if err != nil {
-		return distribution.Descriptor{}, nil, err
-	}
-	repo, err := distclient.NewRepository(ctx, ref, serverURL.String(), nil)
+	repo, err := distclient.NewRepository(ctx, repoName, serverURL.String(), nil)
 	if err != nil {
 		return distribution.Descriptor{}, nil, fmt.Errorf("failed to get repository %q: %v", repoName, err)
 	}
@@ -161,7 +161,10 @@ func CreateRandomTarFile() (rs io.ReadSeeker, dgst digest.Digest, err error) {
 		return nil, "", err
 	}
 
-	dgst = digest.FromBytes(target.Bytes())
+	dgst, err = digest.FromBytes(target.Bytes())
+	if err != nil {
+		return nil, "", err
+	}
 
 	return bytes.NewReader(target.Bytes()), dgst, nil
 }

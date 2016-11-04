@@ -38,8 +38,7 @@ func TestImport(t *testing.T) {
 	}
 	insecureRetriever := &mockRetriever{
 		repo: &mockRepository{
-			getTagErr:   fmt.Errorf("no such tag"),
-			getByTagErr: fmt.Errorf("no such manifest tag"),
+			getByTagErr: fmt.Errorf("no such tag"),
 			getErr:      fmt.Errorf("no such digest"),
 		},
 	}
@@ -66,8 +65,7 @@ func TestImport(t *testing.T) {
 		{
 			retriever: &mockRetriever{
 				repo: &mockRepository{
-					getTagErr:   fmt.Errorf("no such tag"),
-					getByTagErr: fmt.Errorf("no such manifest tag"),
+					getByTagErr: fmt.Errorf("no such tag"),
 					getErr:      fmt.Errorf("no such digest"),
 				},
 			},
@@ -82,7 +80,7 @@ func TestImport(t *testing.T) {
 				},
 			},
 			expect: func(isi *api.ImageStreamImport, t *testing.T) {
-				if !expectStatusError(isi.Status.Images[0].Status, "Internal error occurred: no such manifest tag") {
+				if !expectStatusError(isi.Status.Images[0].Status, "Internal error occurred: no such tag") {
 					t.Errorf("unexpected status: %#v", isi.Status.Images[0].Status)
 				}
 				if !expectStatusError(isi.Status.Images[1].Status, "Internal error occurred: no such digest") {
@@ -119,7 +117,10 @@ func TestImport(t *testing.T) {
 			},
 		},
 		{
-			retriever: &mockRetriever{repo: &mockRepository{manifest: m}},
+			retriever: &mockRetriever{repo: &mockRepository{
+				manifest: m,
+				tags:     map[string]string{"tag": "sha256:958608f8ecc1dc62c93b6c610f3a834dae4220c9642e6e8b4e0f2b3ad7cbd238"},
+			}},
 			isi: api.ImageStreamImport{
 				Spec: api.ImageStreamImportSpec{
 					Images: []api.ImageImportSpec{
@@ -137,8 +138,12 @@ func TestImport(t *testing.T) {
 						t.Errorf("unexpected status %d: %#v", i, image.Status)
 					}
 					// the image name is always the sha256, and size is calculated
-					if image.Image == nil || image.Image.Name != "sha256:958608f8ecc1dc62c93b6c610f3a834dae4220c9642e6e8b4e0f2b3ad7cbd238" || image.Image.DockerImageMetadata.Size != 28643712 {
-						t.Errorf("unexpected image %d: %#v", i, image.Image.Name)
+					if image.Image == nil {
+						t.Errorf("image unset %d", i)
+						continue
+					}
+					if image.Image.Name != "sha256:958608f8ecc1dc62c93b6c610f3a834dae4220c9642e6e8b4e0f2b3ad7cbd238" || image.Image.DockerImageMetadata.Size != 28643712 {
+						t.Errorf("unexpected image %d: name=%q, size=%d", i, image.Image.Name, image.Image.DockerImageMetadata.Size)
 					}
 					// the most specific reference is returned
 					if image.Image.DockerImageReference != "test@sha256:958608f8ecc1dc62c93b6c610f3a834dae4220c9642e6e8b4e0f2b3ad7cbd238" {
@@ -159,7 +164,6 @@ func TestImport(t *testing.T) {
 						"3.1":   "sha256:958608f8ecc1dc62c93b6c610f3a834dae4220c9642e6e8b4e0f2b3ad7cbd238",
 						"abc":   "sha256:958608f8ecc1dc62c93b6c610f3a834dae4220c9642e6e8b4e0f2b3ad7cbd238",
 					},
-					getTagErr:   fmt.Errorf("no such tag"),
 					getByTagErr: fmt.Errorf("no such manifest tag"),
 				},
 			},

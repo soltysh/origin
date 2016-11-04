@@ -17,7 +17,6 @@ import (
 	"github.com/docker/distribution/configuration"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/digest"
-	"github.com/docker/distribution/manifest/schema1"
 	"github.com/docker/distribution/registry/handlers"
 	_ "github.com/docker/distribution/registry/storage"
 	_ "github.com/docker/distribution/registry/storage/driver/inmemory"
@@ -62,9 +61,7 @@ func TestPullthroughServeBlob(t *testing.T) {
 			},
 		},
 		Middleware: map[string][]configuration.Middleware{
-			"registry":   {{Name: "openshift"}},
 			"repository": {{Name: "openshift"}},
-			"storage":    {{Name: "openshift"}},
 		},
 	})
 	remoteRegistryServer := httptest.NewServer(remoteRegistryApp)
@@ -267,9 +264,8 @@ func (t *testBlobStore) Stat(ctx context.Context, dgst digest.Digest) (distribut
 		return distribution.Descriptor{}, distribution.ErrBlobUnknown
 	}
 	return distribution.Descriptor{
-		MediaType: schema1.MediaTypeManifestLayer,
-		Size:      int64(len(content)),
-		Digest:    makeDigestFromBytes(content),
+		Size:   int64(len(content)),
+		Digest: makeDigestFromBytes(content),
 	}, nil
 }
 
@@ -280,6 +276,10 @@ func (t *testBlobStore) Get(ctx context.Context, dgst digest.Digest) ([]byte, er
 		return nil, distribution.ErrBlobUnknown
 	}
 	return content, nil
+}
+
+func (t *testBlobStore) Enumerate(ctx context.Context, ingester func(digest.Digest) error) error {
+	return fmt.Errorf("method not implemented")
 }
 
 func (t *testBlobStore) Open(ctx context.Context, dgst digest.Digest) (distribution.ReadSeekCloser, error) {
@@ -299,7 +299,7 @@ func (t *testBlobStore) Put(ctx context.Context, mediaType string, p []byte) (di
 	return distribution.Descriptor{}, fmt.Errorf("method not implemented")
 }
 
-func (t *testBlobStore) Create(ctx context.Context, options ...distribution.BlobCreateOption) (distribution.BlobWriter, error) {
+func (t *testBlobStore) Create(ctx context.Context) (distribution.BlobWriter, error) {
 	t.calls["Create"]++
 	return nil, fmt.Errorf("method not implemented")
 }
