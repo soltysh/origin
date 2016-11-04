@@ -67,10 +67,10 @@ func (bs *quotaRestrictedBlobStore) Put(ctx context.Context, mediaType string, p
 }
 
 // Create wraps returned blobWriter with quota guard wrapper.
-func (bs *quotaRestrictedBlobStore) Create(ctx context.Context, options ...distribution.BlobCreateOption) (distribution.BlobWriter, error) {
+func (bs *quotaRestrictedBlobStore) Create(ctx context.Context) (distribution.BlobWriter, error) {
 	context.GetLogger(ctx).Debug("(*quotaRestrictedBlobStore).Create: starting")
 
-	bw, err := bs.BlobStore.Create(ctx, options...)
+	bw, err := bs.BlobStore.Create(ctx)
 	if err != nil {
 		return nil, err
 	}

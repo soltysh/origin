@@ -10,8 +10,6 @@ import (
 
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/digest"
-	"github.com/docker/distribution/manifest/schema1"
-	"github.com/docker/distribution/manifest/schema2"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/api/errcode"
 	"github.com/docker/distribution/registry/api/v2"
@@ -290,21 +288,6 @@ func applyErrorToRepository(repository *importRepository, err error) {
 	}
 }
 
-func formatRepositoryError(repository *importRepository, refName string, refID string, defErr error) (err error) {
-	err = defErr
-	switch {
-	case isDockerError(err, v2.ErrorCodeManifestUnknown):
-		ref := repository.Ref
-		ref.Tag, ref.ID = refName, refID
-		err = kapierrors.NewNotFound(api.Resource("dockerimage"), ref.Exact())
-	case isDockerError(err, errcode.ErrorCodeUnauthorized):
-		err = kapierrors.NewUnauthorized(fmt.Sprintf("you may not have access to the Docker image %q", repository.Ref.Exact()))
-	case strings.HasSuffix(err.Error(), "no basic auth credentials"):
-		err = kapierrors.NewUnauthorized(fmt.Sprintf("you may not have access to the Docker image %q", repository.Ref.Exact()))
-	}
-	return
-}
-
 // calculateImageSize gets and updates size of each image layer. If manifest v2 is converted to v1,
 // then it loses information about layers size. We have to get this information from server again.
 func (isi *ImageStreamImporter) calculateImageSize(ctx gocontext.Context, repo distribution.Repository, image *api.Image) error {
@@ -382,12 +365,9 @@ func (isi *ImageStreamImporter) importRepositoryFromDocker(ctx gocontext.Context
 		return
 	}
 
-	// get a blob context
-	b := repo.Blobs(ctx)
-
 	// if repository import is requested (MaximumTags), attempt to load the tags, sort them, and request the first N
 	if count := repository.MaximumTags; count > 0 || count == -1 {
-		tags, err := repo.Tags(ctx).All(ctx)
+		tags, err := s.Tags()
 		if err != nil {
 			glog.V(5).Infof("unable to access tags for repository %#v: %#v", repository, err)
 			switch {
@@ -432,40 +412,27 @@ func (isi *ImageStreamImporter) importRepositoryFromDocker(ctx gocontext.Context
 			continue
 		}
 		limiter.Accept()
-		manifest, err := s.Get(ctx, d)
+		m, err := s.Get(d)
 		if err != nil {
 			glog.V(5).Infof("unable to access digest %q for repository %#v: %#v", d, repository, err)
-			importDigest.Err = formatRepositoryError(repository, "", importDigest.Name, err)
-			continue
-		}
-
-		if signedManifest, isSchema1 := manifest.(*schema1.SignedManifest); isSchema1 {
-			importDigest.Image, err = schema1ToImage(signedManifest, d)
-		} else if deserializedManifest, isSchema2 := manifest.(*schema2.DeserializedManifest); isSchema2 {
-			imageConfig, err := b.Get(ctx, deserializedManifest.Config.Digest)
-			if err != nil {
-				glog.V(5).Infof("unable to access the image config using digest %q for repository %#v: %#v", d, repository, err)
-				if isDockerError(err, v2.ErrorCodeManifestUnknown) {
-					ref := repository.Ref
-					ref.ID = deserializedManifest.Config.Digest.String()
-					importDigest.Err = kapierrors.NewNotFound(api.Resource("dockerimage"), ref.Exact())
-				} else {
-					importDigest.Err = formatRepositoryError(repository, "", importDigest.Name, err)
-				}
-				continue
+			switch {
+			case isDockerError(err, v2.ErrorCodeManifestUnknown):
+				ref := repository.Ref
+				ref.Tag, ref.ID = "", importDigest.Name
+				err = kapierrors.NewNotFound(api.Resource("dockerimage"), ref.Exact())
+			case isDockerError(err, errcode.ErrorCodeUnauthorized):
+				err = kapierrors.NewUnauthorized(fmt.Sprintf("you may not have access to the Docker image %q", repository.Ref.Exact()))
+			case strings.HasSuffix(err.Error(), "no basic auth credentials"):
+				err = kapierrors.NewUnauthorized(fmt.Sprintf("you may not have access to the Docker image %q", repository.Ref.Exact()))
 			}
-
-			importDigest.Image, err = schema2ToImage(deserializedManifest, imageConfig, d)
-		} else {
-			glog.V(5).Infof("unsupported manifest type: %T", manifest)
+			importDigest.Err = err
 			continue
 		}
-
+		importDigest.Image, err = schema1ToImage(m, d)
 		if err != nil {
 			importDigest.Err = err
 			continue
 		}
-
 		if err := api.ImageWithMetadata(importDigest.Image); err != nil {
 			importDigest.Err = err
 			continue
@@ -484,41 +451,23 @@ func (isi *ImageStreamImporter) importRepositoryFromDocker(ctx gocontext.Context
 			continue
 		}
 		limiter.Accept()
-
-		manifest, err := s.Get(ctx, "", distribution.WithTag(importTag.Name))
+		m, err := s.GetByTag(importTag.Name)
 		if err != nil {
-			glog.V(5).Infof("unable to get manifest by tag %q for repository %#v: %#v", importTag.Name, repository, err)
-			// try to resolve the tag and fetch manifest by digest instead
-			desc, getTagErr := repo.Tags(ctx).Get(ctx, importTag.Name)
-			if getTagErr != nil {
-				glog.V(5).Infof("unable to get tag %q for repository %#v: %#v", importTag.Name, repository, getTagErr)
-				importTag.Err = formatRepositoryError(repository, importTag.Name, "", err)
-				continue
+			glog.V(5).Infof("unable to access tag %q for repository %#v: %#v", importTag.Name, repository, err)
+			switch {
+			case isDockerError(err, v2.ErrorCodeManifestUnknown):
+				ref := repository.Ref
+				ref.Tag = importTag.Name
+				err = kapierrors.NewNotFound(api.Resource("dockerimage"), ref.Exact())
+			case isDockerError(err, errcode.ErrorCodeUnauthorized):
+				err = kapierrors.NewUnauthorized(fmt.Sprintf("you may not have access to the Docker image %q", repository.Ref.Exact()))
+			case strings.HasSuffix(err.Error(), "no basic auth credentials"):
+				err = kapierrors.NewUnauthorized(fmt.Sprintf("you may not have access to the Docker image %q", repository.Ref.Exact()))
 			}
-			m, getManifestErr := s.Get(ctx, desc.Digest)
-			if getManifestErr != nil {
-				glog.V(5).Infof("unable to access digest %q for tag %q for repository %#v: %#v", desc.Digest, importTag.Name, repository, getManifestErr)
-				importTag.Err = formatRepositoryError(repository, importTag.Name, "", err)
-				continue
-			}
-			manifest = m
-		}
-
-		if signedManifest, isSchema1 := manifest.(*schema1.SignedManifest); isSchema1 {
-			importTag.Image, err = schema1ToImage(signedManifest, "")
-		} else if deserializedManifest, isSchema2 := manifest.(*schema2.DeserializedManifest); isSchema2 {
-			imageConfig, err := b.Get(ctx, deserializedManifest.Config.Digest)
-			if err != nil {
-				glog.V(5).Infof("unable to access image config using digest %q for tag %q for repository %#v: %#v", deserializedManifest.Config.Digest, importTag.Name, repository, err)
-				importTag.Err = formatRepositoryError(repository, importTag.Name, "", err)
-				continue
-			}
-			importTag.Image, err = schema2ToImage(deserializedManifest, imageConfig, "")
-		} else {
-			glog.V(5).Infof("unsupported manifest type: %T", manifest)
+			importTag.Err = err
 			continue
 		}
-
+		importTag.Image, err = schema1ToImage(m, "")
 		if err != nil {
 			importTag.Err = err
 			continue

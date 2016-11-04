@@ -26,15 +26,6 @@ func (s *noopCredentialStore) Basic(url *url.URL) (string, string) {
 	return "", ""
 }
 
-func (s *noopCredentialStore) RefreshToken(url *url.URL, service string) string {
-	glog.Infof("asked to provide RefreshToken for %s", url)
-	return ""
-}
-
-func (s *noopCredentialStore) SetRefreshToken(url *url.URL, service string, token string) {
-	glog.Infof("asked to provide SetRefreshToken for %s", url)
-}
-
 func NewBasicCredentials() *BasicCredentials {
 	return &BasicCredentials{}
 }
@@ -65,13 +56,6 @@ func (c *BasicCredentials) Basic(url *url.URL) (string, string) {
 	return "", ""
 }
 
-func (c *BasicCredentials) RefreshToken(url *url.URL, service string) string {
-	return ""
-}
-
-func (c *BasicCredentials) SetRefreshToken(url *url.URL, service string, token string) {
-}
-
 func NewLocalCredentials() auth.CredentialStore {
 	return &keyringCredentialStore{credentialprovider.NewDockerKeyring()}
 }
@@ -82,13 +66,6 @@ type keyringCredentialStore struct {
 
 func (s *keyringCredentialStore) Basic(url *url.URL) (string, string) {
 	return basicCredentialsFromKeyring(s.DockerKeyring, url)
-}
-
-func (s *keyringCredentialStore) RefreshToken(url *url.URL, service string) string {
-	return ""
-}
-
-func (s *keyringCredentialStore) SetRefreshToken(url *url.URL, service string, token string) {
 }
 
 func NewCredentialsForSecrets(secrets []kapi.Secret) *SecretCredentialStore {
@@ -109,13 +86,6 @@ type SecretCredentialStore struct {
 
 func (s *SecretCredentialStore) Basic(url *url.URL) (string, string) {
 	return basicCredentialsFromKeyring(s.init(), url)
-}
-
-func (s *SecretCredentialStore) RefreshToken(url *url.URL, service string) string {
-	return ""
-}
-
-func (s *SecretCredentialStore) SetRefreshToken(url *url.URL, service string, token string) {
 }
 
 func (s *SecretCredentialStore) Err() error {
