@@ -82,8 +82,10 @@ func (r *REST) Get(ctx kapi.Context, id string) (runtime.Object, error) {
 
 	isi := api.ImageStreamImage{
 		ObjectMeta: kapi.ObjectMeta{
-			Namespace: kapi.NamespaceValue(ctx),
-			Name:      api.MakeImageStreamImageName(name, imageName),
+			Namespace:         kapi.NamespaceValue(ctx),
+			Name:              api.MakeImageStreamImageName(name, imageID),
+			CreationTimestamp: image.ObjectMeta.CreationTimestamp,
+			Annotations:       repo.Annotations,
 		},
 		Image: *image,
 	}

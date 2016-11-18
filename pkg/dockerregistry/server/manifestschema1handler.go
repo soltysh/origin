@@ -7,6 +7,7 @@ import (
 
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
+	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/manifest/schema1"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/libtrust"
@@ -40,7 +41,7 @@ func unmarshalManifestSchema1(content []byte, signatures [][]byte) (distribution
 	if err = json.Unmarshal(content, &sm); err != nil {
 		return nil, err
 	}
-	return &sm, err
+	return &sm, nil
 }
 
 type manifestSchema1Handler struct {
@@ -108,8 +109,12 @@ func (h *manifestSchema1Handler) Payload() (mediaType string, payload []byte, ca
 func (h *manifestSchema1Handler) Verify(ctx context.Context, skipDependencyVerification bool) error {
 	var errs distribution.ErrManifestVerification
 
-	// we want to verify that referenced blobs exist locally - thus using upstream repository object directly
-	repo := h.repo.Repository
+	// we want to verify that referenced blobs exist locally or are accessible via
+	// pullthroughBlobStore. The base image of this image can be remote repository
+	// and since we use pullthroughBlobStore all the layer existence checks will be
+	// successful. This means that the docker client will not attempt to send them
+	// to us as it will assume that the registry has them.
+	repo := h.repo
 
 	if len(path.Join(h.repo.registryAddr, h.manifest.Name)) > reference.NameTotalLengthMax {
 		errs = append(errs,
@@ -168,4 +173,8 @@ func (h *manifestSchema1Handler) Verify(ctx context.Context, skipDependencyVerif
 		return errs
 	}
 	return nil
+}
+
+func (h *manifestSchema1Handler) Digest() (digest.Digest, error) {
+	return digest.FromBytes(h.manifest.Canonical), nil
 }
