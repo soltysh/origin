@@ -48,9 +48,13 @@ func (bh *blobHandler) Delete(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	vacuum := storage.NewVacuum(bh.Context, dockerStorageDriver)
+	bd, err := storage.RegistryBlobDeleter(bh.Namespace())
+	if err != nil {
+		bh.Errors = append(bh.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+		return
+	}
 
-	err := vacuum.RemoveBlob(bh.Digest.String())
+	err = bd.Delete(bh, bh.Digest)
 	if err != nil {
 		// ignore not found error
 		switch t := err.(type) {

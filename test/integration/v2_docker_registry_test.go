@@ -1,4 +1,4 @@
-// +build integration-dockerregistry
+// +build integration
 
 package integration
 
@@ -51,7 +51,10 @@ func signedManifest(name string) ([]byte, digest.Digest, error) {
 	if err != nil {
 		return []byte{}, "", fmt.Errorf("error marshaling manifest: %s", err)
 	}
-	dgst := digest.FromBytes(manifestBytes)
+	dgst, err := digest.FromBytes(manifestBytes)
+	if err != nil {
+		return []byte{}, "", fmt.Errorf("error calculating manifest digest: %s", err)
+	}
 
 	jsonSignature, err := libtrust.NewJSONSignature(manifestBytes)
 	if err != nil {
@@ -95,8 +98,7 @@ func TestV2RegistryGetTags(t *testing.T) {
 	}
 
 	config := `version: 0.1
-log:
-  level: debug
+loglevel: debug
 http:
   addr: 127.0.0.1:5000
 storage:
@@ -104,11 +106,7 @@ storage:
 auth:
   openshift:
 middleware:
-  registry:
-    - name: openshift
   repository:
-    - name: openshift
-  storage:
     - name: openshift
 `
 

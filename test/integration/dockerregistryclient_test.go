@@ -184,7 +184,7 @@ func TestRegistryClientRegistryNotFound(t *testing.T) {
 	}
 }
 
-func doTestRegistryClientImage(t *testing.T, registry, reponame, version string) {
+func doTestRegistryClientImage(t *testing.T, registry, reponame, version string, expectedFailure bool) {
 	conn, err := dockerregistry.NewClient(10*time.Second, version == "v2").Connect(registry, false)
 	if err != nil {
 		t.Fatal(err)
@@ -224,8 +224,14 @@ func doTestRegistryClientImage(t *testing.T, registry, reponame, version string)
 		other, err = conn.ImageByID("openshift", reponame, image.ID)
 		return err
 	})
-	if err != nil {
-		t.Fatal(err)
+	if err != nil && !expectedFailure {
+		t.Fatal("unexpected error: %+#v", err)
+	}
+	if err == nil && expectedFailure {
+		t.Fatal("unexpected non-error")
+	}
+	if err != nil || expectedFailure {
+		return
 	}
 	if !reflect.DeepEqual(other.ContainerConfig.Entrypoint, image.ContainerConfig.Entrypoint) {
 		t.Errorf("%s: unexpected image: %#v", version, other)
@@ -234,17 +240,17 @@ func doTestRegistryClientImage(t *testing.T, registry, reponame, version string)
 
 func TestRegistryClientAPIv2ManifestV2Schema2(t *testing.T) {
 	t.Log("openshift/schema-v2-test-repo was pushed by Docker 1.11.1")
-	doTestRegistryClientImage(t, dockerHubV2RegistryName, "schema-v2-test-repo", "v2")
+	doTestRegistryClientImage(t, dockerHubV2RegistryName, "schema-v2-test-repo", "v2", true)
 }
 
 func TestRegistryClientAPIv2ManifestV2Schema1(t *testing.T) {
 	t.Log("openshift/schema-v1-test-repo was pushed by Docker 1.8.2")
-	doTestRegistryClientImage(t, dockerHubV2RegistryName, "schema-v1-test-repo", "v2")
+	doTestRegistryClientImage(t, dockerHubV2RegistryName, "schema-v1-test-repo", "v2", false)
 }
 
 func TestRegistryClientAPIv1(t *testing.T) {
 	t.Log("openshift/schema-v1-test-repo was pushed by Docker 1.8.2")
-	doTestRegistryClientImage(t, dockerHubV1RegistryName, "schema-v1-test-repo", "v1")
+	doTestRegistryClientImage(t, dockerHubV1RegistryName, "schema-v1-test-repo", "v1", false)
 }
 
 func TestRegistryClientQuayIOImage(t *testing.T) {

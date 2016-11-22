@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -16,21 +17,21 @@ import (
 	"github.com/docker/distribution/configuration"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/digest"
-	"github.com/docker/distribution/manifest/schema1"
-	//"github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/handlers"
+	_ "github.com/docker/distribution/registry/storage"
 	_ "github.com/docker/distribution/registry/storage/driver/inmemory"
 
+	"k8s.io/kubernetes/pkg/client/restclient"
+	kclient "k8s.io/kubernetes/pkg/client/unversioned"
 	ktestclient "k8s.io/kubernetes/pkg/client/unversioned/testclient"
 
+	osclient "github.com/openshift/origin/pkg/client"
 	"github.com/openshift/origin/pkg/client/testclient"
 	registrytest "github.com/openshift/origin/pkg/dockerregistry/testutil"
 )
 
 func TestPullthroughServeBlob(t *testing.T) {
 	ctx := context.Background()
-
-	installFakeAccessController(t)
 
 	testImage, err := registrytest.NewImageForManifest("user/app", registrytest.SampleImageManifestSchema1, false)
 	if err != nil {
@@ -50,9 +51,6 @@ func TestPullthroughServeBlob(t *testing.T) {
 	// pullthrough middleware will attempt to pull from this registry instance
 	remoteRegistryApp := handlers.NewApp(ctx, &configuration.Configuration{
 		Loglevel: "debug",
-		Auth: map[string]configuration.Parameters{
-			fakeAuthorizerName: {"realm": fakeAuthorizerName},
-		},
 		Storage: configuration.Storage{
 			"inmemory": configuration.Parameters{},
 			"cache": configuration.Parameters{
@@ -63,9 +61,7 @@ func TestPullthroughServeBlob(t *testing.T) {
 			},
 		},
 		Middleware: map[string][]configuration.Middleware{
-			"registry":   {{Name: "openshift"}},
 			"repository": {{Name: "openshift"}},
-			"storage":    {{Name: "openshift"}},
 		},
 	})
 	remoteRegistryServer := httptest.NewServer(remoteRegistryApp)
@@ -268,9 +264,8 @@ func (t *testBlobStore) Stat(ctx context.Context, dgst digest.Digest) (distribut
 		return distribution.Descriptor{}, distribution.ErrBlobUnknown
 	}
 	return distribution.Descriptor{
-		MediaType: schema1.MediaTypeManifestLayer,
-		Size:      int64(len(content)),
-		Digest:    makeDigestFromBytes(content),
+		Size:   int64(len(content)),
+		Digest: makeDigestFromBytes(content),
 	}, nil
 }
 
@@ -281,6 +276,10 @@ func (t *testBlobStore) Get(ctx context.Context, dgst digest.Digest) ([]byte, er
 		return nil, distribution.ErrBlobUnknown
 	}
 	return content, nil
+}
+
+func (t *testBlobStore) Enumerate(ctx context.Context, ingester func(digest.Digest) error) error {
+	return fmt.Errorf("method not implemented")
 }
 
 func (t *testBlobStore) Open(ctx context.Context, dgst digest.Digest) (distribution.ReadSeekCloser, error) {
@@ -300,7 +299,7 @@ func (t *testBlobStore) Put(ctx context.Context, mediaType string, p []byte) (di
 	return distribution.Descriptor{}, fmt.Errorf("method not implemented")
 }
 
-func (t *testBlobStore) Create(ctx context.Context, options ...distribution.BlobCreateOption) (distribution.BlobWriter, error) {
+func (t *testBlobStore) Create(ctx context.Context) (distribution.BlobWriter, error) {
 	t.calls["Create"]++
 	return nil, fmt.Errorf("method not implemented")
 }
@@ -376,4 +375,122 @@ func (fr *testBlobFileReader) Seek(offset int64, whence int) (int64, error) {
 func (fr *testBlobFileReader) Close() error {
 	fr.bs.calls["ReadSeakCloser.Close"]++
 	return nil
+}
+
+type testBlobDescriptorManager struct {
+	mu              sync.Mutex
+	cond            *sync.Cond
+	stats           map[string]int
+	unsetRepository bool
+}
+
+// NewTestBlobDescriptorManager allows to control blobDescriptorService and collects statistics of called
+// methods.
+func NewTestBlobDescriptorManager() *testBlobDescriptorManager {
+	m := &testBlobDescriptorManager{
+		stats: make(map[string]int),
+	}
+	m.cond = sync.NewCond(&m.mu)
+	return m
+}
+
+func (m *testBlobDescriptorManager) clearStats() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for k := range m.stats {
+		delete(m.stats, k)
+	}
+}
+
+func (m *testBlobDescriptorManager) methodInvoked(methodName string) int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	newCount := m.stats[methodName] + 1
+	m.stats[methodName] = newCount
+	m.cond.Signal()
+
+	return newCount
+}
+
+// unsetRepository returns true if the testBlobDescriptorService should unset repository from context before
+// passing down the call
+func (m *testBlobDescriptorManager) getUnsetRepository() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return m.unsetRepository
+}
+
+// changeUnsetRepository allows to configure whether the testBlobDescriptorService should unset repository
+// from context before passing down the call
+func (m *testBlobDescriptorManager) changeUnsetRepository(unset bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.unsetRepository = unset
+}
+
+// getStats waits until blob descriptor service's methods are called specified number of times and returns
+// collected numbers of invocations per each method watched. An error will be returned if a given timeout is
+// reached without satisfying minimum limit.s
+func (m *testBlobDescriptorManager) getStats(minimumLimits map[string]int, timeout time.Duration) (map[string]int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var err error
+	end := time.Now().Add(timeout)
+
+	if len(minimumLimits) > 0 {
+	Loop:
+		for !statsGreaterThanOrEqual(m.stats, minimumLimits) {
+			c := make(chan struct{})
+			go func() { m.cond.Wait(); c <- struct{}{} }()
+
+			now := time.Now()
+			select {
+			case <-time.After(end.Sub(now)):
+				err = fmt.Errorf("timeout while waiting on expected stats")
+				break Loop
+			case <-c:
+				continue Loop
+			}
+		}
+	}
+
+	stats := make(map[string]int)
+	for k, v := range m.stats {
+		stats[k] = v
+	}
+
+	return stats, err
+}
+
+func statsGreaterThanOrEqual(stats, minimumLimits map[string]int) bool {
+	for key, val := range minimumLimits {
+		if val > stats[key] {
+			return false
+		}
+	}
+	return true
+}
+
+func makeFakeRegistryClient(client osclient.Interface, kClient kclient.Interface) RegistryClient {
+	return &fakeRegistryClient{
+		client:  client,
+		kClient: kClient,
+	}
+}
+
+type fakeRegistryClient struct {
+	client  osclient.Interface
+	kClient kclient.Interface
+}
+
+func (f *fakeRegistryClient) Clients() (osclient.Interface, kclient.Interface, error) {
+	return f.client, f.kClient, nil
+}
+func (f *fakeRegistryClient) SafeClientConfig() restclient.Config {
+	return (&registryClient{}).SafeClientConfig()
 }

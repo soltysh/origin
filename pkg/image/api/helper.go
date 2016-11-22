@@ -15,7 +15,6 @@ import (
 	"github.com/blang/semver"
 	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/manifest/schema1"
-	"github.com/docker/distribution/manifest/schema2"
 	"github.com/golang/glog"
 )
 
@@ -314,65 +313,25 @@ func ManifestMatchesImage(image *Image, newManifest []byte) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	var canonical []byte
-
-	switch image.DockerImageManifestMediaType {
-	case schema2.MediaTypeManifest:
-		var m schema2.DeserializedManifest
-		if err := json.Unmarshal(newManifest, &m); err != nil {
-			return false, err
-		}
-		_, canonical, err = m.Payload()
-		if err != nil {
-			return false, err
-		}
-	case schema1.MediaTypeManifest, "":
-		var m schema1.SignedManifest
-		if err := json.Unmarshal(newManifest, &m); err != nil {
-			return false, err
-		}
-		canonical = m.Canonical
-	default:
-		return false, fmt.Errorf("unsupported manifest mediatype: %s", image.DockerImageManifestMediaType)
-	}
-	if _, err := v.Write(canonical); err != nil {
-		return false, err
-	}
-	return v.Verified(), nil
-}
-
-// ImageConfigMatchesImage returns true if the provided image config matches a digest
-// stored in the manifest of the image.
-func ImageConfigMatchesImage(image *Image, imageConfig []byte) (bool, error) {
-	if image.DockerImageManifestMediaType != schema2.MediaTypeManifest {
-		return false, nil
-	}
-
-	var m schema2.DeserializedManifest
-	if err := json.Unmarshal([]byte(image.DockerImageManifest), &m); err != nil {
-		return false, err
-	}
-
-	v, err := digest.NewDigestVerifier(m.Config.Digest)
+	sm := schema1.SignedManifest{Raw: newManifest}
+	raw, err := sm.Payload()
 	if err != nil {
 		return false, err
 	}
-
-	if _, err := v.Write(imageConfig); err != nil {
+	if _, err := v.Write(raw); err != nil {
 		return false, err
 	}
-
 	return v.Verified(), nil
 }
 
-// ImageWithMetadata mutates the given image. It parses raw DockerImageManifest data stored in the image and
-// fills its DockerImageMetadata and other fields.
+// ImageWithMetadata returns a copy of image with the DockerImageMetadata filled in
+// from the raw DockerImageManifest data stored in the image.
 func ImageWithMetadata(image *Image) error {
 	if len(image.DockerImageManifest) == 0 {
 		return nil
 	}
 
-	if len(image.DockerImageLayers) > 0 && image.DockerImageMetadata.Size > 0 && len(image.DockerImageManifestMediaType) > 0 {
+	if len(image.DockerImageLayers) > 0 && image.DockerImageMetadata.Size > 0 {
 		glog.V(5).Infof("Image metadata already filled for %s", image.Name)
 		// don't update image already filled
 		return nil
@@ -389,8 +348,6 @@ func ImageWithMetadata(image *Image) error {
 	case 0:
 		// legacy config object
 	case 1:
-		image.DockerImageManifestMediaType = schema1.MediaTypeManifest
-
 		if len(manifest.History) == 0 {
 			// should never have an empty history, but just in case...
 			return nil
@@ -403,7 +360,6 @@ func ImageWithMetadata(image *Image) error {
 
 		image.DockerImageLayers = make([]ImageLayer, len(manifest.FSLayers))
 		for i, layer := range manifest.FSLayers {
-			image.DockerImageLayers[i].MediaType = schema1.MediaTypeManifestLayer
 			image.DockerImageLayers[i].Name = layer.DockerBlobSum
 		}
 		if len(manifest.History) == len(image.DockerImageLayers) {
@@ -451,46 +407,8 @@ func ImageWithMetadata(image *Image) error {
 			image.DockerImageMetadata.Size = v1Metadata.Size
 		}
 	case 2:
-		image.DockerImageManifestMediaType = schema2.MediaTypeManifest
-
-		config := DockerImageConfig{}
-		if err := json.Unmarshal([]byte(image.DockerImageConfig), &config); err != nil {
-			return err
-		}
-
-		image.DockerImageLayers = make([]ImageLayer, len(manifest.Layers))
-		for i, layer := range manifest.Layers {
-			image.DockerImageLayers[i].Name = layer.Digest.String()
-			image.DockerImageLayers[i].Size = layer.Size
-			image.DockerImageLayers[i].MediaType = layer.MediaType
-		}
-		// reverse order of the layers for v1 (lowest = 0, highest = i)
-		for i, j := 0, len(image.DockerImageLayers)-1; i < j; i, j = i+1, j-1 {
-			image.DockerImageLayers[i], image.DockerImageLayers[j] = image.DockerImageLayers[j], image.DockerImageLayers[i]
-		}
-
-		image.DockerImageMetadata.ID = manifest.Config.Digest.String()
-		image.DockerImageMetadata.Parent = config.Parent
-		image.DockerImageMetadata.Comment = config.Comment
-		image.DockerImageMetadata.Created = config.Created
-		image.DockerImageMetadata.Container = config.Container
-		image.DockerImageMetadata.ContainerConfig = config.ContainerConfig
-		image.DockerImageMetadata.DockerVersion = config.DockerVersion
-		image.DockerImageMetadata.Author = config.Author
-		image.DockerImageMetadata.Config = config.Config
-		image.DockerImageMetadata.Architecture = config.Architecture
-		image.DockerImageMetadata.Size = int64(len(image.DockerImageConfig))
-
-		layerSet := sets.NewString(image.DockerImageMetadata.ID)
-		if len(image.DockerImageLayers) > 0 {
-			for _, layer := range image.DockerImageLayers {
-				if layerSet.Has(layer.Name) {
-					continue
-				}
-				layerSet.Insert(layer.Name)
-				image.DockerImageMetadata.Size += layer.Size
-			}
-		}
+		// TODO: need to prepare for this
+		return fmt.Errorf("unrecognized Docker image manifest schema %d for %q (%s)", manifest.SchemaVersion, image.Name, image.DockerImageReference)
 	default:
 		return fmt.Errorf("unrecognized Docker image manifest schema %d for %q (%s)", manifest.SchemaVersion, image.Name, image.DockerImageReference)
 	}

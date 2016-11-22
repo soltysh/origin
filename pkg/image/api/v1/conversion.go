@@ -22,8 +22,6 @@ func convert_api_Image_To_v1_Image(in *newer.Image, out *Image, s conversion.Sco
 
 	out.DockerImageReference = in.DockerImageReference
 	out.DockerImageManifest = in.DockerImageManifest
-	out.DockerImageManifestMediaType = in.DockerImageManifestMediaType
-	out.DockerImageConfig = in.DockerImageConfig
 
 	gvString := in.DockerImageMetadataVersion
 	if len(gvString) == 0 {
@@ -55,15 +53,6 @@ func convert_api_Image_To_v1_Image(in *newer.Image, out *Image, s conversion.Sco
 		out.DockerImageLayers = nil
 	}
 
-	if in.DockerImageSignatures != nil {
-		out.DockerImageSignatures = nil
-		for _, v := range in.DockerImageSignatures {
-			out.DockerImageSignatures = append(out.DockerImageSignatures, v)
-		}
-	} else {
-		out.DockerImageSignatures = nil
-	}
-
 	return nil
 }
 
@@ -74,8 +63,6 @@ func convert_v1_Image_To_api_Image(in *Image, out *newer.Image, s conversion.Sco
 
 	out.DockerImageReference = in.DockerImageReference
 	out.DockerImageManifest = in.DockerImageManifest
-	out.DockerImageManifestMediaType = in.DockerImageManifestMediaType
-	out.DockerImageConfig = in.DockerImageConfig
 
 	version := in.DockerImageMetadataVersion
 	if len(version) == 0 {
@@ -105,15 +92,6 @@ func convert_v1_Image_To_api_Image(in *Image, out *newer.Image, s conversion.Sco
 		}
 	} else {
 		out.DockerImageLayers = nil
-	}
-
-	if in.DockerImageSignatures != nil {
-		out.DockerImageSignatures = nil
-		for _, v := range in.DockerImageSignatures {
-			out.DockerImageSignatures = append(out.DockerImageSignatures, v)
-		}
-	} else {
-		out.DockerImageSignatures = nil
 	}
 
 	return nil

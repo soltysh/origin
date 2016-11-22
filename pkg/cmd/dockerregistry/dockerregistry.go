@@ -33,7 +33,7 @@ import (
 	_ "github.com/docker/distribution/registry/storage/driver/inmemory"
 	_ "github.com/docker/distribution/registry/storage/driver/middleware/cloudfront"
 	_ "github.com/docker/distribution/registry/storage/driver/oss"
-	_ "github.com/docker/distribution/registry/storage/driver/s3-aws"
+	_ "github.com/docker/distribution/registry/storage/driver/s3"
 	_ "github.com/docker/distribution/registry/storage/driver/swift"
 
 	"github.com/openshift/origin/pkg/cmd/server/crypto"
@@ -44,9 +44,8 @@ import (
 func Execute(configFile io.Reader) {
 	config, err := configuration.Parse(configFile)
 	if err != nil {
-		log.Fatalf("error parsing configuration file: %s", err)
+		log.Fatalf("Error parsing configuration file: %s", err)
 	}
-	setDefaultMiddleware(config)
 
 	ctx := context.Background()
 	ctx, err = configureLogging(ctx, config)
@@ -230,29 +229,4 @@ func panicHandler(handler http.Handler) http.Handler {
 		}()
 		handler.ServeHTTP(w, r)
 	})
-}
-
-func setDefaultMiddleware(config *configuration.Configuration) {
-	// Default to openshift middleware for relevant types
-	// This allows custom configs based on old default configs to continue to work
-	if config.Middleware == nil {
-		config.Middleware = map[string][]configuration.Middleware{}
-	}
-	for _, middlewareType := range []string{"registry", "repository", "storage"} {
-		found := false
-		for _, middleware := range config.Middleware[middlewareType] {
-			if middleware.Name == "openshift" {
-				found = true
-				break
-			}
-		}
-		if found {
-			continue
-		}
-		config.Middleware[middlewareType] = append(config.Middleware[middlewareType], configuration.Middleware{
-			Name: "openshift",
-		})
-		log.Errorf("obsolete configuration detected, please add openshift %s middleware into registry config file", middlewareType)
-	}
-	return
 }

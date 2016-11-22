@@ -638,12 +638,9 @@ function install_registry {
 }
 
 function wait_for_registry {
-	local latestversion="$(oc get dc/docker-registry -o jsonpath='{.status.latestVersion}' --config="${ADMIN_KUBECONFIG}")"
-	wait_for_command "oc get 'rc/docker-registry-${latestversion}' --template \"{{ index .metadata.annotations \\\"openshift.io/deployment.phase\\\" }}\" --config='${ADMIN_KUBECONFIG}' | grep Complete"  "$((5*TIME_MIN))"
-	local registrypod="$(oc get pod -l "deployment=docker-registry-${latestversion}" -o jsonpath=$'{range .items[*]}{.metadata.name}\n{end}' --config="${ADMIN_KUBECONFIG}" | head -n 1)"
-	local readyjs='{.items[*].status.conditions[?(@.type=="Ready")].status}'
-	wait_for_command "oc get pod -l 'deployment=docker-registry-${latestversion}' -o 'jsonpath=${readyjs}' --config='${ADMIN_KUBECONFIG}' | grep -qi true" "${TIME_MIN}"
+	wait_for_command '[[ "$(oc get endpoints docker-registry --output-version=v1 --template="{{ if .subsets }}{{ len .subsets }}{{ else }}0{{ end }}" --config=${ADMIN_KUBECONFIG} || echo "0")" != "0" ]]' $((5*TIME_MIN))
 }
+
 
 # Wait for builds to start
 # $1 namespace
