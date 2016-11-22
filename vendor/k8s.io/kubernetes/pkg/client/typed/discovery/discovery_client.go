@@ -178,6 +178,7 @@ func (d *DiscoveryClient) ServerResources() (map[string]*unversioned.APIResource
 // server. If namespaced is true, only namespaced resources will be returned.
 func (d *DiscoveryClient) serverPreferredResources(namespaced bool) ([]unversioned.GroupVersionResource, error) {
 	results := []unversioned.GroupVersionResource{}
+	resources := map[unversioned.GroupResource]string{}
 	serverGroupList, err := d.ServerGroups()
 	if err != nil {
 		return results, err
@@ -185,22 +186,37 @@ func (d *DiscoveryClient) serverPreferredResources(namespaced bool) ([]unversion
 
 	allErrs := []error{}
 	for _, apiGroup := range serverGroupList.Groups {
-		preferredVersion := apiGroup.PreferredVersion
-		apiResourceList, err := d.ServerResourcesForGroupVersion(preferredVersion.GroupVersion)
-		if err != nil {
-			allErrs = append(allErrs, err)
-			continue
-		}
-		groupVersion := unversioned.GroupVersion{Group: apiGroup.Name, Version: preferredVersion.Version}
-		for _, apiResource := range apiResourceList.APIResources {
-			// ignore the root scoped resources if "namespaced" is true.
-			if namespaced && !apiResource.Namespaced {
+		versions := apiGroup.Versions
+		for _, version := range versions {
+			groupVersion := unversioned.GroupVersion{Group: apiGroup.Name, Version: version.Version}
+			apiResourceList, err := d.ServerResourcesForGroupVersion(version.GroupVersion)
+			if err != nil {
+				allErrs = append(allErrs, err)
 				continue
 			}
-			if strings.Contains(apiResource.Name, "/") {
-				continue
+			for _, apiResource := range apiResourceList.APIResources {
+				// ignore the root scoped resources if "namespaced" is true.
+				if namespaced && !apiResource.Namespaced {
+					continue
+				}
+				if strings.Contains(apiResource.Name, "/") {
+					continue
+				}
+				gvr := groupVersion.WithResource(apiResource.Name)
+				if _, ok := resources[gvr.GroupResource()]; ok {
+					if gvr.Version != apiGroup.PreferredVersion.Version {
+						continue
+					}
+					// remove previous entry, because it will be replaced with a preferred one
+					for i := range results {
+						if results[i].GroupResource() == gvr.GroupResource() {
+							results = append(results[:i], results[i+1:]...)
+						}
+					}
+				}
+				resources[gvr.GroupResource()] = gvr.Version
+				results = append(results, gvr)
 			}
-			results = append(results, groupVersion.WithResource(apiResource.Name))
 		}
 	}
 	return results, utilerrors.NewAggregate(allErrs)
