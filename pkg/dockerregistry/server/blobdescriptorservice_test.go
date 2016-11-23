@@ -277,7 +277,7 @@ func TestBlobDescriptorServiceIsApplied(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			// manifest is retrieved from etcd
-			expectedMethodInvocations: map[string]int{"Stat": 1},
+			expectedMethodInvocations: map[string]int{"Stat": 3},
 		},
 
 		{
