@@ -16,19 +16,19 @@ cd "${OS_ROOT}"
 
 os::build::setup_env
 
-export ETCD_HOST=${ETCD_HOST:-127.0.0.1}
-export ETCD_PORT=${ETCD_PORT:-44001}
-export ETCD_PEER_PORT=${ETCD_PEER_PORT:-47001}
+export ETCD_HOST="${ETCD_HOST:-127.0.0.1}"
+export ETCD_PORT="${ETCD_PORT:-44001}"
+export ETCD_PEER_PORT="${ETCD_PEER_PORT:-47001}"
 
 
 set +e
 
 if [ "$(which etcd 2>/dev/null)" == "" ]; then
-	if [[ ! -f ${OS_ROOT}/_tools/etcd/bin/etcd ]]; then
+	if [[ ! -f "${OS_ROOT}/_tools/etcd/bin/etcd" ]] && ! "${OS_ROOT}/hack/install-etcd.sh"; then
 		echo "etcd must be in your PATH or installed in _tools/etcd/bin/ with hack/install-etcd.sh"
 		exit 1
 	fi
-	export PATH="${OS_ROOT}/_tools/etcd/bin:$PATH"
+	export PATH="${OS_ROOT}/_tools/etcd/bin:${PATH}"
 fi
 
 # Stop on any failures
@@ -91,11 +91,11 @@ etcd -name test -data-dir ${ETCD_DIR} \
  &>"${etcdlog}" &
 export ETCD_PID=$!
 
+trap cleanup EXIT SIGINT
+
 wait_for_url "http://${ETCD_HOST}:${ETCD_PORT}/version" "etcd: " 0.25 160
 curl -X PUT	"http://${ETCD_HOST}:${ETCD_PORT}/v2/keys/_test"
 echo
-
-trap cleanup EXIT SIGINT
 
 function exectest() {
 	echo "Running $1..."
