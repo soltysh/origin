@@ -18,7 +18,7 @@ cd "${OS_ROOT}"
 os::build::setup_env
 
 export TMPDIR="${TMPDIR:-"/tmp"}"
-export BASETMPDIR="${TMPDIR}/openshift-extended-tests/authentication"
+export BASETMPDIR="${TMPDIR}/openshift/extended-tests/authentication"
 export EXTENDED_TEST_PATH="${OS_ROOT}/test/extended"
 export KUBE_REPO_ROOT="${OS_ROOT}/../../../k8s.io/kubernetes"
 

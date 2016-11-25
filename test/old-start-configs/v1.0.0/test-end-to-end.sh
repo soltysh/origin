@@ -28,7 +28,7 @@ source "${OS_ROOT}/test/old-start-configs/v1.0.0/util.sh"
 
 if [[ -z "${BASETMPDIR-}" ]]; then
 	TMPDIR="${TMPDIR:-"/tmp"}"
-	BASETMPDIR="${TMPDIR}/openshift-e2e-v1.0.0"
+	BASETMPDIR="${TMPDIR}/openshift/test-e2e-v1.0.0"
 	sudo rm -rf "${BASETMPDIR}"
 	mkdir -p "${BASETMPDIR}"
 fi

@@ -222,7 +222,7 @@ else
   )
 
   export TMPDIR="${TMPDIR:-"/tmp"}"
-  export BASETMPDIR="${TMPDIR}/openshift-extended-tests/networking"
+  export BASETMPDIR="${TMPDIR}/openshift/extended-tests/networking"
   setup_env_vars
   reset_tmp_dir
 

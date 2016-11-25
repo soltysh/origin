@@ -26,7 +26,7 @@ os::build::setup_env
 #fi
 
 export TMPDIR="${TMPDIR:-"/tmp"}"
-export BASETMPDIR="${TMPDIR}/openshift-extended-tests/core"
+export BASETMPDIR="${TMPDIR}/openshift/extended-tests/core"
 export EXTENDED_TEST_PATH="${OS_ROOT}/test/extended"
 
 # TODO: check out the version of Kube we need so that we have access to sample content - in the future,
