@@ -91,7 +91,10 @@ function image {
   local STARTTIME=$(date +%s)
   echo "--- $1 ---"
   docker build -t $1:latest $2
-  docker tag -f $1:latest $1:${OS_RELEASE_COMMIT}
+  if ! docker tag -f "$1:latest" "$1:${OS_RELEASE_COMMIT}"; then
+    # try without -f flag if the option is not recognized
+    docker tag "$1:latest" "$1:${OS_RELEASE_COMMIT}"
+  fi
   git clean -fdx $2
   local ENDTIME=$(date +%s); echo "--- $1 took $(($ENDTIME - $STARTTIME)) seconds ---"
   echo
