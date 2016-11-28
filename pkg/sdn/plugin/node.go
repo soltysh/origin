@@ -30,7 +30,7 @@ type OsdnNode struct {
 	vnids              *nodeVNIDMap
 	iptablesSyncPeriod time.Duration
 	mtu                uint32
-	egressPolicies     map[uint32][]*osapi.EgressNetworkPolicy
+	egressPolicies     map[uint32][]osapi.EgressNetworkPolicy
 }
 
 // Called by higher layers to create the plugin SDN node instance
@@ -72,7 +72,7 @@ func NewNodePlugin(pluginName string, osClient *osclient.Client, kClient *kclien
 		podNetworkReady:    make(chan struct{}),
 		iptablesSyncPeriod: iptablesSyncPeriod,
 		mtu:                mtu,
-		egressPolicies:     make(map[uint32][]*osapi.EgressNetworkPolicy),
+		egressPolicies:     make(map[uint32][]osapi.EgressNetworkPolicy),
 	}
 	return plugin, nil
 }
