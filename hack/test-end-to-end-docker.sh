@@ -16,7 +16,7 @@ echo "[INFO] Starting containerized end-to-end test"
 unset KUBECONFIG
 
 TMPDIR="${TMPDIR:-"/tmp"}"
-BASETMPDIR="${BASETMPDIR:-${TMPDIR}/openshift-e2e-containerized}"
+BASETMPDIR="${BASETMPDIR:-${TMPDIR}/openshift/test-end-to-end-containerized}"
 setup_env_vars
 reset_tmp_dir
 

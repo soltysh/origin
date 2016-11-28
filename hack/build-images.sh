@@ -60,7 +60,10 @@ cp -pf "${OS_ROOT}/contrib/systemd/openshift-sdn-ovs.conf" images/node/conf/
 function image {
   echo "--- $1 ---"
   docker build -t $1:latest $2
-  docker tag -f $1:latest $1:${OS_RELEASE_COMMIT}
+  if ! docker tag -f "$1:latest" "$1:${OS_RELEASE_COMMIT}"; then
+    # try without -f flag if the option is not recognized
+    docker tag "$1:latest" "$1:${OS_RELEASE_COMMIT}"
+  fi
 }
 
 # images that depend on scratch / centos

@@ -117,6 +117,25 @@ docker tag -f centos/ruby-22-centos7:latest ${DOCKER_REGISTRY}/cache/ruby-22-cen
 docker push ${DOCKER_REGISTRY}/cache/ruby-22-centos7:latest
 echo "[INFO] Pushed ruby-22-centos7"
 
+# get image's digest
+rubyimagedigest="$(oc get -o jsonpath='{.status.tags[?(@.tag=="latest")].items[0].image}' is/ruby-22-centos7)"
+echo "[INFO] Ruby image digest: ${rubyimagedigest}"
+
+echo "[INFO] Docker registry refuses manifest with missing dependencies"
+oc new-project verify-manifest
+oc get -o jsonpath=$'{.dockerImageManifest}\n' "image/${rubyimagedigest}" --context="${CLUSTER_ADMIN_CONTEXT}" >"${ARTIFACT_DIR}/rubyimagemanifest.json"
+curl --head                                                                          \
+     --silent                                                                        \
+     --request PUT                                                                   \
+     --header 'Content-Type: application/vnd.docker.distribution.manifest.v1+json'   \
+     --user "e2e_user:${e2e_user_token}"                                             \
+     --upload-file "${ARTIFACT_DIR}/rubyimagemanifest.json"                          \
+     "http://${DOCKER_REGISTRY}/v2/verify-manifest/ruby-22-centos7/manifests/latest" \
+     >"${ARTIFACT_DIR}/curl-ruby-manifest-put.txt"
+[ "$(cat ${ARTIFACT_DIR}/curl-ruby-manifest-put.txt | grep '400 Bad Request')" ]
+[ "$(cat ${ARTIFACT_DIR}/curl-ruby-manifest-put.txt | grep '"errors":.*MANIFEST_INVALID')" ]
+echo "[INFO] Docker registry successfuly refused manifest with missing dependencies"
+
 # check to make sure an image-pusher can push an image
 oc policy add-role-to-user system:image-pusher pusher
 oc login -u pusher -p pass
