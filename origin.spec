@@ -22,12 +22,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 53e85dddd71ff9745449c0a238c1bcb139cc452d
+%global commit 7665600de22f307d1049e6a48fd3575140524db1
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.2.2-39-g5191030 -X github.com/openshift/origin/pkg/version.commitFromGit 5191030 -X k8s.io/kubernetes/pkg/version.gitCommit 5191030 -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.18 -X github.com/openshift/origin/pkg/version.commitFromGit 7665600 -X k8s.io/kubernetes/pkg/version.gitCommit 7665600 -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -47,7 +47,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.2.1.18
+Version:        3.2.1.19
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -489,6 +489,9 @@ fi
 
 
 %changelog
+* Wed Nov 30 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.19
+- Bump version
+
 * Wed Nov 30 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.18
 - Reset version to v3.2.1.18 due to registry revert (sdodson@redhat.com)
 - Added manifest verification (miminar@redhat.com)
