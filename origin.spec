@@ -172,6 +172,28 @@ Obsoletes:        openshift-sdn-ovs < %{package_refector_version}
 %description sdn-ovs
 %{summary}
 
+%package excluder
+Summary:   Exclude openshift packages from updates
+BuildArch: noarch
+
+%description excluder
+Many times admins do not want openshift updated when doing
+normal system updates.
+
+%{name}-excluder exclude - No openshift packages can be updated
+%{name}-excluder unexclude - Openshift packages can be updated
+
+%package docker-excluder
+Summary:   Exclude docker packages from updates
+BuildArch: noarch
+
+%description docker-excluder
+Certain versions of OpenShift will not work with newer versions
+of docker.  Exclude those versions of docker.
+
+%{name}-docker-excluder exclude - No major docker updates
+%{name}-docker-excluder unexclude - docker packages can be updated
+
 %prep
 %setup -q
 
@@ -306,6 +328,25 @@ install -d -m 755 %{buildroot}%{_sysconfdir}/bash_completion.d/
 install -p -m 644 contrib/completions/bash/* %{buildroot}%{_sysconfdir}/bash_completion.d/
 # Generate atomic-enterprise bash completions
 %{__sed} -e "s|openshift|atomic-enterprise|g" contrib/completions/bash/openshift > %{buildroot}%{_sysconfdir}/bash_completion.d/atomic-enterprise
+
+# Excluder variables
+mkdir -p $RPM_BUILD_ROOT/usr/sbin
+%if 0%{?fedora}
+  OS_CONF_FILE="/etc/dnf.conf"
+%else
+  OS_CONF_FILE="/etc/yum.conf"
+%endif
+
+# Install openshift-excluder script
+sed "s|@@CONF_FILE-VARIABLE@@|${OS_CONF_FILE}|" contrib/excluder/excluder-template > $RPM_BUILD_ROOT/usr/sbin/%{name}-excluder
+sed -i "s|@@PACKAGE_LIST-VARIABLE@@|%{name} %{name}-clients %{name}-clients-redistributable %{name}-dockerregistry %{name}-master %{name}-node %{name}-pod %{name}-recycle %{name}-sdn-ovs %{name}-tests tuned-profiles-%{name}-node %{name}-excluder %{name}-docker-excluder|" $RPM_BUILD_ROOT/usr/sbin/%{name}-excluder
+chmod 0744 $RPM_BUILD_ROOT/usr/sbin/%{name}-excluder
+
+# Install docker-excluder script
+sed "s|@@CONF_FILE-VARIABLE@@|${OS_CONF_FILE}|" contrib/excluder/excluder-template > $RPM_BUILD_ROOT/usr/sbin/%{name}-docker-excluder
+sed -i "s|@@PACKAGE_LIST-VARIABLE@@|docker*1.11* docker*1.12* docker*1.13* docker*1.14* docker*1.15* docker*1.16* docker*1.17* docker*1.18* docker*1.19* docker*1.20*|" $RPM_BUILD_ROOT/usr/sbin/%{name}-docker-excluder
+chmod 0744 $RPM_BUILD_ROOT/usr/sbin/%{name}-docker-excluder
+
 
 %files
 %doc README.md
@@ -487,6 +528,31 @@ fi
 %files recycle
 %{_bindir}/recycle
 
+%files excluder
+/usr/sbin/%{name}-excluder
+
+%post excluder
+if [ "$1" -eq 1 ] ; then
+  %{name}-excluder exclude
+fi
+
+%preun excluder
+if [ "$1" -eq 0 ] ; then
+  /usr/sbin/%{name}-excluder unexclude
+fi
+
+%files docker-excluder
+/usr/sbin/%{name}-docker-excluder
+
+%post docker-excluder
+# we always want to run this, since the 
+#   package-list may be different with each version
+%{name}-docker-excluder exclude
+
+%preun docker-excluder
+# we always want to clear this out, since the 
+#   package-list may be different with each version
+/usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
 * Wed Nov 30 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.19
