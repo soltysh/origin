@@ -21,12 +21,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 2b74b13761ed7c075ba6c2e55a3970f6196a6e72
+%global commit 8968f551741bd4c837da6dc98fc12fd26fc2d6ba
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.7-5-g125f1d5 -X github.com/openshift/origin/pkg/version.commitFromGit 125f1d5 -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.8-11-gf0e0514 -X github.com/openshift/origin/pkg/version.commitFromGit f0e0514 -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.1.1.8
+Version:        3.1.1.9
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -536,6 +536,18 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Wed Nov 30 2016 Scott Dodson <sdodson@redhat.com> 3.1.1.9
+- Added manifest verification (miminar@redhat.com)
+- Registry: moved manifest schema operations to new files (miminar@redhat.com)
+- Tag images without --force flag if not supported (miminar@redhat.com)
+- Skip pulp test in integration (ccoleman@redhat.com)
+- Moved BASETMPDIR under /tmp/openshift (miminar@redhat.com)
+- integration-tests: Install etcd if missing (miminar@redhat.com)
+- Updated generated conversions (miminar@redhat.com)
+- bump(github.com/fsouza/go-dockerclient):
+  0099401a7342ad77e71ca9f9a57c5e72fb80f6b2 (miminar@redhat.com)
+- Add excluder to 3.1 (tdawson@redhat.com)
+
 * Wed Oct 12 2016 Scott Dodson <sdodson@redhat.com> 3.1.1.8
 - UPSTREAM: 34524: Test x509 intermediates correctly (jliggitt@redhat.com)
 - Test x509 intermediates correctly (jliggitt@redhat.com)
