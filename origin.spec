@@ -21,12 +21,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 8968f551741bd4c837da6dc98fc12fd26fc2d6ba
+%global commit e632946abd5d231a2994fed4d6a8b4cb03dcba76
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.8-11-gf0e0514 -X github.com/openshift/origin/pkg/version.commitFromGit f0e0514 -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.9-2-g28ccd8d -X github.com/openshift/origin/pkg/version.commitFromGit 28ccd8d -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.1.1.9
+Version:        3.1.1.10
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -536,6 +536,9 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Wed Nov 30 2016 Scott Dodson <sdodson@redhat.com> 3.1.1.10
+- Fix bash syntax error in excluder (sdodson@redhat.com)
+
 * Wed Nov 30 2016 Scott Dodson <sdodson@redhat.com> 3.1.1.9
 - Added manifest verification (miminar@redhat.com)
 - Registry: moved manifest schema operations to new files (miminar@redhat.com)
