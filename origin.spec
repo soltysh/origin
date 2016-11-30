@@ -22,12 +22,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 3f20d1eb387a56d8c5f4c55284a8d3dc57b83d63
+%global commit 53e85dddd71ff9745449c0a238c1bcb139cc452d
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.2.1 -X github.com/openshift/origin/pkg/version.commitFromGit 3f20d1e -X k8s.io/kubernetes/pkg/version.gitCommit 3f20d1e -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.2.2-39-g5191030 -X github.com/openshift/origin/pkg/version.commitFromGit 5191030 -X k8s.io/kubernetes/pkg/version.gitCommit 5191030 -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -47,7 +47,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.2.2.2
+Version:        3.2.1.18
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -489,6 +489,63 @@ fi
 
 
 %changelog
+* Wed Nov 30 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.18
+- Reset version to v3.2.1.18 due to registry revert (sdodson@redhat.com)
+- Added manifest verification (miminar@redhat.com)
+- Registry: moved manifest schema operations to new files (miminar@redhat.com)
+- Tag images without --force flag if not supported (miminar@redhat.com)
+- Post registry backport revert test fixes (miminar@redhat.com)
+- Updated generated files (miminar@redhat.com)
+- Revert "bump(github.com/docker/distribution):
+  596ca8b86acd3feebedae6bc08abf2a48d403a14" (miminar@redhat.com)
+- Revert "Remove incompatible dependencies" (miminar@redhat.com)
+- Revert "Use docker/distribution v2.4.0+" (miminar@redhat.com)
+- Revert "UPSTREAM: docker/distribution: <carry>: export storage.CreateOptions"
+  (miminar@redhat.com)
+- Revert "Delegate enforcement of cross-repo mount auth errors to blobstore"
+  (miminar@redhat.com)
+- Revert "Fix tests" (miminar@redhat.com)
+- Revert "Force build system to use vendor directory in dockerregistry"
+  (miminar@redhat.com)
+- Revert "Add system:registry permission to delete imagestreamtags"
+  (miminar@redhat.com)
+- Revert "Registry auth cleanup" (miminar@redhat.com)
+- Revert "Fix parsing DockerImageConfig" (miminar@redhat.com)
+- Revert "Add test for DockerImageConfig parsing and counting size of image
+  layers" (miminar@redhat.com)
+- Revert "Add test for image import and conversion v2 schema to v1 schema"
+  (miminar@redhat.com)
+- Revert "Parse v2 schema manifest" (miminar@redhat.com)
+- Revert "UPSTREAM: docker/distribution: 1757: Export storage.CreateOptions in
+  top-level package" (miminar@redhat.com)
+- Revert "UPSTREAM: docker/distribution: 1857: Provide stat descriptor for
+  Create method during cross-repo mount" (miminar@redhat.com)
+- Revert "bump(github.com/docker/libtrust):
+  fa567046d9b14f6aa788882a950d69651d230b21" (miminar@redhat.com)
+- Revert "Store media type in image" (miminar@redhat.com)
+- Revert "Check for blob existence before serving" (miminar@redhat.com)
+- Revert "Cache blob <-> repository entries in registry with TTL"
+  (miminar@redhat.com)
+- Revert "Configurable blobrepositorycachettl value" (miminar@redhat.com)
+- Revert "e2e: speed-up docker repository pull tests" (miminar@redhat.com)
+- Revert "e2e: added tests for cross-repo mounting" (miminar@redhat.com)
+- Revert "Remove NotV2Registry check from redhat registry import test"
+  (miminar@redhat.com)
+- Revert "UPSTREAM: docker/distribution: 1703: GCS: FileWriter.Size: include
+  number of buffered bytes if the FileWriter is not closed"
+  (miminar@redhat.com)
+- Revert "Automatically check and update docker-registry configuration"
+  (miminar@redhat.com)
+- Revert "Make the test suite compile with distribution dependencies"
+  (vagrant@f21-ose.vm)
+- Revert "Remember image with matching config reference" (miminar@redhat.com)
+- Revert "New e2e test: fetch manifest schema 2 with old client"
+  (miminar@redhat.com)
+- Revert "Image size needs to add a size of manifest config file"
+  (miminar@redhat.com)
+- Revert "Allow to get signatures" (miminar@redhat.com)
+- oc new-app --search: don't require docker hub access (mmilata@redhat.com)
+
 * Wed Oct 26 2016 Scott Dodson <sdodson@redhat.com> 3.2.2.2
 - Clear ldflags 
 
