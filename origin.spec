@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 7c8657cac2fe5c6cae563db32bcf682141c9d481
+%global commit 55d8254aaef7dc071cba15e777efb9d70e6d4205
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.5
+Version:        3.3.1.6
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -543,6 +543,25 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Wed Nov 30 2016 Scott Dodson <sdodson@redhat.com> 3.3.1.6
+- UPSTREAM: 30724: Add GetDeviceNameFromMount in mount_unsupported.go
+  (jsafrane@redhat.com)
+- Fix generated deep-copy for 3.3 (jliggitt@redhat.com)
+- Fix deep copy for api.ResourceQuotasStatusByNamespace (jliggitt@redhat.com)
+- Fix mutation in OrderedKeys getter (jliggitt@redhat.com)
+- UPSTREAM: 32072: Remove non-namespaced tcp_max_syn_backlog sysctl from
+  whitelist (sttts@redhat.com)
+- UPSTREAM: 36840: fix issue in converting aws volume id from mount paths
+  (jsafrane@redhat.com)
+- UPSTREAM: 27970: Add volume reconstruct/cleanup logic in kubelet volume
+  manager (jsafrane@redhat.com)
+- UPSTREAM: 36444: Read all resources for finalization and gc, not just
+  preferred (maszulik@redhat.com)
+- Add excluder to 3.3 (tdawson@redhat.com)
+- Added manifest verification (miminar@redhat.com)
+- Registry: moved manifest schema operations to new files (miminar@redhat.com)
+- oc new-app --search: don't require docker hub access (mmilata@redhat.com)
+
 * Wed Nov 16 2016 Scott Dodson <sdodson@redhat.com> 3.3.1.5
 - Bump v3.3.1.5
 
