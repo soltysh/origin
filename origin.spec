@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 55d8254aaef7dc071cba15e777efb9d70e6d4205
+%global commit 579ef365bb4be8d8519f19001bc69b5618b29d55
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.6
+Version:        3.3.1.7
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -543,6 +543,9 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Wed Nov 30 2016 Scott Dodson <sdodson@redhat.com> 3.3.1.7
+- Fix bash syntax error in excluder (sdodson@redhat.com)
+
 * Wed Nov 30 2016 Scott Dodson <sdodson@redhat.com> 3.3.1.6
 - UPSTREAM: 30724: Add GetDeviceNameFromMount in mount_unsupported.go
   (jsafrane@redhat.com)
