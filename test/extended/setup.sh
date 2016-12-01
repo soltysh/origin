@@ -219,4 +219,5 @@ readonly CONFORMANCE_TESTS=(
   "\[Feature\:SecurityContext\]"
   "should create a LimitRange with defaults"
   "Generated release_1_2 clientset"
+  "manifest migration from etcd to registry storage"
 )
