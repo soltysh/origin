@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	diagnosticsImage           = "openshift/origin"
+	diagnosticsImage           = "openshift/diagnostics-deployer"
 	networkDiagTestPodSelector = "network-diag-pod-name"
 
 	testPodImage   = "docker.io/openshift/hello-openshift"
@@ -21,12 +21,14 @@ const (
 	testTargetPort = 8080
 )
 
-func GetNetworkDiagnosticsPod(command []string, podName, nodeName string) *kapi.Pod {
+func GetNetworkDiagnosticsPod(command, podName, nodeName string) *kapi.Pod {
 	privileged := true
 	hostRootVolName := "host-root-dir"
 	secretVolName := "kconfig-secret"
 	secretDirBaseName := "secrets"
 	gracePeriod := int64(0)
+
+	cmd := fmt.Sprintf("openshift-network-debug %s %s", util.NetworkDiagContainerMountPath, command)
 
 	pod := &kapi.Pod{
 		ObjectMeta: kapi.ObjectMeta{Name: podName},
@@ -42,7 +44,7 @@ func GetNetworkDiagnosticsPod(command []string, podName, nodeName string) *kapi.
 			Containers: []kapi.Container{
 				{
 					Name:            podName,
-					Image:           busyboxImage,
+					Image:           diagnosticsImage,
 					ImagePullPolicy: kapi.PullIfNotPresent,
 					SecurityContext: &kapi.SecurityContext{
 						Privileged: &privileged,
@@ -64,8 +66,7 @@ func GetNetworkDiagnosticsPod(command []string, podName, nodeName string) *kapi.
 							ReadOnly:  true,
 						},
 					},
-					Command: []string{"/bin/bash", "-c"},
-					Args:    []string{getNetworkDebugScript(util.NetworkDiagContainerMountPath, command)},
+					Command: []string{"sh", "-c", cmd},
 				},
 			},
 			Volumes: []kapi.Volume{
