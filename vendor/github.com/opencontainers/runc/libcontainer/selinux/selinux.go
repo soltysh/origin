@@ -34,6 +34,7 @@ const (
 var (
 	assignRegex           = regexp.MustCompile(`^([^=]+)=(.*)$`)
 	mcsList               = make(map[string]bool)
+	mcsLock               sync.Mutex
 	selinuxfs             = "unknown"
 	selinuxEnabled        = false // Stores whether selinux is currently enabled
 	selinuxEnabledChecked = false // Stores whether selinux enablement has been checked or established yet
@@ -279,6 +280,8 @@ func SelinuxGetEnforceMode() int {
 }
 
 func mcsAdd(mcs string) error {
+	mcsLock.Lock()
+	defer mcsLock.Unlock()
 	if mcsList[mcs] {
 		return fmt.Errorf("MCS Label already exists")
 	}
@@ -287,7 +290,9 @@ func mcsAdd(mcs string) error {
 }
 
 func mcsDelete(mcs string) {
+	mcsLock.Lock()
 	mcsList[mcs] = false
+	mcsLock.Unlock()
 }
 
 func IntToMcs(id int, catRange uint32) string {
