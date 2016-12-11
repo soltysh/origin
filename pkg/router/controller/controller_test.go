@@ -29,10 +29,6 @@ func (p *fakeRouterPlugin) Commit() error {
 	return nil
 }
 
-func (p *fakeRouterPlugin) SetSyncedAtLeastOnce() error {
-	return nil
-}
-
 type fakeNamespaceLister struct {
 }
 

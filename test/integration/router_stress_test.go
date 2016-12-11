@@ -280,13 +280,6 @@ func (p *DelayPlugin) Commit() error {
 	return p.plugin.Commit()
 }
 
-func (p *DelayPlugin) SetSyncedAtLeastOnce() error {
-	if p.committed {
-		return nil
-	}
-	return p.plugin.SetSyncedAtLeastOnce()
-}
-
 // launchRouter launches a template router that communicates with the
 // api via the provided clients.
 func launchRouter(oc osclient.Interface, kc kclient.Interface, maxDelay int32, name string, reloadInterval int, reloadedMap map[string]bool) (templatePlugin *templateplugin.TemplatePlugin) {
