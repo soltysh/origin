@@ -1014,10 +1014,10 @@ func (ctrl *PersistentVolumeController) deleteVolumeOperation(arg interface{}) e
 	if err = ctrl.doDeleteVolume(volume); err != nil {
 		// Delete failed, update the volume and emit an event.
 		glog.V(3).Infof("deletion of volume %q failed: %v", volume.Name, err)
-		if _, err = ctrl.updateVolumePhaseWithEvent(volume, api.VolumeFailed, api.EventTypeWarning, "VolumeFailedDelete", err.Error()); err != nil {
-			glog.V(4).Infof("deleteVolumeOperation [%s]: failed to mark volume as failed: %v", volume.Name, err)
+		if _, err2 := ctrl.updateVolumePhaseWithEvent(volume, api.VolumeFailed, api.EventTypeWarning, "VolumeFailedDelete", err.Error()); err2 != nil {
+			glog.V(4).Infof("deleteVolumeOperation [%s]: failed to mark volume as failed: %v", volume.Name, err2)
 			// Save failed, retry on the next deletion attempt
-			return err
+			return err2
 		}
 		// Despite the volume being Failed, the controller will retry deleting
 		// the volume in every syncVolume() call.
