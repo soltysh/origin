@@ -54,6 +54,7 @@ func NewPersistentVolumeController(
 	volumeSource, claimSource cache.ListerWatcher,
 	eventRecorder record.EventRecorder,
 	enableDynamicProvisioning bool,
+	enableExpBackoff bool,
 ) *PersistentVolumeController {
 
 	if eventRecorder == nil {
@@ -67,7 +68,7 @@ func NewPersistentVolumeController(
 		claims:                        cache.NewStore(framework.DeletionHandlingMetaNamespaceKeyFunc),
 		kubeClient:                    kubeClient,
 		eventRecorder:                 eventRecorder,
-		runningOperations:             goroutinemap.NewGoRoutineMap(true /* exponentialBackOffOnError */),
+		runningOperations:             goroutinemap.NewGoRoutineMap(enableExpBackoff),
 		cloud:                         cloud,
 		provisioner:                   provisioner,
 		enableDynamicProvisioning:     enableDynamicProvisioning,

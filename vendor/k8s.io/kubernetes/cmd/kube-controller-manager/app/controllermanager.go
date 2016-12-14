@@ -426,6 +426,7 @@ func StartControllers(s *options.CMServer, kubeClient *client.Client, kubeconfig
 		s.ClusterName,
 		nil, nil, nil,
 		s.VolumeConfiguration.EnableDynamicProvisioning,
+		true, //enableExpBackoff
 	)
 	volumeController.Run()
 	time.Sleep(wait.Jitter(s.ControllerStartInterval.Duration, ControllerStartJitter))
