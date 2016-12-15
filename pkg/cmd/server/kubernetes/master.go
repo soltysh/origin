@@ -175,6 +175,7 @@ func (c *MasterConfig) RunPersistentVolumeController(client *client.Client, name
 		s.ClusterName,
 		nil, nil, nil,
 		s.VolumeConfiguration.EnableDynamicProvisioning,
+		true, // enableExpBackoff
 	)
 	volumeController.Run()
 }

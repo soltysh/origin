@@ -843,7 +843,7 @@ func createClients(t *testing.T, s *httptest.Server) (*clientset.Clientset, *per
 	cloud := &fake_cloud.FakeCloud{}
 
 	syncPeriod := getSyncPeriod()
-	ctrl := persistentvolumecontroller.NewPersistentVolumeController(binderClient, syncPeriod, plugin, plugins, cloud, "", nil, nil, nil, true)
+	ctrl := persistentvolumecontroller.NewPersistentVolumeController(binderClient, syncPeriod, plugin, plugins, cloud, "", nil, nil, nil, true, false)
 
 	watchPV, err := testClient.PersistentVolumes().Watch(api.ListOptions{})
 	if err != nil {
