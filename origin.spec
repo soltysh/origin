@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 579ef365bb4be8d8519f19001bc69b5618b29d55
+%global commit 02e3dc003c31eb56ed06a91078fb2df5a9809575
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.7
+Version:        3.3.1.8
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -543,6 +543,41 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Wed Dec 21 2016 Scott Dodson <sdodson@redhat.com> 3.3.1.8
+- UPSTREAM: 38410: AWS: Recognize ca-central-1 region (decarr@redhat.com)
+- UPSTREAM: 35013: AWS recognize us-east-2 region (decarr@redhat.com)
+- UPSTREAM: 28428: Add ap-south-1 to list of known AWS regions
+  (decarr@redhat.com)
+- UPSTREAM: <carry>: Disable exponential backoff in unit tests
+  (hekumar@redhat.com)
+- UPSTREAM: 32456: Fix variable shaodowing in exponential backoff
+  (hekumar@redhat.com)
+- Do not exclude the excluder for atomic-openshift (tdawson@redhat.com)
+- Fix excluder incorrectly creating exclude line. (tdawson@redhat.com)
+- UPSTREAM: 38339: Exponential back off when volume delete fails
+  (gethemant@gmail.com)
+- <carry>: opencontainers/runc: 1216: Fix thread safety of SelinuxEnabled and
+  getSelinuxMountPoint (pmorie@redhat.com)
+- <carry>: opencontainers/runc: 1112: Add support for r/o mount labels
+  (pmorie@redhat.com)
+- <carry>: opencontainers/runc: 737: Fix broken build due to missing import
+  (pmorie@redhat.com)
+- <carry>: opencontainers/runc: 735: Synchronize writes to mcs map
+  (pmorie@redhat.com)
+- <carry>: opencontainers/runc: 608: Selinux: reduce redundant parsing of
+  mountinfo (pmorie@redhat.com)
+- updating to use the ose registry for images (cdaley@redhat.com)
+- UPSTREAM: 38196: fix mesos unit tests (mkargaki@redhat.com)
+- Compare object DN to structured baseDN (jliggitt@redhat.com)
+- Reconcile deleted namespaces out of cluster quota status
+  (jliggitt@redhat.com)
+- bump(gopkg.in/ldap.v2): 8168ee085ee43257585e50c6441aadf54ecb2c9f
+  (jliggitt@redhat.com)
+- Move namespace lifecycle plugin to the front of the admission chain
+  (jliggitt@redhat.com)
+- Only pay attention to origin types in project lifecycle admission
+  (jliggitt@redhat.com)
+
 * Wed Nov 30 2016 Scott Dodson <sdodson@redhat.com> 3.3.1.7
 - Fix bash syntax error in excluder (sdodson@redhat.com)
 
