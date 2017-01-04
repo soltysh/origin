@@ -84,7 +84,7 @@ A public hostname can also be specified for the server with the --public-hostnam
 
 var (
 	imageStreamLocations = map[string]string{
-		"origin centos7 image streams": "examples/image-streams/image-streams-centos7.json",
+		"enterprise rhel7 image streams": "examples/image-streams/image-streams-rhel7.json",
 	}
 	templateLocations = map[string]string{
 		"mongodb":                     "examples/db-templates/mongodb-ephemeral-template.json",
