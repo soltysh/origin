@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 86ab9550cc1b6771a5cabbdcbb395f3875edff22
+%global commit 18ebd0075a53578fd24872a6bcc71dfa089c9db8
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.9
+Version:        3.3.1.10
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -543,6 +543,11 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Tue Jan 10 2017 Scott Dodson <sdodson@redhat.com> 3.3.1.10
+- fix for bz1400609; if the node status flips on the order of ip addresses
+  (when there are multiple NICs to report), do not let the SDN chase it
+  (rchopra@redhat.com)
+
 * Thu Jan 05 2017 Scott Dodson <sdodson@redhat.com> 3.3.1.9
 - HAProxy Router: Add option to use PROXY protocol (miciah.masters@gmail.com)
 
