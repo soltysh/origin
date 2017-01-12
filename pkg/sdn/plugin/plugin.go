@@ -123,7 +123,7 @@ func wantsMacvlan(pod *kapi.Pod) (bool, error) {
 		return false, nil
 	}
 	for _, container := range pod.Spec.Containers {
-		if container.SecurityContext.Privileged != nil && *container.SecurityContext.Privileged {
+		if container.SecurityContext != nil && container.SecurityContext.Privileged != nil && *container.SecurityContext.Privileged {
 			return true, nil
 		}
 	}
