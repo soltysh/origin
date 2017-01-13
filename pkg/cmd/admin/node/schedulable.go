@@ -1,6 +1,8 @@
 package node
 
 import (
+	"fmt"
+
 	kapi "k8s.io/kubernetes/pkg/api"
 	kerrors "k8s.io/kubernetes/pkg/util/errors"
 )
@@ -35,13 +37,15 @@ func (s *SchedulableOptions) RunSchedulable(node *kapi.Node, ignoreHeaders *bool
 
 	if node.Spec.Unschedulable != !s.Schedulable {
 		node.Spec.Unschedulable = !s.Schedulable
-		updatedNode, err = s.Options.Kclient.Nodes().Update(node)
+
+		patch := fmt.Sprintf(`{"spec":{"unschedulable":%t}}`, node.Spec.Unschedulable)
+		err := s.Options.Kclient.Patch(kapi.MergePatchType).Resource("nodes").Name(node.Name).Body([]byte(patch)).Do().Error()
 		if err != nil {
 			return err
 		}
-	} else {
-		updatedNode = node
 	}
+
+	updatedNode = node
 
 	printerWithHeaders, printerNoHeaders, err := s.Options.GetPrintersByObject(updatedNode)
 	if err != nil {
