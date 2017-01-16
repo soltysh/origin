@@ -22,12 +22,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 99d9842f8c7353ce1a32abc0da1e4d5347ba5c2d
+%global commit 0d555387b9f809e2b3998c83bc2516458209c0df
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.20-2-gce3401f -X github.com/openshift/origin/pkg/version.commitFromGit ce3401f -X k8s.io/kubernetes/pkg/version.gitCommit ce3401f -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit=3 -X github.com/openshift/origin/pkg/version.minorFromGit=2+ -X github.com/openshift/origin/pkg/version.versionFromGit=v3.2.1.21-7-g14bc44a -X github.com/openshift/origin/pkg/version.commitFromGit=14bc44a -X k8s.io/kubernetes/pkg/version.gitCommit=14bc44a -X k8s.io/kubernetes/pkg/version.gitVersion=v1.2.0-36-g4a3f9c5
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -47,7 +47,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.2.1.21
+Version:        3.2.1.22
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -555,6 +555,20 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Mon Jan 16 2017 Troy Dawson <tdawson@redhat.com> 3.2.1.22
+- Fix for bugz #1389165 - extended route validation breaks included templates.
+  Plus fixes as per @liggitt review comments:   o Clean up errors to not leak
+  cert/key data.   o Relax checks on certs which have expired or valid in the
+  future for     backward compatibility.   o Add tests for expired, future
+  valid and valid certs with intermediate     CAs and pass intermediate chains
+  to the x509 verifier.   o Improve readability of test config (certs, keys
+  etc).   o Fixup error messages to include underlying certificate parse
+  errors.   o Add comment and remove currenttime hack. (smitram@gmail.com)
+- Enable extended validation check on all routes admitted in by the router.
+  Update generated docs/manpage (smitram@gmail.com)
+- Do not exclude the excluder for atomic-openshift (tdawson@redhat.com)
+- Fix excluder incorrectly creating exclude line. (tdawson@redhat.com)
+
 * Wed Nov 30 2016 Scott Dodson <sdodson@redhat.com> 3.2.1.21
 - Fix bash syntax error in excluder (sdodson@redhat.com)
 
