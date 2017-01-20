@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 18ebd0075a53578fd24872a6bcc71dfa089c9db8
+%global commit 4f30d0682e76ed8a919b2a7c85196ad1c5e97d1c
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.10
+Version:        3.3.1.11
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -543,6 +543,29 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Fri Jan 20 2017 Scott Dodson <sdodson@redhat.com> 3.3.1.11
+- Automatic commit of package [atomic-openshift] release [3.3.1.10].
+  (sdodson@redhat.com)
+- Fix a multiple-pointers-to-single-loop-variable bug in EgressNetworkPolicy
+  (danw@redhat.com)
+- allow proxy values to be specified with non-http git uris
+  (bparees@redhat.com)
+- UPSTREAM: docker/distribution: 2140: Add 'ca-central-1' region for registry
+  S3 storage driver (mfojtik@redhat.com)
+- Fix for bugz #1389165 - extended route validation breaks included templates.
+  Plus fixes as per @liggitt review comments:   o Clean up errors to not leak
+  cert/key data.   o Relax checks on certs which have expired or valid in the
+  future for     backward compatibility.   o Add tests for expired, future
+  valid and valid certs with intermediate     CAs and pass intermediate chains
+  to the x509 verifier.   o Improve readability of test config (certs, keys
+  etc).   o Fixup error messages to include underlying certificate parse
+  errors.   o Add comment and remove currenttime hack. (smitram@gmail.com)
+- Enable extended validation check on all routes admitted in by the router.
+  Update generated docs/manpage (smitram@gmail.com)
+- Backport: Add a nil check to Container.SecurityContext (bbennett@redhat.com)
+- Ensure default ingress cidr is a private range (marun@redhat.com)
+- updating to use rhel7 image streams by default (cdaley@redhat.com)
+
 * Tue Jan 10 2017 Scott Dodson <sdodson@redhat.com> 3.3.1.10
 - fix for bz1400609; if the node status flips on the order of ip addresses
   (when there are multiple NICs to report), do not let the SDN chase it
