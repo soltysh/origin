@@ -88,11 +88,16 @@ type LoadBalancerOpts struct {
 	MonitorMaxRetries uint       `gcfg:"monitor-max-retries"`
 }
 
+type BlockStorageOpts struct {
+	TrustDevicePath bool `gcfg:"trust-device-path"` // See Issue #33128
+}
+
 // OpenStack is an implementation of cloud provider Interface for OpenStack.
 type OpenStack struct {
 	provider *gophercloud.ProviderClient
 	region   string
 	lbOpts   LoadBalancerOpts
+	bsOpts   BlockStorageOpts
 	// InstanceID of the server where this OpenStack object is instantiated.
 	localInstanceID string
 }
@@ -111,6 +116,7 @@ type Config struct {
 		Region     string
 	}
 	LoadBalancer LoadBalancerOpts
+	BlockStorage BlockStorageOpts
 }
 
 func init() {
@@ -145,8 +151,11 @@ func readConfig(config io.Reader) (Config, error) {
 		err := fmt.Errorf("no OpenStack cloud provider config file given")
 		return Config{}, err
 	}
-
 	var cfg Config
+
+	// Set default values for config params
+	cfg.BlockStorage.TrustDevicePath = false
+
 	err := gcfg.ReadInto(&cfg, config)
 	return cfg, err
 }
@@ -231,6 +240,7 @@ func newOpenStack(cfg Config) (*OpenStack, error) {
 		provider:        provider,
 		region:          cfg.Global.Region,
 		lbOpts:          cfg.LoadBalancer,
+		bsOpts:          cfg.BlockStorage,
 		localInstanceID: id,
 	}
 

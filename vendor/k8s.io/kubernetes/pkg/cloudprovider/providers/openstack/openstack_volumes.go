@@ -197,8 +197,10 @@ func (os *OpenStack) DeleteVolume(volumeName string) error {
 	return err
 }
 
-// Get device path of attached volume to the compute running kubelet
+// Get device path of attached volume to the compute running kubelet, as known by cinder
 func (os *OpenStack) GetAttachmentDiskPath(instanceID string, diskName string) (string, error) {
+	// See issue #33128 - Cinder does not always tell you the right device path, as such
+	// we must only use this value as a last resort.
 	disk, err := os.getVolume(diskName)
 	if err != nil {
 		return "", err
@@ -227,4 +229,9 @@ func (os *OpenStack) DiskIsAttached(diskName, instanceID string) (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+// query if we should trust the cinder provide deviceName, See issue #33128
+func (os *OpenStack) ShouldTrustDevicePath() bool {
+	return os.bsOpts.TrustDevicePath
 }
