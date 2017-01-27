@@ -49,6 +49,7 @@ type TemplatePluginConfig struct {
 	StatsPassword          string
 	IncludeUDP             bool
 	PeerService            *ktypes.NamespacedName
+	BindPortsAfterSync     bool
 }
 
 // routerInterface controls the interaction of the plugin with the underlying router implementation
@@ -58,36 +59,29 @@ type routerInterface interface {
 	// frontend key is used; all call sites make certain the frontend
 	// is created.
 
-	// HasServiceUnit indicates whether the router has a service unit
-	// for the given key.
-	HasServiceUnit(key string) bool
-
 	// CreateServiceUnit creates a new service named with the given id.
 	CreateServiceUnit(id string)
 	// FindServiceUnit finds the service with the given id.
 	FindServiceUnit(id string) (v ServiceUnit, ok bool)
 
-	// AddEndpoints adds new Endpoints for the given id. Returns true if a change was made
-	// and the state should be stored with Commit().
-	AddEndpoints(id string, endpoints []Endpoint) bool
+	// AddEndpoints adds new Endpoints for the given id.
+	AddEndpoints(id string, endpoints []Endpoint)
 	// DeleteEndpoints deletes the endpoints for the frontend with the given id.
 	DeleteEndpoints(id string)
 
 	// AddRoute adds a route for the given id and the calculated host. Weight
 	// suggests the weightage attached to it with respect to other services
-	// pointed to by the route. Returns true if a
-	// change was made and the state should be stored with Commit().
-	AddRoute(id string, weight int32, route *routeapi.Route, host string) bool
+	// pointed to by the route.
+	AddRoute(id string, weight int32, route *routeapi.Route, host string)
 	// RemoveRoute removes the given route
 	RemoveRoute(route *routeapi.Route)
+	// HasRoute indicates whether the router is configured with the given route
+	HasRoute(route *routeapi.Route) bool
 	// Reduce the list of routes to only these namespaces
 	FilterNamespaces(namespaces sets.String)
 	// Commit applies the changes in the background. It kicks off a rate-limited
 	// commit (persist router state + refresh the backend) that coalesces multiple changes.
 	Commit()
-
-	// SetSkipCommit indicates to the router whether commits should be skipped
-	SetSkipCommit(skipCommit bool)
 }
 
 func env(name, defaultValue string) string {
@@ -139,6 +133,7 @@ func NewTemplatePlugin(cfg TemplatePluginConfig, lookupSvc ServiceLookup) (*Temp
 		statsPassword:          cfg.StatsPassword,
 		statsPort:              cfg.StatsPort,
 		peerEndpointsKey:       peerKey,
+		bindPortsAfterSync:     cfg.BindPortsAfterSync,
 	}
 	router, err := newTemplateRouter(templateRouterCfg)
 	return newDefaultTemplatePlugin(router, cfg.IncludeUDP, lookupSvc), err
@@ -163,14 +158,10 @@ func (p *TemplatePlugin) HandleEndpoints(eventType watch.EventType, endpoints *k
 		glog.V(4).Infof("Modifying endpoints for %s", key)
 		routerEndpoints := createRouterEndpoints(endpoints, !p.IncludeUDP, p.ServiceFetcher)
 		key := endpointsKey(endpoints)
-		commit := p.Router.AddEndpoints(key, routerEndpoints)
-		if commit {
-			p.Router.Commit()
-		}
+		p.Router.AddEndpoints(key, routerEndpoints)
 	case watch.Deleted:
 		glog.V(4).Infof("Deleting endpoints for %s", key)
 		p.Router.DeleteEndpoints(key)
-		p.Router.Commit()
 	}
 
 	return nil
@@ -191,7 +182,6 @@ func (p *TemplatePlugin) HandleRoute(eventType watch.EventType, route *routeapi.
 		p.Router.RemoveRoute(route)
 
 		// Now add the route back again
-		commit := false
 		for i := range serviceKeys {
 			key := serviceKeys[i]
 			weight := weights[i]
@@ -201,16 +191,11 @@ func (p *TemplatePlugin) HandleRoute(eventType watch.EventType, route *routeapi.
 			}
 
 			glog.V(4).Infof("Modifying routes for %s", key)
-			commitRoute := p.Router.AddRoute(key, weight, route, host)
-			commit = (map[bool]bool{true: true, false: commit})[commitRoute]
-		}
-		if commit {
-			p.Router.Commit()
+			p.Router.AddRoute(key, weight, route, host)
 		}
 	case watch.Deleted:
 		glog.V(4).Infof("Deleting route %v", route)
 		p.Router.RemoveRoute(route)
-		p.Router.Commit()
 	}
 	return nil
 }
@@ -219,12 +204,11 @@ func (p *TemplatePlugin) HandleRoute(eventType watch.EventType, route *routeapi.
 // the provided namespace list.
 func (p *TemplatePlugin) HandleNamespaces(namespaces sets.String) error {
 	p.Router.FilterNamespaces(namespaces)
-	p.Router.Commit()
 	return nil
 }
 
-func (p *TemplatePlugin) SetLastSyncProcessed(processed bool) error {
-	p.Router.SetSkipCommit(!processed)
+func (p *TemplatePlugin) Commit() error {
+	p.Router.Commit()
 	return nil
 }
 
