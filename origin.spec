@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 4f30d0682e76ed8a919b2a7c85196ad1c5e97d1c
+%global commit 7439e8424119b312fd6da833d5d4ade29a70f641
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.11
+Version:        3.3.1.12
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -543,6 +543,27 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Tue Jan 31 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.3.1.12
+- Merge remote-tracking branch upstream/master, bump origin-web-console e14b670
+  (tdawson@redhat.com)
+- Use posttrans for docker-excluder (#1404193) (tdawson@redhat.com)
+- Docker 1.12 should be excluded from OCP 3.3 (sdodson@redhat.com)
+- UPSTREAM: 30253: fix same node port different protocols conflict issue
+  (dhodovsk@redhat.com)
+- router: Minimize reloads for removal and filtering (marun@redhat.com)
+- router: Fix detection of initial sync (marun@redhat.com)
+- router: Ensure reload on initial sync (marun@redhat.com)
+- UPSTREAM: 38818: AWS: Add sequential allocator for device names.
+  (gethemant@gmail.com)
+- UPSTREAM: 31090: AWS: fix volume device assignment race condition
+  (hekumar@redhat.com)
+- ipfailover keepalived split brain (pcameron@redhat.com)
+- Uses patch instead of update to mark nodes (un)schedulable
+  (ffranz@redhat.com)
+- router: bypass the rate limiter for the initial commit (marun@redhat.com)
+- Fix broken router stress test (marun@redhat.com)
+- Add router option to bind ports only when ready (marun@redhat.com)
+
 * Fri Jan 20 2017 Scott Dodson <sdodson@redhat.com> 3.3.1.11
 - Automatic commit of package [atomic-openshift] release [3.3.1.10].
   (sdodson@redhat.com)
