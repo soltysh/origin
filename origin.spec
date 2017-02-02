@@ -22,12 +22,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit ef88fe806a4d68d9457bc6727e34a0067d86e4d5
+%global commit acbcf012f25d2aabd49f200382f4bbb31cd24781
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.21-8-gef88fe8 -X github.com/openshift/origin/pkg/version.commitFromGit ef88fe8 -X k8s.io/kubernetes/pkg/version.gitCommit ef88fe8 -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit=3 -X github.com/openshift/origin/pkg/version.minorFromGit=2+ -X github.com/openshift/origin/pkg/version.versionFromGit=v3.2.1.23-2-g5b28fef -X github.com/openshift/origin/pkg/version.commitFromGit=5b28fef -X k8s.io/kubernetes/pkg/version.gitCommit=5b28fef -X k8s.io/kubernetes/pkg/version.gitVersion=v1.2.0-36-g4a3f9c5
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -47,7 +47,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.2.1.23
+Version:        3.2.1.24
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -555,6 +555,9 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Thu Feb 02 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.2.1.24
+- Use posttrans for docker-excluder (#1404193) (tdawson@redhat.com)
+
 * Mon Jan 16 2017 Scott Dodson <sdodson@redhat.com> 3.2.1.23
 - Retag
 
