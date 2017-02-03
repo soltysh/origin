@@ -232,8 +232,9 @@ func (detacher *awsElasticBlockStoreDetacher) WaitForDetach(devicePath string, t
 func (detacher *awsElasticBlockStoreDetacher) UnmountDevice(deviceMountPath string) error {
 	volume := path.Base(deviceMountPath)
 	if err := unmountPDAndRemoveGlobalPath(deviceMountPath, detacher.mounter); err != nil {
-		glog.Errorf("Error unmounting %q: %v", volume, err)
+		umountErr := fmt.Errorf("Error unmounting %q: %v", volume, err)
+		glog.Errorf(umountErr.Error())
+		return umountErr
 	}
-
 	return nil
 }
