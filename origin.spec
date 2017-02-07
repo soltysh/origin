@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 7439e8424119b312fd6da833d5d4ade29a70f641
+%global commit cdc8db95367de7b5bb0bf72f2c086bbb645fdeb1
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.12
+Version:        3.3.1.13
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -543,6 +543,17 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Tue Feb 07 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.3.1.13
+- Merge remote-tracking branch enterprise-3.3, bump origin-web-console af1dbbd
+  (tdawson@redhat.com)
+- UPSTREAM: carry: Fix bug with umount (hekumar@redhat.com)
+- Add a status function to excluder (sdodson@redhat.com)
+- UPSTREAM: 32242: fix race condition in volume attach/detach
+  (hekumar@redhat.com)
+- UPSTREAM: 30737: Skip safe to detach check if node API object no longer
+  exists (hekumar@redhat.com)
+- Change haproxy router to use a certificate list/map file. (smitram@gmail.com)
+
 * Tue Jan 31 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.3.1.12
 - Merge remote-tracking branch upstream/master, bump origin-web-console e14b670
   (tdawson@redhat.com)
