@@ -53,6 +53,9 @@ func Execute(configFile io.Reader) {
 		log.Fatalf("error configuring logger: %v", err)
 	}
 	log.Infof("version=%s", version.Version)
+
+	overrideConfiguration(config)
+
 	// inject a logger into the uuid library. warns us if there is a problem
 	// with uuid generation under low entropy.
 	uuid.Loggerf = context.GetLogger(ctx).Warnf
@@ -242,6 +245,16 @@ func panicHandler(handler http.Handler) http.Handler {
 		}()
 		handler.ServeHTTP(w, r)
 	})
+}
+
+func overrideConfiguration(config *configuration.Configuration) {
+	// Unless disabled, the middleware will not be able to serve images from
+	// other image streams than originally pushed.
+	if !config.Compatibility.Schema1.DisableSignatureStore {
+		log.Warnf("overriding configuration option compatibility.schema1.disablesignaturestore to true")
+		log.Warnf("forcibly disabling signature store - signatures will be generated on all schema 1 manifest requests")
+		config.Compatibility.Schema1.DisableSignatureStore = true
+	}
 }
 
 func setDefaultMiddleware(config *configuration.Configuration) {

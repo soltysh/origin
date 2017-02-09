@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
+	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/manifest/schema2"
 
 	imageapi "github.com/openshift/origin/pkg/image/api"
@@ -17,12 +18,12 @@ var (
 )
 
 func unmarshalManifestSchema2(content []byte) (distribution.Manifest, error) {
-	var m schema2.DeserializedManifest
-	if err := json.Unmarshal(content, &m); err != nil {
+	var deserializedManifest schema2.DeserializedManifest
+	if err := json.Unmarshal(content, &deserializedManifest); err != nil {
 		return nil, err
 	}
 
-	return &m, nil
+	return &deserializedManifest, nil
 }
 
 type manifestSchema2Handler struct {
@@ -33,6 +34,8 @@ type manifestSchema2Handler struct {
 var _ ManifestHandler = &manifestSchema2Handler{}
 
 func (h *manifestSchema2Handler) FillImageMetadata(ctx context.Context, image *imageapi.Image) error {
+	// The manifest.Config references a configuration object for a container by its digest.
+	// It needs to be fetched in order to fill an image object metadata below.
 	configBytes, err := h.repo.Blobs(ctx).Get(ctx, h.manifest.Config.Digest)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("failed to get image config %s: %v", h.manifest.Config.Digest.String(), err)
@@ -63,8 +66,12 @@ func (h *manifestSchema2Handler) Verify(ctx context.Context, skipDependencyVerif
 		return nil
 	}
 
-	// we want to verify that referenced blobs exist locally - thus using upstream repository object directly
-	repo := h.repo.Repository
+	// we want to verify that referenced blobs exist locally or are accessible via
+	// pullthroughBlobStore. The base image of this image can be remote repository
+	// and since we use pullthroughBlobStore all the layer existence checks will be
+	// successful. This means that the docker client will not attempt to send them
+	// to us as it will assume that the registry has them.
+	repo := h.repo
 
 	target := h.manifest.Target()
 	_, err := repo.Blobs(ctx).Stat(ctx, target.Digest)
@@ -106,4 +113,12 @@ func (h *manifestSchema2Handler) Verify(ctx context.Context, skipDependencyVerif
 		return errs
 	}
 	return nil
+}
+
+func (h *manifestSchema2Handler) Digest() (digest.Digest, error) {
+	_, p, err := h.manifest.Payload()
+	if err != nil {
+		return "", err
+	}
+	return digest.FromBytes(p), nil
 }

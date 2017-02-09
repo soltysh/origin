@@ -27,6 +27,17 @@ import (
 	testserver "github.com/openshift/origin/test/util/server"
 )
 
+// gzippedEmptyTar is a gzip-compressed version of an empty tar file
+// (1024 NULL bytes)
+var gzippedEmptyTar = []byte{
+	31, 139, 8, 0, 0, 9, 110, 136, 0, 255, 98, 24, 5, 163, 96, 20, 140, 88,
+	0, 8, 0, 0, 255, 255, 46, 175, 181, 239, 0, 4, 0, 0,
+}
+
+// digestSHA256GzippedEmptyTar is the canonical sha256 digest of
+// gzippedEmptyTar
+const digestSHA256GzippedEmptyTar = digest.Digest("sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4")
+
 func signedManifest(name string, blobs []digest.Digest) ([]byte, digest.Digest, error) {
 	key, err := libtrust.GenerateECP256PrivateKey()
 	if err != nil {
@@ -143,6 +154,11 @@ middleware:
 		t.Fatalf("expected 0 tags, got: %#v", tags)
 	}
 
+	err = putEmptyBlob(stream.Name, user, token)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	dgst, err := putManifest(stream.Name, user, token)
 	if err != nil {
 		t.Fatal(err)
@@ -216,7 +232,7 @@ middleware:
 	if err != nil {
 		t.Fatalf("error getting imageStreamImage: %s", err)
 	}
-	if e, a := fmt.Sprintf("test@%s", dgst.Hex()[:7]), image.Name; e != a {
+	if e, a := fmt.Sprintf("test@%s", dgst.String()), image.Name; e != a {
 		t.Errorf("image name: expected %q, got %q", e, a)
 	}
 	if e, a := dgst.String(), image.Image.Name; e != a {
@@ -234,6 +250,11 @@ middleware:
 	t.Logf("otherStream=%#v, err=%v", otherStream, err)
 	if err == nil {
 		t.Fatalf("expected error getting otherrepo")
+	}
+
+	err = putEmptyBlob("otherrepo", user, token)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	otherDigest, err := putManifest("otherrepo", user, token)
@@ -290,6 +311,37 @@ func putManifest(name, user, token string) (digest.Digest, error) {
 		return "", fmt.Errorf("unexpected put status code: %d", resp.StatusCode)
 	}
 	return dgst, nil
+}
+
+func putEmptyBlob(name, user, token string) error {
+	putUrl := fmt.Sprintf("http://127.0.0.1:5000/v2/%s/%s/blobs/uploads/", testutil.Namespace(), name)
+	method := "POST"
+
+	for range []int{1, 2} {
+		req, err := http.NewRequest(method, putUrl, bytes.NewReader(gzippedEmptyTar))
+		if err != nil {
+			return fmt.Errorf("error makeing request: %s", err)
+		}
+		req.SetBasicAuth(user, token)
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return fmt.Errorf("error posting blob: %s", err)
+		}
+		resp.Body.Close()
+
+		switch resp.StatusCode {
+		case http.StatusAccepted:
+			putUrl = resp.Header.Get("Location") + "&digest=" + digestSHA256GzippedEmptyTar.String()
+			method = "PUT"
+		case http.StatusCreated:
+			return nil
+		default:
+			return fmt.Errorf("unexpected post status code: %d", resp.StatusCode)
+		}
+	}
+
+	return nil
 }
 
 func getTags(streamName, user, token string) ([]string, error) {

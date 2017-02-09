@@ -32,3 +32,10 @@ middleware:
         blobrepositorycachettl: 10m
   storage:
     - name: openshift
+compatibility:
+  schema1:
+    # This option cannot be overriden, registry will disable signature store
+    # regardless of this setting. Signatures will be generated on all schema1
+    # manifest requests rather than only requests which converted schema2 to
+    # schema1.
+    disablesignaturestore: true
