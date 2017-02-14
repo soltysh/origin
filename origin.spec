@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit cdc8db95367de7b5bb0bf72f2c086bbb645fdeb1
+%global commit 2bd58d4490e99406bc938471c7e82b827f941ce3
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.13
+Version:        3.3.1.14
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -543,6 +543,15 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Tue Feb 14 2017 Troy Dawson <tdawson@redhat.com> 3.3.1.14
+- Disabled signature store in registry (miminar@redhat.com)
+- Add extended test for manifest migration (agladkov@redhat.com)
+- Migrate manifest from Image when receiving get-request (agladkov@redhat.com)
+- Add tests for pullthroughManifestService (agladkov@redhat.com)
+- Save manifest in docker-registry and make pullthrough for manifests
+  (agladkov@redhat.com)
+- Move ManifestService to separate object (agladkov@redhat.com)
+
 * Tue Feb 07 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.3.1.13
 - Merge remote-tracking branch enterprise-3.3, bump origin-web-console af1dbbd
   (tdawson@redhat.com)
