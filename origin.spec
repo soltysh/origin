@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 2bd58d4490e99406bc938471c7e82b827f941ce3
+%global commit 38cef164648f2ebeb66bd312788b5cd88e97b191
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.14
+Version:        3.3.1.15
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -548,6 +548,13 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Tue Feb 21 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.3.1.15
+- UPSTREAM: 41196: Fix for Premature iSCSI logout (hchen@redhat.com)
+- node: install conntrack-tools in the node image (gscrivan@redhat.com)
+- Added image migration script (miminar@redhat.com)
+- UPSTREAM: google/cadvisor: 1588: disable thin_ls due to excessive iops
+  (decarr@redhat.com)
+
 * Tue Feb 14 2017 Troy Dawson <tdawson@redhat.com> 3.3.1.14
 - Disabled signature store in registry (miminar@redhat.com)
 - Add extended test for manifest migration (agladkov@redhat.com)
