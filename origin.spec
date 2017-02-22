@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 0988c84bd7211d9d212df0b70add8f9f0659f511
+%global commit 90885f9c14a143b97a5858f1fe418ad47a5557a6
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.0.32-1+0988c84-22 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=openshift3/ose OS_GIT_COMMIT=0988c84
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=0 OS_GIT_VERSION=v0.0.2-1+90885f9-1 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=openshift3/ose OS_GIT_COMMIT=90885f9
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           %{package_name}
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        0.0.2
+Version:        0.0.3
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -568,6 +568,10 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Wed Feb 22 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 0.0.3-1
+- Merge remote-tracking branch enterprise-3.5, bump origin-web-console 6afe70d
+  (tdawson@redhat.com)
+
 * Wed Feb 22 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 0.0.2-1
 - new package built with tito
 
