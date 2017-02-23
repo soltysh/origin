@@ -39,7 +39,7 @@
 %global need_redistributable_set 0
 %endif
 %endif
-%{!?make_redistributable: %global	make_redistributable	%{need_redistributable_set}}
+%{!?make_redistributable: %global make_redistributable %{need_redistributable_set}}
 
 %if "%{dist}" == ".el7aos"
 %global package_name atomic-openshift
