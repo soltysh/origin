@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 1fb1cde25e1be4e1bab82a0cde48a063611e81fa
+%global commit a87a4aec9abfcf43cac4d957ea2ab4f08ec9d0ae
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.0.33 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=openshift3/ose OS_GIT_COMMIT=1fb1cde
+%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.0.34 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=openshift3/ose OS_GIT_COMMIT=a87a4ae
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.5.0.34
+Version:        3.5.0.35
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -571,6 +571,24 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Mon Feb 27 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.5.0.35-1
+- Use DefaultImagePrefix instead of hardcoded 'openshift/origin' for network
+  diagnostic image. (rpenta@redhat.com)
+- Auto generated: docs/bash completions for network diagnostic pod image option
+  (rpenta@redhat.com)
+- Make network diagnostic pod image configurable (rpenta@redhat.com)
+- Bug 1421643 - Use existing openshift/origin image instead of new openshift
+  /diagnostics-deployer (rpenta@redhat.com)
+- Sync etcd endpoints during lease acquistion (agoldste@redhat.com)
+- update guest profile with new arp tuning missed in
+  https://github.com/openshift/origin/pull/13034 (jeder@redhat.com)
+- Verify manifest with remote layers (agladkov@redhat.com)
+- Don't overwrite /usr/local/bin with a file (sdodson@redhat.com)
+- tito: generate man pages (mkargaki@redhat.com)
+- Remove redundant docs (mkargaki@redhat.com)
+- Check out generated docs (mkargaki@redhat.com)
+- Stop checking in generated docs (mkargaki@redhat.com)
+
 * Fri Feb 24 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.5.0.34-1
 - Merge remote-tracking branch enterprise-3.5, bump origin-web-console 740f6e4
   (tdawson@redhat.com)
