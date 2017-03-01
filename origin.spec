@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit a87a4aec9abfcf43cac4d957ea2ab4f08ec9d0ae
+%global commit 95c16c5f2d9780e1b5169d2b6ba44ce18f71ba01
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.0.34 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=openshift3/ose OS_GIT_COMMIT=a87a4ae
+%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.0.35 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=openshift3/ose OS_GIT_COMMIT=95c16c5
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.5.0.35
+Version:        3.5.0.36
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -571,6 +571,47 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Wed Mar 01 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.5.0.36-1
+- Merge remote-tracking branch enterprise-3.5, bump origin-web-console 79636c1
+  (tdawson@redhat.com)
+- provider recorder to attach detach controller (hchen@redhat.com)
+- Necessary origin updates (maszulik@redhat.com)
+- UPSTREAM: 40301: present request header cert CA (maszulik@redhat.com)
+- UPSTREAM: revert: 15aaac7f8391a1e0514f80e6450f4bf12c0db191: <drop>: add
+  ExtraClientCACerts to SecureServingInfo" (maszulik@redhat.com)
+- Do not exclude the excluder for atomic-openshift (tdawson@redhat.com)
+- UPSTREAM: 39825: Make PDBs represent percentage in StatefulSet
+  (mfojtik@redhat.com)
+- Update the reconciler sync period in master_config_test (mfojtik@redhat.com)
+- UPSTREAM: 40903: Set docker opt separator correctly for SELinux options
+  (maszulik@redhat.com)
+- UPSTREAM: revert: 9f81f6f: <carry>: Change docker security opt separator to
+  be compatible with 1.11+ (maszulik@redhat.com)
+- UPSTREAM: 42097: Enqueue controllers after minreadyseconds when all pods are
+  ready (maszulik@redhat.com)
+- UPSTREAM: 40625: controller: old pods should block deployment completeness
+  (mfojtik@redhat.com)
+- UPSTREAM: 37093: Endpoints with TolerateUnready annotation, should list Pods
+  in state terminating (maszulik@redhat.com)
+- UPSTREAM: 41366: Change default reconciler sync period to 1 minute
+  (mfojtik@redhat.com)
+- UPSTREAM: 41455: Fix AWS device allocator to only use valid device names
+  (mfojtik@redhat.com)
+- UPSTREAM: 38818: Add sequential allocator for device names in AWS
+  (mfojtik@redhat.com)
+- UPSTREAM: 42178: stop spamming logs on restart of server (decarr@redhat.com)
+- backup and remove keys during migration (sjenning@redhat.com)
+- add migration script to fix etcd paths (sjenning@redhat.com)
+- UPSTREAM: 40553: Adjust global log limit to 1ms (pweil@redhat.com)
+- UPSTREAM: 40497: Make HandleError prevent hot-loops (pweil@redhat.com)
+- UPSTREAM: 40935: Plumb subresource through subjectaccessreview
+  (pweil@redhat.com)
+- UPSTREAM: 38855: Fix variable shadowing in exponential backoff when deleting
+  volumes (pweil@redhat.com)
+- UPSTREAM: 38909: Add path exist check in getPodVolumePathListFromDisk
+  (pweil@redhat.com)
+- UPSTREAM: 38746: recognize eu-west-2 region (pweil@redhat.com)
+
 * Mon Feb 27 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.5.0.35-1
 - Use DefaultImagePrefix instead of hardcoded 'openshift/origin' for network
   diagnostic image. (rpenta@redhat.com)
