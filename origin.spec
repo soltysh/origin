@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit c1ec341b26246f55ba20677a25c1496373ae7fdd
+%global commit fc4e98754f9426fa40e54b15a90ff2c8e365b559
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.0.36 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=openshift3/ose OS_GIT_COMMIT=c1ec341
+%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.0.37 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=openshift3/ose OS_GIT_COMMIT=fc4e987
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.5.0.37
+Version:        3.5.0.38
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -571,6 +571,27 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Fri Mar 03 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.5.0.38-1
+- Merge remote-tracking branch enterprise-3.5, bump origin-web-console 0c5b53c
+  (tdawson@redhat.com)
+- No failure reason displayed when build failed using invalid contextDir
+  (cdaley@redhat.com)
+- cluster up: warn on error parsing Docker version (cewong@redhat.com)
+- Update Vagrantfile (dmcphers@redhat.com)
+- Update Vagrantfile (dmcphers@redhat.com)
+- Output VXLAN multicast flow in sorted order (danw@redhat.com)
+- Retry OVS flow checks a few times if they fail (danw@redhat.com)
+- Add stateful sets permissions to disruption controller (jliggitt@redhat.com)
+- bump(github.com/openshift/source-to-image):
+  431c81eac49eb43df80e629a511d80d6eca5bf13 (bparees@redhat.com)
+- UPSTREAM: 42294: fix rsListerSynced and podListerSynced for
+  DeploymentController (maszulik@redhat.com)
+- Change logging deployer image name from 'logging-deployment' to 'logging-
+  deployer' (cewong@redhat.com)
+- Use posttrans for docker-excluder (#1404193) (tdawson@redhat.com)
+- UPSTREAM: 41864: Allow 'kubectl drain --force' to remove orphaned pods
+  (marun@redhat.com)
+
 * Wed Mar 01 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.5.0.37-1
 - 
 
