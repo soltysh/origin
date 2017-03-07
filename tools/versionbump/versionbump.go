@@ -1,10 +1,10 @@
 package main
 
 import (
-	"strings"
-	"os"
 	"flag"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/blang/semver"
 )
@@ -79,5 +79,5 @@ func main() {
 		},
 	}
 
-	fmt.Fprintf(os.Stderr, "%s\n", currentSemver.String())
+	fmt.Printf("%s\n", currentSemver.String())
 }
