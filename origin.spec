@@ -22,12 +22,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 5fa965edcd74f26b24b3a52fc91c8f5827c92cbb
+%global commit b80fc2287737b0a116a7c96535450f103985e777
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.26-1-g5fa965e -X github.com/openshift/origin/pkg/version.commitFromGit 5fa965e -X k8s.io/kubernetes/pkg/version.gitCommit 5fa965e -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.27-2-gb80fc22 -X github.com/openshift/origin/pkg/version.commitFromGit b80fc22 -X k8s.io/kubernetes/pkg/version.gitCommit b80fc22 -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -47,7 +47,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.2.1.27
+Version:        3.2.1.28
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -555,6 +555,9 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Tue Mar 07 2017 Troy Dawson <tdawson@redhat.com> 3.2.1.28
+- UPSTREAM: 38196: Fix mesos unit tests (deads@redhat.com)
+
 * Thu Mar 02 2017 Troy Dawson <tdawson@redhat.com> 3.2.1.27
 - Update Vagrantfile (dmcphers@redhat.com)
 
