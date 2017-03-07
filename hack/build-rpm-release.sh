@@ -22,6 +22,7 @@ if [[ "${OS_GIT_TREE_STATE}" == "dirty" ]]; then
 	os::log::fatal "Cannot build RPMs with a dirty git tree. Commit your changes and try again."
 fi
 os::util::ensure::built_binary_exists 'versionbump'
+echo ${OS_GIT_VERSION}
 rpm_release_version="$( versionbump "${OS_GIT_VERSION}" )"
 rpm_version="${rpm_release_version%%-*}"
 rpm_release="${rpm_release_version#*-}"
