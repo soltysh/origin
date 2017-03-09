@@ -1,8 +1,10 @@
 package server
 
 import (
+	"fmt"
+	"io"
 	"net/http"
-	"strconv"
+	"os"
 	"time"
 
 	"github.com/docker/distribution"
@@ -79,11 +81,16 @@ func (r *pullthroughBlobStore) ServeBlob(ctx context.Context, w http.ResponseWri
 	}
 	defer remoteReader.Close()
 
-	setResponseHeaders(w, desc.Size, desc.MediaType, dgst)
-
 	context.GetLogger(ctx).Infof("serving blob %s of type %s %d bytes long", dgst.String(), desc.MediaType, desc.Size)
-	http.ServeContent(w, req, desc.Digest.String(), time.Time{}, remoteReader)
-	return nil
+	contentHandled, err := serveRemoteContent(w, req, desc, remoteReader)
+	if err != nil || contentHandled {
+		return err
+	}
+
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", desc.Size))
+
+	_, err = io.CopyN(w, remoteReader, desc.Size)
+	return err
 }
 
 // Get attempts to fetch the requested blob by digest using a remote proxy store if necessary.
@@ -104,8 +111,36 @@ func (r *pullthroughBlobStore) Get(ctx context.Context, dgst digest.Digest) ([]b
 
 // setResponseHeaders sets the appropriate content serving headers
 func setResponseHeaders(w http.ResponseWriter, length int64, mediaType string, digest digest.Digest) {
-	w.Header().Set("Content-Length", strconv.FormatInt(length, 10))
 	w.Header().Set("Content-Type", mediaType)
 	w.Header().Set("Docker-Content-Digest", digest.String())
 	w.Header().Set("Etag", digest.String())
+}
+
+// serveRemoteContent tries to use http.ServeContent for remote content.
+func serveRemoteContent(rw http.ResponseWriter, req *http.Request, desc distribution.Descriptor, remoteReader io.ReadSeeker) (bool, error) {
+	// Set the appropriate content serving headers.
+	setResponseHeaders(rw, desc.Size, desc.MediaType, desc.Digest)
+
+	// Fallback to Copy if request wasn't given.
+	if req == nil {
+		return false, nil
+	}
+
+	// Check whether remoteReader is seekable. The remoteReader' Seek method must work: ServeContent uses
+	// a seek to the end of the content to determine its size.
+	if _, err := remoteReader.Seek(0, os.SEEK_END); err != nil {
+		// The remoteReader isn't seekable. It means that the remote response under the hood of remoteReader
+		// doesn't contain any Content-Range or Content-Length headers. In this case we need to rollback to
+		// simple Copy.
+		return false, nil
+	}
+
+	// Move pointer back to begin.
+	if _, err := remoteReader.Seek(0, os.SEEK_SET); err != nil {
+		return false, err
+	}
+
+	http.ServeContent(rw, req, desc.Digest.String(), time.Time{}, remoteReader)
+
+	return true, nil
 }

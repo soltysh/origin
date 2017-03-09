@@ -4,13 +4,17 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/configuration"
@@ -252,6 +256,203 @@ func TestPullthroughServeBlob(t *testing.T) {
 	}
 }
 
+func TestPullthroughServeNotSeekableBlob(t *testing.T) {
+	namespace, name := "user", "app"
+	repoName := fmt.Sprintf("%s/%s", namespace, name)
+	log.SetLevel(log.DebugLevel)
+	installFakeAccessController(t)
+	setPassthroughBlobDescriptorServiceFactory()
+
+	testImage, err := registrytest.NewImageForManifest(repoName, registrytest.SampleImageManifestSchema1, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := &testclient.Fake{}
+	client.AddReactor("get", "images", registrytest.GetFakeImageGetHandler(t, *testImage))
+
+	// TODO: get rid of those nasty global vars
+	backupRegistryClient := DefaultRegistryClient
+	DefaultRegistryClient = makeFakeRegistryClient(client, ktestclient.NewSimpleFake())
+	defer func() {
+		// set it back once this test finishes to make other unit tests working again
+		DefaultRegistryClient = backupRegistryClient
+	}()
+
+	reader, dgst, err := registrytest.CreateRandomTarFile()
+	if err != nil {
+		t.Fatalf("unexpected error generating test layer file: %v", err)
+	}
+
+	blob1Content, err := ioutil.ReadAll(reader)
+	if err != nil {
+		t.Fatalf("failed to read blob content: %v", err)
+	}
+
+	blob1Storage := map[digest.Digest][]byte{dgst: blob1Content}
+
+	// start regular HTTP server
+	remoteRegistryServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Logf("External registry got %s %s", r.Method, r.URL.Path)
+
+		w.Header().Set("Docker-Distribution-API-Version", "registry/2.0")
+
+		switch r.URL.Path {
+		case "/v2/":
+			w.Write([]byte(`{}`))
+		case "/v2/" + repoName + "/tags/list":
+			w.Write([]byte("{\"name\": \"" + repoName + "\", \"tags\": [\"latest\"]}"))
+		case "/v2/" + repoName + "/manifests/latest", "/v2/" + repoName + "/manifests/" + etcdDigest:
+			if r.Method == "HEAD" {
+				w.Header().Set("Content-Length", fmt.Sprintf("%d", len(etcdManifest)))
+				w.Header().Set("Docker-Content-Digest", etcdDigest)
+				w.WriteHeader(http.StatusOK)
+			} else {
+				w.Write([]byte(etcdManifest))
+			}
+		default:
+			if strings.HasPrefix(r.URL.Path, "/v2/"+repoName+"/blobs/") {
+				for dgst, payload := range blob1Storage {
+					if r.URL.Path != "/v2/"+repoName+"/blobs/"+dgst.String() {
+						continue
+					}
+					w.Header().Set("Content-Length", fmt.Sprintf("%d", len(payload)))
+					if r.Method == "HEAD" {
+						w.Header().Set("Docker-Content-Digest", dgst.String())
+						w.WriteHeader(http.StatusOK)
+						return
+					} else {
+						// Important!
+						//
+						// We need to return any return code between 200 and 399, expept 200 and 206.
+						// https://github.com/docker/distribution/blob/master/registry/client/transport/http_reader.go#L192
+						//
+						// In this case the docker client library will make a not truly
+						// seekable response.
+						// https://github.com/docker/distribution/blob/master/registry/client/transport/http_reader.go#L239
+						w.WriteHeader(http.StatusAccepted)
+					}
+					w.Write(payload)
+					return
+				}
+			}
+			t.Fatalf("unexpected request %s: %#v", r.URL.Path, r)
+		}
+	}))
+
+	serverURL, err := url.Parse(remoteRegistryServer.URL)
+	if err != nil {
+		t.Fatalf("error parsing server url: %v", err)
+	}
+	os.Setenv("DOCKER_REGISTRY_URL", serverURL.Host)
+	testImage.DockerImageReference = fmt.Sprintf("%s/%s@%s", serverURL.Host, repoName, testImage.Name)
+
+	testImageStream := registrytest.TestNewImageStreamObject(namespace, name, "latest", testImage.Name, testImage.DockerImageReference)
+	if testImageStream.Annotations == nil {
+		testImageStream.Annotations = make(map[string]string)
+	}
+	testImageStream.Annotations[imageapi.InsecureRepositoryAnnotation] = "true"
+
+	client.AddReactor("get", "imagestreams", imagetest.GetFakeImageStreamGetHandler(t, *testImageStream))
+
+	localBlobStore := newTestBlobStore(nil)
+
+	ctx := context.Background()
+	ctx = WithTestPassthroughToUpstream(ctx, false)
+	repo := newTestRepositoryForPullthrough(t, ctx, nil, namespace, name, client, true)
+
+	rbs := &remoteBlobGetterService{
+		repo:          repo,
+		digestToStore: make(map[string]distribution.BlobStore),
+	}
+	ctx = WithRemoteBlobGetter(ctx, rbs)
+	repo.ctx = ctx
+
+	ptbs := &pullthroughBlobStore{
+		BlobStore: localBlobStore,
+		repo:      repo,
+	}
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://example.org/v2/user/app/blobs/%s", dgst), nil)
+	if err != nil {
+		t.Fatalf("failed to create http request: %v", err)
+	}
+	w := httptest.NewRecorder()
+
+	if _, err = ptbs.Stat(ctx, dgst); err != nil {
+		t.Fatalf("Stat returned unexpected error: %#+v", err)
+	}
+
+	if err = ptbs.ServeBlob(ctx, w, req, dgst); err != nil {
+		t.Fatalf("ServeBlob returned unexpected error: %#+v", err)
+	}
+
+	if w.Code != http.StatusOK {
+		t.Fatalf(`unexpected StatusCode: %d (expected %d)`, w.Code, http.StatusOK)
+	}
+
+	clstr := w.Header().Get("Content-Length")
+	if cl, err := strconv.ParseInt(clstr, 10, 64); err != nil {
+		t.Fatalf(`unexpected Content-Length: %q (expected "%d")`, clstr, int64(len(blob1Content)))
+	} else {
+		if cl != int64(len(blob1Content)) {
+			t.Fatalf("Content-Length does not match expected size: %d != %d", cl, int64(len(blob1Content)))
+		}
+	}
+
+	body := w.Body.Bytes()
+	if int64(len(body)) != int64(len(blob1Content)) {
+		t.Errorf("unexpected size of body: %d != %d", len(body), int64(len(blob1Content)))
+	}
+
+	if localBlobStore.bytesServed != 0 {
+		t.Fatalf("remote blob served locally")
+	}
+
+	expectedLocalCalls := map[string]int{
+		"Stat":      1,
+		"ServeBlob": 1,
+	}
+
+	for name, expCount := range expectedLocalCalls {
+		count := localBlobStore.calls[name]
+		if count != expCount {
+			t.Errorf("expected %d calls to method %s of local blob store, not %d", expCount, name, count)
+		}
+	}
+
+	for name, count := range localBlobStore.calls {
+		if _, exists := expectedLocalCalls[name]; !exists {
+			t.Errorf("expected no calls to method %s of local blob store, got %d", name, count)
+		}
+	}
+}
+
+func newTestRepositoryForPullthrough(
+	t *testing.T,
+	ctx context.Context,
+	wrappedRepository distribution.Repository,
+	namespace, name string,
+	client *testclient.Fake,
+	enablePullThrough bool,
+) *repository {
+	cachedLayers, err := newDigestToRepositoryCache(10)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r := &repository{
+		Repository:       wrappedRepository,
+		ctx:              ctx,
+		namespace:        namespace,
+		name:             name,
+		pullthrough:      enablePullThrough,
+		cachedLayers:     cachedLayers,
+		registryOSClient: client,
+	}
+
+	return r
+}
+
 const (
 	unknownBlobDigest = "sha256:bef57ec7f53a6d40beb640a780a639c83bc29ac8a9816f1fc6c5c6dcd93c4721"
 )
@@ -338,6 +539,7 @@ func (t *testBlobStore) ServeBlob(ctx context.Context, w http.ResponseWriter, re
 	}
 	reader := bytes.NewReader(content)
 	setResponseHeaders(w, int64(len(content)), "application/octet-stream", dgst)
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", int64(len(content))))
 	http.ServeContent(w, req, dgst.String(), time.Time{}, reader)
 	n, err := reader.Seek(0, 1)
 	if err != nil {
