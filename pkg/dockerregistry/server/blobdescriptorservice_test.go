@@ -62,15 +62,9 @@ func TestBlobDescriptorServiceIsApplied(t *testing.T) {
 	client.AddReactor("get", "imagestreams", imagetest.GetFakeImageStreamGetHandler(t, *testImageStream))
 	client.AddReactor("get", "images", registrytest.GetFakeImageGetHandler(t, *testImage))
 
-	// TODO: get rid of those nasty global vars
-	backupRegistryClient := DefaultRegistryClient
-	DefaultRegistryClient = makeFakeRegistryClient(client, fake.NewSimpleClientset())
-	defer func() {
-		// set it back once this test finishes to make other unit tests working
-		DefaultRegistryClient = backupRegistryClient
-	}()
-
-	app := handlers.NewApp(context.Background(), &configuration.Configuration{
+	ctx := context.Background()
+	ctx = WithRegistryClient(ctx, makeFakeRegistryClient(client, fake.NewSimpleClientset()))
+	app := handlers.NewApp(ctx, &configuration.Configuration{
 		Loglevel: "debug",
 		Auth: map[string]configuration.Parameters{
 			fakeAuthorizerName: {"realm": fakeAuthorizerName},
@@ -463,7 +457,7 @@ func (bs *testBlobDescriptorService) Stat(ctx context.Context, dgst digest.Diges
 	bs.m.methodInvoked("Stat")
 	if bs.m.getUnsetRepository() {
 		bs.t.Logf("unsetting repository from the context")
-		ctx = WithRepository(ctx, nil)
+		ctx = withRepository(ctx, nil)
 	}
 
 	return bs.BlobDescriptorService.Stat(ctx, dgst)
@@ -472,7 +466,7 @@ func (bs *testBlobDescriptorService) Clear(ctx context.Context, dgst digest.Dige
 	bs.m.methodInvoked("Clear")
 	if bs.m.getUnsetRepository() {
 		bs.t.Logf("unsetting repository from the context")
-		ctx = WithRepository(ctx, nil)
+		ctx = withRepository(ctx, nil)
 	}
 	return bs.BlobDescriptorService.Clear(ctx, dgst)
 }
@@ -499,7 +493,7 @@ func (f *fakeAccessController) Authorized(ctx context.Context, access ...registr
 		f.t.Logf("fake authorizer: authorizing access to %s:%s:%s", access.Resource.Type, access.Resource.Name, access.Action)
 	}
 
-	ctx = WithAuthPerformed(ctx)
+	ctx = withAuthPerformed(ctx)
 	return ctx, nil
 }
 
