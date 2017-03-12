@@ -28,7 +28,7 @@ import (
 type Registry struct {
 	oClient          *osclient.Client
 	kClient          *kclient.Client
-	podsByIP         map[string]*kapi.Pod
+	podsByIP         map[string]kapi.Pod
 	podTrackingLock  sync.Mutex
 	serviceNetwork   *net.IPNet
 	clusterNetwork   *net.IPNet
@@ -74,7 +74,7 @@ func NewRegistry(osClient *osclient.Client, kClient *kclient.Client) *Registry {
 	return &Registry{
 		oClient:  osClient,
 		kClient:  kClient,
-		podsByIP: make(map[string]*kapi.Pod),
+		podsByIP: make(map[string]kapi.Pod),
 	}
 }
 
@@ -496,7 +496,7 @@ func (registry *Registry) getTrackedPod(ip string) (*kapi.Pod, bool) {
 	defer registry.podTrackingLock.Unlock()
 
 	pod, ok := registry.podsByIP[ip]
-	return pod, ok
+	return &pod, ok
 }
 
 func (registry *Registry) trackPod(pod *kapi.Pod) {
@@ -519,7 +519,7 @@ func (registry *Registry) trackPod(pod *kapi.Pod) {
 				pod.Status.PodIP, podInfo.Namespace, podInfo.UID, pod.ObjectMeta.Namespace, pod.UID)
 		}
 
-		registry.podsByIP[pod.Status.PodIP] = pod
+		registry.podsByIP[pod.Status.PodIP] = *pod
 	} else if ok && podInfo.UID == pod.UID {
 		// If the UIDs match, then this pod is moving to a state that indicates it is not running
 		// so we need to remove it from the cache
