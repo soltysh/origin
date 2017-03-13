@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit c8e072a467b28c5701d97eaeeb8cfe3fdb8aaa4a
+%global commit 1f3cb993c90f458a00de2d78d40b8933519bdebb
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.0.49 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=openshift3/ose OS_GIT_COMMIT=c8e072a
+%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.0.50 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=openshift3/ose OS_GIT_COMMIT=1f3cb99
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.5.0.50
+Version:        3.5.0.51
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -571,6 +571,38 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Mon Mar 13 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.5.0.51-1
+- UPSTREAM: 42973: Fix selinux support in vsphere (gethemant@gmail.com)
+- Accept the `$JUNIT_REPORT` flag in networking tests (skuznets@redhat.com)
+- Use a very high patch number on RPM release builds (skuznets@redhat.com)
+- Generate jUnit XML reports from hack/test-end-to-end.sh (skuznets@redhat.com)
+- DRY out `os::cmd` jUnit generation, improve logic (skuznets@redhat.com)
+- Disable local fsgroup quota test when not using XFS (skuznets@redhat.com)
+- Reorder extended startup to yield jUnit with TEST_ONLY (skuznets@redhat.com)
+- Always run extended tests with `-v -noColor` (skuznets@redhat.com)
+- When no jUnit suites are requested, don't merge them (skuznets@redhat.com)
+- Revert "Fix of BUG 1405440" (pcameron@redhat.com)
+- Test fixes to the haproxy container on overlayfs (ccoleman@redhat.com)
+- Fix a bug in the origin/node image with trailing slash (ccoleman@redhat.com)
+- CGO_ENABLED prevents build cache reuse (ccoleman@redhat.com)
+- UPSTREAM: 41226: Fix for detach volume when node is not present/ powered off
+  (eboyd@redhat.com)
+- UPSTREAM: 41217: Fix wrong VM name is retrieved by the vSphere Cloud Provider
+  (eboyd@redhat.com)
+- UPSTREAM: 40693: fix for vSphere DeleteVolume (eboyd@redhat.com)
+- UPSTREAM: 39757: Fix space in volumePath in vSphere (eboyd@redhat.com)
+- UPSTREAM: 39754: Fix fsGroup to vSphere (eboyd@redhat.com)
+- UPSTREAM: 39752: Fix panic in vSphere cloud provider (eboyd@redhat.com)
+- UPSTREAM: 39751: Changed default scsi controller type (eboyd@redhat.com)
+- Insecure istag allows for insecure transport (miminar@redhat.com)
+- Improve error message in image api helper (miminar@redhat.com)
+- Do the manifest verification just once (miminar@redhat.com)
+- Allow remote blob access checks only for manifest PUT (miminar@redhat.com)
+- Cache imagestream and images during a handling of a single request
+  (miminar@redhat.com)
+- UPSTREAM: 42622: Preserve custom etcd prefix compatibility for etcd3
+  (mkhan@redhat.com)
+
 * Thu Mar 09 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.5.0.50-1
 - 
 
