@@ -64,16 +64,6 @@ func TestPullthroughManifests(t *testing.T) {
 	repoName := fmt.Sprintf("%s/%s", namespace, repo)
 	tag := "latest"
 
-	client := &testclient.Fake{}
-
-	// TODO: get rid of those nasty global vars
-	backupRegistryClient := DefaultRegistryClient
-	DefaultRegistryClient = makeFakeRegistryClient(client, fake.NewSimpleClientset())
-	defer func() {
-		// set it back once this test finishes to make other unit tests working again
-		DefaultRegistryClient = backupRegistryClient
-	}()
-
 	installFakeAccessController(t)
 	setPassthroughBlobDescriptorServiceFactory()
 
@@ -102,9 +92,13 @@ func TestPullthroughManifests(t *testing.T) {
 	}
 	image.DockerImageReference = fmt.Sprintf("%s/%s/%s@%s", serverURL.Host, namespace, repo, image.Name)
 	image.DockerImageManifest = ""
-	client.AddReactor("get", "images", registrytest.GetFakeImageGetHandler(t, *image))
 
-	createTestImageStreamReactor(t, client, image, namespace, repo, tag)
+	os, client := registrytest.NewFakeOpenShiftWithClient()
+
+	err = registrytest.RegisterImage(os, image, namespace, repo, tag)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	for _, tc := range []struct {
 		name                  string
@@ -142,8 +136,6 @@ func TestPullthroughManifests(t *testing.T) {
 	} {
 		localManifestService := newTestManifestService(repoName, tc.localData)
 
-		ctx := WithTestPassthroughToUpstream(context.Background(), false)
-
 		repo := newTestRepository(t, namespace, repo, testRepositoryOptions{
 			client:            client,
 			enablePullThrough: true,
@@ -154,6 +146,7 @@ func TestPullthroughManifests(t *testing.T) {
 			repo:            repo,
 		}
 
+		ctx := WithTestPassthroughToUpstream(context.Background(), false)
 		manifestResult, err := ptms.Get(ctx, tc.manifestDigest)
 		switch err.(type) {
 		case distribution.ErrManifestUnknownRevision:
