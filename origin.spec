@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 49d8676ac652ccdada5d7a47cfd672c447bb1beb
+%global commit c09784bc7718c2e9d3cb51db3cf6e9c671eaa245
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.9 OS_GIT_COMMIT=49d8676 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.10 OS_GIT_COMMIT=8a85183 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -51,7 +51,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.10
+Version:        3.4.1.11
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -578,6 +578,14 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Mar 21 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.11
+- UPSTREAM: 40417: Always detach volumes in operator executor
+  (hekumar@redhat.com)
+- Exclude list cleans up properly (#1430929) (tdawson@redhat.com)
+- UPSTREAM: 41147: Add logging to eviction manager (decarr@redhat.com)
+- Allow control over TLS version and ciphers for docker-registry
+  (jliggitt@redhat.com)
+
 * Tue Mar 07 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.10
 - make ciphers/tls version configurable (jliggitt@redhat.com)
 - disable broken poddisruption budget test (bparees@redhat.com)
