@@ -56,7 +56,8 @@ import (
 )
 
 const (
-	DefaultEtcdPathPrefix = "/registry"
+	DefaultEtcdPathPrefix           = "/registry"
+	DefaultDeserializationCacheSize = 50000
 )
 
 // StorageDestinations is a mapping from API group & resource to
