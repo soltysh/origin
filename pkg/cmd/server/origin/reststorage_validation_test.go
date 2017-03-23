@@ -10,6 +10,7 @@ import (
 	extapi "k8s.io/kubernetes/pkg/apis/extensions"
 	kubeletclient "k8s.io/kubernetes/pkg/kubelet/client"
 	etcdstorage "k8s.io/kubernetes/pkg/storage/etcd"
+	"k8s.io/kubernetes/pkg/storage/etcd/etcdtest"
 	"k8s.io/kubernetes/pkg/util/sets"
 
 	_ "github.com/openshift/origin/pkg/api/install"
@@ -83,7 +84,7 @@ func TestAllOpenShiftResourceCoverage(t *testing.T) {
 
 // fakeMasterConfig creates a new fake master config with an empty kubelet config and dummy storage.
 func fakeMasterConfig() *MasterConfig {
-	etcdHelper := etcdstorage.NewEtcdStorage(nil, api.Codecs.LegacyCodec(), "", false)
+	etcdHelper := etcdstorage.NewEtcdStorage(nil, api.Codecs.LegacyCodec(), "", false, etcdtest.DeserializationCacheSize)
 
 	return &MasterConfig{
 		KubeletClientConfig: &kubeletclient.KubeletClientConfig{},

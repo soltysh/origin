@@ -45,6 +45,7 @@ func TestAPIServerDefaults(t *testing.T) {
 		EnableWatchCache:        true,
 		EtcdConfig: etcdstorage.EtcdConfig{
 			Prefix: "/registry",
+			DeserializationCacheSize: 50000,
 		},
 		EventTTL:               1 * time.Hour,
 		MasterCount:            1,

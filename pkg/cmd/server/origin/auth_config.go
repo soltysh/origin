@@ -58,7 +58,13 @@ func BuildAuthConfig(masterConfig *MasterConfig) (*AuthConfig, error) {
 		if err != nil {
 			return nil, err
 		}
-		backendEtcdHelper, err := NewEtcdStorage(backendClient, groupVersion, options.EtcdStorageConfig.OpenShiftStoragePrefix)
+
+		server, err := restoptions.GetKubeAPIServerArguments(&options)
+		if err != nil {
+			return nil, err
+		}
+
+		backendEtcdHelper, err := NewEtcdStorage(backendClient, groupVersion, options.EtcdStorageConfig.OpenShiftStoragePrefix, server.EtcdConfig.DeserializationCacheSize)
 		if err != nil {
 			return nil, fmt.Errorf("Error setting up server storage: %v", err)
 		}

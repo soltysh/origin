@@ -215,7 +215,7 @@ func BuildKubernetesMasterConfig(options configapi.MasterConfig, requestContextM
 	enabledKubeVersions := configapi.GetEnabledAPIVersionsForGroup(*options.KubernetesMasterConfig, configapi.APIGroupKube)
 	if len(enabledKubeVersions) > 0 {
 		kubeStorageVersion := unversioned.GroupVersion{Group: configapi.APIGroupKube, Version: options.EtcdStorageConfig.KubernetesStorageVersion}
-		databaseStorage, err := NewEtcdStorage(etcdClient, kubeStorageVersion, options.EtcdStorageConfig.KubernetesStoragePrefix)
+		databaseStorage, err := NewEtcdStorage(etcdClient, kubeStorageVersion, options.EtcdStorageConfig.KubernetesStoragePrefix, server.EtcdConfig.DeserializationCacheSize)
 		if err != nil {
 			return nil, fmt.Errorf("Error setting up Kubernetes server storage: %v", err)
 		}
@@ -231,7 +231,7 @@ func BuildKubernetesMasterConfig(options configapi.MasterConfig, requestContextM
 	if extensionsEnabled || autoscalingEnabled || batchEnabled {
 		// TODO: replace this with a configured storage version for extensions once configuration exposes this
 		extensionsStorageVersion := unversioned.GroupVersion{Group: extensions.GroupName, Version: "v1beta1"}
-		databaseStorage, err := NewEtcdStorage(etcdClient, extensionsStorageVersion, options.EtcdStorageConfig.KubernetesStoragePrefix)
+		databaseStorage, err := NewEtcdStorage(etcdClient, extensionsStorageVersion, options.EtcdStorageConfig.KubernetesStoragePrefix, server.EtcdConfig.DeserializationCacheSize)
 		if err != nil {
 			return nil, fmt.Errorf("Error setting up Kubernetes extensions server storage: %v", err)
 		}
@@ -355,6 +355,6 @@ func getAPIGroupVersionOverrides(options configapi.MasterConfig) map[string]gene
 }
 
 // NewEtcdStorage returns a storage interface for the provided storage version.
-func NewEtcdStorage(client newetcdclient.Client, version unversioned.GroupVersion, prefix string) (helper storage.Interface, err error) {
-	return etcdstorage.NewEtcdStorage(client, kapi.Codecs.LegacyCodec(version), prefix, false), nil
+func NewEtcdStorage(client newetcdclient.Client, version unversioned.GroupVersion, prefix string, cacheSize int) (helper storage.Interface, err error) {
+	return etcdstorage.NewEtcdStorage(client, kapi.Codecs.LegacyCodec(version), prefix, false, cacheSize), nil
 }

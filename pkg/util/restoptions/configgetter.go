@@ -10,6 +10,7 @@ import (
 	kapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/rest"
 	"k8s.io/kubernetes/pkg/api/unversioned"
+	"k8s.io/kubernetes/pkg/genericapiserver"
 	genericrest "k8s.io/kubernetes/pkg/registry/generic"
 	genericetcd "k8s.io/kubernetes/pkg/registry/generic/etcd"
 	"k8s.io/kubernetes/pkg/runtime"
@@ -35,20 +36,22 @@ type configRESTOptionsGetter struct {
 
 	etcdHelper storage.Interface
 
-	cacheEnabled     bool
-	defaultCacheSize int
-	cacheSizes       map[unversioned.GroupResource]int
+	cacheEnabled             bool
+	defaultCacheSize         int
+	deserializationCacheSize int
+	cacheSizes               map[unversioned.GroupResource]int
 }
 
 // NewConfigGetter returns a restoptions.Getter implemented using information from the provided master config.
 // By default, the etcd watch cache is enabled with a size of 1000 per resource type.
 func NewConfigGetter(masterOptions configapi.MasterConfig) Getter {
 	getter := &configRESTOptionsGetter{
-		masterOptions:    masterOptions,
-		cacheEnabled:     true,
-		defaultCacheSize: 1000,
-		cacheSizes:       map[unversioned.GroupResource]int{},
-		restOptionsMap:   map[unversioned.GroupResource]genericrest.RESTOptions{},
+		masterOptions:            masterOptions,
+		cacheEnabled:             true,
+		defaultCacheSize:         1000,
+		deserializationCacheSize: genericapiserver.DefaultDeserializationCacheSize,
+		cacheSizes:               map[unversioned.GroupResource]int{},
+		restOptionsMap:           map[unversioned.GroupResource]genericrest.RESTOptions{},
 	}
 
 	if err := getter.loadWatchCacheSettings(); err != nil {
@@ -63,12 +66,13 @@ func (g *configRESTOptionsGetter) loadWatchCacheSettings() error {
 		return nil
 	}
 
-	server := apiserveroptions.NewAPIServer()
-	if errs := cmdflags.Resolve(g.masterOptions.KubernetesMasterConfig.APIServerArguments, server.AddFlags); len(errs) > 0 {
-		return kerrors.NewAggregate(errs)
+	server, err := GetKubeAPIServerArguments(&g.masterOptions)
+	if err != nil {
+		return err
 	}
 
 	g.cacheEnabled = server.EnableWatchCache
+	g.deserializationCacheSize = server.EtcdConfig.DeserializationCacheSize
 
 	errs := []error{}
 	for _, c := range server.WatchCacheSizes {
@@ -106,7 +110,7 @@ func (g *configRESTOptionsGetter) GetRESTOptions(resource unversioned.GroupResou
 		}
 		// TODO: choose destination group/version based on input group/resource
 		groupVersion := unversioned.GroupVersion{Group: "", Version: g.masterOptions.EtcdStorageConfig.OpenShiftStorageVersion}
-		g.etcdHelper = etcdstorage.NewEtcdStorage(etcdClient, kapi.Codecs.LegacyCodec(groupVersion), g.masterOptions.EtcdStorageConfig.OpenShiftStoragePrefix, false)
+		g.etcdHelper = etcdstorage.NewEtcdStorage(etcdClient, kapi.Codecs.LegacyCodec(groupVersion), g.masterOptions.EtcdStorageConfig.OpenShiftStoragePrefix, false, g.deserializationCacheSize)
 	}
 
 	configuredCacheSize, specified := g.cacheSizes[resource]
@@ -137,4 +141,18 @@ func (g *configRESTOptionsGetter) GetRESTOptions(resource unversioned.GroupResou
 	g.restOptionsMap[resource] = resourceOptions
 
 	return resourceOptions, nil
+}
+
+func GetKubeAPIServerArguments(masterOptions *configapi.MasterConfig) (*apiserveroptions.APIServer, error) {
+	server := apiserveroptions.NewAPIServer()
+
+	if masterOptions == nil || masterOptions.KubernetesMasterConfig == nil || masterOptions.KubernetesMasterConfig.APIServerArguments == nil {
+		return server, nil
+	}
+
+	if errs := cmdflags.Resolve(masterOptions.KubernetesMasterConfig.APIServerArguments, server.AddFlags); len(errs) > 0 {
+		return nil, kerrors.NewAggregate(errs)
+	}
+
+	return server, nil
 }
