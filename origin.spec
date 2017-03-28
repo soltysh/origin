@@ -22,12 +22,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit d2f211063b1299626f56703f28f64c1e12c73bd7
+%global commit b6101bc8f9108031604696b52b13bbc6a642212a
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.28-2-gd2f2110 -X github.com/openshift/origin/pkg/version.commitFromGit d2f2110 -X k8s.io/kubernetes/pkg/version.gitCommit d2f2110 -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.29-3-gb6101bc -X github.com/openshift/origin/pkg/version.commitFromGit b6101bc -X k8s.io/kubernetes/pkg/version.gitCommit b6101bc -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -47,7 +47,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.2.1.29
+Version:        3.2.1.30
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -555,6 +555,11 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Tue Mar 28 2017 Troy Dawson <tdawson@redhat.com> 3.2.1.30
+- Make etcd deserialization cache size configurable (mkhan@redhat.com)
+- UPSTREAM: 24164: fix immediate evict in cache (mkhan@redhat.com)
+- UPSTREAM: 23914: Make etcd cache size configurable (agoldste@redhat.com)
+
 * Tue Mar 21 2017 Troy Dawson <tdawson@redhat.com> 3.2.1.29
 - UPSTREAM: <carry>: Fix the IP to pod map (danw@redhat.com)
 
