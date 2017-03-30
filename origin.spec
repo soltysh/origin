@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 7705b8bf33ed20722516a699b8715898daa706df
+%global commit 6e0bc89a218d9c103dd76f4dd92973cc4afa3fa4
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.11 OS_GIT_COMMIT=289b8d6 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.12 OS_GIT_COMMIT=6e0bc89 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -51,7 +51,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.12
+Version:        3.4.1.13
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -578,6 +578,10 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Thu Mar 30 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.13
+- migration: fixes to manifest migration script (miminar@redhat.com)
+- Verify manifest with remote layers (agladkov@redhat.com)
+
 * Tue Mar 28 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.12
 - Backport: PR 13436: Fix eventqueue for resynced events (marun@redhat.com)
 - BACKPORT PR13494 - change the router eventqueue key function
