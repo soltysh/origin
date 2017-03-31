@@ -73,6 +73,21 @@ func (fos *FakeOpenShift) GetImage(name string) (*imageapi.Image, error) {
 	return &image, nil
 }
 
+func (fos *FakeOpenShift) UpdateImage(image *imageapi.Image) (*imageapi.Image, error) {
+	fos.mu.Lock()
+	defer fos.mu.Unlock()
+
+	_, ok := fos.images[image.Name]
+	if !ok {
+		return nil, errors.NewNotFound(api.Resource("images"), image.Name)
+	}
+
+	fos.images[image.Name] = *image
+	fos.logger.Debugf("(*FakeOpenShift).images[%q] updated", image.Name)
+
+	return image, nil
+}
+
 func (fos *FakeOpenShift) CreateImageStream(namespace string, is *imageapi.ImageStream) (*imageapi.ImageStream, error) {
 	fos.mu.Lock()
 	defer fos.mu.Unlock()
@@ -133,7 +148,7 @@ func (fos *FakeOpenShift) CreateImageStreamMapping(namespace string, ism *imagea
 	}
 
 	_, err = fos.CreateImage(&ism.Image)
-	if err != nil {
+	if err != nil && !errors.IsAlreadyExists(err) {
 		return nil, err
 	}
 
@@ -300,6 +315,11 @@ func (fos *FakeOpenShift) imagesHandler(action core.Action) (bool, runtime.Objec
 			switch action := action.(type) {
 			case core.GetActionImpl:
 				image, err := fos.GetImage(action.Name)
+				return true, image, err
+			case core.UpdateActionImpl:
+				image, err := fos.UpdateImage(
+					action.Object.(*imageapi.Image),
+				)
 				return true, image, err
 			}
 			return fos.todo(action)
