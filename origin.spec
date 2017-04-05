@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 133eb70d5864a96110ebfd21bcd36d371dfa0018
+%global commit cac6d28a03adbccccf0cb2fd2b6efae13f3ca498
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=openshift3/ose OS_GIT_COMMIT=133eb70
+%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.1 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=openshift3/ose OS_GIT_COMMIT=cac6d28
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.5.5.1
+Version:        3.5.5.2
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -585,6 +585,15 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Wed Apr 05 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.5.5.2-1
+- Add architecture type to the os::build::rpm::format_nvr function
+  (jhadvig@redhat.com)
+- Let the name of the RPM package being built vary (skuznets@redhat.com)
+- Break out RPM version logic from RPM build script (skuznets@redhat.com)
+- enable release repo (jhadvig@redhat.com)
+- Update namespace finalizer to delete RoleBindingRestrictions
+  (mkhan@redhat.com)
+
 * Wed Apr 05 2017 Troy Dawson <tdawson@redhat.com> 3.5.5.1-1
 - Update OAuth grant flow tests (jliggitt@redhat.com)
 - Redirect to relative subpath for approval, relative parent path on success
