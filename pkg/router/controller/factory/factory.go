@@ -19,6 +19,7 @@ import (
 	routeapi "github.com/openshift/origin/pkg/route/api"
 	"github.com/openshift/origin/pkg/router"
 	"github.com/openshift/origin/pkg/router/controller"
+	"k8s.io/kubernetes/pkg/api/meta"
 )
 
 // RouterControllerFactory initializes and manages the watches that drive a router
@@ -47,10 +48,27 @@ func NewDefaultRouterControllerFactory(oc osclient.RoutesNamespacer, kc kclient.
 	}
 }
 
+// routerKeyFn comes from MetaNamespaceKeyFunc in vendor/k8s.io/kubernetes/pkg/client/cache/store.go.
+// It was modified and added here because there is no way to know if an ExplicitKey was passed before
+// adding the UID to prevent an invalid state transistion if deletions and adds happen quickly.
+func routerKeyFn(obj interface{}) (string, error) {
+	if key, ok := obj.(cache.ExplicitKey); ok {
+		return string(key), nil
+	}
+	meta, err := meta.Accessor(obj)
+	if err != nil {
+		return "", fmt.Errorf("object has no meta: %v", err)
+	}
+	if len(meta.GetNamespace()) > 0 {
+		return meta.GetNamespace() + "/" + meta.GetName() + "/" + string(meta.GetUID()), nil
+	}
+	return meta.GetName() + "/" + string(meta.GetUID()), nil
+}
+
 // Create begins listing and watching against the API server for the desired route and endpoint
 // resources. It spawns child goroutines that cannot be terminated.
 func (factory *RouterControllerFactory) Create(plugin router.Plugin) *controller.RouterController {
-	routeEventQueue := oscache.NewEventQueue(cache.MetaNamespaceKeyFunc)
+	routeEventQueue := oscache.NewEventQueue(routerKeyFn)
 	cache.NewReflector(&routeLW{
 		client:    factory.OSClient,
 		namespace: factory.Namespace,
@@ -58,7 +76,7 @@ func (factory *RouterControllerFactory) Create(plugin router.Plugin) *controller
 		label:     factory.Labels,
 	}, &routeapi.Route{}, routeEventQueue, factory.ResyncInterval).Run()
 
-	endpointsEventQueue := oscache.NewEventQueue(cache.MetaNamespaceKeyFunc)
+	endpointsEventQueue := oscache.NewEventQueue(routerKeyFn)
 	cache.NewReflector(&endpointsLW{
 		client:    factory.KClient,
 		namespace: factory.Namespace,
@@ -113,7 +131,7 @@ func (factory *RouterControllerFactory) Create(plugin router.Plugin) *controller
 // resources. It spawns child goroutines that cannot be terminated. It is a more efficient store of a
 // route system.
 func (factory *RouterControllerFactory) CreateNotifier(changed func()) RoutesByHost {
-	keyFn := cache.MetaNamespaceKeyFunc
+	keyFn := routerKeyFn
 	routeStore := cache.NewIndexer(keyFn, cache.Indexers{"host": hostIndexFunc})
 	routeEventQueue := oscache.NewEventQueueForStore(keyFn, routeStore)
 	cache.NewReflector(&routeLW{
