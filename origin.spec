@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit a7d3bffa3f1ca1017042b33b374a8403ffb8aede
+%global commit 47aa6409d89a176c5ebaadb5c08ee2eb161beb33
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.14 OS_GIT_COMMIT=68998d4 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.15 OS_GIT_COMMIT=9e3ce8d OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -51,7 +51,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.15
+Version:        3.4.1.16
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -578,6 +578,9 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Sat Apr 08 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.16
+- Fix image pruning with both strong & weak refs (maszulik@redhat.com)
+
 * Thu Apr 06 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.15
 - Update OAuth grant flow tests (jliggitt@redhat.com)
 - Redirect to relative subpath for approval, relative parent path on success
