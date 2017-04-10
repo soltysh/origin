@@ -226,13 +226,17 @@ func doTestRegistryClientImage(t *testing.T, registry, version string) {
 	}
 }
 
-func TestRegistryClientImageV2(t *testing.T) {
-	doTestRegistryClientImage(t, dockerHubV2RegistryName, "v2")
-}
+// This test was disabled due to dockerhub currently supporting only v2 images
+// see: https://github.com/openshift/ose/pull/683#issuecomment-292913702
+// func TestRegistryClientImageV2(t *testing.T) {
+// 	doTestRegistryClientImage(t, dockerHubV2RegistryName, "v2")
+// }
 
-func TestRegistryClientImageV1(t *testing.T) {
-	doTestRegistryClientImage(t, dockerHubV1RegistryName, "v1")
-}
+// This test was disabled due to dockerhub currently supporting only v2 images
+// see: https://github.com/openshift/ose/pull/683#issuecomment-292913702
+// func TestRegistryClientImageV1(t *testing.T) {
+// 	doTestRegistryClientImage(t, dockerHubV1RegistryName, "v1")
+// }
 
 func TestRegistryClientQuayIOImage(t *testing.T) {
 	conn, err := dockerregistry.NewClient(10*time.Second).Connect("quay.io", false)
