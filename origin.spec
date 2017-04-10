@@ -21,12 +21,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit e632946abd5d231a2994fed4d6a8b4cb03dcba76
+%global commit a5f79b0185b11403698771813154d61951c8d363
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.9-2-g28ccd8d -X github.com/openshift/origin/pkg/version.commitFromGit 28ccd8d -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 1+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.1.1.10-8-g99f2681 -X github.com/openshift/origin/pkg/version.commitFromGit 99f2681 -X k8s.io/kubernetes/pkg/version.gitCommit 4c8e6f4 -X k8s.io/kubernetes/pkg/version.gitVersion v1.1.0-origin-1107-g4c8e6f4
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.1.1.10
+Version:        3.1.1.11
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -536,6 +536,13 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Mon Apr 10 2017 Troy Dawson <tdawson@redhat.com> 3.1.1.11
+- Disable dockerhub v1 test (maszulik@redhat.com)
+- Fix image pruning with both strong & weak refs (maszulik@redhat.com)
+- Use posttrans for docker-excluder (#1404193) (tdawson@redhat.com)
+- Do not exclude the excluder for atomic-openshift (tdawson@redhat.com)
+- Fix excluder incorrectly creating exclude line. (tdawson@redhat.com)
+
 * Wed Nov 30 2016 Scott Dodson <sdodson@redhat.com> 3.1.1.10
 - Fix bash syntax error in excluder (sdodson@redhat.com)
 
