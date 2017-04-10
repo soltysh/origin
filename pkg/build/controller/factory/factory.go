@@ -265,6 +265,7 @@ func (factory *BuildPodControllerFactory) CreateDeleteController() controller.Ru
 	buildPodDeleteController := &buildcontroller.BuildPodDeleteController{
 		BuildStore:   factory.buildStore,
 		BuildUpdater: factory.BuildUpdater,
+		RunPolicies:  policy.GetAllRunPolicies(factory.BuildLister, factory.BuildUpdater),
 	}
 
 	return &controller.RetryController{

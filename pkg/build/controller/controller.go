@@ -302,6 +302,9 @@ func (bc *BuildPodController) HandlePod(pod *kapi.Pod) error {
 	nextStatus := build.Status.Phase
 	currentReason := build.Status.Reason
 
+	// if the build is marked failed, the build status reason has already been
+	// set (probably by the build pod itself), so don't do any updating here
+	// or we'll overwrite the correct value.
 	if build.Status.Phase != buildapi.BuildPhaseFailed {
 		switch pod.Status.Phase {
 		case kapi.PodRunning:
@@ -349,9 +352,14 @@ func (bc *BuildPodController) HandlePod(pod *kapi.Pod) error {
 			build.Status.Message = ""
 		}
 	}
+
+	needsUpdate := false
 	// Update the build object when it progress to a next state or the reason for
-	// the current state changed.
-	if (!hasBuildPodNameAnnotation(build) || build.Status.Phase != nextStatus || build.Status.Phase == buildapi.BuildPhaseFailed) && !buildutil.IsBuildComplete(build) {
+	// the current state changed.  Do not touch builds that are complete
+	// because we'd potentially be overwriting build state information set by the
+	// build pod directly.
+	if (!hasBuildPodNameAnnotation(build) || build.Status.Phase != nextStatus) && !buildutil.IsBuildComplete(build) {
+		needsUpdate = true
 		setBuildPodNameAnnotation(build, pod.Name)
 		reason := ""
 		if len(build.Status.Reason) > 0 {
@@ -359,23 +367,33 @@ func (bc *BuildPodController) HandlePod(pod *kapi.Pod) error {
 		}
 		glog.V(4).Infof("Updating build %s/%s status %s -> %s%s", build.Namespace, build.Name, build.Status.Phase, nextStatus, reason)
 		build.Status.Phase = nextStatus
-
-		if buildutil.IsBuildComplete(build) {
-			setBuildCompletionTimeAndDuration(build)
-		}
 		if build.Status.Phase == buildapi.BuildPhaseRunning {
 			now := unversioned.Now()
 			build.Status.StartTimestamp = &now
 		}
+	}
+
+	// we're going to get pod relist events for completed/failed pods,
+	// there's no reason to re-update the build and rerun
+	// HandleBuildCompletion if we've already done it for this
+	// build previously.
+	buildWasComplete := build.Status.CompletionTimestamp != nil
+	if !buildWasComplete && buildutil.IsBuildComplete(build) && build.Status.Phase != buildapi.BuildPhaseCancelled {
+		needsUpdate = setBuildCompletionTimeAndDuration(build)
+	}
+	if needsUpdate {
 		if err := bc.BuildUpdater.Update(build.Namespace, build); err != nil {
 			return fmt.Errorf("failed to update build %s/%s: %v", build.Namespace, build.Name, err)
 		}
-		glog.V(4).Infof("Build %s/%s status was updated %s -> %s", build.Namespace, build.Name, build.Status.Phase, nextStatus)
-
-		if buildutil.IsBuildComplete(build) {
-			handleBuildCompletion(build, bc.RunPolicies)
-		}
+		glog.V(4).Infof("Build %s/%s status was updated to %s", build.Namespace, build.Name, build.Status.Phase)
 	}
+	// if the build was not previously marked complete but it's complete now,
+	// handle completion for it.  otherwise ignore it because we've already
+	// handled its completion previously.
+	if !buildWasComplete && buildutil.IsBuildComplete(build) {
+		handleBuildCompletion(build, bc.RunPolicies)
+	}
+
 	return nil
 }
 
@@ -388,6 +406,7 @@ func isBuildCancellable(build *buildapi.Build) bool {
 type BuildPodDeleteController struct {
 	BuildStore   cache.Store
 	BuildUpdater buildclient.BuildUpdater
+	RunPolicies  []policy.RunPolicy
 }
 
 // HandleBuildPodDeletion sets the status of a build to error if the build pod has been deleted
@@ -429,6 +448,7 @@ func (bc *BuildPodDeleteController) HandleBuildPodDeletion(pod *kapi.Pod) error 
 		if err := bc.BuildUpdater.Update(build.Namespace, build); err != nil {
 			return fmt.Errorf("Failed to update build %s/%s: %v", build.Namespace, build.Name, err)
 		}
+		handleBuildCompletion(build, bc.RunPolicies)
 	}
 	return nil
 }
@@ -493,12 +513,19 @@ func setBuildPodNameAnnotation(build *buildapi.Build, podName string) {
 	build.Annotations[buildapi.BuildPodNameAnnotation] = podName
 }
 
-func setBuildCompletionTimeAndDuration(build *buildapi.Build) {
+func setBuildCompletionTimeAndDuration(build *buildapi.Build) bool {
+	if build.Status.CompletionTimestamp != nil {
+		return false
+	}
 	now := unversioned.Now()
 	build.Status.CompletionTimestamp = &now
-	if build.Status.StartTimestamp != nil {
-		build.Status.Duration = build.Status.CompletionTimestamp.Rfc3339Copy().Time.Sub(build.Status.StartTimestamp.Rfc3339Copy().Time)
+	// apparently this build completed so fast we didn't see the pod running event,
+	// so just use the completion time as the start time.
+	if build.Status.StartTimestamp == nil {
+		build.Status.StartTimestamp = &now
 	}
+	build.Status.Duration = build.Status.CompletionTimestamp.Rfc3339Copy().Time.Sub(build.Status.StartTimestamp.Rfc3339Copy().Time)
+	return true
 }
 
 func handleBuildCompletion(build *buildapi.Build, runPolicies []policy.RunPolicy) {

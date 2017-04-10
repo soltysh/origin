@@ -485,7 +485,7 @@ func TestHandlePod(t *testing.T) {
 			outStatus:           buildapi.BuildPhaseComplete,
 			podStatus:           kapi.PodSucceeded,
 			exitCode:            0,
-			startTimestamp:      nil,
+			startTimestamp:      curtime,
 			completionTimestamp: curtime,
 		},
 		{ // 4
@@ -494,7 +494,7 @@ func TestHandlePod(t *testing.T) {
 			outStatus:           buildapi.BuildPhaseFailed,
 			podStatus:           kapi.PodFailed,
 			exitCode:            -1,
-			startTimestamp:      nil,
+			startTimestamp:      curtime,
 			completionTimestamp: curtime,
 		},
 		{ // 5
@@ -504,7 +504,7 @@ func TestHandlePod(t *testing.T) {
 			podStatus:           kapi.PodSucceeded,
 			exitCode:            0,
 			buildUpdater:        &errBuildUpdater{},
-			startTimestamp:      nil,
+			startTimestamp:      curtime,
 			completionTimestamp: curtime,
 		},
 		{ // 6
@@ -586,7 +586,7 @@ func TestCancelBuild(t *testing.T) {
 			inStatus:            buildapi.BuildPhaseNew,
 			outStatus:           buildapi.BuildPhaseCancelled,
 			exitCode:            0,
-			startTimestamp:      nil,
+			startTimestamp:      curtime,
 			completionTimestamp: curtime,
 		},
 		{ // 1
@@ -594,7 +594,7 @@ func TestCancelBuild(t *testing.T) {
 			outStatus:           buildapi.BuildPhaseCancelled,
 			podStatus:           kapi.PodRunning,
 			exitCode:            0,
-			startTimestamp:      nil,
+			startTimestamp:      curtime,
 			completionTimestamp: curtime,
 		},
 		{ // 2
@@ -602,7 +602,7 @@ func TestCancelBuild(t *testing.T) {
 			outStatus:           buildapi.BuildPhaseCancelled,
 			podStatus:           kapi.PodRunning,
 			exitCode:            0,
-			startTimestamp:      nil,
+			startTimestamp:      curtime,
 			completionTimestamp: curtime,
 		},
 		{ // 3
@@ -884,6 +884,7 @@ func mockBuildPodDeleteController(build *buildapi.Build, buildUpdater *customBui
 	return &BuildPodDeleteController{
 		BuildStore:   buildtest.FakeBuildStore{Build: build, Err: err},
 		BuildUpdater: buildUpdater,
+		RunPolicies:  policy.GetAllRunPolicies(&okBuildLister{}, &okBuildUpdater{}),
 	}
 }
 
