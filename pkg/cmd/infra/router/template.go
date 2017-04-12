@@ -200,6 +200,8 @@ func (o *TemplateRouterOptions) Run() error {
 		return err
 	}
 
+	startProfiler()
+
 	svcFetcher := templateplugin.NewListWatchServiceLookup(kc, 10*time.Minute)
 	templatePlugin, err := templateplugin.NewTemplatePlugin(pluginCfg, svcFetcher)
 	if err != nil {
