@@ -112,7 +112,7 @@ func stressRouter(t *testing.T, namespaceCount, routesPerNamespace, routerCount,
 	// Create the routers
 	for i := int32(0); i < routerCount; i++ {
 		routerName := fmt.Sprintf("router_%d", i)
-		router := launchRouter(oc, kc, maxRouterDelay, routerName, reloadInterval, reloadedMap)
+		router := launchRouter(t, oc, kc, maxRouterDelay, routerName, reloadInterval, reloadedMap)
 		plugins = append(plugins, router)
 	}
 
@@ -282,12 +282,14 @@ func (p *DelayPlugin) Commit() error {
 
 // launchRouter launches a template router that communicates with the
 // api via the provided clients.
-func launchRouter(oc osclient.Interface, kc kclient.Interface, maxDelay int32, name string, reloadInterval int, reloadedMap map[string]bool) (templatePlugin *templateplugin.TemplatePlugin) {
+func launchRouter(t *testing.T, oc osclient.Interface, kc kclient.Interface, maxDelay int32, name string, reloadInterval int, reloadedMap map[string]bool) (templatePlugin *templateplugin.TemplatePlugin) {
 	r := templateplugin.NewFakeTemplateRouter()
 
 	reloadedMap[name] = false
 	r.EnableRateLimiter(reloadInterval, func() error {
 		reloadedMap[name] = true
+		t.Logf("Router %s reloaded\n", name)
+		r.FakeReloadHandler()
 		return nil
 	})
 
