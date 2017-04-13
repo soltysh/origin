@@ -117,6 +117,10 @@ func (plugin *flockerPlugin) GetAccessModes() []api.PersistentVolumeAccessMode {
 	}
 }
 
+func (plugin *flockerPlugin) SupportsBulkVolumeVerification() bool {
+	return false
+}
+
 func (p *flockerPlugin) getFlockerVolumeSource(spec *volume.Spec) (*api.FlockerVolumeSource, bool) {
 	// AFAIK this will always be r/w, but perhaps for the future it will be needed
 	readOnly := false

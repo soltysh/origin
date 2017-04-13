@@ -82,6 +82,10 @@ func (plugin *configMapPlugin) NewMounter(spec *volume.Spec, pod *api.Pod, opts 
 		opts:            &opts}, nil
 }
 
+func (plugin *configMapPlugin) SupportsBulkVolumeVerification() bool {
+	return false
+}
+
 func (plugin *configMapPlugin) NewUnmounter(volName string, podUID types.UID) (volume.Unmounter, error) {
 	return &configMapVolumeUnmounter{&configMapVolume{volName, podUID, plugin, plugin.host.GetMounter(), plugin.host.GetWriter(), volume.MetricsNil{}}}, nil
 }

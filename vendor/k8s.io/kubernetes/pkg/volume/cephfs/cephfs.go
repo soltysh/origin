@@ -79,6 +79,10 @@ func (plugin *cephfsPlugin) GetAccessModes() []api.PersistentVolumeAccessMode {
 	}
 }
 
+func (plugin *cephfsPlugin) SupportsBulkVolumeVerification() bool {
+	return false
+}
+
 func (plugin *cephfsPlugin) NewMounter(spec *volume.Spec, pod *api.Pod, _ volume.VolumeOptions) (volume.Mounter, error) {
 	cephvs, _, err := getVolumeSource(spec)
 	if err != nil {

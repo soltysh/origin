@@ -88,6 +88,11 @@ type VolumePlugin interface {
 	// this to update the contents of the volume.
 	RequiresRemount() bool
 
+	// SupportsBulkVolumeVerification checks if volume plugin type is capable
+	// of enabling bulk polling of all nodes. This can speed up verification of
+	// attached volumes by quite a bit, but underlying pluging must support it.
+	SupportsBulkVolumeVerification() bool
+
 	// NewMounter creates a new volume.Mounter from an API specification.
 	// Ownership of the spec pointer in *not* transferred.
 	// - spec: The api.Volume spec

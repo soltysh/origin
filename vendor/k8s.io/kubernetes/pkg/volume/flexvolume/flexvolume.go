@@ -104,6 +104,10 @@ func (plugin *flexVolumePlugin) GetAccessModes() []api.PersistentVolumeAccessMod
 	}
 }
 
+func (plugin *flexVolumePlugin) SupportsBulkVolumeVerification() bool {
+	return false
+}
+
 // NewMounter is the mounter routine to build the volume.
 func (plugin *flexVolumePlugin) NewMounter(spec *volume.Spec, pod *api.Pod, _ volume.VolumeOptions) (volume.Mounter, error) {
 	fv, _, err := getVolumeSource(spec)

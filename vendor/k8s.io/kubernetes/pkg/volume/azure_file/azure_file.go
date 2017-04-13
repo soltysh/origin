@@ -86,6 +86,11 @@ func (plugin *azureFilePlugin) GetAccessModes() []api.PersistentVolumeAccessMode
 	}
 }
 
+func (plugin *azureFilePlugin) SupportsBulkVolumeVerification() bool {
+	return false
+}
+
+
 func (plugin *azureFilePlugin) NewMounter(spec *volume.Spec, pod *api.Pod, _ volume.VolumeOptions) (volume.Mounter, error) {
 	return plugin.newMounterInternal(spec, pod, &azureSvc{}, plugin.host.GetMounter())
 }
