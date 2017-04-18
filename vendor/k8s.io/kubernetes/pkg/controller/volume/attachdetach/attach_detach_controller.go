@@ -92,7 +92,9 @@ func NewAttachDetachController(
 	adc := &attachDetachController{
 		kubeClient:  kubeClient,
 		pvcInformer: pvcInformer,
+		pvcsSynced:  pvcInformer.HasSynced,
 		pvInformer:  pvInformer,
+		pvsSynced:   pvInformer.HasSynced,
 		cloud:       cloud,
 	}
 
@@ -101,12 +103,14 @@ func NewAttachDetachController(
 		UpdateFunc: adc.podUpdate,
 		DeleteFunc: adc.podDelete,
 	})
+	adc.podsSynced = podInformer.HasSynced
 
 	nodeInformer.AddEventHandler(kcache.ResourceEventHandlerFuncs{
 		AddFunc:    adc.nodeAdd,
 		UpdateFunc: adc.nodeUpdate,
 		DeleteFunc: adc.nodeDelete,
 	})
+	adc.nodesSynced = nodeInformer.HasSynced
 
 	if err := adc.volumePluginMgr.InitPlugins(plugins, adc); err != nil {
 		return nil, fmt.Errorf("Could not initialize volume plugins for Attach/Detach Controller: %+v", err)
@@ -151,11 +155,16 @@ type attachDetachController struct {
 	// objects from the API server. It is shared with other controllers and
 	// therefore the PVC objects in its store should be treated as immutable.
 	pvcInformer kcache.SharedInformer
+	pvcsSynced  kcache.InformerSynced
 
 	// pvInformer is the shared PV informer used to fetch and store PV objects
 	// from the API server. It is shared with other controllers and therefore
 	// the PV objects in its store should be treated as immutable.
 	pvInformer kcache.SharedInformer
+	pvsSynced  kcache.InformerSynced
+
+	podsSynced  kcache.InformerSynced
+	nodesSynced kcache.InformerSynced
 
 	// cloud provider used by volume host
 	cloud cloudprovider.Interface
@@ -202,6 +211,11 @@ type attachDetachController struct {
 func (adc *attachDetachController) Run(stopCh <-chan struct{}) {
 	defer runtime.HandleCrash()
 	glog.Infof("Starting Attach Detach Controller")
+
+	if !kcache.WaitForCacheSync(stopCh, adc.podsSynced, adc.nodesSynced, adc.pvcsSynced, adc.pvsSynced) {
+		runtime.HandleError(fmt.Errorf("timed out waiting for caches to sync"))
+		return
+	}
 
 	go adc.reconciler.Run(stopCh)
 	go adc.desiredStateOfWorldPopulator.Run(stopCh)
