@@ -133,7 +133,7 @@ func (dswp *desiredStateOfWorldPopulator) populatorLoopFunc() func() {
 }
 
 func isPodTerminated(pod *api.Pod) bool {
-	return pod.Status.Phase == api.PodFailed || pod.Status.Phase == api.PodSucceeded
+	return volumehelper.IsPodTerminated(pod, pod.Status)
 }
 
 // Iterate through all pods and add to desired state of world if they don't
