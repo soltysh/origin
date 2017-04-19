@@ -420,6 +420,7 @@ func (c *MasterConfig) RunServiceServingCertController(client kclientsetinternal
 
 // RunImageImportController starts the image import trigger controller process.
 func (c *MasterConfig) RunImageImportController() {
+	isInformer := c.Informers.ImageStreams()
 	osclient := c.ImageImportControllerClient()
 
 	var limiter flowcontrol.RateLimiter = nil
@@ -431,19 +432,21 @@ func (c *MasterConfig) RunImageImportController() {
 		limiter = flowcontrol.NewTokenBucketRateLimiter(importRate, importBurst)
 	}
 
-	factory := imagecontroller.ImportControllerFactory{
-		Client:               osclient,
-		ResyncInterval:       10 * time.Minute,
-		MinimumCheckInterval: time.Duration(c.Options.ImagePolicyConfig.ScheduledImageImportMinimumIntervalSeconds) * time.Second,
-		ImportRateLimiter:    limiter,
-		ScheduleEnabled:      !c.Options.ImagePolicyConfig.DisableScheduledImport,
-	}
-	controller, scheduledController := factory.Create()
-	controller.Run()
+	ctrl, sched := imagecontroller.NewImageStreamControllers(
+		isInformer,
+		osclient,
+		time.Duration(c.Options.ImagePolicyConfig.ScheduledImageImportMinimumIntervalSeconds)*time.Second,
+		limiter,
+		!c.Options.ImagePolicyConfig.DisableScheduledImport,
+	)
+
+	// TODO align with https://github.com/openshift/origin/pull/13579 once it merges
+	stopCh := make(chan struct{})
+	go ctrl.Run(5, stopCh)
 	if c.Options.ImagePolicyConfig.DisableScheduledImport {
 		glog.V(2).Infof("Scheduled image import is disabled - the 'scheduled' flag on image streams will be ignored")
 	} else {
-		scheduledController.RunUntil(utilwait.NeverStop)
+		sched.Run(utilwait.NeverStop)
 	}
 }
 
