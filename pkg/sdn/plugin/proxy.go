@@ -95,7 +95,12 @@ func (proxy *ovsProxyPlugin) watchEgressNetworkPolicies() {
 func (proxy *ovsProxyPlugin) updateNetworkPolicy(policy osapi.EgressNetworkPolicy) {
 	firewall := make([]proxyFirewallItem, len(policy.Spec.Egress))
 	for i, rule := range policy.Spec.Egress {
-		_, cidr, err := net.ParseCIDR(rule.To.CIDRSelector)
+		selector := rule.To.CIDRSelector
+		if selector == "0.0.0.0/32" {
+			// controller.go already logs a warning about this
+			selector = "0.0.0.0/0"
+		}
+		_, cidr, err := net.ParseCIDR(selector)
 		if err != nil {
 			// should have been caught by validation
 			glog.Errorf("Illegal CIDR value %q in EgressNetworkPolicy rule", rule.To.CIDRSelector)
