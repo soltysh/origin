@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit c4ffc32709e164fcd708f022a9450a0a95aec643
+%global commit acf50d1a9bbc695adf5a8fa62fc9127f453d1058
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.16 OS_GIT_COMMIT=c4ffc32 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.17 OS_GIT_COMMIT=0bb0843 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -51,7 +51,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.17
+Version:        3.4.1.18
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -578,6 +578,12 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Thu Apr 20 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.18
+- Increase max request size for HAProxy to be comparable to cloud LBs
+  (ccoleman@redhat.com)
+- Prevent the router from deadlocking itself when calling Commit()
+  (bbennett@redhat.com)
+
 * Tue Apr 11 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.17
 - Restrict packages from CentOS to OVS only (skuznets@redhat.com)
 - Install OpenVSwitch from the CentOS PaaS SIG Repos (skuznets@redhat.com)
