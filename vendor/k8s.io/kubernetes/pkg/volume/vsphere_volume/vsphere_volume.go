@@ -79,6 +79,10 @@ func (plugin *vsphereVolumePlugin) RequiresRemount() bool {
 	return false
 }
 
+func (plugin *vsphereVolumePlugin) SupportsBulkVolumeVerification() bool {
+	return false
+}
+
 func (plugin *vsphereVolumePlugin) NewMounter(spec *volume.Spec, pod *api.Pod, _ volume.VolumeOptions) (volume.Mounter, error) {
 	return plugin.newMounterInternal(spec, pod.UID, &VsphereDiskUtil{}, plugin.host.GetMounter())
 }

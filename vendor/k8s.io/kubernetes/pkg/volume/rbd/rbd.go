@@ -93,6 +93,10 @@ func (plugin *rbdPlugin) GetAccessModes() []api.PersistentVolumeAccessMode {
 	}
 }
 
+func (plugin *rbdPlugin) SupportsBulkVolumeVerification() bool {
+	return false
+}
+
 func (plugin *rbdPlugin) NewMounter(spec *volume.Spec, pod *api.Pod, _ volume.VolumeOptions) (volume.Mounter, error) {
 	var secret string
 	var err error

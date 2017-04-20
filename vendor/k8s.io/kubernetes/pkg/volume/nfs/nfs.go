@@ -96,6 +96,10 @@ func (plugin *nfsPlugin) GetAccessModes() []api.PersistentVolumeAccessMode {
 	}
 }
 
+func (plugin *nfsPlugin) SupportsBulkVolumeVerification() bool {
+	return false
+}
+
 func (plugin *nfsPlugin) NewMounter(spec *volume.Spec, pod *api.Pod, _ volume.VolumeOptions) (volume.Mounter, error) {
 	return plugin.newMounterInternal(spec, pod, plugin.host.GetMounter())
 }

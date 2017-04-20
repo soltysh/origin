@@ -107,6 +107,10 @@ func (plugin *azureDataDiskPlugin) GetAccessModes() []api.PersistentVolumeAccess
 		api.ReadWriteOnce,
 	}
 }
+func (plugin *azureDataDiskPlugin) SupportsBulkVolumeVerification() bool {
+	return false
+}
+
 
 func (plugin *azureDataDiskPlugin) NewMounter(spec *volume.Spec, pod *api.Pod, _ volume.VolumeOptions) (volume.Mounter, error) {
 	return plugin.newMounterInternal(spec, pod.UID, plugin.host.GetMounter())

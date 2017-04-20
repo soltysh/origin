@@ -207,6 +207,10 @@ func (plugin *FakeVolumePlugin) NewMounter(spec *Spec, pod *api.Pod, opts Volume
 	return volume, nil
 }
 
+func (plugin *FakeVolumePlugin) SupportsBulkVolumeVerification() bool {
+	return false
+}
+
 func (plugin *FakeVolumePlugin) GetMounters() (Mounters []*FakeVolume) {
 	plugin.RLock()
 	defer plugin.RUnlock()

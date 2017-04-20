@@ -125,6 +125,10 @@ func (plugin *quobytePlugin) GetAccessModes() []api.PersistentVolumeAccessMode {
 	}
 }
 
+func (plugin *quobytePlugin) SupportsBulkVolumeVerification() bool {
+	return false
+}
+
 func getVolumeSource(spec *volume.Spec) (*api.QuobyteVolumeSource, bool, error) {
 	if spec.Volume != nil && spec.Volume.Quobyte != nil {
 		return spec.Volume.Quobyte, spec.Volume.Quobyte.ReadOnly, nil
