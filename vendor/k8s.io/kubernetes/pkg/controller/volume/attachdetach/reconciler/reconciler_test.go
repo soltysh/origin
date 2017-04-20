@@ -171,8 +171,8 @@ func Test_Run_Positive_OneDesiredVolumeAttachThenDetachWithUnmountedVolume(t *te
 			generatedVolumeName,
 			nodeName)
 	}
-	asw.SetVolumeMountedByNode(generatedVolumeName, nodeName, true /* mounted */)
-	asw.SetVolumeMountedByNode(generatedVolumeName, nodeName, false /* mounted */)
+	asw.SetVolumeMountedByNode(generatedVolumeName, nodeName, true /* mounted */, false /* forceUnmount */)
+	asw.SetVolumeMountedByNode(generatedVolumeName, nodeName, false /* mounted */, false /* forceUnmount */)
 
 	// Assert
 	waitForNewDetacherCallCount(t, 1 /* expectedCallCount */, fakePlugin)

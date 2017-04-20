@@ -426,6 +426,10 @@ func (oe *operationExecutor) VerifyVolumesAreAttached(
 
 	for node, nodeAttachedVolumes := range attachedVolumes {
 		for _, volumeAttached := range nodeAttachedVolumes {
+			if volumeAttached.VolumeSpec == nil {
+				glog.Errorf("VerifyVolumesAreAttached: nil spec for volume %s", volumeAttached.VolumeName)
+				continue
+			}
 			volumePlugin, err :=
 				oe.volumePluginMgr.FindPluginBySpec(volumeAttached.VolumeSpec)
 
@@ -786,35 +790,48 @@ func (oe *operationExecutor) generateDetachVolumeFunc(
 	volumeToDetach AttachedVolume,
 	verifySafeToDetach bool,
 	actualStateOfWorld ActualStateOfWorldAttacherUpdater) (func() error, error) {
-	// Get attacher plugin
-	attachableVolumePlugin, err :=
-		oe.volumePluginMgr.FindAttachablePluginBySpec(volumeToDetach.VolumeSpec)
-	if err != nil || attachableVolumePlugin == nil {
-		return nil, fmt.Errorf(
-			"DetachVolume.FindAttachablePluginBySpec failed for volume %q (spec.Name: %q) from node %q with: %v",
-			volumeToDetach.VolumeName,
-			volumeToDetach.VolumeSpec.Name(),
-			volumeToDetach.NodeName,
-			err)
-	}
+	var volumeName string
+	var attachableVolumePlugin volume.AttachableVolumePlugin
+	var err error
 
-	volumeName, err :=
-		attachableVolumePlugin.GetVolumeName(volumeToDetach.VolumeSpec)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"DetachVolume.GetVolumeName failed for volume %q (spec.Name: %q) from node %q with: %v",
-			volumeToDetach.VolumeName,
-			volumeToDetach.VolumeSpec.Name(),
-			volumeToDetach.NodeName,
-			err)
+	if volumeToDetach.VolumeSpec != nil {
+		// Get attacher plugin
+		attachableVolumePlugin, err =
+			oe.volumePluginMgr.FindAttachablePluginBySpec(volumeToDetach.VolumeSpec)
+		if err != nil || attachableVolumePlugin == nil {
+			return nil, fmt.Errorf(
+				"DetachVolume.FindAttachablePluginBySpec failed for volume %q (spec.Name: %q) from node %q with: %v",
+				volumeToDetach.VolumeName,
+				volumeToDetach.VolumeSpec.Name(),
+				volumeToDetach.NodeName,
+				err)
+		}
+		volumeName, err =
+			attachableVolumePlugin.GetVolumeName(volumeToDetach.VolumeSpec)
+	} else {
+		var pluginName string
+		// Get attacher plugin and the volumeName by splitting the volume unique name in case
+		// there's no VolumeSpec: this happens only on attach/detach controller crash recovery
+		// when a pod has been deleted during the controller downtime
+		pluginName, volumeName, err = volumehelper.SplitUniqueName(volumeToDetach.VolumeName)
+		if err != nil {
+			return nil, err
+		}
+		attachableVolumePlugin, err = oe.volumePluginMgr.FindAttachablePluginByName(pluginName)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"Failed to find plugin for volume %q from node %q with: %v",
+				volumeToDetach.VolumeName,
+				volumeToDetach.NodeName,
+				err)
+		}
 	}
 
 	volumeDetacher, err := attachableVolumePlugin.NewDetacher()
 	if err != nil {
 		return nil, fmt.Errorf(
-			"DetachVolume.NewDetacher failed for volume %q (spec.Name: %q) from node %q with: %v",
+			"DetachVolume.NewDetacher failed for volume %q from node %q with: %v",
 			volumeToDetach.VolumeName,
-			volumeToDetach.VolumeSpec.Name(),
 			volumeToDetach.NodeName,
 			err)
 	}
@@ -832,17 +849,15 @@ func (oe *operationExecutor) generateDetachVolumeFunc(
 			actualStateOfWorld.AddVolumeToReportAsAttached(
 				volumeToDetach.VolumeName, volumeToDetach.NodeName)
 			return fmt.Errorf(
-				"DetachVolume.Detach failed for volume %q (spec.Name: %q) from node %q with: %v",
+				"DetachVolume.Detach failed for volume %q  from node %q with: %v",
 				volumeToDetach.VolumeName,
-				volumeToDetach.VolumeSpec.Name(),
 				volumeToDetach.NodeName,
 				err)
 		}
 
 		glog.Infof(
-			"DetachVolume.Detach succeeded for volume %q (spec.Name: %q) from node %q.",
+			"DetachVolume.Detach succeeded for volume %q from node %q.",
 			volumeToDetach.VolumeName,
-			volumeToDetach.VolumeSpec.Name(),
 			volumeToDetach.NodeName)
 
 		// Update actual state of world
@@ -861,16 +876,14 @@ func (oe *operationExecutor) verifyVolumeIsSafeToDetach(
 		if errors.IsNotFound(fetchErr) {
 			glog.Warningf("Node %q not found on API server. DetachVolume will skip safe to detach check.",
 				volumeToDetach.NodeName,
-				volumeToDetach.VolumeName,
-				volumeToDetach.VolumeSpec.Name())
+				volumeToDetach.VolumeName)
 			return nil
 		}
 
 		// On failure, return error. Caller will log and retry.
 		return fmt.Errorf(
-			"DetachVolume failed fetching node from API server for volume %q (spec.Name: %q) from node %q with: %v",
+			"DetachVolume failed fetching node from API server for volume %q from node %q with: %v",
 			volumeToDetach.VolumeName,
-			volumeToDetach.VolumeSpec.Name(),
 			volumeToDetach.NodeName,
 			fetchErr)
 	}
@@ -878,25 +891,22 @@ func (oe *operationExecutor) verifyVolumeIsSafeToDetach(
 	if node == nil {
 		// On failure, return error. Caller will log and retry.
 		return fmt.Errorf(
-			"DetachVolume failed fetching node from API server for volume %q (spec.Name: %q) from node %q. Error: node object retrieved from API server is nil.",
+			"DetachVolume failed fetching node from API server for volume %q from node %q. Error: node object retrieved from API server is nil.",
 			volumeToDetach.VolumeName,
-			volumeToDetach.VolumeSpec.Name(),
 			volumeToDetach.NodeName)
 	}
 
 	for _, inUseVolume := range node.Status.VolumesInUse {
 		if inUseVolume == volumeToDetach.VolumeName {
-			return fmt.Errorf("DetachVolume failed for volume %q (spec.Name: %q) from node %q. Error: volume is still in use by node, according to Node status.",
+			return fmt.Errorf("DetachVolume failed for volume %q from node %q. Error: volume is still in use by node, according to Node status.",
 				volumeToDetach.VolumeName,
-				volumeToDetach.VolumeSpec.Name(),
 				volumeToDetach.NodeName)
 		}
 	}
 
 	// Volume is not marked as in use by node
-	glog.Infof("Verified volume is safe to detach for volume %q (spec.Name: %q) from node %q.",
+	glog.Infof("Verified volume is safe to detach for volume %q from node %q.",
 		volumeToDetach.VolumeName,
-		volumeToDetach.VolumeSpec.Name(),
 		volumeToDetach.NodeName)
 	return nil
 }
