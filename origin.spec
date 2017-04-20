@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit b01d16062596f030b2a874a6fbd96ebfa236ab94
+%global commit 87077d5455671ad84de91c9fd97282e5df453bc6
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.19
+Version:        3.3.1.20
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -548,6 +548,10 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Thu Apr 20 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.3.1.20
+- Prevent the router from deadlocking itself when calling Commit()
+  (bbennett@redhat.com)
+
 * Sat Apr 08 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.3.1.19
 - Fix image pruning with both strong & weak refs (agoldste@redhat.com)
 
