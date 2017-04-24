@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 45794d0905b70d2d4e4b2b5ba9a85812a36cfe80
+%global commit 254774b5103e919823349a0b44e74e6b4c35c646
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.7 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=45794d0
+%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.8 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=254774b
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.5.5.8
+Version:        3.5.5.9
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -585,6 +585,17 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Mon Apr 24 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.5.5.9-1
+- Merge remote-tracking branch enterprise-3.5, bump origin-web-console 7029ade
+  (tdawson@redhat.com)
+- UPSTREAM: 39732: Attach/detach should recover from a crash
+  (tsmetana@redhat.com)
+- UPSTREAM: 44452: Implement LRU for AWS device allocator (jsafrane@redhat.com)
+- UPSTREAM: 42033: reconcile attach/detach state of world with missing pods
+  periodically (jsafrane@redhat.com)
+- UPSTREAM: 44566: WaitForCacheSync before running attachdetach controller
+  (mawong@redhat.com)
+
 * Thu Apr 20 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.5.5.8-1
 - Increase max request size for HAProxy to be comparable to cloud LBs
   (ccoleman@redhat.com)
