@@ -29,6 +29,11 @@ import (
 	"k8s.io/kubernetes/pkg/util/intstr"
 )
 
+func intOrStrP(val int) *intstr.IntOrString {
+	intOrStr := intstr.FromInt(val)
+	return &intOrStr
+}
+
 func TestScale(t *testing.T) {
 	newTimestamp := unversioned.Date(2016, 5, 20, 2, 0, 0, 0, time.UTC)
 	oldTimestamp := unversioned.Date(2016, 5, 20, 1, 0, 0, 0, time.UTC)
@@ -221,6 +226,21 @@ func TestScale(t *testing.T) {
 
 			expectedNew: rs("foo-v2", 22, nil, newTimestamp),
 			expectedOld: []*exp.ReplicaSet{rs("foo-v1", 34, nil, oldTimestamp)},
+		},
+		{
+			name:          "saturated but broken new replica set does not affect old pods",
+			deployment:    newDeployment("foo", 2, nil, intOrStrP(1), intOrStrP(1), nil),
+			oldDeployment: newDeployment("foo", 2, nil, intOrStrP(1), intOrStrP(1), nil),
+
+			newRS: func() *exp.ReplicaSet {
+				rs := rs("foo-v2", 2, nil, newTimestamp)
+				rs.Status.ReadyReplicas = 0
+				return rs
+			}(),
+			oldRSs: []*exp.ReplicaSet{rs("foo-v1", 1, nil, oldTimestamp)},
+
+			expectedNew: rs("foo-v2", 2, nil, newTimestamp),
+			expectedOld: []*exp.ReplicaSet{rs("foo-v1", 1, nil, oldTimestamp)},
 		},
 	}
 
