@@ -11,12 +11,12 @@
 FROM openshift/origin
 
 COPY bin/* /usr/bin/
+COPY centos-paas-sig-openshift-origin14.repo /etc/yum.repos.d/
 COPY conf/openshift-sdn-ovs.conf /usr/lib/systemd/system/origin-node.service.d/
 COPY lib/systemd/system/docker.service.d/docker-sdn-ovs.conf /usr/lib/systemd/system/docker.service.d/docker-sdn-ovs.conf
 COPY scripts/* /usr/local/bin/
 
-RUN curl -L -o /etc/yum.repos.d/origin-next-epel-7.repo https://copr.fedoraproject.org/coprs/maxamillion/origin-next/repo/epel-7/maxamillion-origin-next-epel-7.repo && \
-    INSTALL_PKGS="libmnl libnetfilter_conntrack conntrack-tools openvswitch \
+RUN INSTALL_PKGS="libmnl libnetfilter_conntrack conntrack-tools openvswitch \
       libnfnetlink iptables iproute bridge-utils procps-ng ethtool socat openssl \
       binutils xz kmod-libs kmod sysvinit-tools device-mapper-libs dbus \
       ceph-common iscsi-initiator-utils" && \
