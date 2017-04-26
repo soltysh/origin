@@ -1,6 +1,7 @@
 package hybrid
 
 import (
+	"sync"
 	"time"
 
 	"github.com/openshift/origin/pkg/proxy/userspace"
@@ -24,7 +25,8 @@ type HybridProxier struct {
 
 	// TODO(directxman12): figure out a good way to avoid duplicating this information
 	// (it's saved in the individual proxies as well)
-	usingUserspace map[types.NamespacedName]struct{}
+	usingUserspace     map[types.NamespacedName]struct{}
+	usingUserspaceLock sync.Mutex
 
 	syncPeriod time.Duration
 }
@@ -48,6 +50,9 @@ func (p *HybridProxier) OnServiceUpdate(services []api.Service) {
 	forIPTables := make([]api.Service, 0, len(services))
 	forUserspace := []api.Service{}
 
+	p.usingUserspaceLock.Lock()
+	defer p.usingUserspaceLock.Unlock()
+
 	for _, service := range services {
 		if !api.IsServiceIPSet(&service) {
 			// Skip service with no ClusterIP set
@@ -69,6 +74,9 @@ func (p *HybridProxier) OnServiceUpdate(services []api.Service) {
 }
 
 func (p *HybridProxier) updateUsingUserspace(endpoints []api.Endpoints) {
+	p.usingUserspaceLock.Lock()
+	defer p.usingUserspaceLock.Unlock()
+
 	p.usingUserspace = make(map[types.NamespacedName]struct{}, len(endpoints))
 	for _, endpoint := range endpoints {
 		hasEndpoints := false
@@ -91,11 +99,11 @@ func (p *HybridProxier) updateUsingUserspace(endpoints []api.Endpoints) {
 	}
 }
 
-func (p *HybridProxier) OnEndpointsUpdate(endpoints []api.Endpoints) {
-	p.updateUsingUserspace(endpoints)
+func (p *HybridProxier) getIPTablesEndpoints(endpoints []api.Endpoints) *[]api.Endpoints {
+	p.usingUserspaceLock.Lock()
+	defer p.usingUserspaceLock.Unlock()
 
 	forIPTables := []api.Endpoints{}
-
 	for _, endpoint := range endpoints {
 		svcName := types.NamespacedName{
 			Namespace: endpoint.Namespace,
@@ -105,9 +113,16 @@ func (p *HybridProxier) OnEndpointsUpdate(endpoints []api.Endpoints) {
 			forIPTables = append(forIPTables, endpoint)
 		}
 	}
+	return &forIPTables
+}
+
+func (p *HybridProxier) OnEndpointsUpdate(endpoints []api.Endpoints) {
+	p.updateUsingUserspace(endpoints)
 
 	p.unidlingLoadBalancer.OnEndpointsUpdate(endpoints)
-	p.mainLoadBalancer.OnEndpointsUpdate(forIPTables)
+
+	forIPTables := p.getIPTablesEndpoints(endpoints)
+	p.mainLoadBalancer.OnEndpointsUpdate(*forIPTables)
 
 	p.OnServiceUpdate(p.serviceConfig.Config())
 }
