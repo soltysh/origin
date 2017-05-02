@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit acf50d1a9bbc695adf5a8fa62fc9127f453d1058
+%global commit 0f9d38028192544927ef6395b7c6937518dccb30
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.17 OS_GIT_COMMIT=0bb0843 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.18 OS_GIT_COMMIT=0f9d380 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -51,7 +51,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.18
+Version:        3.4.1.19
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -578,6 +578,9 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue May 02 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.19
+- 
+
 * Thu Apr 20 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.18
 - Increase max request size for HAProxy to be comparable to cloud LBs
   (ccoleman@redhat.com)
