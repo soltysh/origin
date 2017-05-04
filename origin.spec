@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 2da5b1a74935c9008d9742ba3cecb3e8f141e1c9
+%global commit 4a8f1e869c9922cb1df12ad9576a9c1c097b4d7f
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.22
+Version:        3.3.1.23
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -548,6 +548,9 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Thu May 04 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.3.1.23
+- 
+
 * Tue May 02 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.3.1.22
 - BACKPORT PR13494 - change the router eventqueue key function
   (jtanenba@redhat.com)
