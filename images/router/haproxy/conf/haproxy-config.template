@@ -213,7 +213,7 @@ backend be_edge_http_{{$cfgIdx}}
     cookie {{$cfg.RoutingKeyName}} insert indirect nocache httponly secure
   {{ end }}
   http-request set-header Forwarded for=%[src];host=%[req.hdr(host)];proto=%[req.hdr(X-Forwarded-Proto)]
-                {{ range $idx, $endpoint := endpointsForAlias $cfg $serviceUnit }}
+                {{ range $idx, $endpoint := processEndpointsForAlias $cfg $serviceUnit (env "ROUTER_BACKEND_PROCESS_ENDPOINTS" "") }}
   server {{$endpoint.IdHash}} {{$endpoint.IP}}:{{$endpoint.Port}} check inter 5000ms cookie {{$endpoint.IdHash}}
                 {{ end }}
             {{ end }}
@@ -223,7 +223,7 @@ backend be_tcp_{{$cfgIdx}}
   balance source
   hash-type consistent
   timeout check 5000ms
-                {{ range $idx, $endpoint := endpointsForAlias $cfg $serviceUnit }}
+                {{ range $idx, $endpoint := processEndpointsForAlias $cfg $serviceUnit (env "ROUTER_BACKEND_PROCESS_ENDPOINTS" "") }}
   server {{$endpoint.ID}} {{$endpoint.IP}}:{{$endpoint.Port}} check inter 5000ms
                 {{ end }}
             {{ end }}
@@ -235,7 +235,7 @@ backend be_secure_{{$cfgIdx}}
   balance leastconn
   timeout check 5000ms
   cookie {{$cfg.RoutingKeyName}} insert indirect nocache httponly secure
-                {{ range $idx, $endpoint := endpointsForAlias $cfg $serviceUnit }}
+                {{ range $idx, $endpoint := processEndpointsForAlias $cfg $serviceUnit (env "ROUTER_BACKEND_PROCESS_ENDPOINTS" "") }}
   server {{$endpoint.IdHash}} {{$endpoint.IP}}:{{$endpoint.Port}} ssl check inter 5000ms verify required ca-file {{ $workingDir }}/cacerts/{{$cfgIdx}}.pem cookie {{$endpoint.IdHash}}
                 {{ end }}
             {{ end  }}
