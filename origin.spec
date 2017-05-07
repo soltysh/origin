@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit c191c945b08be788419d33886abcb3ac539d7307
+%global commit 497250e705d9346654fcc0799637801dd6110a62
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.20 OS_GIT_COMMIT=c191c94 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.21 OS_GIT_COMMIT=497250e OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -48,7 +48,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.21
+Version:        3.4.1.22
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -556,6 +556,9 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Sun May 07 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.22
+- 
+
 * Sun May 07 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.21
 - Remove pullthrough request from cross-repo mount test (agladkov@redhat.com)
 - UPSTREAM: 39496: Use privileged containers for host path e2e tests
