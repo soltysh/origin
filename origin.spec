@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 09aca40444df0ac7eac45f9c8505faf6df434a2b
+%global commit c191c945b08be788419d33886abcb3ac539d7307
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.19 OS_GIT_COMMIT=09aca40 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.20 OS_GIT_COMMIT=c191c94 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -48,7 +48,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.20
+Version:        3.4.1.21
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -556,6 +556,34 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Sun May 07 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.21
+- Remove pullthrough request from cross-repo mount test (agladkov@redhat.com)
+- UPSTREAM: 39496: Use privileged containers for host path e2e tests
+  (skuznets@redhat.com)
+- Test flakes? Just wait longer in more places (ccoleman@redhat.com)
+- These tests require local access (ccoleman@redhat.com)
+- Networking tests must be able to schedule on all nodes (ccoleman@redhat.com)
+- Move kubelet e2e test to serial suite because it saturates nodes
+  (ccoleman@redhat.com)
+- Label idling tests [local] for now, add more tests to suite
+  (ccoleman@redhat.com)
+- Router tests should not assume access to pod network (ccoleman@redhat.com)
+- Scheduler predicates test should run without node constraints
+  (ccoleman@redhat.com)
+- Allow much higher extended test bursting by increasing retry
+  (ccoleman@redhat.com)
+- Test does not work in Go 1.7 due to depending on a main package
+  (ccoleman@redhat.com)
+- UPSTREAM: onsi/ginkgo: 318: Capture test output (ccoleman@redhat.com)
+- UPSTREAM: <drop>: Handle Go 1.6/1.7 differences in upstream
+  (ccoleman@redhat.com)
+- generated: Protobuf updates for Go 1.7 (ccoleman@redhat.com)
+- Selective changes to adapt master hack to 1.4 (ccoleman@redhat.com)
+- Update hack/ to bcddac67e8d662bf8640a6f3f803bca1ac805899
+  (ccoleman@redhat.com)
+- [3.4] Add web diag endpoint to the F5 and haproxy routers
+  (bbennett@redhat.com)
+
 * Thu May 04 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.20
 - 
 
