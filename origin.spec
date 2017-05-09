@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 4a8f1e869c9922cb1df12ad9576a9c1c097b4d7f
+%global commit 68b7bdb8b0ad9c6726c67dfea7547b60636c918f
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.23
+Version:        3.3.1.24
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -548,6 +548,10 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Tue May 09 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.3.1.24
+- UPSTREAM: 37698: Make kubelet never delete files on mounted filesystems
+  (hchen@redhat.com)
+
 * Thu May 04 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.3.1.23
 - 
 
