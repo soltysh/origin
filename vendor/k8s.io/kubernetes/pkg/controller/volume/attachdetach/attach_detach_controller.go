@@ -279,11 +279,7 @@ func (adc *attachDetachController) populateActualStateOfWorld() error {
 				continue
 			}
 			adc.processVolumesInUse(nodeName, node.Status.VolumesInUse, true /* forceUnmount */)
-			if _, exists := node.Annotations[volumehelper.ControllerManagedAttachAnnotation]; exists {
-				// Node specifies annotation indicating it should be managed by
-				// attach detach controller. Add it to desired state of world.
-				adc.desiredStateOfWorld.AddNode(types.NodeName(node.Name)) // Needed for DesiredStateOfWorld population
-			}
+			adc.addNodeToDswp(node, types.NodeName(node.Name))
 		}
 	}
 	return nil
@@ -390,13 +386,32 @@ func (adc *attachDetachController) podAdd(obj interface{}) {
 		return
 	}
 
-	util.ProcessPodVolumes(pod, true, /* addVolumes */
+	volumeActionFlag := util.DetermineVolumeAction(
+		pod,
+		adc.desiredStateOfWorld,
+		true /* default volume action */)
+
+	util.ProcessPodVolumes(pod, volumeActionFlag, /* addVolumes */
 		adc.desiredStateOfWorld, &adc.volumePluginMgr, adc.pvcInformer, adc.pvInformer)
 }
 
 func (adc *attachDetachController) podUpdate(oldObj, newObj interface{}) {
-	// The flow for update is the same as add.
-	adc.podAdd(newObj)
+	pod, ok := newObj.(*api.Pod)
+	if pod == nil || !ok {
+		return
+	}
+	if pod.Spec.NodeName == "" {
+		// Ignore pods without NodeName, indicating they are not scheduled.
+		return
+	}
+
+	volumeActionFlag := util.DetermineVolumeAction(
+		pod,
+		adc.desiredStateOfWorld,
+		true /* default volume action */)
+
+	util.ProcessPodVolumes(pod, volumeActionFlag, /* addVolumes */
+		adc.desiredStateOfWorld, &adc.volumePluginMgr, adc.pvcInformer, adc.pvInformer)
 }
 
 func (adc *attachDetachController) podDelete(obj interface{}) {
@@ -433,11 +448,7 @@ func (adc *attachDetachController) nodeUpdate(oldObj, newObj interface{}) {
 	}
 
 	nodeName := types.NodeName(node.Name)
-	if _, exists := node.Annotations[volumehelper.ControllerManagedAttachAnnotation]; exists {
-		// Node specifies annotation indicating it should be managed by attach
-		// detach controller. Add it to desired state of world.
-		adc.desiredStateOfWorld.AddNode(nodeName)
-	}
+	adc.addNodeToDswp(node, nodeName)
 	adc.processVolumesInUse(nodeName, node.Status.VolumesInUse, false /* forceUnmount */)
 }
 
@@ -477,6 +488,20 @@ func (adc *attachDetachController) processVolumesInUse(
 				"SetVolumeMountedByNode(%q, %q, %q) returned an error: %v",
 				attachedVolume.VolumeName, nodeName, mounted, err)
 		}
+	}
+}
+
+func (adc *attachDetachController) addNodeToDswp(node *api.Node, nodeName types.NodeName) {
+	if _, exists := node.Annotations[volumehelper.ControllerManagedAttachAnnotation]; exists {
+		keepTerminatedPodVolumes := false
+
+		if t, ok := node.Annotations[volumehelper.KeepTerminatedPodVolumesAnnotation]; ok {
+			keepTerminatedPodVolumes = (t == "true")
+		}
+
+		// Node specifies annotation indicating it should be managed by attach
+		// detach controller. Add it to desired state of world.
+		adc.desiredStateOfWorld.AddNode(nodeName, keepTerminatedPodVolumes)
 	}
 }
 

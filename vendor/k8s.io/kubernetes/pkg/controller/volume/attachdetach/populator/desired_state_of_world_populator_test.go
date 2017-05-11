@@ -96,7 +96,7 @@ func TestFindAndAddActivePods_FindAndRemoveDeletedPods(t *testing.T) {
 	}
 
 	//add the given node to the list of nodes managed by dsw
-	dswp.desiredStateOfWorld.AddNode(types.NodeName(pod.Spec.NodeName))
+	dswp.desiredStateOfWorld.AddNode(types.NodeName(pod.Spec.NodeName), false /*keepTerminatedPodVolumes*/)
 
 	dswp.findAndAddActivePods()
 

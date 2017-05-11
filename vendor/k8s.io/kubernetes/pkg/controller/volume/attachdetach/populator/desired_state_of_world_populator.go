@@ -135,14 +135,22 @@ func (dswp *desiredStateOfWorldPopulator) findAndRemoveDeletedPods() {
 				glog.Errorf("Failed to cast obj %#v to pod object for pod %q (UID %q)", informerPod, dswPodKey, dswPodUID)
 				continue
 			}
-			informerPodUID := volumehelper.GetUniquePodName(informerPod)
-			// Check whether the unique identifier of the pod from dsw matches the one retrieved from pod informer
-			if informerPodUID == dswPodUID {
-				glog.V(10).Infof(
-					"Verified pod %q (UID %q) from dsw exists in pod informer.", dswPodKey, dswPodUID)
-				continue
+			volumeActionFlag := util.DetermineVolumeAction(
+				informerPod,
+				dswp.desiredStateOfWorld,
+				true /* default volume action */)
 
+			if volumeActionFlag {
+				informerPodUID := volumehelper.GetUniquePodName(informerPod)
+				// Check whether the unique identifier of the pod from dsw matches the one retrieved from pod informer
+				if informerPodUID == dswPodUID {
+					glog.V(10).Infof(
+						"Verified pod %q (UID %q) from dsw exists in pod informer.", dswPodKey, dswPodUID)
+					continue
+
+				}
 			}
+
 		}
 		// the pod from dsw does not exist in pod informer, or it does not match the unique identifer retrieved
 		// from the informer, delete it from dsw
