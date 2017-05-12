@@ -89,7 +89,7 @@ func Test_Run_Positive_OneDesiredVolumeAttach(t *testing.T) {
 	volumeName := api.UniqueVolumeName("volume-name")
 	volumeSpec := controllervolumetesting.GetTestVolumeSpec(string(volumeName), volumeName)
 	nodeName := k8stypes.NodeName("node-name")
-	dsw.AddNode(nodeName)
+	dsw.AddNode(nodeName, false /*keepTerminatedPodVolumes*/)
 	volumeExists := dsw.VolumeExists(volumeName, nodeName)
 	if volumeExists {
 		t.Fatalf(
@@ -135,7 +135,7 @@ func Test_Run_Positive_OneDesiredVolumeAttachThenDetachWithUnmountedVolume(t *te
 	volumeName := api.UniqueVolumeName("volume-name")
 	volumeSpec := controllervolumetesting.GetTestVolumeSpec(string(volumeName), volumeName)
 	nodeName := k8stypes.NodeName("node-name")
-	dsw.AddNode(nodeName)
+	dsw.AddNode(nodeName, false /*keepTerminatedPodVolumes*/)
 	volumeExists := dsw.VolumeExists(volumeName, nodeName)
 	if volumeExists {
 		t.Fatalf(
@@ -202,7 +202,7 @@ func Test_Run_Positive_OneDesiredVolumeAttachThenDetachWithMountedVolume(t *test
 	volumeName := api.UniqueVolumeName("volume-name")
 	volumeSpec := controllervolumetesting.GetTestVolumeSpec(string(volumeName), volumeName)
 	nodeName := k8stypes.NodeName("node-name")
-	dsw.AddNode(nodeName)
+	dsw.AddNode(nodeName, false /*keepTerminatedPodVolumes*/)
 	volumeExists := dsw.VolumeExists(volumeName, nodeName)
 	if volumeExists {
 		t.Fatalf(
@@ -269,7 +269,7 @@ func Test_Run_Negative_OneDesiredVolumeAttachThenDetachWithUnmountedVolumeUpdate
 	volumeName := api.UniqueVolumeName("volume-name")
 	volumeSpec := controllervolumetesting.GetTestVolumeSpec(string(volumeName), volumeName)
 	nodeName := k8stypes.NodeName("node-name")
-	dsw.AddNode(nodeName)
+	dsw.AddNode(nodeName, false /*keepTerminatedPodVolumes*/)
 	volumeExists := dsw.VolumeExists(volumeName, nodeName)
 	if volumeExists {
 		t.Fatalf(
