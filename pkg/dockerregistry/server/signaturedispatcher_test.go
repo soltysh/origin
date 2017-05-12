@@ -24,22 +24,10 @@ import (
 
 	"github.com/openshift/origin/pkg/client/testclient"
 	registrytest "github.com/openshift/origin/pkg/dockerregistry/testutil"
-	imagetest "github.com/openshift/origin/pkg/image/admission/testutil"
 	imageapi "github.com/openshift/origin/pkg/image/api"
 )
 
 func TestSignatureGet(t *testing.T) {
-	client := &testclient.Fake{}
-	// TODO: get rid of those nasty global vars
-	backupRegistryClient := DefaultRegistryClient
-	DefaultRegistryClient = makeFakeRegistryClient(client, fake.NewSimpleClientset())
-	defer func() {
-		// set it back once this test finishes to make other unit tests working again
-		DefaultRegistryClient = backupRegistryClient
-	}()
-
-	ctx := WithUserClient(context.Background(), client)
-
 	installFakeAccessController(t)
 
 	testSignature := imageapi.ImageSignature{
@@ -57,17 +45,15 @@ func TestSignatureGet(t *testing.T) {
 	testImage.DockerImageManifest = ""
 	testImage.Signatures = append(testImage.Signatures, testSignature)
 
-	client.AddReactor("get", "images", registrytest.GetFakeImageGetHandler(t, *testImage))
+	fos, client := registrytest.NewFakeOpenShiftWithClient()
+	registrytest.AddImageStream(t, fos, "user", "app", map[string]string{
+		imageapi.InsecureRepositoryAnnotation: "true",
+	})
+	registrytest.AddImage(t, fos, testImage, "user", "app", "latest")
 
-	testImageStream := registrytest.TestNewImageStreamObject("user", "app", "latest", testImage.Name, testImage.DockerImageReference)
-	if testImageStream.Annotations == nil {
-		testImageStream.Annotations = make(map[string]string)
-	}
-	testImageStream.Annotations[imageapi.InsecureRepositoryAnnotation] = "true"
-	client.AddReactor("get", "imagestreams", imagetest.GetFakeImageStreamGetHandler(t, *testImageStream))
-
-	client.AddReactor("get", "imagestreamimages", registrytest.GetFakeImageStreamImageGetHandler(t, testImageStream, *testImage))
-
+	ctx := context.Background()
+	ctx = WithRegistryClient(ctx, makeFakeRegistryClient(client, fake.NewSimpleClientset()))
+	ctx = withUserClient(ctx, client)
 	registryApp := handlers.NewApp(ctx, &configuration.Configuration{
 		Loglevel: "debug",
 		Auth: map[string]configuration.Parameters{
@@ -148,15 +134,6 @@ func TestSignatureGet(t *testing.T) {
 
 func TestSignaturePut(t *testing.T) {
 	client := &testclient.Fake{}
-	// TODO: get rid of those nasty global vars
-	backupRegistryClient := DefaultRegistryClient
-	DefaultRegistryClient = makeFakeRegistryClient(client, fake.NewSimpleClientset())
-	defer func() {
-		// set it back once this test finishes to make other unit tests working again
-		DefaultRegistryClient = backupRegistryClient
-	}()
-
-	ctx := WithUserClient(context.Background(), client)
 
 	installFakeAccessController(t)
 
@@ -177,6 +154,9 @@ func TestSignaturePut(t *testing.T) {
 		return true, sign, nil
 	})
 
+	ctx := context.Background()
+	ctx = WithRegistryClient(ctx, makeFakeRegistryClient(client, fake.NewSimpleClientset()))
+	ctx = withUserClient(ctx, client)
 	registryApp := handlers.NewApp(ctx, &configuration.Configuration{
 		Loglevel: "debug",
 		Auth: map[string]configuration.Parameters{

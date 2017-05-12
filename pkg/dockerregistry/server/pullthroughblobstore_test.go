@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -20,11 +19,7 @@ import (
 	"github.com/docker/distribution/manifest/schema1"
 	_ "github.com/docker/distribution/registry/storage/driver/inmemory"
 
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
-
-	"github.com/openshift/origin/pkg/client/testclient"
 	registrytest "github.com/openshift/origin/pkg/dockerregistry/testutil"
-	imagetest "github.com/openshift/origin/pkg/image/admission/testutil"
 	imageapi "github.com/openshift/origin/pkg/image/api"
 )
 
@@ -38,16 +33,6 @@ func TestPullthroughServeBlob(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client := &testclient.Fake{}
-	client.AddReactor("get", "images", registrytest.GetFakeImageGetHandler(t, *testImage))
-
-	// TODO: get rid of those nasty global vars
-	backupRegistryClient := DefaultRegistryClient
-	DefaultRegistryClient = makeFakeRegistryClient(client, fake.NewSimpleClientset())
-	defer func() {
-		// set it back once this test finishes to make other unit tests working again
-		DefaultRegistryClient = backupRegistryClient
-	}()
 
 	remoteRegistryServer := createTestRegistryServer(t, context.Background())
 	defer remoteRegistryServer.Close()
@@ -59,13 +44,11 @@ func TestPullthroughServeBlob(t *testing.T) {
 	os.Setenv("DOCKER_REGISTRY_URL", serverURL.Host)
 	testImage.DockerImageReference = fmt.Sprintf("%s/%s@%s", serverURL.Host, repoName, testImage.Name)
 
-	testImageStream := registrytest.TestNewImageStreamObject(namespace, name, "latest", testImage.Name, testImage.DockerImageReference)
-	if testImageStream.Annotations == nil {
-		testImageStream.Annotations = make(map[string]string)
-	}
-	testImageStream.Annotations[imageapi.InsecureRepositoryAnnotation] = "true"
-
-	client.AddReactor("get", "imagestreams", imagetest.GetFakeImageStreamGetHandler(t, *testImageStream))
+	fos, client := registrytest.NewFakeOpenShiftWithClient()
+	registrytest.AddImageStream(t, fos, namespace, name, map[string]string{
+		imageapi.InsecureRepositoryAnnotation: "true",
+	})
+	registrytest.AddImage(t, fos, testImage, namespace, name, "latest")
 
 	blob1Desc, blob1Content, err := registrytest.UploadRandomTestBlob(serverURL, nil, repoName)
 	if err != nil {
@@ -151,7 +134,10 @@ func TestPullthroughServeBlob(t *testing.T) {
 		localBlobStore := newTestBlobStore(tc.localBlobs)
 
 		ctx := WithTestPassthroughToUpstream(context.Background(), false)
-		repo := newTestRepositoryForPullthrough(t, ctx, nil, namespace, name, client, true)
+		repo := newTestRepository(t, namespace, name, testRepositoryOptions{
+			client:            client,
+			enablePullThrough: true,
+		})
 		ptbs := &pullthroughBlobStore{
 			BlobStore: localBlobStore,
 			repo:      repo,
@@ -219,32 +205,15 @@ func TestPullthroughServeNotSeekableBlob(t *testing.T) {
 	installFakeAccessController(t)
 	setPassthroughBlobDescriptorServiceFactory()
 
-	testImage, err := registrytest.NewImageForManifest(repoName, registrytest.SampleImageManifestSchema1, "", false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	client := &testclient.Fake{}
-	client.AddReactor("get", "images", registrytest.GetFakeImageGetHandler(t, *testImage))
-
-	// TODO: get rid of those nasty global vars
-	backupRegistryClient := DefaultRegistryClient
-	DefaultRegistryClient = makeFakeRegistryClient(client, fake.NewSimpleClientset())
-	defer func() {
-		// set it back once this test finishes to make other unit tests working again
-		DefaultRegistryClient = backupRegistryClient
-	}()
-
-	reader, dgst, err := registrytest.CreateRandomTarFile()
+	blob1Content, err := registrytest.CreateRandomTarFile()
 	if err != nil {
 		t.Fatalf("unexpected error generating test layer file: %v", err)
 	}
 
-	blob1Content, err := ioutil.ReadAll(reader)
-	if err != nil {
-		t.Fatalf("failed to read blob content: %v", err)
+	dgst := digest.FromBytes(blob1Content)
+	blob1Storage := map[digest.Digest][]byte{
+		dgst: blob1Content,
 	}
-
-	blob1Storage := map[digest.Digest][]byte{dgst: blob1Content}
 
 	// start regular HTTP server
 	remoteRegistryServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -300,20 +269,26 @@ func TestPullthroughServeNotSeekableBlob(t *testing.T) {
 		t.Fatalf("error parsing server url: %v", err)
 	}
 	os.Setenv("DOCKER_REGISTRY_URL", serverURL.Host)
+
+	testImage, err := registrytest.NewImageForManifest(repoName, registrytest.SampleImageManifestSchema1, "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
 	testImage.DockerImageReference = fmt.Sprintf("%s/%s@%s", serverURL.Host, repoName, testImage.Name)
 
-	testImageStream := registrytest.TestNewImageStreamObject(namespace, name, "latest", testImage.Name, testImage.DockerImageReference)
-	if testImageStream.Annotations == nil {
-		testImageStream.Annotations = make(map[string]string)
-	}
-	testImageStream.Annotations[imageapi.InsecureRepositoryAnnotation] = "true"
-
-	client.AddReactor("get", "imagestreams", imagetest.GetFakeImageStreamGetHandler(t, *testImageStream))
+	fos, client := registrytest.NewFakeOpenShiftWithClient()
+	registrytest.AddImageStream(t, fos, namespace, name, map[string]string{
+		imageapi.InsecureRepositoryAnnotation: "true",
+	})
+	registrytest.AddImage(t, fos, testImage, namespace, name, "latest")
 
 	localBlobStore := newTestBlobStore(nil)
 
 	ctx := WithTestPassthroughToUpstream(context.Background(), false)
-	repo := newTestRepositoryForPullthrough(t, ctx, nil, namespace, name, client, true)
+	repo := newTestRepository(t, namespace, name, testRepositoryOptions{
+		client:            client,
+		enablePullThrough: true,
+	})
 	ptbs := &pullthroughBlobStore{
 		BlobStore: localBlobStore,
 		repo:      repo,
@@ -431,7 +406,7 @@ func TestPullthroughServeBlobInsecure(t *testing.T) {
 		method                     string
 		blobDigest                 digest.Digest
 		localBlobs                 map[digest.Digest][]byte
-		imageStreamInit            func(client *testclient.Fake) *imageapi.ImageStream
+		fakeOpenShiftInit          func(fos *registrytest.FakeOpenShift)
 		expectedStatError          error
 		expectedContentLength      int64
 		expectedBytesServed        int64
@@ -442,13 +417,11 @@ func TestPullthroughServeBlobInsecure(t *testing.T) {
 			name:       "stat remote blob with insecure repository",
 			method:     "HEAD",
 			blobDigest: digest.Digest(m1img.DockerImageLayers[0].Name),
-			imageStreamInit: func(client *testclient.Fake) *imageapi.ImageStream {
-				client.AddReactor("get", "images", registrytest.GetFakeImageGetHandler(t, *m1img))
-
-				is := registrytest.TestNewImageStreamObject(namespace, repo1, "tag1", m1dgst.String(), m1img.DockerImageReference)
-				is.Annotations = map[string]string{imageapi.InsecureRepositoryAnnotation: "true"}
-				client.AddReactor("get", "imagestreams", registrytest.GetFakeImageStreamGetHandler(t, *is))
-				return is
+			fakeOpenShiftInit: func(fos *registrytest.FakeOpenShift) {
+				registrytest.AddImageStream(t, fos, namespace, repo1, map[string]string{
+					imageapi.InsecureRepositoryAnnotation: "true",
+				})
+				registrytest.AddImage(t, fos, m1img, namespace, repo1, "tag1")
 			},
 			expectedContentLength: int64(m1img.DockerImageLayers[0].LayerSize),
 			expectedLocalCalls:    map[string]int{"Stat": 1, "ServeBlob": 1},
@@ -458,13 +431,11 @@ func TestPullthroughServeBlobInsecure(t *testing.T) {
 			name:       "serve remote blob with insecure repository",
 			method:     "GET",
 			blobDigest: digest.Digest(m1img.DockerImageLayers[0].Name),
-			imageStreamInit: func(client *testclient.Fake) *imageapi.ImageStream {
-				client.AddReactor("get", "images", registrytest.GetFakeImageGetHandler(t, *m1img))
-
-				is := registrytest.TestNewImageStreamObject(namespace, repo1, "tag1", m1dgst.String(), m1img.DockerImageReference)
-				is.Annotations = map[string]string{imageapi.InsecureRepositoryAnnotation: "true"}
-				client.AddReactor("get", "imagestreams", registrytest.GetFakeImageStreamGetHandler(t, *is))
-				return is
+			fakeOpenShiftInit: func(fos *registrytest.FakeOpenShift) {
+				registrytest.AddImageStream(t, fos, namespace, repo1, map[string]string{
+					imageapi.InsecureRepositoryAnnotation: "true",
+				})
+				registrytest.AddImage(t, fos, m1img, namespace, repo1, "tag1")
 			},
 			expectedContentLength: int64(m1img.DockerImageLayers[0].LayerSize),
 			expectedBytesServed:   int64(m1img.DockerImageLayers[0].LayerSize),
@@ -475,13 +446,11 @@ func TestPullthroughServeBlobInsecure(t *testing.T) {
 			name:       "stat remote blob with secure repository",
 			method:     "HEAD",
 			blobDigest: digest.Digest(m1img.DockerImageLayers[0].Name),
-			imageStreamInit: func(client *testclient.Fake) *imageapi.ImageStream {
-				client.AddReactor("get", "images", registrytest.GetFakeImageGetHandler(t, *m1img))
-
-				is := registrytest.TestNewImageStreamObject(namespace, repo1, "tag1", m1dgst.String(), m1img.DockerImageReference)
-				is.Annotations = map[string]string{imageapi.InsecureRepositoryAnnotation: "false"}
-				client.AddReactor("get", "imagestreams", registrytest.GetFakeImageStreamGetHandler(t, *is))
-				return is
+			fakeOpenShiftInit: func(fos *registrytest.FakeOpenShift) {
+				registrytest.AddImageStream(t, fos, namespace, repo1, map[string]string{
+					imageapi.InsecureRepositoryAnnotation: "false",
+				})
+				registrytest.AddImage(t, fos, m1img, namespace, repo1, "tag1")
 			},
 			expectedStatError: distribution.ErrBlobUnknown,
 		},
@@ -490,13 +459,11 @@ func TestPullthroughServeBlobInsecure(t *testing.T) {
 			name:       "serve remote blob with secure repository",
 			method:     "GET",
 			blobDigest: digest.Digest(m1img.DockerImageLayers[0].Name),
-			imageStreamInit: func(client *testclient.Fake) *imageapi.ImageStream {
-				client.AddReactor("get", "images", registrytest.GetFakeImageGetHandler(t, *m1img))
-
-				is := registrytest.TestNewImageStreamObject(namespace, repo1, "tag1", m1dgst.String(), m1img.DockerImageReference)
-				is.Annotations = map[string]string{imageapi.InsecureRepositoryAnnotation: "false"}
-				client.AddReactor("get", "imagestreams", registrytest.GetFakeImageStreamGetHandler(t, *is))
-				return is
+			fakeOpenShiftInit: func(fos *registrytest.FakeOpenShift) {
+				registrytest.AddImageStream(t, fos, namespace, repo1, map[string]string{
+					imageapi.InsecureRepositoryAnnotation: "false",
+				})
+				registrytest.AddImage(t, fos, m1img, namespace, repo1, "tag1")
 			},
 			expectedStatError: distribution.ErrBlobUnknown,
 		},
@@ -505,31 +472,20 @@ func TestPullthroughServeBlobInsecure(t *testing.T) {
 			name:       "stat remote blob with with insecure tag",
 			method:     "HEAD",
 			blobDigest: digest.Digest(m2img.DockerImageLayers[0].Name),
-			imageStreamInit: func(client *testclient.Fake) *imageapi.ImageStream {
-				client.AddReactor("get", "images", registrytest.GetFakeImageGetHandler(t, *m1img, *m2img))
-
-				is := registrytest.TestNewImageStreamObject(namespace, repo1, "tag1", m1dgst.String(), m1img.DockerImageReference)
-				is.Status.Tags["tag2"] = imageapi.TagEventList{
-					Items: []imageapi.TagEvent{
-						{
-							Image:                m2img.Name,
-							DockerImageReference: m2img.DockerImageReference,
-						},
-					},
-				}
-				is.Spec.Tags = map[string]imageapi.TagReference{
-					"tag1": {
-						Name:         "tag1",
-						ImportPolicy: imageapi.TagImportPolicy{Insecure: false},
-					},
-					"tag2": {
-						Name:         "tag2",
-						ImportPolicy: imageapi.TagImportPolicy{Insecure: true},
-					},
-				}
-				is.Annotations = map[string]string{imageapi.InsecureRepositoryAnnotation: "false"}
-				client.AddReactor("get", "imagestreams", registrytest.GetFakeImageStreamGetHandler(t, *is))
-				return is
+			fakeOpenShiftInit: func(fos *registrytest.FakeOpenShift) {
+				registrytest.AddUntaggedImage(t, fos, m1img)
+				registrytest.AddUntaggedImage(t, fos, m2img)
+				registrytest.AddImageStream(t, fos, namespace, repo1, map[string]string{
+					imageapi.InsecureRepositoryAnnotation: "false",
+				})
+				registrytest.AddImageStreamTag(t, fos, m1img, namespace, repo1, &imageapi.TagReference{
+					Name:         "tag1",
+					ImportPolicy: imageapi.TagImportPolicy{Insecure: false},
+				})
+				registrytest.AddImageStreamTag(t, fos, m2img, namespace, repo1, &imageapi.TagReference{
+					Name:         "tag2",
+					ImportPolicy: imageapi.TagImportPolicy{Insecure: true},
+				})
 			},
 			expectedContentLength: int64(m2img.DockerImageLayers[0].LayerSize),
 			expectedLocalCalls:    map[string]int{"Stat": 1, "ServeBlob": 1},
@@ -539,31 +495,20 @@ func TestPullthroughServeBlobInsecure(t *testing.T) {
 			name:       "serve remote blob with insecure tag",
 			method:     "GET",
 			blobDigest: digest.Digest(m2img.DockerImageLayers[0].Name),
-			imageStreamInit: func(client *testclient.Fake) *imageapi.ImageStream {
-				client.AddReactor("get", "images", registrytest.GetFakeImageGetHandler(t, *m1img, *m2img))
-
-				is := registrytest.TestNewImageStreamObject(namespace, repo1, "tag1", m1img.Name, m1img.DockerImageReference)
-				is.Status.Tags["tag2"] = imageapi.TagEventList{
-					Items: []imageapi.TagEvent{
-						{
-							Image:                m2img.Name,
-							DockerImageReference: m2img.DockerImageReference,
-						},
-					},
-				}
-				is.Spec.Tags = map[string]imageapi.TagReference{
-					"tag1": {
-						Name:         "tag1",
-						ImportPolicy: imageapi.TagImportPolicy{Insecure: false},
-					},
-					"tag2": {
-						Name:         "tag2",
-						ImportPolicy: imageapi.TagImportPolicy{Insecure: true},
-					},
-				}
-				is.Annotations = map[string]string{imageapi.InsecureRepositoryAnnotation: "false"}
-				client.AddReactor("get", "imagestreams", registrytest.GetFakeImageStreamGetHandler(t, *is))
-				return is
+			fakeOpenShiftInit: func(fos *registrytest.FakeOpenShift) {
+				registrytest.AddUntaggedImage(t, fos, m1img)
+				registrytest.AddUntaggedImage(t, fos, m2img)
+				registrytest.AddImageStream(t, fos, namespace, repo1, map[string]string{
+					imageapi.InsecureRepositoryAnnotation: "false",
+				})
+				registrytest.AddImageStreamTag(t, fos, m1img, namespace, repo1, &imageapi.TagReference{
+					Name:         "tag1",
+					ImportPolicy: imageapi.TagImportPolicy{Insecure: false},
+				})
+				registrytest.AddImageStreamTag(t, fos, m2img, namespace, repo1, &imageapi.TagReference{
+					Name:         "tag2",
+					ImportPolicy: imageapi.TagImportPolicy{Insecure: true},
+				})
 			},
 			expectedLocalCalls:    map[string]int{"Stat": 1, "ServeBlob": 1},
 			expectedContentLength: int64(m2img.DockerImageLayers[0].LayerSize),
@@ -574,32 +519,21 @@ func TestPullthroughServeBlobInsecure(t *testing.T) {
 			name:       "insecure flag propagates to all repositories of the registry",
 			method:     "GET",
 			blobDigest: digest.Digest(m2img.DockerImageLayers[0].Name),
-			imageStreamInit: func(client *testclient.Fake) *imageapi.ImageStream {
-				client.AddReactor("get", "images", registrytest.GetFakeImageGetHandler(t, *m1img, *m2img))
-
-				is := registrytest.TestNewImageStreamObject(namespace, repo1, "tag1", m1img.Name, m1img.DockerImageReference)
-				is.Status.Tags["tag2"] = imageapi.TagEventList{
-					Items: []imageapi.TagEvent{
-						{
-							Image:                m2img.Name,
-							DockerImageReference: m2img.DockerImageReference,
-						},
-					},
-				}
-				is.Spec.Tags = map[string]imageapi.TagReference{
-					"tag1": {
-						Name: "tag1",
-						// This value will propagate to the other tag as well.
-						ImportPolicy: imageapi.TagImportPolicy{Insecure: true},
-					},
-					"tag2": {
-						Name:         "tag2",
-						ImportPolicy: imageapi.TagImportPolicy{Insecure: false},
-					},
-				}
-				is.Annotations = map[string]string{imageapi.InsecureRepositoryAnnotation: "false"}
-				client.AddReactor("get", "imagestreams", registrytest.GetFakeImageStreamGetHandler(t, *is))
-				return is
+			fakeOpenShiftInit: func(fos *registrytest.FakeOpenShift) {
+				registrytest.AddUntaggedImage(t, fos, m1img)
+				registrytest.AddUntaggedImage(t, fos, m2img)
+				registrytest.AddImageStream(t, fos, namespace, repo1, map[string]string{
+					imageapi.InsecureRepositoryAnnotation: "false",
+				})
+				registrytest.AddImageStreamTag(t, fos, m1img, namespace, repo1, &imageapi.TagReference{
+					Name: "tag1",
+					// This value will propagate to the other tag as well.
+					ImportPolicy: imageapi.TagImportPolicy{Insecure: true},
+				})
+				registrytest.AddImageStreamTag(t, fos, m2img, namespace, repo1, &imageapi.TagReference{
+					Name:         "tag2",
+					ImportPolicy: imageapi.TagImportPolicy{Insecure: false},
+				})
 			},
 			expectedLocalCalls:    map[string]int{"Stat": 1, "ServeBlob": 1},
 			expectedContentLength: int64(m2img.DockerImageLayers[0].LayerSize),
@@ -610,10 +544,11 @@ func TestPullthroughServeBlobInsecure(t *testing.T) {
 			name:       "serve remote blob with secure tag",
 			method:     "GET",
 			blobDigest: digest.Digest(m1img.DockerImageLayers[0].Name),
-			imageStreamInit: func(client *testclient.Fake) *imageapi.ImageStream {
-				client.AddReactor("get", "images", registrytest.GetFakeImageGetHandler(t, *m1img, *m2img))
+			fakeOpenShiftInit: func(fos *registrytest.FakeOpenShift) {
+				registrytest.AddUntaggedImage(t, fos, m1img)
+				registrytest.AddUntaggedImage(t, fos, m2img)
 
-				is := registrytest.TestNewImageStreamObject(namespace, repo1, "tag1", m1dgst.String(), m1img.DockerImageReference)
+				m2docker := *m2img
 				ref, err := imageapi.ParseDockerImageReference(m2img.DockerImageReference)
 				if err != nil {
 					t.Fatal(err)
@@ -621,27 +556,19 @@ func TestPullthroughServeBlobInsecure(t *testing.T) {
 				// The two references must differ because all repositories of particular registry are
 				// considered insecure if there's at least one insecure flag for the registry.
 				ref.Registry = "docker.io"
-				is.Status.Tags["tag2"] = imageapi.TagEventList{
-					Items: []imageapi.TagEvent{
-						{
-							Image:                m2img.Name,
-							DockerImageReference: ref.DockerClientDefaults().Exact(),
-						},
-					},
-				}
-				is.Spec.Tags = map[string]imageapi.TagReference{
-					"tag1": {
-						Name:         "tag1",
-						ImportPolicy: imageapi.TagImportPolicy{Insecure: false},
-					},
-					"tag2": {
-						Name:         "tag2",
-						ImportPolicy: imageapi.TagImportPolicy{Insecure: true},
-					},
-				}
-				is.Annotations = map[string]string{imageapi.InsecureRepositoryAnnotation: "false"}
-				client.AddReactor("get", "imagestreams", registrytest.GetFakeImageStreamGetHandler(t, *is))
-				return is
+				m2docker.DockerImageReference = ref.DockerClientDefaults().Exact()
+
+				registrytest.AddImageStream(t, fos, namespace, repo1, map[string]string{
+					imageapi.InsecureRepositoryAnnotation: "false",
+				})
+				registrytest.AddImageStreamTag(t, fos, m1img, namespace, repo1, &imageapi.TagReference{
+					Name:         "tag1",
+					ImportPolicy: imageapi.TagImportPolicy{Insecure: false},
+				})
+				registrytest.AddImageStreamTag(t, fos, &m2docker, namespace, repo1, &imageapi.TagReference{
+					Name:         "tag2",
+					ImportPolicy: imageapi.TagImportPolicy{Insecure: true},
+				})
 			},
 			expectedStatError: distribution.ErrBlobUnknown,
 		},
@@ -650,54 +577,37 @@ func TestPullthroughServeBlobInsecure(t *testing.T) {
 			name:       "serve remote blob with 2 tags pointing to the same image",
 			method:     "GET",
 			blobDigest: digest.Digest(m1img.DockerImageLayers[0].Name),
-			imageStreamInit: func(client *testclient.Fake) *imageapi.ImageStream {
-				client.AddReactor("get", "images", registrytest.GetFakeImageGetHandler(t, *m1img, *m2img))
-
-				is := registrytest.TestNewImageStreamObject(namespace, repo1, "tag1", m1img.Name, m1img.DockerImageReference)
-				is.Status.Tags["tag2"] = imageapi.TagEventList{
-					Items: []imageapi.TagEvent{
-						{
-							Image:                m1img.Name,
-							DockerImageReference: m1img.DockerImageReference,
-						},
-					},
-				}
-				is.Spec.Tags = map[string]imageapi.TagReference{
-					"tag1": {
-						Name:         "tag1",
-						ImportPolicy: imageapi.TagImportPolicy{Insecure: false},
-					},
-					"tag2": {
-						Name:         "tag2",
-						ImportPolicy: imageapi.TagImportPolicy{Insecure: true},
-					},
-				}
-				is.Annotations = map[string]string{imageapi.InsecureRepositoryAnnotation: "false"}
-				client.AddReactor("get", "imagestreams", registrytest.GetFakeImageStreamGetHandler(t, *is))
-				return is
+			fakeOpenShiftInit: func(fos *registrytest.FakeOpenShift) {
+				registrytest.AddUntaggedImage(t, fos, m1img)
+				registrytest.AddImageStream(t, fos, namespace, repo1, map[string]string{
+					imageapi.InsecureRepositoryAnnotation: "false",
+				})
+				registrytest.AddImageStreamTag(t, fos, m1img, namespace, repo1, &imageapi.TagReference{
+					Name:         "tag1",
+					ImportPolicy: imageapi.TagImportPolicy{Insecure: false},
+				})
+				registrytest.AddImageStreamTag(t, fos, m1img, namespace, repo1, &imageapi.TagReference{
+					Name:         "tag2",
+					ImportPolicy: imageapi.TagImportPolicy{Insecure: true},
+				})
 			},
 			expectedLocalCalls:    map[string]int{"Stat": 1, "ServeBlob": 1},
 			expectedContentLength: int64(m1img.DockerImageLayers[0].LayerSize),
 			expectedBytesServed:   int64(m1img.DockerImageLayers[0].LayerSize),
 		},
 	} {
-		client := &testclient.Fake{}
+		fos, client := registrytest.NewFakeOpenShiftWithClient()
 
-		// TODO: get rid of those nasty global vars
-		backupRegistryClient := DefaultRegistryClient
-		DefaultRegistryClient = makeFakeRegistryClient(client, fake.NewSimpleClientset())
-		defer func() {
-			// set it back once this test finishes to make other unit tests working again
-			DefaultRegistryClient = backupRegistryClient
-		}()
-
-		tc.imageStreamInit(client)
+		tc.fakeOpenShiftInit(fos)
 
 		localBlobStore := newTestBlobStore(tc.localBlobs)
 
 		ctx := WithTestPassthroughToUpstream(context.Background(), false)
 
-		repo := newTestRepositoryForPullthrough(t, ctx, nil, namespace, repo1, client, true)
+		repo := newTestRepository(t, namespace, repo1, testRepositoryOptions{
+			client:            client,
+			enablePullThrough: true,
+		})
 
 		ptbs := &pullthroughBlobStore{
 			BlobStore: localBlobStore,
@@ -758,51 +668,6 @@ func TestPullthroughServeBlobInsecure(t *testing.T) {
 			t.Errorf("[%s] unexpected number of bytes served locally: %d != %d", tc.name, localBlobStore.bytesServed, tc.expectedBytesServed)
 		}
 	}
-}
-
-func newTestRepositoryForPullthrough(
-	t *testing.T,
-	ctx context.Context,
-	wrappedRepository distribution.Repository,
-	namespace, name string,
-	client *testclient.Fake,
-	enablePullThrough bool,
-) *repository {
-	cachedLayers, err := newDigestToRepositoryCache(10)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	isGetter := &cachedImageStreamGetter{
-		ctx:          ctx,
-		namespace:    namespace,
-		name:         name,
-		isNamespacer: client,
-	}
-
-	r := &repository{
-		Repository:        wrappedRepository,
-		ctx:               ctx,
-		namespace:         namespace,
-		name:              name,
-		pullthrough:       enablePullThrough,
-		cachedLayers:      cachedLayers,
-		registryOSClient:  client,
-		imageStreamGetter: isGetter,
-		cachedImages:      make(map[digest.Digest]*imageapi.Image),
-	}
-
-	if enablePullThrough {
-		r.remoteBlobGetter = NewBlobGetterService(
-			namespace,
-			name,
-			defaultBlobRepositoryCacheTTL,
-			isGetter.get,
-			client,
-			cachedLayers)
-	}
-
-	return r
 }
 
 const (

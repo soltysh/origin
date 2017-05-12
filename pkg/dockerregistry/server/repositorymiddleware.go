@@ -92,7 +92,7 @@ func init() {
 	cachedLayers = cache
 
 	// load the client when the middleware is initialized, which allows test code to change
-	// DefaultRegistryClient before starting a registry.
+	// the registry client before starting a registry.
 	repomw.Register("openshift",
 		func(ctx context.Context, repo distribution.Repository, options map[string]interface{}) (distribution.Repository, error) {
 			if dockerRegistry == nil {
@@ -103,7 +103,7 @@ func init() {
 				panic(fmt.Sprintf("Configuration error: OpenShift storage driver middleware not activated"))
 			}
 
-			registryOSClient, kClient, errClients := DefaultRegistryClient.Clients()
+			registryOSClient, kClient, errClients := RegistryClientFrom(ctx).Clients()
 			if errClients != nil {
 				return nil, errClients
 			}
@@ -237,13 +237,13 @@ func (r *repository) Manifests(ctx context.Context, options ...distribution.Mani
 	// we do a verification of our own
 	// TODO: let upstream do the verification once they pass correct context object to their manifest handler
 	opts := append(options, registrystorage.SkipLayerVerification())
-	ms, err := r.Repository.Manifests(WithRepository(ctx, r), opts...)
+	ms, err := r.Repository.Manifests(withRepository(ctx, r), opts...)
 	if err != nil {
 		return nil, err
 	}
 
 	ms = &manifestService{
-		ctx:           WithRepository(ctx, r),
+		ctx:           withRepository(ctx, r),
 		repo:          r,
 		manifests:     ms,
 		acceptschema2: r.acceptschema2,
@@ -333,7 +333,7 @@ func (r *repository) createImageStream(ctx context.Context) (*imageapi.ImageStre
 	stream := imageapi.ImageStream{}
 	stream.Name = r.name
 
-	uclient, ok := UserClientFrom(ctx)
+	uclient, ok := userClientFrom(ctx)
 	if !ok {
 		errmsg := "error creating user client to auto provision image stream: user client to master API unavailable"
 		context.GetLogger(ctx).Errorf(errmsg)
@@ -375,28 +375,53 @@ func (r *repository) getImage(dgst digest.Digest) (*imageapi.Image, error) {
 	return image, nil
 }
 
-// getImageOfImageStream retrieves the Image with digest `dgst` for the ImageStream associated with r. This
-// ensures the image belongs to the image stream. It uses two queries to master API:
+// getStoredImageOfImageStream retrieves the Image with digest `dgst` and
+// ensures that the image belongs to the ImageStream associated with r. It
+// uses two queries to master API:
+//
 //  1st to get a corresponding image stream
 //  2nd to get the image
+//
 // This allows us to cache the image stream for later use.
-func (r *repository) getImageOfImageStream(dgst digest.Digest) (*imageapi.Image, *imageapi.ImageStream, error) {
+//
+// If you need the image object to be modified according to image stream tag,
+// please use getImageOfImageStream.
+func (r *repository) getStoredImageOfImageStream(dgst digest.Digest) (*imageapi.Image, *imageapi.TagEvent, *imageapi.ImageStream, error) {
 	stream, err := r.imageStreamGetter.get()
 	if err != nil {
 		context.GetLogger(r.ctx).Errorf("failed to get ImageStream: %v", err)
-		return nil, nil, wrapKStatusErrorOnGetImage(r.name, dgst, err)
+		return nil, nil, nil, wrapKStatusErrorOnGetImage(r.name, dgst, err)
 	}
 
-	_, err = imageapi.ResolveImageID(stream, dgst.String())
+	tagEvent, err := imageapi.ResolveImageID(stream, dgst.String())
 	if err != nil {
 		context.GetLogger(r.ctx).Errorf("failed to resolve image %s in ImageStream %s/%s: %v", dgst.String(), r.namespace, r.name, err)
-		return nil, nil, wrapKStatusErrorOnGetImage(r.name, dgst, err)
+		return nil, nil, nil, wrapKStatusErrorOnGetImage(r.name, dgst, err)
 	}
 
 	image, err := r.getImage(dgst)
 	if err != nil {
-		return nil, nil, wrapKStatusErrorOnGetImage(r.name, dgst, err)
+		return nil, nil, nil, wrapKStatusErrorOnGetImage(r.name, dgst, err)
 	}
+
+	return image, tagEvent, stream, nil
+}
+
+// getImageOfImageStream retrieves the Image with digest `dgst` for
+// the ImageStream associated with r. The image's field DockerImageReference
+// is modified on the fly to pretend that we've got the image from the source
+// from which the image was tagged.to match tag's DockerImageReference.
+//
+// NOTE: due to on the fly modification, the returned image object should
+// not be sent to the master API. If you need unmodified version of the
+// image object, please use getStoredImageOfImageStream.
+func (r *repository) getImageOfImageStream(dgst digest.Digest) (*imageapi.Image, *imageapi.ImageStream, error) {
+	image, tagEvent, stream, err := r.getStoredImageOfImageStream(dgst)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	image.DockerImageReference = tagEvent.DockerImageReference
 
 	return image, stream, nil
 }
@@ -469,11 +494,11 @@ func (r *repository) checkPendingErrors(ctx context.Context) error {
 }
 
 func checkPendingErrors(logger context.Logger, ctx context.Context, namespace, name string) error {
-	if !AuthPerformed(ctx) {
+	if !authPerformed(ctx) {
 		return fmt.Errorf("openshift.auth.completed missing from context")
 	}
 
-	deferredErrors, haveDeferredErrors := DeferredErrorsFrom(ctx)
+	deferredErrors, haveDeferredErrors := deferredErrorsFrom(ctx)
 	if !haveDeferredErrors {
 		return nil
 	}

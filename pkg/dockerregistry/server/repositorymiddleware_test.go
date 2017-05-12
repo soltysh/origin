@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"reflect"
@@ -29,9 +30,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/diff"
 
 	"github.com/openshift/origin/pkg/client"
-	"github.com/openshift/origin/pkg/client/testclient"
 	registrytest "github.com/openshift/origin/pkg/dockerregistry/testutil"
-	imagetest "github.com/openshift/origin/pkg/image/admission/testutil"
 	imageapi "github.com/openshift/origin/pkg/image/api"
 )
 
@@ -286,15 +285,27 @@ func TestRepositoryBlobStat(t *testing.T) {
 
 		ctx := context.Background()
 		if !tc.skipAuth {
-			ctx = WithAuthPerformed(ctx)
+			ctx = withAuthPerformed(ctx)
 		}
 		if tc.deferredErrors != nil {
-			ctx = WithDeferredErrors(ctx, tc.deferredErrors)
+			ctx = withDeferredErrors(ctx, tc.deferredErrors)
 		}
 
-		client := &testclient.Fake{}
-		client.AddReactor("get", "imagestreams", imagetest.GetFakeImageStreamGetHandler(t, tc.imageStreams...))
-		client.AddReactor("get", "images", registrytest.GetFakeImageGetHandler(t, tc.images...))
+		fos, client := registrytest.NewFakeOpenShiftWithClient()
+
+		for _, is := range tc.imageStreams {
+			_, err = fos.CreateImageStream(is.Namespace, &is)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		for _, image := range tc.images {
+			_, err = fos.CreateImage(&image)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
 
 		reg, err := newTestRegistry(ctx, client, driver, defaultBlobRepositoryCacheTTL, tc.pullthrough, true)
 		if err != nil {
@@ -333,7 +344,7 @@ func TestRepositoryBlobStatCacheEviction(t *testing.T) {
 	const blobRepoCacheTTL = time.Millisecond * 500
 
 	quotaEnforcing = &quotaEnforcingConfig{}
-	ctx := WithAuthPerformed(context.Background())
+	ctx := withAuthPerformed(context.Background())
 
 	// this driver holds all the testing blobs in memory during the whole test run
 	driver := inmemory.New()
@@ -343,7 +354,6 @@ func TestRepositoryBlobStatCacheEviction(t *testing.T) {
 		t.Fatal(err)
 	}
 	testImage := testImages["nm/is:latest"][0]
-	testImageStream := registrytest.TestNewImageStreamObject("nm", "is", "latest", testImage.Name, "")
 
 	blob1Desc := testNewDescriptorForLayer(testImage.DockerImageLayers[0])
 	blob1Dgst := blob1Desc.Digest
@@ -359,9 +369,9 @@ func TestRepositoryBlobStatCacheEviction(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client := &testclient.Fake{}
-	client.AddReactor("get", "imagestreams", imagetest.GetFakeImageStreamGetHandler(t, *testImageStream))
-	client.AddReactor("get", "images", registrytest.GetFakeImageGetHandler(t, *testImage))
+	fos, client := registrytest.NewFakeOpenShiftWithClient()
+	registrytest.AddImageStream(t, fos, "nm", "is", nil)
+	registrytest.AddImage(t, fos, testImage, "nm", "is", "latest")
 
 	reg, err := newTestRegistry(ctx, client, driver, blobRepoCacheTTL, false, false)
 	if err != nil {
@@ -531,11 +541,10 @@ func storeTestImage(
 	}
 
 	for i := 0; i < testImageLayerCount; i++ {
-		rs, ds, err := registrytest.CreateRandomTarFile()
+		payload, err := registrytest.CreateRandomTarFile()
 		if err != nil {
 			return nil, fmt.Errorf("unexpected error generating test layer file: %v", err)
 		}
-		dgst := digest.Digest(ds)
 
 		wr, err := repo.Blobs(ctx).Create(ctx)
 		if err != nil {
@@ -543,10 +552,12 @@ func storeTestImage(
 		}
 		defer wr.Close()
 
-		n, err := io.Copy(wr, rs)
+		n, err := io.Copy(wr, bytes.NewReader(payload))
 		if err != nil {
 			return nil, fmt.Errorf("unexpected error copying to upload: %v", err)
 		}
+
+		dgst := digest.FromBytes(payload)
 
 		if schemaVersion == 1 {
 			m1.FSLayers = append(m1.FSLayers, schema1.FSLayer{BlobSum: dgst})
