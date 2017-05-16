@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit d0f76c0dcd7dcd19538e3da36cc9d2c6b6e8f6ae
+%global commit c36cb466a5174306ae4f7c3c67964ca6c509aeb5
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.14 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=6964d73
+%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.15 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=c36cb46
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.5.5.15
+Version:        3.5.5.16
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -585,6 +585,19 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue May 16 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.5.5.16-1
+- UPSTREAM: 45286: detach the volume when pod is terminated
+  (hekumar@redhat.com)
+- Add backward compatibility for the old EgressNetworkPolicy "0.0.0.0/32" bug
+  (danw@redhat.com)
+- Use docker image reference from ImageStream (obulatov@redhat.com)
+- Remove GetFake*Handler (obulatov@redhat.com)
+- Replace io.ReadSeeker by simple []byte buffer (obulatov@redhat.com)
+- Add tests for ManifestService (obulatov@redhat.com)
+- Remove global DefaultRegistryClient (obulatov@redhat.com)
+- Add stateful reactors for fake client (obulatov@redhat.com)
+- Add function newTestRepository (obulatov@redhat.com)
+
 * Thu May 11 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.5.5.15-1
 - UPSTREAM: 41626: kubelet volume cleanup does not distinguish error
   (decarr@redhat.com)
