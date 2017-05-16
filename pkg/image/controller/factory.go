@@ -8,82 +8,97 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/openshift/origin/pkg/client"
-	"github.com/openshift/origin/pkg/controller"
+	ctrl "github.com/openshift/origin/pkg/controller"
 	"github.com/openshift/origin/pkg/controller/shared"
 )
 
-// NewImageStreamControllers creates an ImageStreamController and ScheduledImageStreamController.
-func NewImageStreamControllers(
-	isInformer shared.ImageStreamInformer,
-	isNamespacer client.ImageStreamsNamespacer,
-	checkInterval time.Duration,
-	rateLimiter flowcontrol.RateLimiter,
-	scheduleEnabled bool,
-) (*ImageStreamController, *ScheduledImageStreamController) {
+// ImageStreamControllerOptions represents a configuration for the scheduled image stream
+// import controller.
+type ScheduledImageStreamControllerOptions struct {
+	Resync time.Duration
 
-	// instantiate informer based image stream controller
-	ctrl := newImageStreamController(isInformer, isNamespacer)
+	// Enabled indicates that the scheduled imports for images are allowed.
+	Enabled bool
 
-	// instantiate a scheduled importer using a number of buckets
-	sched := newScheduledImageStreamController(isInformer, isNamespacer, rateLimiter, checkInterval, scheduleEnabled)
+	// DefaultBucketSize is the default bucket size used by QPS.
+	DefaultBucketSize int
 
-	// setup notifier on the main controller so that it informs the scheduled
-	// controller when streams are being imported
-	ctrl.notifier = sched
-
-	return ctrl, sched
+	// MaxImageImportsPerMinute sets the maximum number of simultaneous image imports per
+	// minute.
+	MaxImageImportsPerMinute int
 }
 
-func newImageStreamController(isInformer shared.ImageStreamInformer, isNamespacer client.ImageStreamsNamespacer) *ImageStreamController {
-	ctrl := &ImageStreamController{
+// Buckets returns the bucket size calculated based on the resync interval of the
+// scheduled image import controller. For resync interval bigger than our the bucket size
+// is doubled, for resync lower then 10 minutes bucket size is set to a half of the
+// default size.
+func (opts ScheduledImageStreamControllerOptions) Buckets() int {
+	buckets := opts.DefaultBucketSize // 4
+	switch {
+	case opts.Resync > time.Hour:
+		return buckets * 2
+	case opts.Resync < 10*time.Minute:
+		return buckets / 2
+	}
+	return buckets
+}
+
+// BucketsToQPS converts the bucket size to QPS
+func (opts ScheduledImageStreamControllerOptions) BucketsToQPS() float32 {
+	seconds := float32(opts.Resync / time.Second)
+	return 1.0 / seconds * float32(opts.Buckets())
+}
+
+// GetRateLimiter returns a flowcontrol rate limiter based on the maximum number of
+// imports (MaxImageImportsPerMinute) setting.
+func (opts ScheduledImageStreamControllerOptions) GetRateLimiter() flowcontrol.RateLimiter {
+	if opts.MaxImageImportsPerMinute <= 0 {
+		return flowcontrol.NewFakeAlwaysRateLimiter()
+	}
+
+	importRate := float32(opts.MaxImageImportsPerMinute) / float32(time.Minute/time.Second)
+	importBurst := opts.MaxImageImportsPerMinute * 2
+	return flowcontrol.NewTokenBucketRateLimiter(importRate, importBurst)
+}
+
+// NewImageStreamController returns a new image stream import controller.
+func NewImageStreamController(namespacer client.ImageStreamsNamespacer, informer shared.ImageStreamInformer) *ImageStreamController {
+	controller := &ImageStreamController{
 		queue: workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
 
-		isNamespacer: isNamespacer,
-		lister:       temporaryLister{isInformer.Lister()},
-		listerSynced: isInformer.Informer().HasSynced,
+		isNamespacer: namespacer,
+		lister:       temporaryLister{informer.Lister()},
+		listerSynced: informer.Informer().HasSynced,
 	}
 
-	isInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    ctrl.addImageStream,
-		UpdateFunc: ctrl.updateImageStream,
+	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    controller.addImageStream,
+		UpdateFunc: controller.updateImageStream,
 	})
 
-	return ctrl
+	return controller
 }
 
-func newScheduledImageStreamController(
-	isInformer shared.ImageStreamInformer,
-	isNamespacer client.ImageStreamsNamespacer,
-	rateLimiter flowcontrol.RateLimiter,
-	checkInterval time.Duration,
-	scheduleEnabled bool,
-) *ScheduledImageStreamController {
-	buckets := 4
-	switch {
-	case checkInterval > time.Hour:
-		buckets = 8
-	case checkInterval < 10*time.Minute:
-		buckets = 2
+// NewScheduledImageStreamController returns a new scheduled image stream import
+// controller.
+func NewScheduledImageStreamController(namespacer client.ImageStreamsNamespacer, informer shared.ImageStreamInformer, opts ScheduledImageStreamControllerOptions) *ScheduledImageStreamController {
+	bucketLimiter := flowcontrol.NewTokenBucketRateLimiter(opts.BucketsToQPS(), 1)
+
+	controller := &ScheduledImageStreamController{
+		enabled:      opts.Enabled,
+		rateLimiter:  opts.GetRateLimiter(),
+		isNamespacer: namespacer,
+		lister:       temporaryLister{informer.Lister()},
+		listerSynced: informer.Informer().HasSynced,
 	}
-	seconds := checkInterval / time.Second
-	bucketQPS := 1.0 / float32(seconds) * float32(buckets)
-	bucketLimiter := flowcontrol.NewTokenBucketRateLimiter(bucketQPS, 1)
 
-	sched := &ScheduledImageStreamController{
-		enabled:     scheduleEnabled,
-		rateLimiter: rateLimiter,
+	controller.scheduler = ctrl.NewScheduler(opts.Buckets(), bucketLimiter, controller.syncTimed)
 
-		isNamespacer: isNamespacer,
-		lister:       temporaryLister{isInformer.Lister()},
-		listerSynced: isInformer.Informer().HasSynced,
-	}
-	sched.scheduler = controller.NewScheduler(buckets, bucketLimiter, sched.syncTimed)
-
-	isInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    sched.addImageStream,
-		UpdateFunc: sched.updateImageStream,
-		DeleteFunc: sched.deleteImageStream,
+	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    controller.addImageStream,
+		UpdateFunc: controller.updateImageStream,
+		DeleteFunc: controller.deleteImageStream,
 	})
 
-	return sched
+	return controller
 }

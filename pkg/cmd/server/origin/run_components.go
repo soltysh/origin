@@ -14,7 +14,6 @@ import (
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/client-go/util/cert"
-	"k8s.io/client-go/util/flowcontrol"
 	kctrlmgr "k8s.io/kubernetes/cmd/kube-controller-manager/app"
 	cmapp "k8s.io/kubernetes/cmd/kube-controller-manager/app/options"
 	kapi "k8s.io/kubernetes/pkg/api"
@@ -420,34 +419,27 @@ func (c *MasterConfig) RunServiceServingCertController(client kclientsetinternal
 
 // RunImageImportController starts the image import trigger controller process.
 func (c *MasterConfig) RunImageImportController() {
-	isInformer := c.Informers.ImageStreams()
-	osclient := c.ImageImportControllerClient()
+	controller := imagecontroller.NewImageStreamController(c.ImageImportControllerClient(), c.Informers.ImageStreams())
+	scheduledController := imagecontroller.NewScheduledImageStreamController(c.ImageImportControllerClient(), c.Informers.ImageStreams(), imagecontroller.ScheduledImageStreamControllerOptions{
+		Resync: time.Duration(c.Options.ImagePolicyConfig.ScheduledImageImportMinimumIntervalSeconds) * time.Second,
 
-	var limiter flowcontrol.RateLimiter = nil
-	if c.Options.ImagePolicyConfig.MaxScheduledImageImportsPerMinute <= 0 {
-		limiter = flowcontrol.NewFakeAlwaysRateLimiter()
-	} else {
-		importRate := float32(c.Options.ImagePolicyConfig.MaxScheduledImageImportsPerMinute) / float32(time.Minute/time.Second)
-		importBurst := c.Options.ImagePolicyConfig.MaxScheduledImageImportsPerMinute * 2
-		limiter = flowcontrol.NewTokenBucketRateLimiter(importRate, importBurst)
-	}
+		Enabled:                  !c.Options.ImagePolicyConfig.DisableScheduledImport,
+		DefaultBucketSize:        4, // TODO: Make this configurable?
+		MaxImageImportsPerMinute: c.Options.ImagePolicyConfig.MaxScheduledImageImportsPerMinute,
+	})
 
-	ctrl, sched := imagecontroller.NewImageStreamControllers(
-		isInformer,
-		osclient,
-		time.Duration(c.Options.ImagePolicyConfig.ScheduledImageImportMinimumIntervalSeconds)*time.Second,
-		limiter,
-		!c.Options.ImagePolicyConfig.DisableScheduledImport,
-	)
+	// Setup notifier on the main controller so that it informs the scheduled controller when streams are being imported
+	controller.SetNotifier(scheduledController)
 
 	// TODO align with https://github.com/openshift/origin/pull/13579 once it merges
 	stopCh := make(chan struct{})
-	go ctrl.Run(5, stopCh)
+	go controller.Run(5, stopCh)
 	if c.Options.ImagePolicyConfig.DisableScheduledImport {
 		glog.V(2).Infof("Scheduled image import is disabled - the 'scheduled' flag on image streams will be ignored")
-	} else {
-		sched.Run(utilwait.NeverStop)
+		return
 	}
+
+	scheduledController.Run(utilwait.NeverStop)
 }
 
 // RunSecurityAllocationController starts the security allocation controller process.

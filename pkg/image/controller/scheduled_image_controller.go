@@ -76,8 +76,14 @@ func (s *ScheduledImageStreamController) addImageStream(obj interface{}) {
 }
 
 func (s *ScheduledImageStreamController) updateImageStream(old, cur interface{}) {
-	curStream := cur.(*api.ImageStream)
-	oldStream := old.(*api.ImageStream)
+	curStream, ok := cur.(*api.ImageStream)
+	if !ok {
+		return
+	}
+	oldStream, ok := old.(*api.ImageStream)
+	if !ok {
+		return
+	}
 	// we only compare resource version, since deeper inspection if a stream
 	// needs to be re-imported happens in syncImageStream
 	if curStream.ResourceVersion == oldStream.ResourceVersion {
@@ -87,8 +93,19 @@ func (s *ScheduledImageStreamController) updateImageStream(old, cur interface{})
 }
 
 func (s *ScheduledImageStreamController) deleteImageStream(obj interface{}) {
-	stream := obj.(*api.ImageStream)
-	key, _ := cache.MetaNamespaceKeyFunc(stream)
+	stream, isStream := obj.(*api.ImageStream)
+	if !isStream {
+		tombstone, objIsTombstone := obj.(cache.DeletedFinalStateUnknown)
+		if !objIsTombstone {
+			return
+		}
+		stream, isStream = tombstone.Obj.(*api.ImageStream)
+	}
+	key, err := cache.MetaNamespaceKeyFunc(stream)
+	if err != nil {
+		glog.V(2).Infof("unable to get namespace key function for stream %q: %v", stream, err)
+		return
+	}
 	s.scheduler.Remove(key, nil)
 }
 
@@ -98,7 +115,11 @@ func (s *ScheduledImageStreamController) enqueueImageStream(stream *api.ImageStr
 		return
 	}
 	if needsScheduling(stream) {
-		key, _ := cache.MetaNamespaceKeyFunc(stream)
+		key, err := cache.MetaNamespaceKeyFunc(stream)
+		if err != nil {
+			glog.V(2).Infof("unable to get namespace key function for stream %q: %v", stream, err)
+			return
+		}
 		s.scheduler.Add(key, uniqueItem{uid: string(stream.UID), resourceVersion: stream.ResourceVersion})
 	}
 }
@@ -109,12 +130,15 @@ func (s *ScheduledImageStreamController) syncTimed(key, value interface{}) {
 		s.scheduler.Remove(key, value)
 		return
 	}
-	glog.V(5).Infof("DEBUG: checking %s", key)
 	if s.rateLimiter != nil && !s.rateLimiter.TryAccept() {
 		glog.V(5).Infof("DEBUG: check of %s exceeded rate limit, will retry later", key)
 		return
 	}
-	namespace, name, _ := cache.SplitMetaNamespaceKey(key.(string))
+	namespace, name, err := cache.SplitMetaNamespaceKey(key.(string))
+	if err != nil {
+		glog.V(2).Infof("unable to split namespace key for key %q: %v", key, err)
+		return
+	}
 	if err := s.syncTimedByName(namespace, name); err != nil {
 		// the stream cannot be imported
 		if err == ErrNotImportable {

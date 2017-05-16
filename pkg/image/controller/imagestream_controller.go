@@ -21,7 +21,7 @@ import (
 	"github.com/openshift/origin/pkg/image/api"
 )
 
-var ErrNotImportable = errors.New("the specified stream cannot be imported")
+var ErrNotImportable = errors.New("requested image cannot be imported")
 
 // imageStreamNamespaceLister helps get ImageStreams.
 // TODO: replace with generated informer interfaces
@@ -69,6 +69,10 @@ type ImageStreamController struct {
 	notifier Notifier
 }
 
+func (c *ImageStreamController) SetNotifier(n Notifier) {
+	c.notifier = n
+}
+
 // Run begins watching and syncing.
 func (c *ImageStreamController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
@@ -91,15 +95,24 @@ func (c *ImageStreamController) Run(workers int, stopCh <-chan struct{}) {
 }
 
 func (c *ImageStreamController) addImageStream(obj interface{}) {
-	stream := obj.(*api.ImageStream)
-	c.enqueueImageStream(stream)
+	if stream, ok := obj.(*api.ImageStream); ok {
+		c.enqueueImageStream(stream)
+	}
 }
 
 func (c *ImageStreamController) updateImageStream(old, cur interface{}) {
-	curStream := cur.(*api.ImageStream)
-	oldStream := old.(*api.ImageStream)
+	curStream, ok := cur.(*api.ImageStream)
+	if !ok {
+		return
+	}
+	oldStream, ok := old.(*api.ImageStream)
+	if !ok {
+		return
+	}
 	// we only compare resource version, since deeper inspection if a stream
 	// needs to be re-imported happens in syncImageStream
+	//
+	// FIXME: this will only be ever true on cache resync
 	if curStream.ResourceVersion == oldStream.ResourceVersion {
 		return
 	}
@@ -109,7 +122,7 @@ func (c *ImageStreamController) updateImageStream(old, cur interface{}) {
 func (c *ImageStreamController) enqueueImageStream(stream *api.ImageStream) {
 	key, err := kcontroller.KeyFunc(stream)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("Couldn't get key for object %#v: %v", stream, err))
+		utilruntime.HandleError(fmt.Errorf("Couldn't get key for image stream %#v: %v", stream, err))
 		return
 	}
 	c.queue.Add(key)
@@ -162,13 +175,7 @@ func (c *ImageStreamController) getByKey(key string) (*api.ImageStream, error) {
 
 // tagImportable is true if the given TagReference is importable by this controller
 func tagImportable(tagRef api.TagReference) bool {
-	if tagRef.From == nil {
-		return false
-	}
-	if tagRef.From.Kind != "DockerImage" || tagRef.Reference {
-		return false
-	}
-	return true
+	return !(tagRef.From == nil || tagRef.From.Kind != "DockerImage" || tagRef.Reference)
 }
 
 // tagNeedsImport is true if the observed tag generation for this tag is older than the

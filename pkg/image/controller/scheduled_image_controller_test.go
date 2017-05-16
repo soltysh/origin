@@ -51,7 +51,11 @@ func TestScheduledImport(t *testing.T) {
 		internalKubeClient, testclient.NewSimpleFake(), shared.DefaultListerWatcherOverrides{}, 10*time.Minute)
 	isInformer := informerFactory.ImageStreams()
 	fake := testclient.NewSimpleFake()
-	sched := newScheduledImageStreamController(isInformer, fake, nil, 1*time.Second, true)
+	sched := NewScheduledImageStreamController(fake, isInformer, ScheduledImageStreamControllerOptions{
+		Enabled:           true,
+		Resync:            1 * time.Second,
+		DefaultBucketSize: 4,
+	})
 
 	// queue, but don't import the stream
 	sched.enqueueImageStream(stream)
