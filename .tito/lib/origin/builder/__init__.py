@@ -28,7 +28,13 @@ class OriginBuilder(Builder):
     def _get_rpmbuild_dir_options(self):
         git_hash = get_latest_commit()
         cmd = '. ./hack/common.sh ; echo $(os::build::ldflags)'
-        ldflags = run_command("bash -c '{0}'".format(cmd))
+        # Newer versions of golang separate ldflag keys/values with equal
+        # signs.  Older versions use spaces.  If you use a newer version of
+        # golang to buil the SRPM than the version that is going to build the
+        # RPM you can get a bizarre compilation error since the wrong flags
+        # will be passed in.  Newer versions are backwards compatible but for
+        # older versions of ocp we should remove equal signs just to be safe.
+        ldflags = run_command("bash -c '{0}'".format(cmd)).replace("=", " ")
 
         return ('--define "_topdir %s" --define "_sourcedir %s" --define "_builddir %s" '
                 '--define "_srcrpmdir %s" --define "_rpmdir %s" --define "ldflags %s" '
@@ -56,7 +62,8 @@ class OriginBuilder(Builder):
             # Custom Openshift v3 stuff follows, everything above is the standard
             # builder
             cmd = '. ./hack/common.sh ; echo $(os::build::ldflags)'
-            ldflags = run_command("bash -c '{0}'".format(cmd))
+            # See ldflags comment in _get_rpmbuild_dir_options
+            ldflags = run_command("bash -c '{0}'".format(cmd)).replace("=", " ")
             print("LDFLAGS::{0}".format(ldflags))
             update_ldflags = \
                     "sed -i 's|^%global ldflags .*$|%global ldflags {0}|' {1}".format(

@@ -77,7 +77,13 @@ class OriginTagger(VersionTagger):
         output = run_command(update_commit)
 
         cmd = '. ./hack/common.sh ; echo $(os::build::ldflags)'
-        ldflags = run_command('bash -c \'{0}\''.format(cmd))
+        # Newer versions of golang separate ldflag keys/values with equal
+        # signs.  Older versions use spaces.  If you use a newer version of
+        # golang to buil the SRPM than the version that is going to build the
+        # RPM you can get a bizarre compilation error since the wrong flags
+        # will be passed in.  Newer versions are backwards compatible but for
+        # older versions of ocp we should remove equal signs just to be safe.
+        ldflags = run_command('bash -c \'{0}\''.format(cmd)).replace("=", " ")
         # hack/common.sh will tell us that the tree is dirty because tito has
         # already mucked with things, but lets not consider the tree to be
         # dirty
