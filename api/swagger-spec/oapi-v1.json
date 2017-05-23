@@ -25309,7 +25309,8 @@
     "required": [
      "targetPortal",
      "iqn",
-     "lun"
+     "lun",
+     "portals"
     ],
     "properties": {
      "targetPortal": {
@@ -25336,6 +25337,12 @@
      "readOnly": {
       "type": "boolean",
       "description": "ReadOnly here will force the ReadOnly setting in VolumeMounts. Defaults to false."
+     },
+     "portals": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
      }
     }
    },
