@@ -34,8 +34,9 @@ const (
 )
 
 var (
-	defaultImagePrefix         = "openshift3/ose"
-	NetworkDiagDefaultPodImage = defaultImagePrefix
+	defaultImagePrefix             = "openshift3/ose"
+	NetworkDiagDefaultPodImage     = defaultImagePrefix
+	NetworkDiagDefaultTestPodImage = defaultImagePrefix + "-deployer"
 )
 
 func GetOpenShiftNetworkPlugin(osClient *osclient.Client) (string, bool, error) {
