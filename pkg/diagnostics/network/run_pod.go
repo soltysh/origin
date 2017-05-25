@@ -32,6 +32,9 @@ type NetworkDiagnostic struct {
 	PreventModification bool
 	LogDir              string
 	PodImage            string
+	TestPodImage        string
+	TestPodProtocol     string
+	TestPodPort         int
 
 	pluginName    string
 	nodes         []kapi.Node
@@ -92,12 +95,6 @@ func (d *NetworkDiagnostic) Check() types.DiagnosticResult {
 		return d.res
 	}
 
-	if len(d.LogDir) == 0 {
-		d.LogDir = util.NetworkDiagDefaultLogDir
-	}
-	if len(d.PodImage) == 0 {
-		d.PodImage = util.NetworkDiagDefaultPodImage
-	}
 	d.runNetworkDiagnostic()
 	return d.res
 }
