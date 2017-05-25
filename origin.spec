@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 6f3257af60da730e6b4a5857313e8997fbfb99f4
+%global commit d530da147d9c5ea176981fb348209495a1050154
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.18 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=6f3257a
+%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.19 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=e4f9031
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.5.5.19
+Version:        3.5.5.20
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -585,6 +585,10 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Thu May 25 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.5.5.20-1
+- [3.5] back-port: Set the log level for iptables rule dump to 5
+  (bbennett@redhat.com)
+
 * Tue May 23 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.5.5.19-1
 - Change default arp cache size on nodes (pcameron@redhat.com)
 - UPSTREAM: 45623: Don't attempt to make and chmod subPath if it already exists
