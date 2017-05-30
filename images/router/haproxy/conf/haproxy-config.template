@@ -298,7 +298,7 @@ backend be_edge_http_{{$cfgIdx}}
     {{ range $serviceUnitName, $weight := $cfg.ServiceUnitNames }}
       {{ if ne $weight 0 }}
         {{ with $serviceUnit := index $.ServiceUnits $serviceUnitName }}
-          {{ range $idx, $endpoint := endpointsForAlias $cfg $serviceUnit }}
+          {{ range $idx, $endpoint := processEndpointsForAlias $cfg $serviceUnit (env "ROUTER_BACKEND_PROCESS_ENDPOINTS" "") }}
             {{ if $endpoint.NoHealthCheck }}
               server {{$endpoint.IdHash}} {{$endpoint.IP}}:{{$endpoint.Port}} cookie {{$endpoint.IdHash}} weight {{$weight}}
             {{ else }}
@@ -362,7 +362,7 @@ backend be_tcp_{{$cfgIdx}}
     {{ range $serviceUnitName, $weight := $cfg.ServiceUnitNames }}
       {{ if ne $weight 0 }}
         {{ with $serviceUnit := index $.ServiceUnits $serviceUnitName }}
-          {{ range $idx, $endpoint := endpointsForAlias $cfg $serviceUnit }}
+          {{ range $idx, $endpoint := processEndpointsForAlias $cfg $serviceUnit (env "ROUTER_BACKEND_PROCESS_ENDPOINTS" "") }}
             {{ if $endpoint.NoHealthCheck }}
   server {{$endpoint.IdHash}} {{$endpoint.IP}}:{{$endpoint.Port}} weight {{$weight}}
             {{ else }}
@@ -380,7 +380,7 @@ backend be_tcp_{{$cfgIdx}}
                 {{ end }}
               {{ end }}
             {{ end }}
-          {{ end }}{{/* end range endpointsForAlias */}}
+          {{ end }}{{/* end range processEndpointsForAlias */}}
         {{ end }}{{/* end get ServiceUnit from serviceUnitName */}}
       {{ end }}{{/* end if weight != 0 */}}
     {{ end }}{{/* end iterate over services*/}}
@@ -436,7 +436,7 @@ backend be_secure_{{$cfgIdx}}
     {{ range $serviceUnitName, $weight := $cfg.ServiceUnitNames }}
       {{ if ne $weight 0 }}
         {{ with $serviceUnit := index $.ServiceUnits $serviceUnitName }}
-          {{ range $idx, $endpoint := endpointsForAlias $cfg $serviceUnit }}
+          {{ range $idx, $endpoint := processEndpointsForAlias $cfg $serviceUnit (env "ROUTER_BACKEND_PROCESS_ENDPOINTS" "") }}
             {{ if $endpoint.NoHealthCheck }}
   server {{$endpoint.IdHash}} {{$endpoint.IP}}:{{$endpoint.Port}} ssl verify required ca-file {{ $workingDir }}/cacerts/{{$cfgIdx}}.pem cookie {{$endpoint.IdHash}} weight {{$weight}}
             {{ else }}
@@ -454,7 +454,7 @@ backend be_secure_{{$cfgIdx}}
                 {{ end }}
               {{ end }}{{/* end get health interval annotation */}}
             {{ end }}{{/* end else no health check */}}
-          {{ end }}{{/* end range endpointsForAlias */}}
+          {{ end }}{{/* end range processEndpointsForAlias */}}
         {{ end }}{{/* end get serviceUnit from its name */}}
       {{ end }}{{/* end if weight != 0 */}}
     {{ end }}{{/* end range over serviceUnitNames */}}
