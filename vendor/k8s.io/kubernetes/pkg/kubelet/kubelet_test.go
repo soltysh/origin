@@ -4359,6 +4359,8 @@ func TestDeletePodDirsForDeletedPods(t *testing.T) {
 	testKubelet.fakeCadvisor.On("ImagesFsInfo").Return(cadvisorapiv2.FsInfo{}, nil)
 	testKubelet.fakeCadvisor.On("RootFsInfo").Return(cadvisorapiv2.FsInfo{}, nil)
 	kl := testKubelet.kubelet
+	kl.mounter = &mount.FakeMounter{}
+
 	pods := []*api.Pod{
 		podWithUidNameNs("12345678", "pod1", "ns"),
 		podWithUidNameNs("12345679", "pod2", "ns"),
@@ -4429,6 +4431,9 @@ func TestDoesNotDeletePodDirsIfContainerIsRunning(t *testing.T) {
 	testKubelet.fakeCadvisor.On("MachineInfo").Return(&cadvisorapi.MachineInfo{}, nil)
 	testKubelet.fakeCadvisor.On("ImagesFsInfo").Return(cadvisorapiv2.FsInfo{}, nil)
 	testKubelet.fakeCadvisor.On("RootFsInfo").Return(cadvisorapiv2.FsInfo{}, nil)
+	kl := testKubelet.kubelet
+	kl.mounter = &mount.FakeMounter{}
+
 	runningPod := &kubecontainer.Pod{
 		ID:        "12345678",
 		Name:      "pod1",
