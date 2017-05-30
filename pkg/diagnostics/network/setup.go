@@ -155,7 +155,38 @@ func (d *NetworkDiagnostic) waitForTestPodAndService(nsList []string) error {
 			errList = append(errList, err)
 		}
 	}
+
+	if totalPods, runningPods, err := d.getCountOfTestPods(nsList); err == nil {
+		// Perform network diagnostic checks if we are able to launch decent number of test pods (at least 50%)
+		if runningPods != totalPods {
+			if runningPods >= (totalPods / 2) {
+				d.res.Warn("DNet3002", nil, fmt.Sprintf("Failed to run some network diags test pods: %d, So some network diagnostic checks may be skipped.", (totalPods-runningPods)))
+				return nil
+			} else {
+				errList = append(errList, fmt.Errorf("Failed to run network diags test pods, failed: %d, total: %d", (totalPods-runningPods), totalPods))
+			}
+		}
+	}
 	return kerrors.NewAggregate(errList)
+}
+
+func (d *NetworkDiagnostic) getCountOfTestPods(nsList []string) (int, int, error) {
+	totalPodCount := 0
+	runningPodCount := 0
+	for _, name := range nsList {
+		podList, err := d.getPodList(name, util.NetworkDiagTestPodNamePrefix)
+		if err != nil {
+			return -1, -1, err
+		}
+		totalPodCount += len(podList.Items)
+
+		for _, pod := range podList.Items {
+			if pod.Status.Phase == kapi.PodRunning {
+				runningPodCount += 1
+			}
+		}
+	}
+	return totalPodCount, runningPodCount, nil
 }
 
 func (d *NetworkDiagnostic) makeNamespaceGlobal(nsName string) error {
