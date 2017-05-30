@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	utiltesting "k8s.io/client-go/util/testing"
 	"k8s.io/kubernetes/pkg/util/mount"
+	utiltesting "k8s.io/kubernetes/pkg/util/testing"
 )
 
 type fakeMounter struct{}
