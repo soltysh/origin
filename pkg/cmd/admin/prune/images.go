@@ -454,7 +454,7 @@ func (p *describingManifestDeleter) DeleteManifest(registryClient *http.Client, 
 // getClients returns a Kube client, OpenShift client, and registry client. Note that
 // registryCABundle and registryInsecure=true are mutually exclusive. If registryInsecure=true is
 // specified, the ca bundle is ignored.
-func getClients(f *clientcmd.Factory, registryCABundle string, registryInsecure bool) (*client.Client, kclientset.Interface, *http.Client, error) {
+func getClients(f *clientcmd.Factory, registryCABundle string, registryInsecure bool) (*client.Client, *kclient.Client, *http.Client, error) {
 	clientConfig, err := f.ClientConfig()
 	if err != nil {
 		return nil, nil, nil, err
