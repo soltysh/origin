@@ -22,12 +22,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit afcefe5cd68cb6b4f98cf8006403093b5dbbcf85
+%global commit f4b4edbbaf503865e5cce6ad3e2bf51e4f3be470
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.30-2-ga8dca8d -X github.com/openshift/origin/pkg/version.commitFromGit a8dca8d -X k8s.io/kubernetes/pkg/version.gitCommit a8dca8d -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.31-7-gd0d18d3 -X github.com/openshift/origin/pkg/version.commitFromGit d0d18d3 -X k8s.io/kubernetes/pkg/version.gitCommit d0d18d3 -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -47,7 +47,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.2.1.31
+Version:        3.2.1.32
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -555,6 +555,14 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Tue May 30 2017 Unknown name 3.2.1.32
+- Workaround for building SRPMs with newer versions of golang
+  (bleanhar@redhat.com)
+- UPSTREAM: 37698: Make kubelet never delete files on mounted filesystems
+  (hchen@redhat.com)
+- Restrict packages from CentOS to OVS only (skuznets@redhat.com)
+- Install OpenVSwitch from the CentOS PaaS SIG Repos (skuznets@redhat.com)
+
 * Sat Apr 08 2017 Troy Dawson <tdawson@redhat.com> 3.2.1.31
 - Fix image pruning with both strong & weak refs (maszulik@redhat.com)
 
