@@ -95,8 +95,9 @@ func env(name, defaultValue string) string {
 func NewTemplatePlugin(cfg TemplatePluginConfig) (*TemplatePlugin, error) {
 	templateBaseName := filepath.Base(cfg.TemplatePath)
 	globalFuncs := template.FuncMap{
-		"endpointsForAlias": endpointsForAlias,
-		"env":               env,
+		"endpointsForAlias":        endpointsForAlias,
+		"processEndpointsForAlias": processEndpointsForAlias, //returns the list of valid endpoints after processing them
+		"env": env,
 	}
 	masterTemplate, err := template.New("config").Funcs(globalFuncs).ParseFiles(cfg.TemplatePath)
 	if err != nil {
