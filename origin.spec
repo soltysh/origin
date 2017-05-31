@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 90040df2a35fec1ddc1b45552e4ace4da4a161ab
+%global commit f57168d49a2c641e756b9bde10c4ed591fd7a541
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.85 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=90040df
+%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.86 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=f57168d
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.6.86
+Version:        3.6.87
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -615,6 +615,34 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Tue May 30 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.6.87-1
+- bump(github.com/openshift/origin-web-console):
+  b1c04e8ef00995c6a0d22f318110e1a1302cec73 (dmcphers+openshiftbot@redhat.com)
+- bump(github.com/openshift/origin-web-console):
+  35fcf4cc6dd36061bbee649729913c316484de4a (dmcphers+openshiftbot@redhat.com)
+- bump(github.com/openshift/origin-web-console):
+  c31218b92a2de7193172b93858633f057c4df118 (dmcphers+openshiftbot@redhat.com)
+- bump(github.com/openshift/origin-web-console):
+  029053efca17a857b4e5c8883acf1419dee8a868 (dmcphers+openshiftbot@redhat.com)
+- UPSTREAM: 46628: cleanup kubelet new node status test (decarr@redhat.com)
+- UPSTREAM: 46516: kubelet was sending negative allocatable values
+  (decarr@redhat.com)
+- Shuffle endpoints function for the router template : bz1447115
+  (rchopra@redhat.com)
+- bump(github.com/openshift/origin-web-console):
+  d3aed86aa0c4d2aea355b777f8df6f880815157f (dmcphers+openshiftbot@redhat.com)
+- bump(github.com/openshift/origin-web-console):
+  09b0e004e368f38f99d949f8078cb60c00f80885 (dmcphers+openshiftbot@redhat.com)
+- deploy: check the dc conditions instead of relying on deployer logs
+  (mfojtik@redhat.com)
+- UPSTREAM: 46608: fixes kubectl cached discovery on Windows
+  (ffranz@redhat.com)
+- UPSTREAM: revert: 54d84e6a8db4c07f78fb2823508fed7751ebf1bd: 24153: make
+  optional generic etcd fields optional (mkhan@redhat.com)
+- Set DeleteStrategy for all Openshift resources (mkhan@redhat.com)
+- UPSTREAM: 46390: Require DeleteStrategy for all registry.Store
+  (mkhan@redhat.com)
+
 * Tue May 30 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.6.86-1
 - Merge remote-tracking branch enterprise-3.6, bump origin-web-console 481a31a
   (tdawson@redhat.com)
