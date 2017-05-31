@@ -46,42 +46,46 @@ func (master *OsdnMaster) SubnetStartMaster(clusterNetwork *net.IPNet, hostSubne
 	return nil
 }
 
-func (master *OsdnMaster) addNode(nodeName string, nodeIP string) error {
+// Creates or updates a HostSubnet if needed
+// Returns the IP address used for hostsubnet (either the preferred or one from the otherValidAddresses) and any error
+func (master *OsdnMaster) addNode(nodeName string, nodeIP string, otherValidAddresses []kapi.NodeAddress) (string, error) {
 	// Validate node IP before proceeding
 	if err := master.registry.ValidateNodeIP(nodeIP); err != nil {
-		return err
+		return "", err
 	}
 
 	// Check if subnet needs to be created or updated
 	sub, err := master.registry.GetSubnet(nodeName)
 	if err == nil {
 		if sub.HostIP == nodeIP {
-			return nil
+			return nodeIP, nil
+		} else if isValidNodeIP(otherValidAddresses, sub.HostIP) {
+			return sub.HostIP, nil
 		} else {
 			// Node IP changed, update old subnet
 			sub.HostIP = nodeIP
 			sub, err = master.registry.UpdateSubnet(sub)
 			if err != nil {
-				return fmt.Errorf("Error updating subnet %s for node %s: %v", sub.Subnet, nodeName, err)
+				return "", fmt.Errorf("Error updating subnet %s for node %s: %v", sub.Subnet, nodeName, err)
 			}
 			log.Infof("Updated HostSubnet %s", hostSubnetToString(sub))
-			return nil
+			return nodeIP, nil
 		}
 	}
 
 	// Create new subnet
 	sn, err := master.subnetAllocator.GetNetwork()
 	if err != nil {
-		return fmt.Errorf("Error allocating network for node %s: %v", nodeName, err)
+		return "", fmt.Errorf("Error allocating network for node %s: %v", nodeName, err)
 	}
 
 	sub, err = master.registry.CreateSubnet(nodeName, nodeIP, sn.String())
 	if err != nil {
 		master.subnetAllocator.ReleaseNetwork(sn)
-		return fmt.Errorf("Error creating subnet %s for node %s: %v", sn.String(), nodeName, err)
+		return "", fmt.Errorf("Error creating subnet %s for node %s: %v", sn.String(), nodeName, err)
 	}
 	log.Infof("Created HostSubnet %s", hostSubnetToString(sub))
-	return nil
+	return nodeIP, nil
 }
 
 func (master *OsdnMaster) deleteNode(nodeName string) error {
@@ -103,8 +107,8 @@ func (master *OsdnMaster) deleteNode(nodeName string) error {
 	return nil
 }
 
-func isValidNodeIP(node *kapi.Node, nodeIP string) bool {
-	for _, addr := range node.Status.Addresses {
+func isValidNodeIP(validAddresses []kapi.NodeAddress, nodeIP string) bool {
+	for _, addr := range validAddresses {
 		if addr.Address == nodeIP {
 			return true
 		}
@@ -184,18 +188,18 @@ func (master *OsdnMaster) watchNodes() {
 		case watch.Added, watch.Modified:
 			master.clearInitialNodeNetworkUnavailableCondition(node)
 
-			if oldNodeIP, ok := nodeAddressMap[uid]; ok && ((nodeIP == oldNodeIP) || isValidNodeIP(node, oldNodeIP)) {
+			if oldNodeIP, ok := nodeAddressMap[uid]; ok && ((nodeIP == oldNodeIP) || isValidNodeIP(node.Status.Addresses, oldNodeIP)) {
 				continue
 			}
 			// Node status is frequently updated by kubelet, so log only if the above condition is not met
 			log.V(5).Infof("Watch %s event for Node %q", strings.Title(string(eventType)), name)
 
-			err = master.addNode(name, nodeIP)
+			usedNodeIP, err := master.addNode(name, nodeIP, node.Status.Addresses)
 			if err != nil {
 				log.Errorf("Error creating subnet for node %s, ip %s: %v", name, nodeIP, err)
 				continue
 			}
-			nodeAddressMap[uid] = nodeIP
+			nodeAddressMap[uid] = usedNodeIP
 		case watch.Deleted:
 			log.V(5).Infof("Watch %s event for Node %q", strings.Title(string(eventType)), name)
 			delete(nodeAddressMap, uid)
