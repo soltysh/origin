@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit f8833b065e413c03c92859db169964b0250008f6
+%global commit e96b2419028650359a03baec39ddae035cf096fd
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.29 OS_GIT_COMMIT=f8833b0 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.30 OS_GIT_COMMIT=e96b241 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -48,7 +48,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.30
+Version:        3.4.1.31
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -556,6 +556,9 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Thu Jun 01 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.31
+- 
+
 * Tue May 30 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.30
 - [3.4] Shuffle endpoints function for the router template : bz1447115
   (rchopra@redhat.com)
