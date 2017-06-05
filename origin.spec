@@ -22,12 +22,12 @@
 # %commit and %ldflags are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 1ae93ab6a0cc21b96d9a3ce4010402b9513a5469
+%global commit 78068007cc37e82d80e8497ae5d256699e61e933
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # ldflags from hack/common.sh os::build:ldflags
 %{!?ldflags:
-%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.32-2-g1ae93ab -X github.com/openshift/origin/pkg/version.commitFromGit 1ae93ab -X k8s.io/kubernetes/pkg/version.gitCommit 1ae93ab -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
+%global ldflags -X github.com/openshift/origin/pkg/version.majorFromGit 3 -X github.com/openshift/origin/pkg/version.minorFromGit 2+ -X github.com/openshift/origin/pkg/version.versionFromGit v3.2.1.33 -X github.com/openshift/origin/pkg/version.commitFromGit 7806800 -X k8s.io/kubernetes/pkg/version.gitCommit 7806800 -X k8s.io/kubernetes/pkg/version.gitVersion v1.2.0-36-g4a3f9c5
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -47,7 +47,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.2.1.33
+Version:        3.2.1.34
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -555,6 +555,10 @@ fi
 /usr/sbin/%{name}-docker-excluder unexclude
 
 %changelog
+* Mon Jun 05 2017 Samuel Munilla <smunilla@redhat.com> 3.2.1.34
+- Update to catch haproxy config change
+- 
+
 * Wed May 31 2017 Unknown name 3.2.1.33
 - [3.2] Shuffle endpoints function for the router template : bz1447115
   (rchopra@redhat.com)
