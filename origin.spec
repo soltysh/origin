@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit ec9857499f4edf064893bb0db23dbe662c86141d
+%global commit e8f12c89d35e01cb2ccbdbad46904ae85eea2a08
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.31 OS_GIT_COMMIT=1c24798 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.32 OS_GIT_COMMIT=e8f12c8 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -48,7 +48,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.32
+Version:        3.4.1.33
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -563,6 +563,22 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Jun 06 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.33
+- UPSTREAM: 44439: controller: fix saturation check in Deployments
+  (mkargaki@redhat.com)
+- policy urls should support partitions (rchopra@redhat.com)
+- Fix go tests; policy requests now include the partition paths
+  (rchopra@redhat.com)
+- F5 router partition path changes:   o Use fully qualified names so that there
+  is no defaulting to /Common     and need to have all the referenced objects
+  in the same partition,     otherwise F5 has reference errors across
+  partitions.   o Fix policy partition path + rework and ensure we check the
+  vserver     which is inside the partition we are configured in.   o Comment
+  re: delete errors.   o Bug fixes.   o F5 unit test changes for supporting
+  partition paths. (smitram@gmail.com)
+- deploy: retry scaling when the admission caches are not fully synced
+  (mfojtik@redhat.com)
+
 * Fri Jun 02 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.32
 - revert #734 spec file part of docker-excluder %%pretrans
   (jchaloup@redhat.com)
