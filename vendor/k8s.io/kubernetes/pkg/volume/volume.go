@@ -17,9 +17,6 @@ limitations under the License.
 package volume
 
 import (
-	"io/ioutil"
-	"os"
-	"path"
 	"time"
 
 	"k8s.io/kubernetes/pkg/api"
@@ -169,16 +166,4 @@ type Detacher interface {
 	// should only be called once all bind mounts have been
 	// unmounted.
 	UnmountDevice(deviceMountPath string) error
-}
-
-func RenameDirectory(oldPath, newName string) (string, error) {
-	newPath, err := ioutil.TempDir(path.Dir(oldPath), newName)
-	if err != nil {
-		return "", err
-	}
-	err = os.Rename(oldPath, newPath)
-	if err != nil {
-		return "", err
-	}
-	return newPath, nil
 }
