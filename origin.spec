@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit e8f12c89d35e01cb2ccbdbad46904ae85eea2a08
+%global commit edb6b89d26e8362c3deadc80f697ace1cb4f24f5
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.32 OS_GIT_COMMIT=e8f12c8 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.33 OS_GIT_COMMIT=edb6b89 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -48,7 +48,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.33
+Version:        3.4.1.34
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -563,6 +563,9 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Thu Jun 08 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.34
+- 
+
 * Tue Jun 06 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.33
 - UPSTREAM: 44439: controller: fix saturation check in Deployments
   (mkargaki@redhat.com)
