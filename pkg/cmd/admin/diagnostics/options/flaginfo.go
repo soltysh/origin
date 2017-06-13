@@ -53,5 +53,10 @@ const (
 	FlagImageTemplateName       = "images"
 	FlagLatestImageName         = "latest-images"
 	FlagPreventModificationName = "prevent-modification"
-	FlagNetworkDiagLogDir       = "network-logdir"
+
+	FlagNetworkDiagLogDir          = "network-logdir"
+	FlagNetworkDiagPodImage        = "network-pod-image"
+	FlagNetworkDiagTestPodImage    = "network-test-pod-image"
+	FlagNetworkDiagTestPodProtocol = "network-test-pod-protocol"
+	FlagNetworkDiagTestPodPort     = "network-test-pod-port"
 )

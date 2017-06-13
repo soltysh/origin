@@ -24,13 +24,21 @@ const (
 	NetworkDiagSCCNamePrefix         = "network-diag-privileged"
 	NetworkDiagSecretName            = "network-diag-secret"
 
-	NetworkDiagTestPodNamePrefix     = "network-diag-test-pod"
-	NetworkDiagTestServiceNamePrefix = "network-diag-test-service"
-	NetworkDiagContainerMountPath    = "/host"
-	NetworkDiagDefaultLogDir         = "/tmp/openshift/"
-	NetworkDiagNodeLogDirPrefix      = "/nodes"
-	NetworkDiagMasterLogDirPrefix    = "/master"
-	NetworkDiagPodLogDirPrefix       = "/pods"
+	NetworkDiagTestPodNamePrefix      = "network-diag-test-pod"
+	NetworkDiagTestServiceNamePrefix  = "network-diag-test-service"
+	NetworkDiagContainerMountPath     = "/host"
+	NetworkDiagDefaultLogDir          = "/tmp/openshift/"
+	NetworkDiagNodeLogDirPrefix       = "/nodes"
+	NetworkDiagMasterLogDirPrefix     = "/master"
+	NetworkDiagPodLogDirPrefix        = "/pods"
+	NetworkDiagDefaultTestPodProtocol = string(kapi.ProtocolTCP)
+	NetworkDiagDefaultTestPodPort     = 8080
+)
+
+var (
+	defaultImagePrefix             = "openshift3/ose"
+	NetworkDiagDefaultPodImage     = defaultImagePrefix
+	NetworkDiagDefaultTestPodImage = defaultImagePrefix + "-deployer"
 )
 
 func GetOpenShiftNetworkPlugin(osClient *osclient.Client) (string, bool, error) {

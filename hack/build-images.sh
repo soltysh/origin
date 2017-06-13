@@ -137,6 +137,7 @@ image openshift/origin-docker-builder        images/builder/docker/docker-builde
 image openshift/origin-sti-builder           images/builder/docker/sti-builder
 image openshift/origin-f5-router             images/router/f5
 image openshift/node                         images/node
+image openshift/diagnostics-deployer        images/diagnostics
 
 # extra images (not part of infrastructure)
 image openshift/hello-openshift       examples/hello-openshift
