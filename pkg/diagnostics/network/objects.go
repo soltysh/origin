@@ -15,9 +15,7 @@ import (
 const (
 	networkDiagTestPodSelector = "network-diag-pod-name"
 
-	testPodImage   = "docker.io/openshift/hello-openshift"
-	testPodPort    = 9876
-	testTargetPort = 8080
+	testServicePort = 9876
 )
 
 func GetNetworkDiagnosticsPod(diagnosticsImage, command, podName, nodeName string) *kapi.Pod {
@@ -90,10 +88,10 @@ func GetNetworkDiagnosticsPod(diagnosticsImage, command, podName, nodeName strin
 	return pod
 }
 
-func GetTestPod(podName, nodeName string) *kapi.Pod {
+func GetTestPod(testPodImage, testPodProtocol, podName, nodeName string, testPodPort int) *kapi.Pod {
 	gracePeriod := int64(0)
 
-	return &kapi.Pod{
+	pod := &kapi.Pod{
 		ObjectMeta: kapi.ObjectMeta{
 			Name: podName,
 			Labels: map[string]string{
@@ -113,9 +111,26 @@ func GetTestPod(podName, nodeName string) *kapi.Pod {
 			},
 		},
 	}
+
+	var trimmedPodImage string
+	imageTokens := strings.Split(testPodImage, "/")
+	n := len(imageTokens)
+	if n < 2 {
+		trimmedPodImage = testPodImage
+	} else {
+		trimmedPodImage = imageTokens[n-2] + "/" + imageTokens[n-1]
+	}
+	if trimmedPodImage == util.NetworkDiagDefaultTestPodImage {
+		pod.Spec.Containers[0].Command = []string{
+			"socat", "-T", "1", "-d",
+			fmt.Sprintf("%s-l:%d,reuseaddr,fork,crlf", testPodProtocol, testPodPort),
+			"system:\"echo 'HTTP/1.0 200 OK'; echo 'Content-Type: text/plain'; echo; echo 'Hello OpenShift'\"",
+		}
+	}
+	return pod
 }
 
-func GetTestService(serviceName, podName, nodeName string) *kapi.Service {
+func GetTestService(serviceName, podName, podProtocol, nodeName string, podPort int) *kapi.Service {
 	return &kapi.Service{
 		ObjectMeta: kapi.ObjectMeta{Name: serviceName},
 		Spec: kapi.ServiceSpec{
@@ -125,9 +140,9 @@ func GetTestService(serviceName, podName, nodeName string) *kapi.Service {
 			},
 			Ports: []kapi.ServicePort{
 				{
-					Protocol:   kapi.ProtocolTCP,
-					Port:       testPodPort,
-					TargetPort: intstr.FromInt(testTargetPort),
+					Protocol:   kapi.Protocol(podProtocol),
+					Port:       testServicePort,
+					TargetPort: intstr.FromInt(podPort),
 				},
 			},
 		},

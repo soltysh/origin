@@ -129,7 +129,8 @@ func (d *NetworkDiagnostic) createTestPodAndService(nsList []string) error {
 			for i := 0; i < 2; i++ {
 				testPodName = kapi.SimpleNameGenerator.GenerateName(fmt.Sprintf("%s-", util.NetworkDiagTestPodNamePrefix))
 				// Create network diags test pod on the given node for the given namespace
-				if _, err := d.KubeClient.Core().Pods(nsName).Create(GetTestPod(testPodName, node.Name)); err != nil {
+				pod := GetTestPod(d.TestPodImage, d.TestPodProtocol, testPodName, node.Name, d.TestPodPort)
+				if _, err := d.KubeClient.Core().Pods(nsName).Create(pod); err != nil {
 					errList = append(errList, fmt.Errorf("Creating network diagnostic test pod '%s/%s' on node %q failed: %v", nsName, testPodName, node.Name, err))
 					continue
 				}
@@ -137,7 +138,8 @@ func (d *NetworkDiagnostic) createTestPodAndService(nsList []string) error {
 
 			// Create network diags test service on the given node for the given namespace
 			testServiceName := kapi.SimpleNameGenerator.GenerateName(fmt.Sprintf("%s-", util.NetworkDiagTestServiceNamePrefix))
-			if _, err := d.KubeClient.Core().Services(nsName).Create(GetTestService(testServiceName, testPodName, node.Name)); err != nil {
+			service := GetTestService(testServiceName, testPodName, d.TestPodProtocol, node.Name, d.TestPodPort)
+			if _, err := d.KubeClient.Core().Services(nsName).Create(service); err != nil {
 				errList = append(errList, fmt.Errorf("Creating network diagnostic test service '%s/%s' on node %q failed: %v", nsName, testServiceName, node.Name, err))
 				continue
 			}
@@ -153,7 +155,38 @@ func (d *NetworkDiagnostic) waitForTestPodAndService(nsList []string) error {
 			errList = append(errList, err)
 		}
 	}
+
+	if totalPods, runningPods, err := d.getCountOfTestPods(nsList); err == nil {
+		// Perform network diagnostic checks if we are able to launch decent number of test pods (at least 50%)
+		if runningPods != totalPods {
+			if runningPods >= (totalPods / 2) {
+				d.res.Warn("DNet3002", nil, fmt.Sprintf("Failed to run some network diags test pods: %d, So some network diagnostic checks may be skipped.", (totalPods-runningPods)))
+				return nil
+			} else {
+				errList = append(errList, fmt.Errorf("Failed to run network diags test pods, failed: %d, total: %d", (totalPods-runningPods), totalPods))
+			}
+		}
+	}
 	return kerrors.NewAggregate(errList)
+}
+
+func (d *NetworkDiagnostic) getCountOfTestPods(nsList []string) (int, int, error) {
+	totalPodCount := 0
+	runningPodCount := 0
+	for _, name := range nsList {
+		podList, err := d.getPodList(name, util.NetworkDiagTestPodNamePrefix)
+		if err != nil {
+			return -1, -1, err
+		}
+		totalPodCount += len(podList.Items)
+
+		for _, pod := range podList.Items {
+			if pod.Status.Phase == kapi.PodRunning {
+				runningPodCount += 1
+			}
+		}
+	}
+	return totalPodCount, runningPodCount, nil
 }
 
 func (d *NetworkDiagnostic) makeNamespaceGlobal(nsName string) error {
