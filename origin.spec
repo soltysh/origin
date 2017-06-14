@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit edb6b89d26e8362c3deadc80f697ace1cb4f24f5
+%global commit eb29ca7208e6ba5067e76762e72b9e5cdfa8d7e8
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.33 OS_GIT_COMMIT=edb6b89 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.34 OS_GIT_COMMIT=eb29ca7 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -48,7 +48,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.34
+Version:        3.4.1.35
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -563,6 +563,25 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Jun 13 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.4.1.35
+- Auto generated: bash completions for network diagnostics (rpenta@redhat.com)
+- Provide better error message when network diags test pod fails
+  (rpenta@redhat.com)
+- Bug 1417641 - Make network diagnostic test pod image/protocol/port
+  configurable (rpenta@redhat.com)
+- Bug 1439142 - Use openshift3/ose-deployer image instead of openshift/hello-
+  openshift as network diagnostic test pod. (rpenta@redhat.com)
+- Use 'openshift3/ose' as default network diagnostic image for OCP environment.
+  (rpenta@redhat.com)
+- Auto generated: docs/bash completions for network diagnostic pod image option
+  (rpenta@redhat.com)
+- Make network diagnostic pod image configurable (rpenta@redhat.com)
+- Bug 1393716 - Fix network diagnostics on containerized openshift install
+  (rpenta@redhat.com)
+- Bug 1421643 - Use existing openshift/origin image instead of new openshift
+  /diagnostics-deployer (rpenta@redhat.com)
+- Set layer size whether it found in cache or not (obulatov@redhat.com)
+
 * Thu Jun 08 2017 Jenkins CD Merge Bot <tdawson@redhat.com> 3.4.1.34
 - 
 
