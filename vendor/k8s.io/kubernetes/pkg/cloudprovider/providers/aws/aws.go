@@ -146,6 +146,10 @@ const (
 	// volumeAttachmentStatusPollInterval is the interval at which we poll the volume,
 	// while waiting for a volume attach/detach to complete
 	volumeAttachmentStatusPollInterval = 10 * time.Second
+
+	// Number of node names that can be added to a filter. The AWS limit is 200
+	// but we are using a lower limit on purpose
+	filterNodeLimit = 150
 )
 
 // Maps from backend protocol to ELB protocol
@@ -3225,33 +3229,44 @@ func (c *Cloud) getInstancesByNodeNamesCached(nodeNames sets.String, states ...s
 
 func (c *Cloud) getInstancesByNodeNames(nodeNames []string, states ...string) ([]*ec2.Instance, error) {
 	names := aws.StringSlice(nodeNames)
+	ec2Instances := []*ec2.Instance{}
 
-	nodeNameFilter := &ec2.Filter{
-		Name:   aws.String("private-dns-name"),
-		Values: names,
+	for i := 0; i < len(names); i += filterNodeLimit {
+		end := i + filterNodeLimit
+		if end > len(names) {
+			end = len(names)
+		}
+
+		nameSlice := names[i:end]
+
+		nodeNameFilter := &ec2.Filter{
+			Name:   aws.String("private-dns-name"),
+			Values: nameSlice,
+		}
+
+		filters := []*ec2.Filter{nodeNameFilter}
+		if len(states) > 0 {
+			filters = append(filters, newEc2Filter("instance-state-name", states...))
+		}
+		filters = c.addFilters(filters)
+		request := &ec2.DescribeInstancesInput{
+			Filters: filters,
+		}
+
+		instances, err := c.ec2.DescribeInstances(request)
+
+		if err != nil {
+			glog.V(2).Infof("Failed to describe instances %v", nodeNames)
+			return nil, err
+		}
+		ec2Instances = append(ec2Instances, instances...)
 	}
 
-	filters := []*ec2.Filter{nodeNameFilter}
-	if len(states) > 0 {
-		filters = append(filters, newEc2Filter("instance-state-name", states...))
-	}
-
-	filters = c.addFilters(filters)
-	request := &ec2.DescribeInstancesInput{
-		Filters: filters,
-	}
-
-	instances, err := c.ec2.DescribeInstances(request)
-	if err != nil {
-		glog.V(2).Infof("Failed to describe instances %v", nodeNames)
-		return nil, err
-	}
-
-	if len(instances) == 0 {
+	if len(ec2Instances) == 0 {
 		glog.V(3).Infof("Failed to find any instances %v", nodeNames)
 		return nil, nil
 	}
-	return instances, nil
+	return ec2Instances, nil
 }
 
 // mapNodeNameToPrivateDNSName maps a k8s NodeName to an AWS Instance PrivateDNSName
