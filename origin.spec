@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 18e988d4707f94537f06b921fef019c921e58b5a
+%global commit 5240ee73a6553d9cf05e9d8998b29c22dd5f577d
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.36 OS_GIT_COMMIT=18e988d OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.37 OS_GIT_COMMIT=5240ee7 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -48,7 +48,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.37
+Version:        3.4.1.38
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -563,6 +563,14 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Thu Jun 15 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.4.1.38
+- Merge remote-tracking branch enterprise-3.4, bump origin-web-console 01e1cc4
+  (smunilla@redhat.com)
+- UPSTREAM: 43878: Delete EmptyDir volume directly instead of renaming the
+  directory (hchen@redhat.com)
+- UPSTREAM : 40066: Set custom PollingDelay of 5 seconds for Azure
+  VirtualMachinesClient (hchen@redhat.com)
+
 * Wed Jun 14 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.4.1.37
 - 
 
