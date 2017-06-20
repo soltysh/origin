@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 68074663cb683eb93bb59bcc7709f0a0c1d02c57
+%global commit 796526351fcedf2506ae7cacb8327ec63b36d732
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.26 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=6807466
+%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.27 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=7965263
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.5.5.27
+Version:        3.5.5.28
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -585,6 +585,21 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Jun 20 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.5.5.28-1
+- Change the MAC addresses to be generated based on IP (dcbw@redhat.com)
+- UPSTREAM: <carry>: Add auto_unmount mount option for glusterfs fuse mount
+  (hchiramm@redhat.com)
+- UPSTREAM: 47516: Fix getInstancesByNodeNames for AWS (hekumar@redhat.com)
+- Use GC rather than refcounting for VNID policy rules (danw@redhat.com)
+- ovs: split out flow parsing code, expose API, and parse actions
+  (dcbw@redhat.com)
+- UPSTREAM: 42949: recycle pod can't get the event since channel closed
+  (mawong@redhat.com)
+- Bug 1454535 - Use created project name over namespace name in project
+  template (mfojtik@redhat.com)
+- UPSTREAM: 42275: discovery restmapping should always prefer /v1
+  (mfojtik@redhat.com)
+
 * Thu Jun 15 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.5.5.27-1
 - UPSTREAM: 43878: Delete EmptyDir volume directly instead of renaming the
   directory (hchen@redhat.com)
