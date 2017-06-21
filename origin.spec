@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit a62d37367b24b11cc67f21de88fa41445820cdab
+%global commit fb40be1da362fcb13ba8d9ca931a1293a918df99
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.40 OS_GIT_COMMIT=a62d373 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.41 OS_GIT_COMMIT=fb40be1 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -48,7 +48,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.41
+Version:        3.4.1.42
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -563,6 +563,13 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Jun 20 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.4.1.42
+- Change the MAC addresses to be generated based on IP (dcbw@redhat.com)
+- UPSTREAM: <carry>: Add auto_unmount mount option for glusterfs fuse mount.
+  (hchiramm@redhat.com)
+- UPSTREAM: 42949: recycle pod can't get the event since channel closed
+  (mawong@redhat.com)
+
 * Fri Jun 16 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.4.1.41
 - Merge remote-tracking branch enterprise-3.4, bump origin-web-console 01e1cc4
   (smunilla@redhat.com)
