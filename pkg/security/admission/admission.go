@@ -68,15 +68,19 @@ func (c *constraint) Admit(a kadmission.Attributes) error {
 	}
 
 	pod, ok := a.GetObject().(*kapi.Pod)
-	// if we can't convert then we don't handle this object so just return
+	// if we can't convert then fail closed since we've already checked that this is supposed to be a pod object.
+	// this shouldn't normally happen during admission but could happen if an integrator passes a versioned
+	// pod object rather than an internal object.
 	if !ok {
-		return nil
+		return kadmission.NewForbidden(a, fmt.Errorf("object was marked as kind pod but was unable to be converted: %v", a.GetObject()))
 	}
 
 	// if this is an update, see if we are only updating the ownerRef.  Garbage collection does this
 	// and we should allow it in general, since you had the power to update and the power to delete.
 	// The worst that happens is that you delete something, but you aren't controlling the privileged object itself
-	if a.GetOldObject() != nil && oadmission.IsOnlyMutatingGCFields(a.GetObject(), a.GetOldObject()) {
+	// We need to explicitly check that the operation is an update instead of relying on the old object value
+	// to make sure that s2i SourceBuildStrategy.canRunAsRoot never takes this branch
+	if a.GetOperation() == kadmission.Update && a.GetOldObject() != nil && oadmission.IsOnlyMutatingGCFields(a.GetObject(), a.GetOldObject()) {
 		return nil
 	}
 

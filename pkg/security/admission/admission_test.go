@@ -8,6 +8,7 @@ import (
 
 	kadmission "k8s.io/kubernetes/pkg/admission"
 	kapi "k8s.io/kubernetes/pkg/api"
+	v1kapi "k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/auth/user"
 	"k8s.io/kubernetes/pkg/client/cache"
 	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
@@ -25,6 +26,20 @@ func NewTestAdmission(lister *oscache.IndexerToSecurityContextConstraintsLister,
 		Handler:   kadmission.NewHandler(kadmission.Create),
 		client:    kclient,
 		sccLister: lister,
+	}
+}
+
+func TestFailClosedOnInvalidPod(t *testing.T) {
+	plugin := NewTestAdmission(nil, nil)
+	pod := &v1kapi.Pod{}
+	attrs := kadmission.NewAttributesRecord(pod, nil, kapi.Kind("Pod").WithVersion("version"), pod.Namespace, pod.Name, kapi.Resource("pods").WithVersion("version"), "", kadmission.Create, &user.DefaultInfo{})
+	err := plugin.Admit(attrs)
+
+	if err == nil {
+		t.Fatalf("expected versioned pod object to fail admission")
+	}
+	if !strings.Contains(err.Error(), "object was marked as kind pod but was unable to be converted") {
+		t.Errorf("expected error to be conversion erorr but got: %v", err)
 	}
 }
 
