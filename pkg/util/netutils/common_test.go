@@ -2,6 +2,7 @@ package netutils
 
 import (
 	"net"
+	"strings"
 	"testing"
 )
 
