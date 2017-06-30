@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 696faed370f0e801215fcece768f3da2e32997dc
+%global commit 1881575ab1319e87221b2e1bd002087d13f71d52
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.44 OS_GIT_COMMIT=696faed OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.44.0 OS_GIT_COMMIT=1881575 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -48,7 +48,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.44.0
+Version:        3.4.1.44.1
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -563,6 +563,9 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Fri Jun 30 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.4.1.44.1
+- 
+
 * Thu Jun 29 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.4.1.44.0
 - Don't allow deleted routes in resync list (pcameron@redhat.com)
 - Add then resync then Delete cause Pop() panic (pcameron@redhat.com)
