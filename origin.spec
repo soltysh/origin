@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 6719aa21661ab4052f62ede3dc382e03f17a466c
+%global commit 4596e7b6fa52ca7dcaa508f81da4cd2a0623b7e8
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.44.1 OS_GIT_COMMIT=6719aa2 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.44.2 OS_GIT_COMMIT=4596e7b OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -48,7 +48,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.44.2
+Version:        3.4.1.44.3
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -563,6 +563,12 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Fri Jul 07 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.4.1.44.3
+- [Backport] Support OpenStack+ESXi Volumes in GetDevicePath
+  (ppospisi@redhat.com)
+- Bz #1408867: Backport K8s PR #33270: Don't Rely on Device name provided by
+  Cinder (ppospisi@redhat.com)
+
 * Tue Jul 04 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.4.1.44.2
 - 
 
