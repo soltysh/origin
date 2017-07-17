@@ -20,7 +20,7 @@ import (
 
 const limitRangeName = "limits"
 
-var _ = g.Describe("[imageapis] openshift limit range admission", func() {
+var _ = g.Describe("[Feature:ImageQuota] Image limit range", func() {
 	defer g.GinkgoRecover()
 	var oc = exutil.NewCLI("limitrange-admission", exutil.KubeConfigPath())
 
@@ -234,7 +234,7 @@ func buildAndPushTestImagesTo(oc *exutil.CLI, isName string, tagPrefix string, n
 
 	for i := 1; i <= numberOfImages; i++ {
 		tag := fmt.Sprintf("%s%d", tagPrefix, i)
-		dgst, err := imagesutil.BuildAndPushImageOfSizeWithDocker(oc, dClient, isName, tag, imageSize, 2, g.GinkgoWriter, true)
+		dgst, _, err := imagesutil.BuildAndPushImageOfSizeWithDocker(oc, dClient, isName, tag, imageSize, 2, g.GinkgoWriter, true, true)
 		if err != nil {
 			return nil, err
 		}
