@@ -809,8 +809,12 @@ func WaitForRegistry(
 		return err
 	}
 
-	requirement, err := labels.NewRequirement(deployapi.DeploymentLabel, selection.Equals, sets.NewString(fmt.Sprintf("docker-registry-%d", latestVersion)))
-	pods, err := WaitForPods(kubeClient.Pods(kapi.NamespaceDefault), labels.NewSelector().Add(*requirement), CheckPodIsReadyFn, 1, time.Minute)
+	pods, err := WaitForPods(
+		kubeClient.Pods(kapi.NamespaceDefault),
+		labels.SelectorFromSet(labels.Set{deployapi.DeploymentLabel: fmt.Sprintf("docker-registry-%d", latestVersion)}),
+		CheckPodIsRunningFn,
+		1,
+		time.Minute)
 	now := time.Now()
 	fmt.Fprintf(g.GinkgoWriter, "deployed registry pod %s after %s\n", pods[0], now.Sub(start).String())
 	return err

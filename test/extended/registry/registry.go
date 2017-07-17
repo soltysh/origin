@@ -1,7 +1,6 @@
 package registry
 
 import (
-	"fmt"
 	"time"
 
 	g "github.com/onsi/ginkgo"
@@ -9,12 +8,12 @@ import (
 
 	dockerClient "github.com/fsouza/go-dockerclient"
 
-	kapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/util/wait"
 
 	regclient "github.com/openshift/origin/pkg/dockerregistry"
 	imageapi "github.com/openshift/origin/pkg/image/api"
 	imagesutil "github.com/openshift/origin/test/extended/images"
+	registryutil "github.com/openshift/origin/test/extended/registry/util"
 	exutil "github.com/openshift/origin/test/extended/util"
 	testutil "github.com/openshift/origin/test/util"
 )
@@ -29,15 +28,10 @@ var _ = g.Describe("[registry][migration] manifest migration from etcd to regist
 	defer g.GinkgoRecover()
 	var oc = exutil.NewCLI("registry-migration", exutil.KubeConfigPath())
 
-	// needs to be run at the top of each It; cannot be run in AfterEach which is run after the project
-	// is destroyed
-	tearDown := func(oc *exutil.CLI) {
-		deleteTestImages(oc)
-	}
-
-	g.It("registry can get access to manifest", func() {
+	g.It("registry can get access to manifest [local]", func() {
 		oc.SetOutputDir(exutil.TestContext.OutputDir)
-		defer tearDown(oc)
+		cleanUp := imagesutil.NewCleanUpContainer(oc)
+		defer cleanUp.Run()
 
 		g.By("set up policy for registry to have anonymous access to images")
 		err := oc.Run("policy").Args("add-role-to-user", "registry-viewer", "system:anonymous").Execute()
@@ -46,12 +40,13 @@ var _ = g.Describe("[registry][migration] manifest migration from etcd to regist
 		dClient, err := testutil.NewDockerClient()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		registryURL, err := imagesutil.GetDockerRegistryURL(oc)
+		registryURL, err := registryutil.GetDockerRegistryURL(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("pushing image...")
-		imageDigest, err := imagesutil.BuildAndPushImageOfSizeWithDocker(oc, dClient, repoName, tagName, imageSize, 1, g.GinkgoWriter, true)
+		imageDigest, _, err := imagesutil.BuildAndPushImageOfSizeWithDocker(oc, dClient, repoName, tagName, imageSize, 1, g.GinkgoWriter, true, true)
 		o.Expect(err).NotTo(o.HaveOccurred())
+		cleanUp.AddImage(imageDigest, "", "")
 
 		g.By("checking that the image converted...")
 		image, err := oc.AsAdmin().REST().Images().Get(imageDigest)
@@ -138,21 +133,4 @@ func waitForImageUpdate(oc *exutil.CLI, image *imageapi.Image) error {
 
 		return (image.ResourceVersion < newImage.ResourceVersion), nil
 	})
-}
-
-// deleteTestImages deletes test images built in current and shared
-// namespaces. It also deletes shared projects.
-func deleteTestImages(oc *exutil.CLI) {
-	g.By(fmt.Sprintf("Deleting images and image streams in project %q", oc.Namespace()))
-	iss, err := oc.AdminREST().ImageStreams(oc.Namespace()).List(kapi.ListOptions{})
-	if err != nil {
-		return
-	}
-	for _, is := range iss.Items {
-		for _, history := range is.Status.Tags {
-			for i := range history.Items {
-				oc.AdminREST().Images().Delete(history.Items[i].Image)
-			}
-		}
-	}
 }
