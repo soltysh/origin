@@ -591,6 +591,10 @@ func (oe *operationExecutor) generateVolumesAreAttachedFunc(
 	volumeSpecMap := make(map[*volume.Spec]api.UniqueVolumeName)
 	// Iterate each volume spec and put them into a map index by the pluginName
 	for _, volumeAttached := range attachedVolumes {
+		if volumeAttached.VolumeSpec == nil {
+			glog.Errorf("VerifyVolumesAreAttached.GenerateVolumesAreAttachedFunc: nil spec for volume %s", volumeAttached.VolumeName)
+			continue
+		}
 		volumePlugin, err :=
 			oe.volumePluginMgr.FindPluginBySpec(volumeAttached.VolumeSpec)
 		if err != nil || volumePlugin == nil {
