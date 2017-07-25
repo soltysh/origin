@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit a0952bc96ead0ec5c7a17ec9c45fc439baefcba7
+%global commit d71b43f45a86681861d6bdd68409dfef88d56a5d
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.46.6
+Version:        3.3.1.46.7
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -562,6 +562,13 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Jul 25 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.3.1.46.7
+- Merge remote-tracking branch enterprise-3.3, bump origin-web-console af1dbbd
+  (smunilla@redhat.com)
+- Extended test for registry garbage collector (miminar@redhat.com)
+- Exit normally if registry's storage is empty (miminar@redhat.com)
+- Add -prune option to dockerregistry (obulatov@redhat.com)
+
 * Wed Jul 19 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.3.1.46.6
 - 
 
