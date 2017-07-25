@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -724,6 +725,67 @@ func WaitForADeployment(client kclient.ReplicationControllerInterface, name stri
 // WaitForADeploymentToComplete waits for a deployment to complete.
 func WaitForADeploymentToComplete(client kclient.ReplicationControllerInterface, name string, oc *CLI) error {
 	return WaitForADeployment(client, name, CheckDeploymentCompletedFn, CheckDeploymentFailedFn, oc)
+}
+
+// WaitForRegistry waits until a newly deployed registry becomes ready. If waitForDCVersion is given, the
+// function will wait until a corresponding replica controller completes. If not give, the latest version of
+// registry's deployment config will be fetched from etcd.
+func WaitForRegistry(
+	dcNamespacer client.DeploymentConfigsNamespacer,
+	kubeClient kclient.Interface,
+	waitForDCVersion *int64,
+	oc *CLI,
+) error {
+	var latestVersion int64
+	start := time.Now()
+
+	if waitForDCVersion != nil {
+		latestVersion = *waitForDCVersion
+	} else {
+		dc, err := dcNamespacer.DeploymentConfigs(kapi.NamespaceDefault).Get("docker-registry")
+		if err != nil {
+			return err
+		}
+		latestVersion = dc.Status.LatestVersion
+	}
+	fmt.Fprintf(g.GinkgoWriter, "waiting for deployment of version %d to complete\n", latestVersion)
+
+	err := WaitForADeployment(kubeClient.ReplicationControllers(kapi.NamespaceDefault), "docker-registry",
+		func(rc *kapi.ReplicationController) bool {
+			if !CheckDeploymentCompletedFn(rc) {
+				return false
+			}
+			v, err := strconv.ParseInt(rc.Annotations[deployapi.DeploymentVersionAnnotation], 10, 64)
+			if err != nil {
+				fmt.Fprintf(g.GinkgoWriter, "failed to parse %q of replication controller %q: %v\n", deployapi.DeploymentVersionAnnotation, rc.Name, err)
+				return false
+			}
+			return v >= latestVersion
+		},
+		func(rc *kapi.ReplicationController) bool {
+			v, err := strconv.ParseInt(rc.Annotations[deployapi.DeploymentVersionAnnotation], 10, 64)
+			if err != nil {
+				fmt.Fprintf(g.GinkgoWriter, "failed to parse %q of replication controller %q: %v\n", deployapi.DeploymentVersionAnnotation, rc.Name, err)
+				return false
+			}
+			if v < latestVersion {
+				return false
+			}
+			return CheckDeploymentFailedFn(rc)
+		}, oc)
+	if err != nil {
+		return err
+	}
+
+	pods, err := WaitForPods(
+		kubeClient.Pods(kapi.NamespaceDefault),
+		labels.SelectorFromSet(labels.Set{deployapi.DeploymentLabel: fmt.Sprintf("docker-registry-%d", latestVersion)}),
+		CheckPodIsRunningFn,
+		1,
+		time.Minute)
+	now := time.Now()
+	fmt.Fprintf(g.GinkgoWriter, "deployed registry pod %s after %s\n", pods[0], now.Sub(start).String())
+	return err
 }
 
 func isUsageSynced(received, expected kapi.ResourceList, expectedIsUpperLimit bool) bool {
