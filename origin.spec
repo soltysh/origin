@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit e0d8714d600a862f9bd94c917f74ac19f5f61ebf
+%global commit 406f4518500e53cb81ea7b692242e65c24250542
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.172.0.3 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=e0d8714
+%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.172.0.4 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=406f451
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.6.172.0.4
+Version:        Unexpected
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -641,6 +641,39 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Mon Jul 31 2017 Jenkins CD Merge Bot <smunilla@redhat.com> Unexpected-1
+- Skip goversioninfo when it is not installed (ccoleman@redhat.com)
+- Changing from no cert to edge encryption should not panic
+  (ccoleman@redhat.com)
+- Add back origin-sdn-ovs (andrew@andrewklau.com)
+- Fix panic when tag is nil when creating istag (maszulik@redhat.com)
+- UPSTREAM: <drop>: Double the global timeout if performing a global list
+  (ccoleman@redhat.com)
+- UPSTREAM: 44756: Don't call spew unless we're logging (ccoleman@redhat.com)
+- Add gRPC metrics to OpenShift client connections (ccoleman@redhat.com)
+- UPSTREAM: <carry>: Also expose gRPC metrics in kube storage
+  (ccoleman@redhat.com)
+- UPSTREAM: coreos/etcd: <carry>: Expose dial options through vendoring
+  (ccoleman@redhat.com)
+- UPSTREAM: 49688: Don't block watch cache Get/List on unready
+  (ccoleman@redhat.com)
+- respect --image flag value for service catalog image name
+  (bparees@redhat.com)
+- make each SA client QPS/Burst proportional to the old limit
+  (deads@redhat.com)
+- UPSTREAM: containers/image: <carry>: Do not check lifetime for v3 GPG
+  signatures (mfojtik@redhat.com)
+- only set the build timestamps exactly once (bparees@redhat.com)
+- UPSTREAM: <drop>: Carry a patch for reporting 429 metrics
+  (ccoleman@redhat.com)
+- UPSTREAM: 49475: Fixed glusterfs mount options (jsafrane@redhat.com)
+- UPSTREAM: 49127: Make definite mount timeout for glusterfs volume mount
+  (jsafrane@redhat.com)
+- UPSTREAM: 48709: glusterfs: retry without auto_unmount only when it's not
+  supported (jsafrane@redhat.com)
+- UPSTREAM: 42038: Add backup-volfile-servers to mount option
+  (jsafrane@redhat.com)
+
 * Mon Jul 31 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.6.172.0.4-1
 - 
 
