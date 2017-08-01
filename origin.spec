@@ -645,12 +645,6 @@ fi
 - handle 4+ digit versions in oc cluster up (bparees@redhat.com)
 
 * Mon Jul 31 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.6.173.0.0-1
-- Correcting origin.spec version corruption (jupierce@redhat.com)
-
-* Mon Jul 31 2017 Jenkins CD Merge Bot <smunilla@redhat.com> Unexpected.0.0.0.0-1
-- 
-
-* Mon Jul 31 2017 Jenkins CD Merge Bot <smunilla@redhat.com> Unexpected-1
 - Skip goversioninfo when it is not installed (ccoleman@redhat.com)
 - Changing from no cert to edge encryption should not panic
   (ccoleman@redhat.com)
