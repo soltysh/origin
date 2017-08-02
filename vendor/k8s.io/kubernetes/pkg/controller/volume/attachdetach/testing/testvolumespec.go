@@ -41,6 +41,13 @@ func GetTestVolumeSpec(volumeName string, diskName api.UniqueVolumeName) *volume
 				},
 			},
 		},
+		PersistentVolume: &v1.PersistentVolume{
+			Spec: v1.PersistentVolumeSpec{
+				AccessModes: []v1.PersistentVolumeAccessMode{
+					v1.ReadWriteOnce,
+				},
+			},
+		},
 	}
 }
 
