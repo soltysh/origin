@@ -787,10 +787,20 @@ func (c *ClientStartConfig) StartOpenShift(out io.Writer) error {
 		return err
 	}
 
+	serverIP, err := c.OpenShiftHelper().ServerIP()
+	if err != nil {
+		return err
+	}
+
 	// Start a container networking test
 	c.containerNetworkErr = make(chan error)
 	go func() {
-		c.containerNetworkErr <- c.OpenShiftHelper().TestContainerNetworking(c.ServerIP)
+		// serverIP is the ip obtained by running 'openshift start --print-ip' on the
+		// origin container. This will return the primary IP for the host, which is what
+		// we need to test connectivity with. c.ServerIP is the IP that the client uses
+		// to access the openshift server and is not always useful in determining whether
+		// containers can communicate with the master (it could be 127.0.0.1 for example).
+		c.containerNetworkErr <- c.OpenShiftHelper().TestContainerNetworking(serverIP)
 	}()
 
 	// Setup persistent storage
