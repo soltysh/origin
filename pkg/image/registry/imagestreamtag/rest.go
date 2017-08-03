@@ -147,7 +147,9 @@ func (r *REST) Create(ctx kapi.Context, obj runtime.Object) (runtime.Object, err
 	if exists {
 		return nil, kapierrors.NewAlreadyExists(imageapi.Resource("imagestreamtag"), istag.Name)
 	}
-	target.Spec.Tags[imageTag] = *istag.Tag
+	if istag.Tag != nil {
+		target.Spec.Tags[imageTag] = *istag.Tag
+	}
 
 	// Check the stream creation timestamp and make sure we will not
 	// create a new image stream while deleting.
