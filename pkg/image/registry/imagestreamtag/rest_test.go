@@ -463,3 +463,89 @@ func TestDeleteImageStreamTag(t *testing.T) {
 		}()
 	}
 }
+
+func TestCreateImageStreamTag(t *testing.T) {
+	tests := map[string]struct {
+		istag           runtime.Object
+		expectError     bool
+		errorTargetKind string
+		errorTargetID   string
+	}{
+		"valid istag": {
+			istag: &api.ImageStreamTag{
+				ObjectMeta: kapi.ObjectMeta{
+					Namespace: "default",
+					Name:      "test:tag",
+				},
+				Image: api.Image{ObjectMeta: kapi.ObjectMeta{Name: "10"}, DockerImageReference: "foo/bar/baz"},
+				Tag: &api.TagReference{
+					Name: "latest",
+					From: &kapi.ObjectReference{Kind: "DockerImage", Name: "foo/bar/baz"},
+				},
+			},
+		},
+		"invalid tag": {
+			istag: &api.ImageStreamTag{
+				ObjectMeta: kapi.ObjectMeta{
+					Namespace: "default",
+					Name:      "test:tag",
+				},
+				Image: api.Image{ObjectMeta: kapi.ObjectMeta{Name: "10"}, DockerImageReference: "foo/bar/baz"},
+				Tag: &api.TagReference{
+					Name: "latest",
+					From: &kapi.ObjectReference{Kind: "unknown"},
+				},
+			},
+			expectError:     true,
+			errorTargetKind: "ImageStreamTag",
+			errorTargetID:   "test:tag",
+		},
+		"nil tag": {
+			istag: &api.ImageStreamTag{
+				ObjectMeta: kapi.ObjectMeta{
+					Namespace: "default",
+					Name:      "test:tag",
+				},
+				Image: api.Image{ObjectMeta: kapi.ObjectMeta{Name: "10"}, DockerImageReference: "foo/bar/baz"},
+			},
+		},
+	}
+
+	for name, tc := range tests {
+		func() {
+			client, server, storage := setup(t)
+			defer server.Terminate(t)
+
+			client.Create(
+				context.TODO(),
+				etcdtest.AddPrefix("/imagestreams/default/test"),
+				runtime.EncodeOrDie(kapi.Codecs.LegacyCodec(v1.SchemeGroupVersion),
+					&api.ImageStream{
+						ObjectMeta: kapi.ObjectMeta{
+							CreationTimestamp: unversioned.Date(2015, 3, 24, 9, 38, 0, 0, time.UTC),
+							Namespace:         "default",
+							Name:              "test",
+						},
+						Spec: api.ImageStreamSpec{
+							Tags: map[string]api.TagReference{},
+						},
+					},
+				))
+
+			ctx := kapi.WithUser(kapi.NewDefaultContext(), &fakeUser{})
+			_, err := storage.Create(ctx, tc.istag)
+			gotErr := err != nil
+			if e, a := tc.expectError, gotErr; e != a {
+				t.Errorf("%s: Expected err=%v: got %v: %v", name, e, a, err)
+				return
+			}
+			if tc.expectError {
+				status := err.(statusError).Status()
+				if status.Details.Kind != tc.errorTargetKind || status.Details.Name != tc.errorTargetID {
+					t.Errorf("%s: unexpected status: %#v", name, status.Details)
+					return
+				}
+			}
+		}()
+	}
+}
