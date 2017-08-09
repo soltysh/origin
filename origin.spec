@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 187fabf0a2c7a3984573de8b69be16a5063a502c
+%global commit 8ad34441d20b7d7c8a7f386b409ebb7c9eb504a3
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.44.9 OS_GIT_COMMIT=187fabf OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.44.10 OS_GIT_COMMIT=8ad3444 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -48,7 +48,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.44.10
+Version:        3.4.1.44.11
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -563,6 +563,9 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Aug 08 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.4.1.44.11
+- 
+
 * Thu Aug 03 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.4.1.44.10
 - Fix panic when tag is nil when creating istag (maszulik@redhat.com)
 
