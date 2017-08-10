@@ -94,20 +94,6 @@ func (mounter *SafeFormatAndMount) FormatAndMount(source string, target string, 
 	return mounter.formatAndMount(source, target, fstype, options)
 }
 
-// New returns a mount.Interface for the current system.
-// It provides options to override the default mounter behavior.
-// mounterPath allows using an alternative to `/bin/mount` for mounting.
-func New(mounterPath string) Interface {
-	// If mounter-path flag is not set, use default mount path
-	if mounterPath == "" {
-		mounterPath = defaultMountCommand
-	}
-
-	return &Mounter{
-		mounterPath: mounterPath,
-	}
-}
-
 // GetMountRefs finds all other references to the device referenced
 // by mountPath; returns a list of paths.
 func GetMountRefs(mounter Interface, mountPath string) ([]string, error) {
