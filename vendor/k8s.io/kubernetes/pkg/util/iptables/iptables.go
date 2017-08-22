@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -123,35 +124,52 @@ const MinCheckVersion = "1.4.11"
 const MinWaitVersion = "1.4.20"
 const MinWait2Version = "1.4.22"
 
+const LockfilePath16x = "/run/xtables.lock"
+
 // runner implements Interface in terms of exec("iptables").
 type runner struct {
-	mu       sync.Mutex
-	exec     utilexec.Interface
-	dbus     utildbus.Interface
-	protocol Protocol
-	hasCheck bool
-	waitFlag []string
+	mu              sync.Mutex
+	exec            utilexec.Interface
+	dbus            utildbus.Interface
+	protocol        Protocol
+	hasCheck        bool
+	waitFlag        []string
+	restoreWaitFlag []string
+	lockfilePath    string
 
 	reloadFuncs []func()
 	signal      chan *godbus.Signal
 }
 
-// New returns a new Interface which will exec iptables.
-func New(exec utilexec.Interface, dbus utildbus.Interface, protocol Protocol) Interface {
+// newInternal returns a new Interface which will exec iptables, and allows the
+// caller to change the iptables-restore lockfile path
+func newInternal(exec utilexec.Interface, dbus utildbus.Interface, protocol Protocol, lockfilePath string) Interface {
 	vstring, err := getIPTablesVersionString(exec)
 	if err != nil {
 		glog.Warningf("Error checking iptables version, assuming version at least %s: %v", MinCheckVersion, err)
 		vstring = MinCheckVersion
 	}
+
+	if lockfilePath == "" {
+		lockfilePath = LockfilePath16x
+	}
+
 	runner := &runner{
-		exec:     exec,
-		dbus:     dbus,
-		protocol: protocol,
-		hasCheck: getIPTablesHasCheckCommand(vstring),
-		waitFlag: getIPTablesWaitFlag(vstring),
+		exec:            exec,
+		dbus:            dbus,
+		protocol:        protocol,
+		hasCheck:        getIPTablesHasCheckCommand(vstring),
+		waitFlag:        getIPTablesWaitFlag(vstring),
+		restoreWaitFlag: getIPTablesRestoreWaitFlag(exec),
+		lockfilePath:    lockfilePath,
 	}
 	runner.connectToFirewallD()
 	return runner
+}
+
+// New returns a new Interface which will exec iptables.
+func New(exec utilexec.Interface, dbus utildbus.Interface, protocol Protocol) Interface {
+	return newInternal(exec, dbus, protocol, "")
 }
 
 // Destroy is part of Interface.
@@ -323,6 +341,10 @@ func (runner *runner) RestoreAll(data []byte, flush FlushFlag, counters RestoreC
 	return runner.restoreInternal(args, data, flush, counters)
 }
 
+type iptablesLocker interface {
+	Close()
+}
+
 // restoreInternal is the shared part of Restore/RestoreAll
 func (runner *runner) restoreInternal(args []string, data []byte, flush FlushFlag, counters RestoreCountersFlag) error {
 	runner.mu.Lock()
@@ -335,9 +357,21 @@ func (runner *runner) restoreInternal(args []string, data []byte, flush FlushFla
 		args = append(args, "--counters")
 	}
 
+	// Grab the iptables lock to prevent iptables-restore and iptables
+	// from stepping on each other.  iptables-restore 1.6.2 will have
+	// a --wait option like iptables itself, but that's not widely deployed.
+	if len(runner.restoreWaitFlag) == 0 {
+		locker, err := grabIptablesLocks(runner.lockfilePath)
+		if err != nil {
+			return err
+		}
+		defer locker.Close()
+	}
+
 	// run the command and return the output or an error including the output and error
-	glog.V(4).Infof("running iptables-restore %v", args)
-	cmd := runner.exec.Command(cmdIPTablesRestore, args...)
+	fullArgs := append(runner.restoreWaitFlag, args...)
+	glog.V(4).Infof("running iptables-restore %v", fullArgs)
+	cmd := runner.exec.Command(cmdIPTablesRestore, fullArgs...)
 	cmd.SetStdin(bytes.NewBuffer(data))
 	b, err := cmd.CombinedOutput()
 	if err != nil {
@@ -515,6 +549,46 @@ func getIPTablesVersionString(exec utilexec.Interface) (string, error) {
 	return match[1], nil
 }
 
+// Checks if iptables-restore has a "wait" flag
+// --wait support landed in v1.6.1+ right before --version support, so
+// any version of iptables-restore that supports --version will also
+// support --wait
+func getIPTablesRestoreWaitFlag(exec utilexec.Interface) []string {
+	vstring, err := getIPTablesRestoreVersionString(exec)
+	if err != nil || vstring == "" {
+		glog.V(3).Infof("couldn't get iptables-restore version; assuming it doesn't support --wait")
+		return nil
+	}
+	if _, err := ParseGeneric(vstring); err != nil {
+		glog.V(3).Infof("couldn't parse iptables-restore version; assuming it doesn't support --wait")
+		return nil
+	}
+
+	return []string{"--wait=2"}
+}
+
+// getIPTablesRestoreVersionString runs "iptables-restore --version" to get the version string
+// in the form "X.X.X"
+func getIPTablesRestoreVersionString(exec utilexec.Interface) (string, error) {
+	// this doesn't access mutable state so we don't need to use the interface / runner
+
+	// iptables-restore hasn't always had --version, and worse complains
+	// about unrecognized commands but doesn't exit when it gets them.
+	// Work around that by setting stdin to nothing so it exits immediately.
+	cmd := exec.Command(cmdIPTablesRestore, "--version")
+	cmd.SetStdin(bytes.NewReader([]byte{}))
+	bytes, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+	versionMatcher := regexp.MustCompile("v([0-9]+(\\.[0-9]+)+)")
+	match := versionMatcher.FindStringSubmatch(string(bytes))
+	if match == nil {
+		return "", fmt.Errorf("no iptables version found in string: %s", bytes)
+	}
+	return match[1], nil
+}
+
 // goroutine to listen for D-Bus signals
 func (runner *runner) dbusSignalHandler(bus utildbus.Connection) {
 	firewalld := bus.Object(firewalldName, firewalldPath)
@@ -574,4 +648,76 @@ func IsNotFoundError(err error) bool {
 		return true
 	}
 	return false
+}
+
+//***************************************************
+// Copied from kubernetes pkg/util/version/version.go
+
+type Version struct {
+	components    []uint
+	semver        bool
+	preRelease    string
+	buildMetadata string
+}
+
+var (
+	// versionMatchRE splits a version string into numeric and "extra" parts
+	versionMatchRE = regexp.MustCompile(`^\s*v?([0-9]+(?:\.[0-9]+)*)(.*)*$`)
+	// extraMatchRE splits the "extra" part of versionMatchRE into semver pre-release and build metadata; it does not validate the "no leading zeroes" constraint for pre-release
+	extraMatchRE = regexp.MustCompile(`^(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?\s*$`)
+)
+
+func parse(str string, semver bool) (*Version, error) {
+	parts := versionMatchRE.FindStringSubmatch(str)
+	if parts == nil {
+		return nil, fmt.Errorf("could not parse %q as version", str)
+	}
+	numbers, extra := parts[1], parts[2]
+
+	components := strings.Split(numbers, ".")
+	if (semver && len(components) != 3) || (!semver && len(components) < 2) {
+		return nil, fmt.Errorf("illegal version string %q", str)
+	}
+
+	v := &Version{
+		components: make([]uint, len(components)),
+		semver:     semver,
+	}
+	for i, comp := range components {
+		if (i == 0 || semver) && strings.HasPrefix(comp, "0") && comp != "0" {
+			return nil, fmt.Errorf("illegal zero-prefixed version component %q in %q", comp, str)
+		}
+		num, err := strconv.ParseUint(comp, 10, 0)
+		if err != nil {
+			return nil, fmt.Errorf("illegal non-numeric version component %q in %q: %v", comp, str, err)
+		}
+		v.components[i] = uint(num)
+	}
+
+	if semver && extra != "" {
+		extraParts := extraMatchRE.FindStringSubmatch(extra)
+		if extraParts == nil {
+			return nil, fmt.Errorf("could not parse pre-release/metadata (%s) in version %q", extra, str)
+		}
+		v.preRelease, v.buildMetadata = extraParts[1], extraParts[2]
+
+		for _, comp := range strings.Split(v.preRelease, ".") {
+			if _, err := strconv.ParseUint(comp, 10, 0); err == nil {
+				if strings.HasPrefix(comp, "0") && comp != "0" {
+					return nil, fmt.Errorf("illegal zero-prefixed version component %q in %q", comp, str)
+				}
+			}
+		}
+	}
+
+	return v, nil
+}
+
+// ParseGeneric parses a "generic" version string. The version string must consist of two
+// or more dot-separated numeric fields (the first of which can't have leading zeroes),
+// followed by arbitrary uninterpreted data (which need not be separated from the final
+// numeric field by punctuation). For convenience, leading and trailing whitespace is
+// ignored, and the version can be preceded by the letter "v". See also ParseSemantic.
+func ParseGeneric(str string) (*Version, error) {
+	return parse(str, false)
 }
