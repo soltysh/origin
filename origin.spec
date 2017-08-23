@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit a1763dc851f91d35464d7fe53e329dcb2fc150c9
+%global commit 6e0f659508e030eefcfc4d30815ee964e08d29e9
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.44.13 OS_GIT_COMMIT=a1763dc OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.44.14 OS_GIT_COMMIT=6e0f659 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -48,7 +48,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.44.14
+Version:        3.4.1.44.15
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -563,6 +563,14 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Aug 22 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.4.1.44.15
+- UPSTREAM: 45601: util/iptables: fix cross-build failures due to
+  syscall.Flock() (dcbw@redhat.com)
+- UPSTREAM: 44895: util/iptables: grab iptables locks if iptables-restore
+  doesn't support --wait (dcbw@redhat.com)
+- UPSTREAM: 43575: util/iptables: check for and use new iptables-restore 'wait'
+  argument (dcbw@redhat.com)
+
 * Thu Aug 17 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.4.1.44.14
 - 
 
