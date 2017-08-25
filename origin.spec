@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit b2714da8be2a8020c320ad76059f675bb09ba208
+%global commit 3f0fe4495f8c32d4b4fd7d8a8d2ec5b45418dc3d
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.31.22 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=b2714da
+%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.31.23 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=3f0fe44
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.5.5.31.23
+Version:        3.5.5.31.24
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -585,6 +585,10 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Thu Aug 24 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.5.5.31.24-1
+- NetworkCheck diagnostic: create projects with empty nodeselector
+  (lmeyer@redhat.com)
+
 * Tue Aug 22 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.5.5.31.23-1
 - UPSTREAM: 45601: util/iptables: fix cross-build failures due to
   syscall.Flock() (dcbw@redhat.com)
