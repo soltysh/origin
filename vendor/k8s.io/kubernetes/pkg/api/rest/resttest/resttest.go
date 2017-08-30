@@ -120,6 +120,7 @@ func (t *Tester) setObjectMeta(obj runtime.Object, name string) {
 		meta.Namespace = api.NamespaceValue(t.TestContext())
 	}
 	meta.GenerateName = ""
+	meta.Generation = 1
 }
 
 func copyOrDie(obj runtime.Object) runtime.Object {
@@ -172,6 +173,7 @@ func (t *Tester) TestUpdate(valid runtime.Object, createFn CreateFunc, getFn Get
 	t.testUpdateWithWrongUID(copyOrDie(valid), createFn, getFn)
 	t.testUpdateRetrievesOldObject(copyOrDie(valid), createFn, getFn)
 	t.testUpdatePropagatesUpdatedObjectError(copyOrDie(valid), createFn, getFn)
+	t.testUpdateIgnoreGenerationUpdates(copyOrDie(valid), createFn, getFn)
 }
 
 // Test deleting an object.
@@ -611,6 +613,40 @@ func (t *Tester) testUpdatePropagatesUpdatedObjectError(obj runtime.Object, crea
 	}
 }
 
+func (t *Tester) testUpdateIgnoreGenerationUpdates(obj runtime.Object, createFn CreateFunc, getFn GetFunc) {
+	ctx := t.TestContext()
+
+	foo := copyOrDie(obj)
+	name := t.namer(8)
+	t.setObjectMeta(foo, name)
+
+	if err := createFn(ctx, foo); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	storedFoo, err := getFn(ctx, foo)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	older := copyOrDie(storedFoo)
+	olderMeta := t.getObjectMetaOrFail(older)
+	olderMeta.Generation = 2
+
+	_, _, err = t.storage.(rest.Updater).Update(t.TestContext(), olderMeta.Name, rest.DefaultUpdatedObjectInfo(older, api.Scheme))
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	updatedFoo, err := getFn(ctx, older)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if exp, got := int64(1), t.getObjectMetaOrFail(updatedFoo).Generation; exp != got {
+		t.Errorf("Unexpected generation update: expected %d, got %d", exp, got)
+	}
+}
+
 func (t *Tester) testUpdateOnNotFound(obj runtime.Object) {
 	t.setObjectMeta(obj, t.namer(0))
 	_, created, err := t.storage.(rest.Updater).Update(t.TestContext(), t.namer(0), rest.DefaultUpdatedObjectInfo(obj, api.Scheme))
@@ -742,6 +778,7 @@ func (t *Tester) testDeleteGracefulHasDefault(obj runtime.Object, createFn Creat
 		t.Errorf("unexpected error: %v", err)
 	}
 	objectMeta := t.getObjectMetaOrFail(foo)
+	generation := objectMeta.Generation
 	_, err := t.storage.(rest.GracefulDeleter).Delete(ctx, objectMeta.Name, &api.DeleteOptions{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -758,6 +795,9 @@ func (t *Tester) testDeleteGracefulHasDefault(obj runtime.Object, createFn Creat
 	if objectMeta.DeletionTimestamp == nil || objectMeta.DeletionGracePeriodSeconds == nil || *objectMeta.DeletionGracePeriodSeconds != expectedGrace {
 		t.Errorf("unexpected deleted meta: %#v", objectMeta)
 	}
+	if generation >= objectMeta.Generation {
+		t.Error("Generation wasn't bumped when deletion timestamp was set")
+	}
 }
 
 func (t *Tester) testDeleteGracefulWithValue(obj runtime.Object, createFn CreateFunc, getFn GetFunc, expectedGrace int64) {
@@ -769,6 +809,7 @@ func (t *Tester) testDeleteGracefulWithValue(obj runtime.Object, createFn Create
 		t.Errorf("unexpected error: %v", err)
 	}
 	objectMeta := t.getObjectMetaOrFail(foo)
+	generation := objectMeta.Generation
 	_, err := t.storage.(rest.GracefulDeleter).Delete(ctx, objectMeta.Name, api.NewDeleteOptions(expectedGrace+2))
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -785,6 +826,9 @@ func (t *Tester) testDeleteGracefulWithValue(obj runtime.Object, createFn Create
 	if objectMeta.DeletionTimestamp == nil || objectMeta.DeletionGracePeriodSeconds == nil || *objectMeta.DeletionGracePeriodSeconds != expectedGrace+2 {
 		t.Errorf("unexpected deleted meta: %#v", objectMeta)
 	}
+	if generation >= objectMeta.Generation {
+		t.Error("Generation wasn't bumped when deletion timestamp was set")
+	}
 }
 
 func (t *Tester) testDeleteGracefulExtend(obj runtime.Object, createFn CreateFunc, getFn GetFunc, expectedGrace int64) {
@@ -796,6 +840,7 @@ func (t *Tester) testDeleteGracefulExtend(obj runtime.Object, createFn CreateFun
 		t.Errorf("unexpected error: %v", err)
 	}
 	objectMeta := t.getObjectMetaOrFail(foo)
+	generation := objectMeta.Generation
 	_, err := t.storage.(rest.GracefulDeleter).Delete(ctx, objectMeta.Name, api.NewDeleteOptions(expectedGrace))
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -817,6 +862,9 @@ func (t *Tester) testDeleteGracefulExtend(obj runtime.Object, createFn CreateFun
 	if objectMeta.DeletionTimestamp == nil || objectMeta.DeletionGracePeriodSeconds == nil || *objectMeta.DeletionGracePeriodSeconds != expectedGrace {
 		t.Errorf("unexpected deleted meta: %#v", objectMeta)
 	}
+	if generation >= objectMeta.Generation {
+		t.Error("Generation wasn't bumped when deletion timestamp was set")
+	}
 }
 
 func (t *Tester) testDeleteGracefulImmediate(obj runtime.Object, createFn CreateFunc, getFn GetFunc, expectedGrace int64) {
@@ -828,6 +876,7 @@ func (t *Tester) testDeleteGracefulImmediate(obj runtime.Object, createFn Create
 		t.Errorf("unexpected error: %v", err)
 	}
 	objectMeta := t.getObjectMetaOrFail(foo)
+	generation := objectMeta.Generation
 	_, err := t.storage.(rest.GracefulDeleter).Delete(ctx, objectMeta.Name, api.NewDeleteOptions(expectedGrace))
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -849,6 +898,9 @@ func (t *Tester) testDeleteGracefulImmediate(obj runtime.Object, createFn Create
 	// the second delete shouldn't update the object, so the objectMeta.DeletionGracePeriodSeconds should eqaul to the value set in the first delete.
 	if objectMeta.DeletionTimestamp == nil || objectMeta.DeletionGracePeriodSeconds == nil || *objectMeta.DeletionGracePeriodSeconds != 0 {
 		t.Errorf("unexpected deleted meta: %#v", objectMeta)
+	}
+	if generation >= objectMeta.Generation {
+		t.Error("Generation wasn't bumped when deletion timestamp was set")
 	}
 }
 
