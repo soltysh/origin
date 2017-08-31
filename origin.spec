@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit c8b556c6cb7b0a6b02346562213e7d818bfd20c1
+%global commit b2560b4fc1c48919b82cb8f7c44f4d55c3743c47
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.46.16
+Version:        3.3.1.46.17
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -562,6 +562,11 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Thu Aug 31 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.3.1.46.17
+- UPSTREAM: #25036: api: validate generation updates (tnozicka@gmail.com)
+- UPSTREAM: #27269: Graceful deletion bumps object's generation
+  (tnozicka@gmail.com)
+
 * Tue Aug 29 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.3.1.46.16
 - 
 
