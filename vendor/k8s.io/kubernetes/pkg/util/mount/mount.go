@@ -92,11 +92,6 @@ func (mounter *SafeFormatAndMount) FormatAndMount(source string, target string, 
 	return mounter.formatAndMount(source, target, fstype, options)
 }
 
-// New returns a mount.Interface for the current system.
-func New() Interface {
-	return &Mounter{}
-}
-
 // GetMountRefs finds all other references to the device referenced
 // by mountPath; returns a list of paths.
 func GetMountRefs(mounter Interface, mountPath string) ([]string, error) {
