@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 25ae4d3fd95771f75bd6977d2ba8e858e31ac636
+%global commit a5a1a19390cd6b3e67b662aa659061370a3d5983
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.30 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=25ae4d3
+%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.31 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=a5a1a19
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.6.173.0.31
+Version:        3.6.173.0.32
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -641,6 +641,21 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Mon Sep 11 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.6.173.0.32-1
+- extended: Skip test instead of failing (miminar@redhat.com)
+- extended: fixed registry tests (miminar@redhat.com)
+- Extended test for registry garbage collector (miminar@redhat.com)
+- Exit normally if registry's storage is empty (miminar@redhat.com)
+- Add -prune option to dockerregistry (obulatov@redhat.com)
+- Adjust NetworkPolicy OVS flows for compatibility with (as-yet-unreleased) OVS
+  2.8 (danw@redhat.com)
+- Add short ttl cache to token authenticator on success (jliggitt@redhat.com)
+- UPSTREAM: 50258: Simplify bearer token auth chain, cache successful
+  authentications (jliggitt@redhat.com)
+- UPSTREAM: 50258: Add union token authenticator (jliggitt@redhat.com)
+- UPSTREAM: 50258: Add token cache component (jliggitt@redhat.com)
+- UPSTREAM: 50258: Add token group adder component (jliggitt@redhat.com)
+
 * Fri Sep 08 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.6.173.0.31-1
 - UPSTREAM: 49420: Fix c-m crash while verifying attached volumes
   (hekumar@redhat.com)
