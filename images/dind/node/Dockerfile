@@ -21,6 +21,7 @@ RUN dnf -y update && dnf -y install\
  bridge-utils\
  ethtool\
  iptables-services\
+ conntrack-tools\
  openvswitch
 
 # Upgrade to a newer OVS. (This can go away when the base image is upgraded to F26.)
