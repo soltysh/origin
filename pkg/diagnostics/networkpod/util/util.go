@@ -12,6 +12,7 @@ import (
 
 	osclient "github.com/openshift/origin/pkg/client"
 	osclientcmd "github.com/openshift/origin/pkg/cmd/util/clientcmd"
+	"github.com/openshift/origin/pkg/cmd/util/variable"
 	"github.com/openshift/origin/pkg/sdn/api"
 	sdnapi "github.com/openshift/origin/pkg/sdn/api"
 	"github.com/openshift/origin/pkg/util/netutils"
@@ -35,11 +36,20 @@ const (
 	NetworkDiagDefaultTestPodPort     = 8080
 )
 
-var (
-	defaultImagePrefix             = "openshift3/ose"
-	NetworkDiagDefaultPodImage     = defaultImagePrefix
-	NetworkDiagDefaultTestPodImage = defaultImagePrefix + "-deployer"
+const (
+	defaultImagePrefix = "openshift3/ose"
 )
+
+func GetNetworkDiagDefaultPodImage() string {
+	imageTemplate := variable.NewDefaultImageTemplate()
+	imageTemplate.Format = defaultImagePrefix + ":${version}"
+	return imageTemplate.ExpandOrDie("")
+}
+
+func GetNetworkDiagDefaultTestPodImage() string {
+	imageTemplate := variable.NewDefaultImageTemplate()
+	return imageTemplate.ExpandOrDie("deployer")
+}
 
 func GetOpenShiftNetworkPlugin(osClient *osclient.Client) (string, bool, error) {
 	cn, err := osClient.ClusterNetwork().Get(api.ClusterNetworkDefault)
