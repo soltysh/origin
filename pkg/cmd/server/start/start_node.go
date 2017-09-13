@@ -372,7 +372,7 @@ func StartNode(nodeConfig configapi.NodeConfig, components *utilflags.ComponentF
 		config.RunDNS()
 	}
 
-	config.RunServiceStores(components.Enabled(ComponentProxy), components.Enabled(ComponentDNS))
+	config.RunServiceStores(components.Enabled(ComponentProxy), components.Enabled(ComponentDNS) && config.DNSServer != nil)
 
 	return nil
 }
