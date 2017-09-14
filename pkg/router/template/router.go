@@ -576,7 +576,7 @@ func (r *templateRouter) FilterNamespaces(namespaces sets.String) {
 	}
 
 	for k := range r.state {
-		ns := strings.SplitN(k, "_", 2)[0]
+		ns := strings.SplitN(k, ":", 2)[0]
 		if namespaces.Has(ns) {
 			continue
 		}
