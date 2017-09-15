@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 8ae97ace8d9844d2d0b1df56c122212a579f0257
+%global commit 1636616b469e622b12a384d17092554cd8300cb3
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.32 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=8ae97ac
+%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.33 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=1636616
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.6.173.0.33
+Version:        3.6.173.0.34
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -641,6 +641,15 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Fri Sep 15 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.6.173.0.34-1
+- Disable TestImageStreamImportDockerHub integration test to unblock the queue
+  (maszulik@redhat.com)
+- Retry image stream updates when pruning images (maszulik@redhat.com)
+- image-pruner: Reenable registry-url validation (miminar@redhat.com)
+- image-pruner: Determine protocol just once (miminar@redhat.com)
+- Added test cases for router FilterNamespaces() (rpenta@redhat.com)
+- Fix filter namespaces in template router (rpenta@redhat.com)
+
 * Wed Sep 13 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.6.173.0.33-1
 - make `oc adm create-bootstrap-project-template` compatible w 1.5 cluster
   (jvallejo@redhat.com)
