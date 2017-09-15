@@ -279,7 +279,7 @@ func (adc *attachDetachController) populateActualStateOfWorld() error {
 				glog.Errorf("Failed to mark the volume as attached: %v", err)
 				continue
 			}
-			adc.processVolumesInUse(nodeName, node.Status.VolumesInUse, true /* forceUnmount */)
+			adc.processVolumesInUse(nodeName, node.Status.VolumesInUse)
 			adc.addNodeToDswp(node, types.NodeName(node.Name))
 		}
 	}
@@ -448,7 +448,7 @@ func (adc *attachDetachController) nodeUpdate(oldObj, newObj interface{}) {
 
 	nodeName := types.NodeName(node.Name)
 	adc.addNodeToDswp(node, nodeName)
-	adc.processVolumesInUse(nodeName, node.Status.VolumesInUse, false /* forceUnmount */)
+	adc.processVolumesInUse(nodeName, node.Status.VolumesInUse)
 }
 
 func (adc *attachDetachController) nodeDelete(obj interface{}) {
@@ -462,7 +462,7 @@ func (adc *attachDetachController) nodeDelete(obj interface{}) {
 		glog.V(10).Infof("%v", err)
 	}
 
-	adc.processVolumesInUse(nodeName, node.Status.VolumesInUse, false /* forceUnmount */)
+	adc.processVolumesInUse(nodeName, node.Status.VolumesInUse)
 }
 
 // processVolumesInUse processes the list of volumes marked as "in-use"
@@ -470,7 +470,7 @@ func (adc *attachDetachController) nodeDelete(obj interface{}) {
 // corresponding volume in the actual state of the world to indicate that it is
 // mounted.
 func (adc *attachDetachController) processVolumesInUse(
-	nodeName types.NodeName, volumesInUse []v1.UniqueVolumeName, forceUnmount bool) {
+	nodeName types.NodeName, volumesInUse []v1.UniqueVolumeName) {
 	glog.V(4).Infof("processVolumesInUse for node %q", nodeName)
 	for _, attachedVolume := range adc.actualStateOfWorld.GetAttachedVolumesForNode(nodeName) {
 		mounted := false
@@ -480,8 +480,7 @@ func (adc *attachDetachController) processVolumesInUse(
 				break
 			}
 		}
-		err := adc.actualStateOfWorld.SetVolumeMountedByNode(
-			attachedVolume.VolumeName, nodeName, mounted, forceUnmount)
+		err := adc.actualStateOfWorld.SetVolumeMountedByNode(attachedVolume.VolumeName, nodeName, mounted)
 		if err != nil {
 			glog.Warningf(
 				"SetVolumeMountedByNode(%q, %q, %q) returned an error: %v",
