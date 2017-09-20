@@ -27,6 +27,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/util/strings"
 	"k8s.io/kubernetes/pkg/volume"
+	"k8s.io/kubernetes/pkg/volume/util"
 )
 
 // This is the primary entrypoint for volume plugins.
@@ -226,7 +227,7 @@ func (c *fcDiskUnmounter) TearDown() error {
 }
 
 func (c *fcDiskUnmounter) TearDownAt(dir string) error {
-	return diskTearDown(c.manager, *c, dir, c.mounter)
+	return util.UnmountPath(dir, c.mounter)
 }
 
 func getVolumeSource(spec *volume.Spec) (*api.FCVolumeSource, bool, error) {
