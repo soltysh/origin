@@ -27,6 +27,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/util/strings"
 	"k8s.io/kubernetes/pkg/volume"
+	"k8s.io/kubernetes/pkg/volume/util"
 )
 
 // This is the primary entrypoint for volume plugins.
@@ -62,7 +63,7 @@ func (plugin *fcPlugin) GetVolumeName(spec *volume.Spec) (string, error) {
 	}
 
 	//  TargetWWNs are the FibreChannel target worldwide names
-	return fmt.Sprintf("%v", volumeSource.TargetWWNs), nil
+	return fmt.Sprintf("%v:%v", volumeSource.TargetWWNs, *volumeSource.Lun), nil
 }
 
 func (plugin *fcPlugin) CanSupport(spec *volume.Spec) bool {
@@ -226,7 +227,7 @@ func (c *fcDiskUnmounter) TearDown() error {
 }
 
 func (c *fcDiskUnmounter) TearDownAt(dir string) error {
-	return diskTearDown(c.manager, *c, dir, c.mounter)
+	return util.UnmountPath(dir, c.mounter)
 }
 
 func getVolumeSource(spec *volume.Spec) (*api.FCVolumeSource, bool, error) {
