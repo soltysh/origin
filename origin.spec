@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 5a50a963442f9c7a5ff22dccb363e552d5aefe41
+%global commit 5a5f11dbd419c85ef2d63105bc68fc51492986ea
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.31.26 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=5a50a96
+%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.31.27 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=5a5f11d
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.5.5.31.27
+Version:        3.5.5.31.28
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -585,6 +585,24 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Sep 26 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.5.5.31.28-1
+- Merge remote-tracking branch enterprise-3.5, bump origin-web-console 4fc84fc
+  (smunilla@redhat.com)
+- UPSTREAM: coreos/etcd: 8519: Fix for etcd client oneshot cluster member
+  cycling (rrati@redhat.com)
+- UPSTREAM: 52675: Fix FC WaitForAttach not mounting a volume
+  (hchen@redhat.com)
+- UPSTREAM: 52687: Refactoring and improvements for iSCSI and FC storage
+  plugins (hchen@redhat.com)
+- UPSTREAM: 52691: FC plugin: Return target wwn + lun at GetVolumeName()
+  (hchen@redhat.com)
+- updated generated completions (miminar@redhat.com)
+- Image pruner: Determine protocol just once (miminar@redhat.com)
+- Bug 1450291 - Improve logs in image pruning (maszulik@redhat.com)
+- Prefer secure connection during image pruning (miminar@redhat.com)
+- proxy: honor BindAddress for the iptables proxy (dcbw@redhat.com)
+- Bug 1421643 - Fix network diagnostics timeouts (rpenta@redhat.com)
+
 * Tue Sep 05 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.5.5.31.27-1
 - Merge remote-tracking branch enterprise-3.5, bump origin-web-console 8e62f9a
   (smunilla@redhat.com)
