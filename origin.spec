@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 5a2886dba38f651cdbdbf3eb39ab0c5e60b883c5
+%global commit fa720831c9c4c2944e1dbb5bebbd70da8267d41e
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.44.18 OS_GIT_COMMIT=5a2886d OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.44.19 OS_GIT_COMMIT=fa72083 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -48,7 +48,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.44.19
+Version:        3.4.1.44.20
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -563,6 +563,17 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Sep 26 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.4.1.44.20
+- Merge remote-tracking branch enterprise-3.4, bump origin-web-console 01e1cc4
+  (smunilla@redhat.com)
+- updated generated completions (miminar@redhat.com)
+- Image pruner: Determine protocol just once (miminar@redhat.com)
+- Bug 1450291 - Improve logs in image pruning (maszulik@redhat.com)
+- Prefer secure connection during image pruning (miminar@redhat.com)
+- proxy: honor BindAddress for the iptables proxy (dcbw@redhat.com)
+- UPSTREAM: 49640: Run mount in its own systemd scope (jsafrane@redhat.com)
+- Bug 1421643 - Fix network diagnostics timeouts (rpenta@redhat.com)
+
 * Tue Sep 05 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.4.1.44.19
 - 
 
