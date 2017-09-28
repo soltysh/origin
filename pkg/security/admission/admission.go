@@ -73,6 +73,13 @@ func (c *constraint) Admit(a kadmission.Attributes) error {
 		return nil
 	}
 
+	// if this is an update, see if we are only updating the ownerRef.  Garbage collection does this
+	// and we should allow it in general, since you had the power to update and the power to delete.
+	// The worst that happens is that you delete something, but you aren't controlling the privileged object itself
+	if a.GetOldObject() != nil && oadmission.IsOnlyMutatingGCFields(a.GetObject(), a.GetOldObject()) {
+		return nil
+	}
+
 	// get all constraints that are usable by the user
 	glog.V(4).Infof("getting security context constraints for pod %s (generate: %s) in namespace %s with user info %v", pod.Name, pod.GenerateName, a.GetNamespace(), a.GetUserInfo())
 

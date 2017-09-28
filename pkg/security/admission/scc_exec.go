@@ -47,7 +47,7 @@ func (d *sccExecRestrictions) Admit(a kadmission.Attributes) (err error) {
 
 	// TODO, if we want to actually limit who can use which service account, then we'll need to add logic here to make sure that
 	// we're allowed to use the SA the pod is using.  Otherwise, user-A creates pod and user-B (who can't use the SA) can exec into it.
-	createAttributes := kadmission.NewAttributesRecord(pod, pod, kapi.Kind("Pod").WithVersion(""), a.GetNamespace(), a.GetName(), a.GetResource(), "", kadmission.Create, a.GetUserInfo())
+	createAttributes := kadmission.NewAttributesRecord(pod, nil, kapi.Kind("Pod").WithVersion(""), a.GetNamespace(), a.GetName(), a.GetResource(), "", kadmission.Create, a.GetUserInfo())
 	if err := d.constraintAdmission.Admit(createAttributes); err != nil {
 		return kadmission.NewForbidden(a, fmt.Errorf("%s operation is not allowed because the pod's security context exceeds your permissions: %v", a.GetSubresource(), err))
 	}
