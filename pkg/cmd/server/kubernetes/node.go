@@ -354,6 +354,11 @@ func (c *NodeConfig) RunPlugin() {
 
 // RunDNS starts the DNS server as soon as services are loaded.
 func (c *NodeConfig) RunDNS() {
+	if c.ServiceStore == nil {
+		serviceConfig := pconfig.NewServiceConfig()
+		c.ServiceStore = pconfig.NewServiceStore(c.ServiceStore, serviceConfig.Channel("api"))
+	}
+
 	go func() {
 		<-c.ServicesReady
 		glog.Infof("Starting DNS on %s", c.DNSServer.Config.DnsAddr)
