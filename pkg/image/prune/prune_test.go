@@ -733,6 +733,7 @@ func TestImagePruning(t *testing.T) {
 		},
 
 		"image with nil annotations": {
+			allImages: newBool(true),
 			images: imageList(
 				unmanagedImage("sha256:0000000000000000000000000000000000000000000000000000000000000000", "someregistry/foo/bar@sha256:0000000000000000000000000000000000000000000000000000000000000000", false, "", ""),
 			),
@@ -759,6 +760,7 @@ func TestImagePruning(t *testing.T) {
 		},
 
 		"image missing managed annotation": {
+			allImages: newBool(true),
 			images: imageList(
 				unmanagedImage("sha256:0000000000000000000000000000000000000000000000000000000000000000", "someregistry/foo/bar@sha256:0000000000000000000000000000000000000000000000000000000000000000", true, "foo", "bar"),
 			),
@@ -767,6 +769,7 @@ func TestImagePruning(t *testing.T) {
 		},
 
 		"image with managed annotation != true": {
+			allImages: newBool(true),
 			images: imageList(
 				unmanagedImage("sha256:0000000000000000000000000000000000000000000000000000000000000000", "someregistry/foo/bar@sha256:0000000000000000000000000000000000000000000000000000000000000000", true, imageapi.ManagedByOpenShiftAnnotation, "false"),
 				unmanagedImage("sha256:0000000000000000000000000000000000000000000000000000000000000001", "someregistry/foo/bar@sha256:0000000000000000000000000000000000000000000000000000000000000000", true, imageapi.ManagedByOpenShiftAnnotation, "0"),
