@@ -265,7 +265,7 @@ func (rc *reconciler) reconcile() {
 						for _, pod := range volumeToAttach.ScheduledPods {
 							rc.recorder.Eventf(pod, v1.EventTypeWarning, kevents.FailedAttachVolume, erroMsg)
 						}
-						volumeToAttach.MultiAttachErrorReported = true
+						rc.desiredStateOfWorld.SetMultiAttachError(volumeToAttach.VolumeName, volumeToAttach.NodeName)
 						glog.Warningf(erroMsg)
 					}
 					continue

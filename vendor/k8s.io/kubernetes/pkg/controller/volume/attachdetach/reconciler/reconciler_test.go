@@ -473,6 +473,17 @@ func Test_Run_OneVolumeAttachAndDetachMultipleNodesWithReadWriteOnce(t *testing.
 		t.Fatal("Volume attached to unexpected node")
 	}
 
+	// check if multiattach is marked
+	// at least one volume should be marked with multiattach error
+	nodeAttachedTo := nodesForVolume[0]
+	for _, volumeToAttach := range dsw.GetVolumesToAttach() {
+		if volumeToAttach.NodeName != nodeAttachedTo {
+			if !volumeToAttach.MultiAttachErrorReported {
+				t.Fatalf("Expected volume %q on node %q to have multiattach error", volumeToAttach.VolumeName, volumeToAttach.NodeName)
+			}
+		}
+	}
+
 	dsw.DeletePod(types.UniquePodName(podToDelete), generatedVolumeName, nodesForVolume[0])
 	volumeExists := dsw.VolumeExists(generatedVolumeName, nodesForVolume[0])
 	if volumeExists {
