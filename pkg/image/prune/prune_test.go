@@ -733,6 +733,7 @@ func TestImagePruning(t *testing.T) {
 		},
 
 		"image with nil annotations": {
+			allImages: newBool(true),
 			images: imageList(
 				unmanagedImage("sha256:0000000000000000000000000000000000000000000000000000000000000000", "someregistry/foo/bar@sha256:0000000000000000000000000000000000000000000000000000000000000000", false, "", ""),
 			),
@@ -759,6 +760,7 @@ func TestImagePruning(t *testing.T) {
 		},
 
 		"image missing managed annotation": {
+			allImages: newBool(true),
 			images: imageList(
 				unmanagedImage("sha256:0000000000000000000000000000000000000000000000000000000000000000", "someregistry/foo/bar@sha256:0000000000000000000000000000000000000000000000000000000000000000", true, "foo", "bar"),
 			),
@@ -767,6 +769,7 @@ func TestImagePruning(t *testing.T) {
 		},
 
 		"image with managed annotation != true": {
+			allImages: newBool(true),
 			images: imageList(
 				unmanagedImage("sha256:0000000000000000000000000000000000000000000000000000000000000000", "someregistry/foo/bar@sha256:0000000000000000000000000000000000000000000000000000000000000000", true, imageapi.ManagedByOpenShiftAnnotation, "false"),
 				unmanagedImage("sha256:0000000000000000000000000000000000000000000000000000000000000001", "someregistry/foo/bar@sha256:0000000000000000000000000000000000000000000000000000000000000000", true, imageapi.ManagedByOpenShiftAnnotation, "0"),
@@ -908,6 +911,14 @@ func TestImagePruning(t *testing.T) {
 				registryURL + "|layer9",
 				registryURL + "|layerX",
 			},
+		},
+
+		"layers shared with young images are not pruned": {
+			images: imageList(
+				agedImage("sha256:0000000000000000000000000000000000000000000000000000000000000001", registryHost+"/foo/bar@sha256:0000000000000000000000000000000000000000000000000000000000000001", 43200),
+				agedImage("sha256:0000000000000000000000000000000000000000000000000000000000000002", registryHost+"/foo/bar@sha256:0000000000000000000000000000000000000000000000000000000000000002", 5),
+			),
+			expectedImageDeletions: []string{"sha256:0000000000000000000000000000000000000000000000000000000000000001"},
 		},
 
 		"image exceeding limits": {
@@ -1374,7 +1385,7 @@ func TestImageIsPrunable(t *testing.T) {
 	g.AddEdge(streamNode, imageNode, ReferencedImageEdgeKind)
 	g.AddEdge(streamNode, imageNode, WeakReferencedImageEdgeKind)
 
-	if imageIsPrunable(g, imageNode.(*imagegraph.ImageNode)) {
+	if imageIsPrunable(g, imageNode.(*imagegraph.ImageNode), pruneAlgorithm{}) {
 		t.Fatalf("Image is prunable although it should not")
 	}
 }
