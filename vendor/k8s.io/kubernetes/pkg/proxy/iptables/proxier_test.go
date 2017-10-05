@@ -225,12 +225,12 @@ func TestDeleteEndpointConnections(t *testing.T) {
 
 	expectCommandExecCount := 0
 	for i := range testCases {
-		input := map[endpointServicePair]bool{testCases[i]: true}
+		endpointIp := strings.Split(testCases[i].endpoint, ":")[0]
+		input := map[proxy.ServicePortName]string{testCases[i].servicePortName: endpointIp}
 		fakeProxier.deleteEndpointConnections(input)
 		svcInfo := fakeProxier.serviceMap[testCases[i].servicePortName]
 		if svcInfo.protocol == api.ProtocolUDP {
 			svcIp := svcInfo.clusterIP.String()
-			endpointIp := strings.Split(testCases[i].endpoint, ":")[0]
 			expectCommand := fmt.Sprintf("conntrack -D --orig-dst %s --dst-nat %s -p udp", svcIp, endpointIp)
 			execCommand := strings.Join(fcmd.CombinedOutputLog[expectCommandExecCount], " ")
 			if expectCommand != execCommand {
@@ -1401,13 +1401,13 @@ func Test_updateEndpoints(t *testing.T) {
 		newEndpoints   []*api.Endpoints
 		oldEndpoints   map[proxy.ServicePortName][]*endpointsInfo
 		expectedResult map[proxy.ServicePortName][]*endpointsInfo
-		expectedStale  []endpointServicePair
+		expectedStale  map[proxy.ServicePortName]string
 	}{{
 		// Case[0]: nothing
 		newEndpoints:   []*api.Endpoints{},
 		oldEndpoints:   map[proxy.ServicePortName][]*endpointsInfo{},
 		expectedResult: map[proxy.ServicePortName][]*endpointsInfo{},
-		expectedStale:  []endpointServicePair{},
+		expectedStale:  map[proxy.ServicePortName]string{},
 	}, {
 		// Case[1]: no change, unnamed port
 		newEndpoints: []*api.Endpoints{
@@ -1432,7 +1432,7 @@ func Test_updateEndpoints(t *testing.T) {
 				{"1.1.1.1:11", false},
 			},
 		},
-		expectedStale: []endpointServicePair{},
+		expectedStale: map[proxy.ServicePortName]string{},
 	}, {
 		// Case[2]: no change, named port
 		newEndpoints: []*api.Endpoints{
@@ -1458,7 +1458,7 @@ func Test_updateEndpoints(t *testing.T) {
 				{"1.1.1.1:11", false},
 			},
 		},
-		expectedStale: []endpointServicePair{},
+		expectedStale: map[proxy.ServicePortName]string{},
 	}, {
 		// Case[3]: no change, multiple subsets
 		newEndpoints: []*api.Endpoints{
@@ -1498,7 +1498,7 @@ func Test_updateEndpoints(t *testing.T) {
 				{"1.1.1.2:12", false},
 			},
 		},
-		expectedStale: []endpointServicePair{},
+		expectedStale: map[proxy.ServicePortName]string{},
 	}, {
 		// Case[4]: no change, multiple subsets, multiple ports
 		newEndpoints: []*api.Endpoints{
@@ -1547,7 +1547,7 @@ func Test_updateEndpoints(t *testing.T) {
 				{"1.1.1.3:13", false},
 			},
 		},
-		expectedStale: []endpointServicePair{},
+		expectedStale: map[proxy.ServicePortName]string{},
 	}, {
 		// Case[5]: no change, multiple endpoints, subsets, IPs, and ports
 		newEndpoints: []*api.Endpoints{
@@ -1649,7 +1649,7 @@ func Test_updateEndpoints(t *testing.T) {
 				{"2.2.2.2:22", false},
 			},
 		},
-		expectedStale: []endpointServicePair{},
+		expectedStale: map[proxy.ServicePortName]string{},
 	}, {
 		// Case[6]: add an Endpoints
 		newEndpoints: []*api.Endpoints{
@@ -1670,7 +1670,9 @@ func Test_updateEndpoints(t *testing.T) {
 				{"1.1.1.1:11", false},
 			},
 		},
-		expectedStale: []endpointServicePair{},
+		expectedStale: map[proxy.ServicePortName]string{
+			makeServicePortName("ns1", "ep1", ""): "",
+		},
 	}, {
 		// Case[7]: remove an Endpoints
 		newEndpoints: []*api.Endpoints{ /* empty */ },
@@ -1680,10 +1682,9 @@ func Test_updateEndpoints(t *testing.T) {
 			},
 		},
 		expectedResult: map[proxy.ServicePortName][]*endpointsInfo{},
-		expectedStale: []endpointServicePair{{
-			endpoint:        "1.1.1.1:11",
-			servicePortName: makeServicePortName("ns1", "ep1", ""),
-		}},
+		expectedStale: map[proxy.ServicePortName]string{
+			makeServicePortName("ns1", "ep1", ""): "1.1.1.1",
+		},
 	}, {
 		// Case[8]: add an IP and port
 		newEndpoints: []*api.Endpoints{
@@ -1719,7 +1720,9 @@ func Test_updateEndpoints(t *testing.T) {
 				{"1.1.1.2:12", false},
 			},
 		},
-		expectedStale: []endpointServicePair{},
+		expectedStale: map[proxy.ServicePortName]string{
+			makeServicePortName("ns1", "ep1", "p12"): "",
+		},
 	}, {
 		// Case[9]: remove an IP and port
 		newEndpoints: []*api.Endpoints{
@@ -1750,16 +1753,11 @@ func Test_updateEndpoints(t *testing.T) {
 				{"1.1.1.1:11", false},
 			},
 		},
-		expectedStale: []endpointServicePair{{
-			endpoint:        "1.1.1.2:11",
-			servicePortName: makeServicePortName("ns1", "ep1", "p11"),
-		}, {
-			endpoint:        "1.1.1.1:12",
-			servicePortName: makeServicePortName("ns1", "ep1", "p12"),
-		}, {
-			endpoint:        "1.1.1.2:12",
-			servicePortName: makeServicePortName("ns1", "ep1", "p12"),
-		}},
+		expectedStale: map[proxy.ServicePortName]string{
+			makeServicePortName("ns1", "ep1", "p11"): "1.1.1.2",
+			makeServicePortName("ns1", "ep1", "p12"): "1.1.1.1",
+			makeServicePortName("ns1", "ep1", "p12"): "1.1.1.2",
+		},
 	}, {
 		// Case[10]: add a subset
 		newEndpoints: []*api.Endpoints{
@@ -1796,7 +1794,9 @@ func Test_updateEndpoints(t *testing.T) {
 				{"2.2.2.2:22", false},
 			},
 		},
-		expectedStale: []endpointServicePair{},
+		expectedStale: map[proxy.ServicePortName]string{
+			makeServicePortName("ns1", "ep1", "p22"): "",
+		},
 	}, {
 		// Case[11]: remove a subset
 		newEndpoints: []*api.Endpoints{
@@ -1825,10 +1825,9 @@ func Test_updateEndpoints(t *testing.T) {
 				{"1.1.1.1:11", false},
 			},
 		},
-		expectedStale: []endpointServicePair{{
-			endpoint:        "2.2.2.2:22",
-			servicePortName: makeServicePortName("ns1", "ep1", "p22"),
-		}},
+		expectedStale: map[proxy.ServicePortName]string{
+			makeServicePortName("ns1", "ep1", "p22"): "2.2.2.2",
+		},
 	}, {
 		// Case[12]: rename a port
 		newEndpoints: []*api.Endpoints{
@@ -1854,10 +1853,10 @@ func Test_updateEndpoints(t *testing.T) {
 				{"1.1.1.1:11", false},
 			},
 		},
-		expectedStale: []endpointServicePair{{
-			endpoint:        "1.1.1.1:11",
-			servicePortName: makeServicePortName("ns1", "ep1", "p11"),
-		}},
+		expectedStale: map[proxy.ServicePortName]string{
+			makeServicePortName("ns1", "ep1", "p11"): "1.1.1.1",
+			makeServicePortName("ns1", "ep1", "p11-2"): "",
+		},
 	}, {
 		// Case[13]: renumber a port
 		newEndpoints: []*api.Endpoints{
@@ -1883,10 +1882,9 @@ func Test_updateEndpoints(t *testing.T) {
 				{"1.1.1.1:22", false},
 			},
 		},
-		expectedStale: []endpointServicePair{{
-			endpoint:        "1.1.1.1:11",
-			servicePortName: makeServicePortName("ns1", "ep1", "p11"),
-		}},
+		expectedStale: map[proxy.ServicePortName]string{
+			makeServicePortName("ns1", "ep1", "p11"): "1.1.1.1",
+		},
 	}, {
 		// Case[14]: complex add and remove
 		newEndpoints: []*api.Endpoints{
@@ -1974,22 +1972,16 @@ func Test_updateEndpoints(t *testing.T) {
 				{"4.4.4.4:44", false},
 			},
 		},
-		expectedStale: []endpointServicePair{{
-			endpoint:        "2.2.2.2:22",
-			servicePortName: makeServicePortName("ns2", "ep2", "p22"),
-		}, {
-			endpoint:        "2.2.2.22:22",
-			servicePortName: makeServicePortName("ns2", "ep2", "p22"),
-		}, {
-			endpoint:        "2.2.2.3:23",
-			servicePortName: makeServicePortName("ns2", "ep2", "p23"),
-		}, {
-			endpoint:        "4.4.4.5:44",
-			servicePortName: makeServicePortName("ns4", "ep4", "p44"),
-		}, {
-			endpoint:        "4.4.4.6:45",
-			servicePortName: makeServicePortName("ns4", "ep4", "p45"),
-		}},
+		expectedStale: map[proxy.ServicePortName]string{
+			makeServicePortName("ns1", "ep1", "p12"): "",
+			makeServicePortName("ns1", "ep1", "p122"): "",
+			makeServicePortName("ns2", "ep2", "p22"): "2.2.2.2",
+			makeServicePortName("ns2", "ep2", "p22"): "2.2.2.22",
+			makeServicePortName("ns2", "ep2", "p23"): "2.2.2.3",
+			makeServicePortName("ns3", "ep3", "p33"): "",
+			makeServicePortName("ns4", "ep4", "p44"): "4.4.4.5",
+			makeServicePortName("ns4", "ep4", "p45"): "4.4.4.6",
+		},
 	}}
 
 	for tci, tc := range testCases {
@@ -2011,9 +2003,9 @@ func Test_updateEndpoints(t *testing.T) {
 		if len(stale) != len(tc.expectedStale) {
 			t.Errorf("[%d] expected %d stale, got %d: %v", tci, len(tc.expectedStale), len(stale), stale)
 		}
-		for _, x := range tc.expectedStale {
-			if stale[x] != true {
-				t.Errorf("[%d] expected stale[%v], but didn't find it: %v", tci, x, stale)
+		for servicePortName, endpointIP := range tc.expectedStale {
+			if stale[servicePortName] != endpointIP {
+				t.Errorf("[%d] expected stale[%v]==%s, but didn't find it: %v", tci, servicePortName, endpointIP, stale)
 			}
 		}
 	}

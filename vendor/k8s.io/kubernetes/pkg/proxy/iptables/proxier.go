@@ -587,11 +587,11 @@ func (proxier *Proxier) OnEndpointsUpdate(allEndpoints []*api.Endpoints) {
 
 // Convert a slice of api.Endpoints objects into a map of service-port -> endpoints.
 func updateEndpoints(allEndpoints []*api.Endpoints, curMap proxyEndpointMap, hostname string,
-	healthChecker healthChecker) (newMap proxyEndpointMap, staleSet map[endpointServicePair]bool) {
+	healthChecker healthChecker) (newMap proxyEndpointMap, staleSet map[proxy.ServicePortName]string) {
 
 	// return values
 	newMap = make(proxyEndpointMap)
-	staleSet = make(map[endpointServicePair]bool)
+	staleSet = make(map[proxy.ServicePortName]string)
 
 	// Update endpoints for services.
 	for i := range allEndpoints {
@@ -611,8 +611,14 @@ func updateEndpoints(allEndpoints []*api.Endpoints, curMap proxyEndpointMap, hos
 			}
 			if stale {
 				glog.V(4).Infof("Stale endpoint %v -> %v", svcPort, ep.endpoint)
-				staleSet[endpointServicePair{endpoint: ep.endpoint, servicePortName: svcPort}] = true
+				staleSet[svcPort] = ep.endpoint[0:strings.Index(ep.endpoint, ":")]
 			}
+		}
+	}
+	for svcPortName := range newMap {
+		if _, found := curMap[svcPortName]; !found {
+			glog.V(4).Infof("Stale REJECT for service %v", svcPortName)
+			staleSet[svcPortName] = ""
 		}
 	}
 
@@ -743,12 +749,17 @@ const noConnectionToDelete = "0 flow entries have been deleted"
 // After a UDP endpoint has been removed, we must flush any pending conntrack entries to it, or else we
 // risk sending more traffic to it, all of which will be lost (because UDP).
 // This assumes the proxier mutex is held
-func (proxier *Proxier) deleteEndpointConnections(connectionMap map[endpointServicePair]bool) {
-	for epSvcPair := range connectionMap {
-		if svcInfo, ok := proxier.serviceMap[epSvcPair.servicePortName]; ok && svcInfo.protocol == api.ProtocolUDP {
-			endpointIP := strings.Split(epSvcPair.endpoint, ":")[0]
-			glog.V(2).Infof("Deleting connection tracking state for service IP %s, endpoint IP %s", svcInfo.clusterIP.String(), endpointIP)
-			err := utilproxy.ExecConntrackTool(proxier.exec, "-D", "--orig-dst", svcInfo.clusterIP.String(), "--dst-nat", endpointIP, "-p", "udp")
+func (proxier *Proxier) deleteEndpointConnections(serviceMap map[proxy.ServicePortName]string) {
+	for servicePortName, endpointIP := range serviceMap {
+		if svcInfo, ok := proxier.serviceMap[servicePortName]; ok && svcInfo.protocol == api.ProtocolUDP {
+			var err error
+			if endpointIP == "" {
+				glog.V(2).Infof("Deleting connection tracking state for service IP %s", svcInfo.clusterIP.String())
+				err = utilproxy.ExecConntrackTool(proxier.exec, "-D", "--orig-dst", svcInfo.clusterIP.String(), "-p", "udp")
+			} else {
+				glog.V(2).Infof("Deleting connection tracking state for service IP %s, endpoint IP %s", svcInfo.clusterIP.String(), endpointIP)
+				err = utilproxy.ExecConntrackTool(proxier.exec, "-D", "--orig-dst", svcInfo.clusterIP.String(), "--dst-nat", endpointIP, "-p", "udp")
+			}
 			if err != nil && !strings.Contains(err.Error(), noConnectionToDelete) {
 				// TODO: Better handling for deletion failure. When failure occur, stale udp connection may not get flushed.
 				// These stale udp connection will keep black hole traffic. Making this a best effort operation for now, since it
