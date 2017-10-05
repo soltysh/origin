@@ -309,12 +309,12 @@ func TestDeleteEndpointConnections(t *testing.T) {
 
 	expectCommandExecCount := 0
 	for i := range testCases {
-		input := map[endpointServicePair]bool{testCases[i]: true}
+		endpointIp := strings.Split(testCases[i].endpoint, ":")[0]
+		input := map[proxy.ServicePortName]string{testCases[i].servicePortName: endpointIp}
 		fakeProxier.deleteEndpointConnections(input)
 		svcInfo := fakeProxier.serviceMap[testCases[i].servicePortName]
 		if svcInfo.protocol == api.ProtocolUDP {
 			svcIp := svcInfo.clusterIP.String()
-			endpointIp := strings.Split(testCases[i].endpoint, ":")[0]
 			expectCommand := fmt.Sprintf("conntrack -D --orig-dst %s --dst-nat %s -p udp", svcIp, endpointIp)
 			execCommand := strings.Join(fcmd.CombinedOutputLog[expectCommandExecCount], " ")
 			if expectCommand != execCommand {
