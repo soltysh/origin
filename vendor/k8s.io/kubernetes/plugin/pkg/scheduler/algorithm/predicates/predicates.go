@@ -171,7 +171,13 @@ func (c *MaxPDVolumeCountChecker) filterVolumes(volumes []api.Volume, namespace 
 
 			pvName := pvc.Spec.VolumeName
 			if pvName == "" {
-				return fmt.Errorf("PersistentVolumeClaim is not bound: %q", pvcName)
+				// if the PVC is not bound, log the error and count the PV towards the PV limit
+				// generate a random volume ID since its required for de-dup
+				utilruntime.HandleError(fmt.Errorf("PVC %s/%s is unbound, assuming PVC matches predicate when counting limits: %v", namespace, pvcName, err))
+				source := rand.NewSource(time.Now().UnixNano())
+				generatedID := "unboundPVC" + strconv.Itoa(rand.New(source).Intn(1000000))
+				filteredVolumes[generatedID] = true
+				return nil
 			}
 
 			pv, err := c.pvInfo.GetPersistentVolumeInfo(pvName)
