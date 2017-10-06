@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 1e6eec61fe3621ba517fddcf738253fa2b8a9bd7
+%global commit 45949217a42ab879553d56773e27eea4971c2174
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.44 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=1e6eec6
+%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.45 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=4594921
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.6.173.0.45
+Version:        3.6.173.0.46
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -642,6 +642,22 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Fri Oct 06 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.6.173.0.46-1
+- UPSTREAM: 53401: Fix noise in multi-attach events (hekumar@redhat.com)
+- UPSTREAM: <carry>: fix udp service blackhole problem when number of backends
+  changes from 0 to non-0 (danw@redhat.com)
+- Test for bug 1487408 (obulatov@redhat.com)
+- Pruning should take all the images into account (agladkov@redhat.com)
+- UPSTREAM: docker/distribution: 2219: Fix forwarded logic (miminar@redhat.com)
+- Require conntrack-tools in node package (danw@redhat.com)
+- UPSTREAM: 47788: Get rid of 30s ResyncPeriod in endpoint controller.
+  (avagarwa@redhat.com)
+- UPSTREAM: 47731: Use endpoints informer for the endpoint controller.
+  (avagarwa@redhat.com)
+- UPSTREAM: 46160: Record error when attach fails (hekumar@redhat.com)
+- UPSTREAM: 45346: Dont try to attach volumes which are attached elsewhere
+  (hekumar@redhat.com)
+
 * Fri Sep 29 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.6.173.0.45-1
 - 
 
