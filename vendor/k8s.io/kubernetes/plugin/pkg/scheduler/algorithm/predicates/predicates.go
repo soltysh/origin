@@ -18,10 +18,7 @@ package predicates
 
 import (
 	"fmt"
-	"math/rand"
-	"strconv"
 	"sync"
-	"time"
 
 	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/api"
@@ -29,7 +26,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/cache"
 	"k8s.io/kubernetes/pkg/kubelet/qos"
 	"k8s.io/kubernetes/pkg/labels"
-	utilruntime "k8s.io/kubernetes/pkg/util/runtime"
+	"k8s.io/kubernetes/pkg/util/rand"
 	"k8s.io/kubernetes/pkg/util/workqueue"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
 	priorityutil "k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/priorities/util"
@@ -184,7 +181,7 @@ func NewMaxPDVolumeCountPredicate(filter VolumeFilter, maxVolumes int, pvInfo Pe
 	return c.predicate
 }
 
-func (c *MaxPDVolumeCountChecker) filterVolumes(volumes []api.Volume, namespace string, filteredVolumes map[string]bool) error {
+func (c *MaxPDVolumeCountChecker) filterVolumes(volumes []api.Volume, namespace string, randomPrefix string, filteredVolumes map[string]bool) error {
 	for _, vol := range volumes {
 		if id, ok := c.filter.FilterVolume(&vol); ok {
 			filteredVolumes[id] = true
@@ -193,40 +190,37 @@ func (c *MaxPDVolumeCountChecker) filterVolumes(volumes []api.Volume, namespace 
 			if pvcName == "" {
 				return fmt.Errorf("PersistentVolumeClaim had no name")
 			}
+
+			// Until we know real ID of the volume use namespace/pvcName as substitute
+			// With a random prefix so it can't conflict with existing volume ID.
+			pvId := fmt.Sprintf("%s-%s/%s", randomPrefix, namespace, pvcName)
+
 			pvc, err := c.pvcInfo.GetPersistentVolumeClaimInfo(namespace, pvcName)
-			if err != nil {
+			if err != nil || pvc == nil {
 				// if the PVC is not found, log the error and count the PV towards the PV limit
-				// generate a random volume ID since its required for de-dup
-				utilruntime.HandleError(fmt.Errorf("Unable to look up PVC info for %s/%s, assuming PVC matches predicate when counting limits: %v", namespace, pvcName, err))
-				source := rand.NewSource(time.Now().UnixNano())
-				generatedID := "missingPVC" + strconv.Itoa(rand.New(source).Intn(1000000))
-				filteredVolumes[generatedID] = true
-				return nil
+				glog.V(4).Infof("Unable to look up PVC info for %s/%s, assuming PVC matches predicate when counting limits: %v", namespace, pvcName, err)
+				filteredVolumes[pvId] = true
+				continue
 			}
 
-			if pvc == nil {
-				return fmt.Errorf("PersistentVolumeClaim not found: %q", pvcName)
+			if pvc.Spec.VolumeName == "" {
+				// PVC is not bound. It was either deleted and created again or
+				// it was forcefuly unbound by admin. The pod can still use the
+				// original PV where it was bound to -> log the error and count
+				// the PV towards the PV limit
+				glog.V(4).Infof("PVC %s/%s is not bound, assuming PVC matches predicate when counting limits", namespace, pvcName)
+				filteredVolumes[pvId] = true
+				continue
 			}
 
 			pvName := pvc.Spec.VolumeName
-			if pvName == "" {
-				return fmt.Errorf("PersistentVolumeClaim is not bound: %q", pvcName)
-			}
-
 			pv, err := c.pvInfo.GetPersistentVolumeInfo(pvName)
-			if err != nil {
+			if err != nil || pv == nil {
 				// if the PV is not found, log the error
 				// and count the PV towards the PV limit
-				// generate a random volume ID since its required for de-dup
-				utilruntime.HandleError(fmt.Errorf("Unable to look up PV info for %s/%s/%s, assuming PV matches predicate when counting limits: %v", namespace, pvcName, pvName, err))
-				source := rand.NewSource(time.Now().UnixNano())
-				generatedID := "missingPV" + strconv.Itoa(rand.New(source).Intn(1000000))
-				filteredVolumes[generatedID] = true
-				return nil
-			}
-
-			if pv == nil {
-				return fmt.Errorf("PersistentVolume not found: %q", pvName)
+				glog.V(4).Infof("Unable to look up PV info for %s/%s/%s, assuming PV matches predicate when counting limits: %v", namespace, pvcName, pvName, err)
+				filteredVolumes[pvId] = true
+				continue
 			}
 
 			if id, ok := c.filter.FilterPersistentVolume(pv); ok {
@@ -245,8 +239,15 @@ func (c *MaxPDVolumeCountChecker) predicate(pod *api.Pod, meta interface{}, node
 		return true, nil, nil
 	}
 
+	// randomPrefix is a prefix of auxiliary volume IDs when we don't know the
+	// real volume ID, e.g. because the corresponding PV or PVC was deleted. It
+	// is random to avoid conflicts with real volume IDs and it needs to be
+	// stable in whole predicate() call so a deleted PVC used by two pods is
+	// counted as one volume and not as two.
+	randomPrefix := rand.String(32)
+
 	newVolumes := make(map[string]bool)
-	if err := c.filterVolumes(pod.Spec.Volumes, pod.Namespace, newVolumes); err != nil {
+	if err := c.filterVolumes(pod.Spec.Volumes, pod.Namespace, randomPrefix, newVolumes); err != nil {
 		return false, nil, err
 	}
 
@@ -258,7 +259,7 @@ func (c *MaxPDVolumeCountChecker) predicate(pod *api.Pod, meta interface{}, node
 	// count unique volumes
 	existingVolumes := make(map[string]bool)
 	for _, existingPod := range nodeInfo.Pods() {
-		if err := c.filterVolumes(existingPod.Spec.Volumes, existingPod.Namespace, existingVolumes); err != nil {
+		if err := c.filterVolumes(existingPod.Spec.Volumes, existingPod.Namespace, randomPrefix, existingVolumes); err != nil {
 			return false, nil, err
 		}
 	}
