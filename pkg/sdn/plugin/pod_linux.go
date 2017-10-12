@@ -246,8 +246,10 @@ func (m *podManager) setup(req *cniserver.PodRequest) (*cnitypes.Result, *runnin
 	defer func() {
 		if !success {
 			m.ipamDel(req.SandboxID)
-			if err := m.hostportSyncer.SyncHostports(TUN, m.getRunningPods()); err != nil {
-				glog.Warningf("failed syncing hostports: %v", err)
+			if mappings := m.shouldSyncHostports(nil); mappings != nil {
+				if err := m.hostportSyncer.SyncHostports(TUN, mappings); err != nil {
+					glog.Warningf("failed syncing hostports: %v", err)
+				}
 			}
 		}
 	}()
@@ -258,8 +260,10 @@ func (m *podManager) setup(req *cniserver.PodRequest) (*cnitypes.Result, *runnin
 		return nil, nil, err
 	}
 	podPortMapping := hostport.ConstructPodPortMapping(&v1Pod, podIP)
-	if err := m.hostportSyncer.OpenPodHostportsAndSync(podPortMapping, TUN, m.getRunningPods()); err != nil {
-		return nil, nil, err
+	if mappings := m.shouldSyncHostports(podPortMapping); mappings != nil {
+		if err := m.hostportSyncer.OpenPodHostportsAndSync(podPortMapping, TUN, mappings); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	var hostVethName, contVethMac string
@@ -362,8 +366,10 @@ func (m *podManager) teardown(req *cniserver.PodRequest) error {
 		errList = append(errList, err)
 	}
 
-	if err := m.hostportSyncer.SyncHostports(TUN, m.getRunningPods()); err != nil {
-		errList = append(errList, err)
+	if mappings := m.shouldSyncHostports(nil); mappings != nil {
+		if err := m.hostportSyncer.SyncHostports(TUN, mappings); err != nil {
+			errList = append(errList, err)
+		}
 	}
 
 	return kerrors.NewAggregate(errList)
