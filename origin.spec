@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit f1c431ca31adb26067e17942455913427fb39f60
+%global commit 45ca02e0d5603238b19ede09fa103c7e43f60f05
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.46.25
+Version:        3.3.1.46.26
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -562,6 +562,9 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Thu Oct 12 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.3.1.46.26
+- 
+
 * Tue Oct 10 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.3.1.46.25
 - UPSTREAM: 53135: Fixed counting of unbound PVCs towards limit of attached
   volumes. (jsafrane@redhat.com)
