@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	kexec "k8s.io/kubernetes/pkg/util/exec"
+	kexec "k8s.io/utils/exec"
 )
 
 func addTestResult(t *testing.T, fexec *kexec.FakeExec, command string, output string, err error) {

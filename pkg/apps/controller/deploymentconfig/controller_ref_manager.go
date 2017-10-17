@@ -12,7 +12,7 @@ import (
 	kutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/kubernetes/pkg/api/v1"
-	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	kcontroller "k8s.io/kubernetes/pkg/controller"
 )
 

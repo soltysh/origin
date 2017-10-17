@@ -13,7 +13,7 @@ import (
 	"k8s.io/client-go/rest"
 	cmappoptions "k8s.io/kubernetes/cmd/kube-controller-manager/app/options"
 	"k8s.io/kubernetes/pkg/apis/componentconfig"
-	kclientsetexternal "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	kclientsetexternal "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/controller"
 
 	"github.com/openshift/origin/pkg/cmd/server/bootstrappolicy"

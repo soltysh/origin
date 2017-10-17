@@ -19,7 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	kapiv1 "k8s.io/kubernetes/pkg/api/v1"
-	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )

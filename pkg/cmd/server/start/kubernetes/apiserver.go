@@ -10,7 +10,7 @@ import (
 	kflag "k8s.io/apiserver/pkg/util/flag"
 	apiserverapp "k8s.io/kubernetes/cmd/kube-apiserver/app"
 	apiserveroptions "k8s.io/kubernetes/cmd/kube-apiserver/app/options"
-	"k8s.io/kubernetes/pkg/util/logs"
+	"k8s.io/apiserver/pkg/util/logs"
 )
 
 const apiserverLong = `

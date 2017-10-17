@@ -10,7 +10,7 @@ import (
 	kflag "k8s.io/apiserver/pkg/util/flag"
 	kubeletapp "k8s.io/kubernetes/cmd/kubelet/app"
 	kubeletoptions "k8s.io/kubernetes/cmd/kubelet/app/options"
-	"k8s.io/kubernetes/pkg/util/logs"
+	"k8s.io/apiserver/pkg/util/logs"
 )
 
 const kubeletLog = `Start Kubelet

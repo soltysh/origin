@@ -14,7 +14,7 @@ import (
 	kbatchv1 "k8s.io/kubernetes/pkg/apis/batch/v1"
 	kbatchv2alpha1 "k8s.io/kubernetes/pkg/apis/batch/v2alpha1"
 	kextensionsv1beta1 "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
-	kclientsetexternal "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	kclientsetexternal "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	buildclient "github.com/openshift/origin/pkg/build/client"
 	"github.com/openshift/origin/pkg/cmd/server/bootstrappolicy"

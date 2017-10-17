@@ -18,7 +18,7 @@ import (
 	kapihelper "k8s.io/kubernetes/pkg/api/helper"
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	kcoreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
-	"k8s.io/kubernetes/pkg/client/retry"
+	"k8s.io/client-go/util/retry"
 
 	deployapi "github.com/openshift/origin/pkg/apps/apis/apps"
 	"github.com/openshift/origin/pkg/apps/apis/apps/validation"

@@ -17,9 +17,9 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	kapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/v1"
-	kcoreclient "k8s.io/kubernetes/pkg/client/clientset_generated/clientset/typed/core/v1"
-	kcorelisters "k8s.io/kubernetes/pkg/client/listers/core/v1"
-	"k8s.io/kubernetes/pkg/client/retry"
+	kcoreclient "k8s.io/client-go/kubernetes/typed/core/v1"
+	kcorelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/util/retry"
 	kcontroller "k8s.io/kubernetes/pkg/controller"
 
 	deployapi "github.com/openshift/origin/pkg/apps/apis/apps"

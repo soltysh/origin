@@ -11,7 +11,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"k8s.io/kubernetes/pkg/util/logs"
+	"k8s.io/apiserver/pkg/util/logs"
 
 	"github.com/openshift/origin/pkg/cmd/dockerregistry"
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"

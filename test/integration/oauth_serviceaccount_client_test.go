@@ -23,7 +23,7 @@ import (
 	restclient "k8s.io/client-go/rest"
 	kapi "k8s.io/kubernetes/pkg/api"
 	kapiv1 "k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/client/retry"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/kubernetes/pkg/serviceaccount"
 
 	buildclient "github.com/openshift/origin/pkg/build/generated/internalclientset"

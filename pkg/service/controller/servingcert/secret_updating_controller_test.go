@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/kubernetes/pkg/api/v1"
-	listers "k8s.io/kubernetes/pkg/client/listers/core/v1"
+	listers "k8s.io/client-go/listers/core/v1"
 )
 
 func TestRequiresRegenerationServiceUIDMismatch(t *testing.T) {

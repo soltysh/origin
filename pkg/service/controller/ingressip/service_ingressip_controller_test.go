@@ -15,9 +15,9 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset/fake"
-	kcoreclient "k8s.io/kubernetes/pkg/client/clientset_generated/clientset/typed/core/v1"
-	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/externalversions"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
+	kcoreclient "k8s.io/client-go/kubernetes/typed/core/v1"
+	informers "k8s.io/client-go/informers"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/registry/core/service/ipallocator"
 )

@@ -36,9 +36,9 @@ import (
 	kubeclientgoinformers "k8s.io/client-go/informers"
 	kubeclientgoclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	kclientsetexternal "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	kclientsetexternal "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	kclientsetinternal "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	kexternalinformers "k8s.io/kubernetes/pkg/client/informers/informers_generated/externalversions"
+	kexternalinformers "k8s.io/client-go/informers"
 	kinternalinformers "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion"
 	kadmission "k8s.io/kubernetes/pkg/kubeapiserver/admission"
 )

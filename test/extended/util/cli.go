@@ -19,7 +19,7 @@ import (
 	clientcmd "k8s.io/client-go/tools/clientcmd"
 	kapiv1 "k8s.io/kubernetes/pkg/api/v1"
 	authorizationapiv1 "k8s.io/kubernetes/pkg/apis/authorization/v1"
-	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	kinternalclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 

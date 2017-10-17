@@ -7,7 +7,7 @@ import (
 
 	"github.com/golang/glog"
 
-	"k8s.io/kubernetes/pkg/util/exec"
+	"k8s.io/utils/exec"
 	utilversion "k8s.io/kubernetes/pkg/util/version"
 )
 

@@ -10,7 +10,7 @@ import (
 	kapi "k8s.io/kubernetes/pkg/api"
 	kapiv1 "k8s.io/kubernetes/pkg/api/v1"
 	kextapi "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
-	kextensionsclient "k8s.io/kubernetes/pkg/client/clientset_generated/clientset/typed/extensions/v1beta1"
+	kextensionsclient "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
 	kcoreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 
 	deployapi "github.com/openshift/origin/pkg/apps/apis/apps"

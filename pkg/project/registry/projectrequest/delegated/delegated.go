@@ -22,7 +22,7 @@ import (
 	"k8s.io/kubernetes/pkg/apis/rbac"
 	authorizationclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/authorization/internalversion"
 	rbaclisters "k8s.io/kubernetes/pkg/client/listers/rbac/internalversion"
-	"k8s.io/kubernetes/pkg/client/retry"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 
 	osauthorizationapi "github.com/openshift/origin/pkg/authorization/apis/authorization"

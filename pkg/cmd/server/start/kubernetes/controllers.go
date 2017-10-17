@@ -11,7 +11,7 @@ import (
 	kflag "k8s.io/apiserver/pkg/util/flag"
 	controllerapp "k8s.io/kubernetes/cmd/kube-controller-manager/app"
 	controlleroptions "k8s.io/kubernetes/cmd/kube-controller-manager/app/options"
-	"k8s.io/kubernetes/pkg/util/logs"
+	"k8s.io/apiserver/pkg/util/logs"
 )
 
 const controllersLong = `

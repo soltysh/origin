@@ -15,7 +15,7 @@ import (
 	cmapp "k8s.io/kubernetes/cmd/kube-controller-manager/app/options"
 	kapi "k8s.io/kubernetes/pkg/api"
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	kinformers "k8s.io/kubernetes/pkg/client/informers/informers_generated/externalversions"
+	kinformers "k8s.io/client-go/informers"
 	"k8s.io/kubernetes/pkg/controller"
 
 	buildtypedclient "github.com/openshift/origin/pkg/build/generated/internalclientset/typed/build/internalversion"

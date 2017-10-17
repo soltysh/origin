@@ -6,7 +6,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	authorizationapiv1 "k8s.io/kubernetes/pkg/apis/authorization/v1"
-	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 

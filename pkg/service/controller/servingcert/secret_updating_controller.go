@@ -14,9 +14,9 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	kapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/v1"
-	kcoreclient "k8s.io/kubernetes/pkg/client/clientset_generated/clientset/typed/core/v1"
-	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/externalversions/core/v1"
-	listers "k8s.io/kubernetes/pkg/client/listers/core/v1"
+	kcoreclient "k8s.io/client-go/kubernetes/typed/core/v1"
+	informers "k8s.io/client-go/informers/core/v1"
+	listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/kubernetes/pkg/controller"
 
 	"github.com/openshift/origin/pkg/cmd/server/crypto"

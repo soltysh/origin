@@ -12,7 +12,7 @@ import (
 	kubeletapp "k8s.io/kubernetes/cmd/kubelet/app"
 	kubeletoptions "k8s.io/kubernetes/cmd/kubelet/app/options"
 	"k8s.io/kubernetes/pkg/apis/componentconfig/v1alpha1"
-	kclientsetexternal "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	kclientsetexternal "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/kubelet"
 	dockertools "k8s.io/kubernetes/pkg/kubelet/dockershim/libdocker"

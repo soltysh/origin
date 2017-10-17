@@ -17,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	kapi "k8s.io/kubernetes/pkg/api"
 	kapiv1 "k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/client/retry"
+	"k8s.io/client-go/util/retry"
 	kcontroller "k8s.io/kubernetes/pkg/controller"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 

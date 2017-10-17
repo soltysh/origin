@@ -11,7 +11,7 @@ import (
 	watchapi "k8s.io/apimachinery/pkg/watch"
 	kapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/v1"
-	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	buildtestutil "github.com/openshift/origin/pkg/build/admission/testutil"
 	buildapi "github.com/openshift/origin/pkg/build/apis/build"

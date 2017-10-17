@@ -16,7 +16,7 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	kapi "k8s.io/kubernetes/pkg/api"
-	externalclientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	externalclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 	kprinters "k8s.io/kubernetes/pkg/printers"

@@ -17,7 +17,7 @@ import (
 	clientgotesting "k8s.io/client-go/testing"
 	kapi "k8s.io/kubernetes/pkg/api"
 	kextapi "k8s.io/kubernetes/pkg/apis/extensions"
-	kexternalfake "k8s.io/kubernetes/pkg/client/clientset_generated/clientset/fake"
+	kexternalfake "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 	kinternalfake "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 
 	// install the APIs we need for the codecs to run correctly in order to build patches

@@ -3,7 +3,7 @@ package v1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	extensionsv1beta1 "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
-	kextensionsclient "k8s.io/kubernetes/pkg/client/clientset_generated/clientset/typed/extensions/v1beta1"
+	kextensionsclient "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
 
 	appstypedclient "github.com/openshift/origin/pkg/apps/generated/clientset/typed/apps/v1"
 )

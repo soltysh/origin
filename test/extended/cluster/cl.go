@@ -17,7 +17,7 @@ import (
 	exutil "github.com/openshift/origin/test/extended/util"
 	testutil "github.com/openshift/origin/test/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 )
 
 const deploymentRunTimeout = 5 * time.Minute

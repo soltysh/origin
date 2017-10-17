@@ -13,8 +13,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset/fake"
-	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/externalversions"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
+	informers "k8s.io/client-go/informers"
 	"k8s.io/kubernetes/pkg/controller"
 )
 

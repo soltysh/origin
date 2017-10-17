@@ -18,8 +18,8 @@ import (
 	clientgotesting "k8s.io/client-go/testing"
 	kapihelper "k8s.io/kubernetes/pkg/api/helper"
 	"k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset/fake"
-	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/externalversions"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
+	informers "k8s.io/client-go/informers"
 	"k8s.io/kubernetes/pkg/controller"
 
 	"github.com/openshift/origin/pkg/cmd/server/admin"

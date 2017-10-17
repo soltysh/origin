@@ -16,10 +16,10 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	kapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/v1"
-	kcoreinformers "k8s.io/kubernetes/pkg/client/informers/informers_generated/externalversions/core/v1"
+	kcoreinformers "k8s.io/client-go/informers/core/v1"
 	kcoreinternalinformers "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion/core/internalversion"
 	kcoreinternallisters "k8s.io/kubernetes/pkg/client/listers/core/internalversion"
-	kcorelisters "k8s.io/kubernetes/pkg/client/listers/core/v1"
+	kcorelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/kubernetes/pkg/controller"
 
 	quotaapi "github.com/openshift/origin/pkg/quota/apis/quota"

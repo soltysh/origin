@@ -22,8 +22,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/clientcmd"
 	kapiv1 "k8s.io/kubernetes/pkg/api/v1"
-	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/pkg/client/retry"
+	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/client-go/util/retry"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
 	authorizationclient "github.com/openshift/origin/pkg/authorization/generated/internalclientset"

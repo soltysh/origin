@@ -15,7 +15,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	kapi "k8s.io/kubernetes/pkg/api"
 	kapihelper "k8s.io/kubernetes/pkg/api/helper"
-	"k8s.io/kubernetes/pkg/client/retry"
+	"k8s.io/client-go/util/retry"
 
 	oapi "github.com/openshift/origin/pkg/api"
 	authorizationapi "github.com/openshift/origin/pkg/authorization/apis/authorization"

@@ -14,8 +14,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kapiv1 "k8s.io/kubernetes/pkg/api/v1"
 	kapiv1pod "k8s.io/kubernetes/pkg/api/v1/pod"
-	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/pkg/client/retry"
+	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/client-go/util/retry"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"

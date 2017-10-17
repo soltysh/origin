@@ -17,8 +17,8 @@ import (
 	kapi "k8s.io/kubernetes/pkg/api"
 	kapihelper "k8s.io/kubernetes/pkg/api/helper"
 	"k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset/fake"
-	kinformers "k8s.io/kubernetes/pkg/client/informers/informers_generated/externalversions"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
+	kinformers "k8s.io/client-go/informers"
 
 	deployapi "github.com/openshift/origin/pkg/apps/apis/apps"
 	_ "github.com/openshift/origin/pkg/apps/apis/apps/install"

@@ -12,8 +12,8 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/kubernetes/pkg/api/v1"
-	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
-	kinformers "k8s.io/kubernetes/pkg/client/informers/informers_generated/externalversions"
+	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	kinformers "k8s.io/client-go/informers"
 
 	configapi "github.com/openshift/origin/pkg/cmd/server/api"
 	"github.com/openshift/origin/pkg/service/controller/ingressip"

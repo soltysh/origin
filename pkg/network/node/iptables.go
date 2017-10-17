@@ -11,7 +11,7 @@ import (
 
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	utildbus "k8s.io/kubernetes/pkg/util/dbus"
-	kexec "k8s.io/kubernetes/pkg/util/exec"
+	kexec "k8s.io/utils/exec"
 	"k8s.io/kubernetes/pkg/util/iptables"
 )
 
