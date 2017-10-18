@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 3489e9f1832e8581a81488d5c183918f71e033a9
+%global commit 04dd1cdda111b2ed9dec3a6024c23f66edad8cd2
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.0-0.143.3 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=3489e9f
+%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.0-0.143.4 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=04dd1cd
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -53,7 +53,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        3.7.0
-Release:        0.143.4%{?dist}
+Release:        0.143.5%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -640,6 +640,20 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Tue Oct 17 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.7.0-0.143.5
+- UPSTREAM: 53857: kubelet sync pod throws more detailed events
+  (joesmith@redhat.com)
+- UPSTREAM: 50350: Wait for container cleanup before deletion
+  (joesmith@redhat.com)
+- UPSTREAM: 48970: Recreate pod sandbox when the sandbox does not have an IP
+  address. (joesmith@redhat.com)
+- UPSTREAM: 48589: When faild create pod sandbox record event.
+  (joesmith@redhat.com)
+- UPSTREAM: 48584: Move event type (joesmith@redhat.com)
+- UPSTREAM: 47599: Rerun init containers when the pod needs to be restarted
+  (joesmith@redhat.com)
+- Fix defaulting of legacy ClusterNetwork fields (danw@redhat.com)
+
 * Tue Oct 17 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.7.0-0.143.4
 - Make admin project creation wait for SAR (mkhan@redhat.com)
 - disable tsb extended testing on gce (jminter@redhat.com)
