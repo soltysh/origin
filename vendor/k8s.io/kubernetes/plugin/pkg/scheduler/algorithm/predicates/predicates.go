@@ -1003,7 +1003,7 @@ func getMatchingAntiAffinityTerms(pod *api.Pod, nodeInfoMap map[string]*schedule
 					catchError(err)
 					return
 				}
-				if priorityutil.PodMatchesTermsNamespaceAndSelector(existingPod, namespaces, selector) {
+				if priorityutil.PodMatchesTermsNamespaceAndSelector(pod, namespaces, selector) {
 					nodeResult = append(nodeResult, matchingPodAntiAffinityTerm{term: &term, node: node})
 				}
 			}
