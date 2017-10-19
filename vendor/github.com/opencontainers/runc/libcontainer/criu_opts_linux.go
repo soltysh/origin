@@ -1,5 +1,3 @@
-// +build linux freebsd
-
 package libcontainer
 
 // cgroup restoring strategy provided by criu
@@ -25,13 +23,16 @@ type VethPairName struct {
 type CriuOpts struct {
 	ImagesDirectory         string             // directory for storing image files
 	WorkDirectory           string             // directory to cd and write logs/pidfiles/stats to
+	ParentImage             string             // direcotry for storing parent image files in pre-dump and dump
 	LeaveRunning            bool               // leave container in running state after checkpoint
 	TcpEstablished          bool               // checkpoint/restore established TCP connections
 	ExternalUnixConnections bool               // allow external unix connections
 	ShellJob                bool               // allow to dump and restore shell jobs
 	FileLocks               bool               // handle file locks, for safety
+	PreDump                 bool               // call criu predump to perform iterative checkpoint
 	PageServer              CriuPageServerInfo // allow to dump to criu page server
 	VethPairs               []VethPairName     // pass the veth to criu when restore
 	ManageCgroupsMode       cgMode             // dump or restore cgroup mode
 	EmptyNs                 uint32             // don't c/r properties for namespace from this mask
+	AutoDedup               bool               // auto deduplication for incremental dumps
 }
