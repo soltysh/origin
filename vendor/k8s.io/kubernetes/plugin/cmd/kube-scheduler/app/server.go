@@ -29,9 +29,9 @@ import (
 	"k8s.io/apiserver/pkg/server/healthz"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/externalversions"
-	"k8s.io/kubernetes/pkg/client/leaderelection"
-	"k8s.io/kubernetes/pkg/client/leaderelection/resourcelock"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/util/configz"
 	"k8s.io/kubernetes/plugin/cmd/kube-scheduler/app/options"
@@ -66,20 +66,20 @@ through the API as necessary.`,
 
 // Run runs the specified SchedulerServer.  This should never exit.
 func Run(s *options.SchedulerServer) error {
-	kubeClient, leaderElectionClient, err := createClients(s)
+	kubecli, err := createClient(s)
 	if err != nil {
 		return fmt.Errorf("unable to create kube client: %v", err)
 	}
 
-	recorder := createRecorder(kubeClient, s)
+	recorder := createRecorder(kubecli, s)
 
-	informerFactory := informers.NewSharedInformerFactory(kubeClient, 0)
+	informerFactory := informers.NewSharedInformerFactory(kubecli, 0)
 	// cache only non-terminal pods
-	podInformer := factory.NewPodInformer(kubeClient, 0)
+	podInformer := factory.NewPodInformer(kubecli, 0)
 
 	sched, err := CreateScheduler(
 		s,
-		kubeClient,
+		kubecli,
 		informerFactory.Core().V1().Nodes(),
 		podInformer,
 		informerFactory.Core().V1().PersistentVolumes(),
@@ -124,7 +124,7 @@ func Run(s *options.SchedulerServer) error {
 	rl, err := resourcelock.New(s.LeaderElection.ResourceLock,
 		s.LockObjectNamespace,
 		s.LockObjectName,
-		leaderElectionClient.Core(),
+		kubecli.CoreV1(),
 		resourcelock.ResourceLockConfig{
 			Identity:      id,
 			EventRecorder: recorder,

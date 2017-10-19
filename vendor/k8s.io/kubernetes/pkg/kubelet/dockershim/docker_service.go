@@ -24,17 +24,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/armon/circbuf"
 	"github.com/blang/semver"
-	dockertypes "github.com/docker/engine-api/types"
+	dockertypes "github.com/docker/docker/api/types"
 	"github.com/golang/glog"
 
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubetypes "k8s.io/apimachinery/pkg/types"
-	"k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/apis/componentconfig"
 	internalapi "k8s.io/kubernetes/pkg/kubelet/apis/cri"
 	runtimeapi "k8s.io/kubernetes/pkg/kubelet/apis/cri/v1alpha1/runtime"
+	"k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig"
 	kubecm "k8s.io/kubernetes/pkg/kubelet/cm"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/dockershim/cm"
@@ -91,7 +89,7 @@ const (
 // runtime process.
 type NetworkPluginSettings struct {
 	// HairpinMode is best described by comments surrounding the kubelet arg
-	HairpinMode componentconfig.HairpinMode
+	HairpinMode kubeletconfig.HairpinMode
 	// NonMasqueradeCIDR is the range of ips which should *not* be included
 	// in any MASQUERADE rules applied by the plugin
 	NonMasqueradeCIDR string
@@ -148,7 +146,7 @@ type dockerNetworkHost struct {
 var internalLabelKeys []string = []string{containerTypeLabelKey, containerLogPathLabelKey, sandboxIDLabelKey}
 
 // NOTE: Anything passed to DockerService should be eventually handled in another way when we switch to running the shim as a different process.
-func NewDockerService(client libdocker.Interface, seccompProfileRoot string, podSandboxImage string, streamingConfig *streaming.Config,
+func NewDockerService(client libdocker.Interface, podSandboxImage string, streamingConfig *streaming.Config,
 	pluginSettings *NetworkPluginSettings, cgroupsName string, kubeCgroupDriver string, execHandlerName, dockershimRootDir string, disableSharedPID bool) (DockerService, error) {
 	c := libdocker.NewInstrumentedInterface(client)
 	checkpointHandler, err := NewPersistentCheckpointHandler(dockershimRootDir)
@@ -167,10 +165,9 @@ func NewDockerService(client libdocker.Interface, seccompProfileRoot string, pod
 	}
 
 	ds := &dockerService{
-		seccompProfileRoot: seccompProfileRoot,
-		client:             c,
-		os:                 kubecontainer.RealOS{},
-		podSandboxImage:    podSandboxImage,
+		client:          c,
+		os:              kubecontainer.RealOS{},
+		podSandboxImage: podSandboxImage,
 		streamingRuntime: &streamingRuntime{
 			client:      client,
 			execHandler: execHandler,
@@ -246,12 +243,11 @@ type DockerService interface {
 }
 
 type dockerService struct {
-	seccompProfileRoot string
-	client             libdocker.Interface
-	os                 kubecontainer.OSInterface
-	podSandboxImage    string
-	streamingRuntime   *streamingRuntime
-	streamingServer    streaming.Server
+	client           libdocker.Interface
+	os               kubecontainer.OSInterface
+	podSandboxImage  string
+	streamingRuntime *streamingRuntime
+	streamingServer  streaming.Server
 
 	network *network.PluginManager
 	// Map of podSandboxID :: network-is-ready
@@ -457,9 +453,12 @@ func (ds *dockerService) getDockerVersionFromCache() (*dockertypes.Version, erro
 	// We only store on key in the cache.
 	const dummyKey = "version"
 	value, err := ds.versionCache.Get(dummyKey)
-	dv := value.(*dockertypes.Version)
 	if err != nil {
 		return nil, err
+	}
+	dv, ok := value.(*dockertypes.Version)
+	if !ok {
+		return nil, fmt.Errorf("Converted to *dockertype.Version error")
 	}
 	return dv, nil
 }
@@ -523,36 +522,6 @@ func (d *dockerLegacyService) GetContainerLogs(pod *v1.Pod, containerID kubecont
 		RawTerminal:  container.Config.Tty,
 	}
 	return d.client.Logs(containerID.ID, opts, sopts)
-}
-
-// LegacyLogProvider implements the kuberuntime.LegacyLogProvider interface
-type LegacyLogProvider struct {
-	dls DockerLegacyService
-}
-
-func NewLegacyLogProvider(dls DockerLegacyService) LegacyLogProvider {
-	return LegacyLogProvider{dls: dls}
-}
-
-// GetContainerLogTail attempts to read up to MaxContainerTerminationMessageLogLength
-// from the end of the log when docker is configured with a log driver other than json-log.
-// It reads up to MaxContainerTerminationMessageLogLines lines.
-func (l LegacyLogProvider) GetContainerLogTail(uid kubetypes.UID, name, namespace string, containerId kubecontainer.ContainerID) (string, error) {
-	value := int64(kubecontainer.MaxContainerTerminationMessageLogLines)
-	buf, _ := circbuf.NewBuffer(kubecontainer.MaxContainerTerminationMessageLogLength)
-	// Although this is not a full spec pod, dockerLegacyService.GetContainerLogs() currently completely ignores its pod param
-	pod := &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			UID:       uid,
-			Name:      name,
-			Namespace: namespace,
-		},
-	}
-	err := l.dls.GetContainerLogs(pod, containerId, &v1.PodLogOptions{TailLines: &value}, buf, buf)
-	if err != nil {
-		return "", err
-	}
-	return buf.String(), nil
 }
 
 // criSupportedLogDrivers are log drivers supported by native CRI integration.

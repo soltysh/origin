@@ -21,7 +21,11 @@ package cadvisor
 import (
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
+	"os"
+	"path"
+	"strconv"
 	"time"
 
 	"github.com/golang/glog"
@@ -101,13 +105,23 @@ func containerLabels(c *cadvisorapi.ContainerInfo) map[string]string {
 }
 
 // New creates a cAdvisor and exports its API on the specified port if port > 0.
-func New(port uint, imageFsInfoProvider ImageFsInfoProvider, rootPath string) (Interface, error) {
+func New(address string, port uint, imageFsInfoProvider ImageFsInfoProvider, rootPath string) (Interface, error) {
 	sysFs := sysfs.NewRealSysFs()
 
 	// Create and start the cAdvisor container manager.
-	m, err := manager.New(memory.New(statsCacheDuration, nil), sysFs, maxHousekeepingInterval, allowDynamicHousekeeping, cadvisormetrics.MetricSet{cadvisormetrics.NetworkTcpUsageMetrics: struct{}{}}, http.DefaultClient)
+	m, err := manager.New(memory.New(statsCacheDuration, nil), sysFs, maxHousekeepingInterval, allowDynamicHousekeeping, cadvisormetrics.MetricSet{cadvisormetrics.NetworkTcpUsageMetrics: struct{}{}, cadvisormetrics.NetworkUdpUsageMetrics: struct{}{}}, http.DefaultClient)
 	if err != nil {
 		return nil, err
+	}
+
+	if _, err := os.Stat(rootPath); err != nil {
+		if os.IsNotExist(err) {
+			if err := os.MkdirAll(path.Clean(rootPath), 0750); err != nil {
+				return nil, fmt.Errorf("error creating root directory %q: %v", rootPath, err)
+			}
+		} else {
+			return nil, fmt.Errorf("failed to Stat %q: %v", rootPath, err)
+		}
 	}
 
 	cadvisorClient := &cadvisorClient{
@@ -116,7 +130,7 @@ func New(port uint, imageFsInfoProvider ImageFsInfoProvider, rootPath string) (I
 		Manager:             m,
 	}
 
-	err = cadvisorClient.exportHTTP(port)
+	err = cadvisorClient.exportHTTP(address, port)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +141,7 @@ func (cc *cadvisorClient) Start() error {
 	return cc.Manager.Start()
 }
 
-func (cc *cadvisorClient) exportHTTP(port uint) error {
+func (cc *cadvisorClient) exportHTTP(address string, port uint) error {
 	// Register the handlers regardless as this registers the prometheus
 	// collector properly.
 	mux := http.NewServeMux()
@@ -141,7 +155,7 @@ func (cc *cadvisorClient) exportHTTP(port uint) error {
 	// Only start the http server if port > 0
 	if port > 0 {
 		serv := &http.Server{
-			Addr:    fmt.Sprintf(":%d", port),
+			Addr:    net.JoinHostPort(address, strconv.Itoa(int(port))),
 			Handler: mux,
 		}
 

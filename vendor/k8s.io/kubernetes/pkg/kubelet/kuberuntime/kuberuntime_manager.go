@@ -25,17 +25,18 @@ import (
 	"github.com/golang/glog"
 	cadvisorapi "github.com/google/cadvisor/info/v1"
 
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubetypes "k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/record"
+	ref "k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/api/v1/ref"
 	"k8s.io/kubernetes/pkg/credentialprovider"
 	internalapi "k8s.io/kubernetes/pkg/kubelet/apis/cri"
 	runtimeapi "k8s.io/kubernetes/pkg/kubelet/apis/cri/v1alpha1/runtime"
+	"k8s.io/kubernetes/pkg/kubelet/cm"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/events"
 	"k8s.io/kubernetes/pkg/kubelet/images"
@@ -107,8 +108,11 @@ type kubeGenericRuntimeManager struct {
 	// The version cache of runtime daemon.
 	versionCache *cache.ObjectCache
 
-	// A shim to legacy functions for backward compatibility.
-	legacyLogProvider LegacyLogProvider
+	// The directory path for seccomp profiles.
+	seccompProfileRoot string
+
+	// Internal lifecycle event handlers for container resource management.
+	internalLifecycle cm.InternalContainerLifecycle
 }
 
 type KubeGenericRuntime interface {
@@ -117,16 +121,11 @@ type KubeGenericRuntime interface {
 	kubecontainer.ContainerCommandRunner
 }
 
-// LegacyLogProvider gives the ability to use unsupported docker log drivers (e.g. journald)
-type LegacyLogProvider interface {
-	// Get the last few lines of the logs for a specific container.
-	GetContainerLogTail(uid kubetypes.UID, name, namespace string, containerID kubecontainer.ContainerID) (string, error)
-}
-
 // NewKubeGenericRuntimeManager creates a new kubeGenericRuntimeManager
 func NewKubeGenericRuntimeManager(
 	recorder record.EventRecorder,
 	livenessManager proberesults.Manager,
+	seccompProfileRoot string,
 	containerRefManager *kubecontainer.RefManager,
 	machineInfo *cadvisorapi.MachineInfo,
 	podStateProvider podStateProvider,
@@ -140,11 +139,12 @@ func NewKubeGenericRuntimeManager(
 	cpuCFSQuota bool,
 	runtimeService internalapi.RuntimeService,
 	imageService internalapi.ImageManagerService,
-	legacyLogProvider LegacyLogProvider,
+	internalLifecycle cm.InternalContainerLifecycle,
 ) (KubeGenericRuntime, error) {
 	kubeRuntimeManager := &kubeGenericRuntimeManager{
 		recorder:            recorder,
 		cpuCFSQuota:         cpuCFSQuota,
+		seccompProfileRoot:  seccompProfileRoot,
 		livenessManager:     livenessManager,
 		containerRefManager: containerRefManager,
 		machineInfo:         machineInfo,
@@ -153,7 +153,7 @@ func NewKubeGenericRuntimeManager(
 		runtimeService:      newInstrumentedRuntimeService(runtimeService),
 		imageService:        newInstrumentedImageManagerService(imageService),
 		keyring:             credentialprovider.NewDockerKeyring(),
-		legacyLogProvider:   legacyLogProvider,
+		internalLifecycle:   internalLifecycle,
 	}
 
 	typedVersion, err := kubeRuntimeManager.runtimeService.Version(kubeRuntimeAPIVersion)
@@ -481,6 +481,17 @@ func (m *kubeGenericRuntimeManager) computePodActions(pod *v1.Pod, podStatus *ku
 	// check the status of containers.
 	for idx, container := range pod.Spec.Containers {
 		containerStatus := podStatus.FindContainerStatusByName(container.Name)
+
+		// Call internal container post-stop lifecycle hook for any non-running container so that any
+		// allocated cpus are released immediately. If the container is restarted, cpus will be re-allocated
+		// to it.
+		if containerStatus != nil && containerStatus.State != kubecontainer.ContainerStateRunning {
+			if err := m.internalLifecycle.PostStopContainer(containerStatus.ID.ID); err != nil {
+				glog.Errorf("internal container post-stop lifecycle hook failed for container %v in pod %v with error %v",
+					container.Name, pod.Name, err)
+			}
+		}
+
 		// If container does not exist, or is not running, check whether we
 		// need to restart it.
 		if containerStatus == nil || containerStatus.State != kubecontainer.ContainerStateRunning {
