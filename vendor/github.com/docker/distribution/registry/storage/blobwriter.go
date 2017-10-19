@@ -7,11 +7,11 @@ import (
 	"path"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/digest"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -234,7 +234,7 @@ func (bw *blobWriter) validateBlob(ctx context.Context, desc distribution.Descri
 		// paths. We may be able to make the size-based check a stronger
 		// guarantee, so this may be defensive.
 		if !verified {
-			digester := digest.Canonical.New()
+			digester := digest.Canonical.Digester()
 
 			digestVerifier, err := digest.NewDigestVerifier(desc.Digest)
 			if err != nil {
