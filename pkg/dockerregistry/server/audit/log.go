@@ -3,8 +3,8 @@ package audit
 import (
 	"sync"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/context"
+	"github.com/sirupsen/logrus"
 )
 
 const (
