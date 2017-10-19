@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	logrus_logstash "github.com/bshuster-repo/logrus-logstash-hook"
 	"github.com/docker/go-units"
 	gorillahandlers "github.com/gorilla/handlers"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/docker/distribution/configuration"
 	"github.com/docker/distribution/context"
@@ -263,9 +263,7 @@ func configureLogging(ctx context.Context, config *configuration.Configuration) 
 			TimestampFormat: time.RFC3339Nano,
 		})
 	case "logstash":
-		log.SetFormatter(&logrus_logstash.LogstashFormatter{
-			TimestampFormat: time.RFC3339Nano,
-		})
+		log.SetFormatter(&logrus_logstash.LogstashFormatter{})
 	default:
 		// just let the library use default on empty string.
 		if config.Log.Formatter != "" {
