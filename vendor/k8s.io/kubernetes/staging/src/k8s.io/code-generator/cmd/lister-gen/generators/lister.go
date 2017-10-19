@@ -173,7 +173,7 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 func objectMetaForPackage(p *types.Package) (*types.Type, bool, error) {
 	generatingForPackage := false
 	for _, t := range p.Types {
-		// filter out types which dont have genclient=true.
+		// filter out types which dont have genclient.
 		if !util.MustParseClientGenTags(t.SecondClosestCommentLines).GenerateClient {
 			continue
 		}
@@ -323,8 +323,7 @@ func (s *$.type|private$Lister) $.type|publicPlural$(namespace string) $.type|pu
 var typeLister_NonNamespacedGet = `
 // Get retrieves the $.type|public$ from the index for a given name.
 func (s *$.type|private$Lister) Get(name string) (*$.type|raw$, error) {
-  key := &$.type|raw${ObjectMeta: $.objectMeta|raw${Name: name}}
-  obj, exists, err := s.indexer.Get(key)
+  obj, exists, err := s.indexer.GetByKey(name)
   if err != nil {
     return nil, err
   }
