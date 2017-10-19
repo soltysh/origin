@@ -435,7 +435,7 @@
 		},
 		{
 			"ImportPath": "github.com/bshuster-repo/logrus-logstash-hook",
-			"Comment": "v0.3",
+			"Comment": "0.3",
 			"Rev": "0e6d502573042a6563419fbcce4f284600bfe929"
 		},
 		{
@@ -529,11 +529,11 @@
 		},
 		{
 			"ImportPath": "github.com/codedellemc/goscaleio",
-			"Rev": "8ed64a07d23f79bab973f1630651841ccc656887"
+			"Rev": "20e2ce2cf8852dc78bd42b76698dcd8dcd77b7b1"
 		},
 		{
 			"ImportPath": "github.com/codedellemc/goscaleio/types/v1",
-			"Rev": "8ed64a07d23f79bab973f1630651841ccc656887"
+			"Rev": "20e2ce2cf8852dc78bd42b76698dcd8dcd77b7b1"
 		},
 		{
 			"ImportPath": "github.com/codegangsta/negroni",
