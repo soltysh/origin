@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"k8s.io/apiserver/pkg/util/logs"
 
 	"github.com/openshift/origin/pkg/cmd/dockerregistry"
