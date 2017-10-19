@@ -2690,6 +2690,21 @@
 			"Rev": "7cafcd837844e784b526369c9bce262804aebc60"
 		},
 		{
+			"ImportPath": "github.com/kubernetes-incubator/cri-o/client",
+			"Comment": "v1.0.0-rc2-40-ga8ee86b",
+			"Rev": "a8ee86b1cce0c13bd541a99140682a92635ba9f7"
+		},
+		{
+			"ImportPath": "github.com/kubernetes-incubator/cri-o/pkg/annotations",
+			"Comment": "v1.0.0-rc2-40-ga8ee86b",
+			"Rev": "a8ee86b1cce0c13bd541a99140682a92635ba9f7"
+		},
+		{
+			"ImportPath": "github.com/kubernetes-incubator/cri-o/types",
+			"Comment": "v1.0.0-rc2-40-ga8ee86b",
+			"Rev": "a8ee86b1cce0c13bd541a99140682a92635ba9f7"
+		},
+		{
 			"ImportPath": "github.com/lestrrat/go-jspointer",
 			"Rev": "f4881e611bdbe9fb413a7780721ef8400a1f2341"
 		},
