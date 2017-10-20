@@ -1,10 +1,10 @@
 package v1
 
 import (
+	kapiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime"
 	kapi "k8s.io/kubernetes/pkg/api"
-	kapiv1 "k8s.io/kubernetes/pkg/api/v1"
 
 	internal "github.com/openshift/origin/pkg/quota/apis/quota"
 )

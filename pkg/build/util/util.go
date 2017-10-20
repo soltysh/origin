@@ -13,10 +13,10 @@ import (
 	s2iapi "github.com/openshift/source-to-image/pkg/api"
 	s2iutil "github.com/openshift/source-to-image/pkg/util"
 
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	kapi "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/credentialprovider"
 
 	buildapi "github.com/openshift/origin/pkg/build/apis/build"
