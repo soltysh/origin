@@ -6,16 +6,16 @@ package v1
 
 import (
 	authorization "github.com/openshift/origin/pkg/authorization/apis/authorization"
+	core_v1 "k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	api "k8s.io/kubernetes/pkg/api"
-	api_v1 "k8s.io/kubernetes/pkg/api/v1"
 	unsafe "unsafe"
 )
 
 func init() {
-	SchemeBuilder.Register(RegisterConversions)
+	localSchemeBuilder.Register(RegisterConversions)
 }
 
 // RegisterConversions adds conversion functions to the given scheme.
@@ -165,7 +165,8 @@ func Convert_authorization_ClusterPolicy_To_v1_ClusterPolicy(in *authorization.C
 func autoConvert_v1_ClusterPolicyBinding_To_authorization_ClusterPolicyBinding(in *ClusterPolicyBinding, out *authorization.ClusterPolicyBinding, s conversion.Scope) error {
 	out.ObjectMeta = in.ObjectMeta
 	out.LastModified = in.LastModified
-	if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(&in.PolicyRef, &out.PolicyRef, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.PolicyRef, &out.PolicyRef, 0); err != nil {
 		return err
 	}
 	if err := Convert_v1_NamedClusterRoleBindings_To_authorization_ClusterRoleBindingsByName(&in.RoleBindings, &out.RoleBindings, s); err != nil {
@@ -177,7 +178,8 @@ func autoConvert_v1_ClusterPolicyBinding_To_authorization_ClusterPolicyBinding(i
 func autoConvert_authorization_ClusterPolicyBinding_To_v1_ClusterPolicyBinding(in *authorization.ClusterPolicyBinding, out *ClusterPolicyBinding, s conversion.Scope) error {
 	out.ObjectMeta = in.ObjectMeta
 	out.LastModified = in.LastModified
-	if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(&in.PolicyRef, &out.PolicyRef, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.PolicyRef, &out.PolicyRef, 0); err != nil {
 		return err
 	}
 	if err := Convert_authorization_ClusterRoleBindingsByName_To_v1_NamedClusterRoleBindings(&in.RoleBindings, &out.RoleBindings, s); err != nil {
@@ -223,7 +225,7 @@ func autoConvert_authorization_ClusterPolicyBindingList_To_v1_ClusterPolicyBindi
 			}
 		}
 	} else {
-		out.Items = make([]ClusterPolicyBinding, 0)
+		out.Items = nil
 	}
 	return nil
 }
@@ -265,7 +267,7 @@ func autoConvert_authorization_ClusterPolicyList_To_v1_ClusterPolicyList(in *aut
 			}
 		}
 	} else {
-		out.Items = make([]ClusterPolicy, 0)
+		out.Items = nil
 	}
 	return nil
 }
@@ -307,7 +309,7 @@ func autoConvert_authorization_ClusterRole_To_v1_ClusterRole(in *authorization.C
 			}
 		}
 	} else {
-		out.Rules = make([]PolicyRule, 0)
+		out.Rules = nil
 	}
 	return nil
 }
@@ -321,18 +323,9 @@ func autoConvert_v1_ClusterRoleBinding_To_authorization_ClusterRoleBinding(in *C
 	out.ObjectMeta = in.ObjectMeta
 	// INFO: in.UserNames opted out of conversion generation
 	// INFO: in.GroupNames opted out of conversion generation
-	if in.Subjects != nil {
-		in, out := &in.Subjects, &out.Subjects
-		*out = make([]api.ObjectReference, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Subjects = nil
-	}
-	if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(&in.RoleRef, &out.RoleRef, s); err != nil {
+	out.Subjects = *(*[]api.ObjectReference)(unsafe.Pointer(&in.Subjects))
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.RoleRef, &out.RoleRef, 0); err != nil {
 		return err
 	}
 	return nil
@@ -340,18 +333,9 @@ func autoConvert_v1_ClusterRoleBinding_To_authorization_ClusterRoleBinding(in *C
 
 func autoConvert_authorization_ClusterRoleBinding_To_v1_ClusterRoleBinding(in *authorization.ClusterRoleBinding, out *ClusterRoleBinding, s conversion.Scope) error {
 	out.ObjectMeta = in.ObjectMeta
-	if in.Subjects != nil {
-		in, out := &in.Subjects, &out.Subjects
-		*out = make([]api_v1.ObjectReference, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Subjects = make([]api_v1.ObjectReference, 0)
-	}
-	if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(&in.RoleRef, &out.RoleRef, s); err != nil {
+	out.Subjects = *(*[]core_v1.ObjectReference)(unsafe.Pointer(&in.Subjects))
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.RoleRef, &out.RoleRef, 0); err != nil {
 		return err
 	}
 	return nil
@@ -389,7 +373,7 @@ func autoConvert_authorization_ClusterRoleBindingList_To_v1_ClusterRoleBindingLi
 			}
 		}
 	} else {
-		out.Items = make([]ClusterRoleBinding, 0)
+		out.Items = nil
 	}
 	return nil
 }
@@ -431,7 +415,7 @@ func autoConvert_authorization_ClusterRoleList_To_v1_ClusterRoleList(in *authori
 			}
 		}
 	} else {
-		out.Items = make([]ClusterRole, 0)
+		out.Items = nil
 	}
 	return nil
 }
@@ -453,16 +437,8 @@ func Convert_v1_GroupRestriction_To_authorization_GroupRestriction(in *GroupRest
 }
 
 func autoConvert_authorization_GroupRestriction_To_v1_GroupRestriction(in *authorization.GroupRestriction, out *GroupRestriction, s conversion.Scope) error {
-	if in.Groups == nil {
-		out.Groups = make([]string, 0)
-	} else {
-		out.Groups = *(*[]string)(unsafe.Pointer(&in.Groups))
-	}
-	if in.Selectors == nil {
-		out.Selectors = make([]meta_v1.LabelSelector, 0)
-	} else {
-		out.Selectors = *(*[]meta_v1.LabelSelector)(unsafe.Pointer(&in.Selectors))
-	}
+	out.Groups = *(*[]string)(unsafe.Pointer(&in.Groups))
+	out.Selectors = *(*[]meta_v1.LabelSelector)(unsafe.Pointer(&in.Selectors))
 	return nil
 }
 
@@ -559,7 +535,8 @@ func Convert_authorization_Policy_To_v1_Policy(in *authorization.Policy, out *Po
 func autoConvert_v1_PolicyBinding_To_authorization_PolicyBinding(in *PolicyBinding, out *authorization.PolicyBinding, s conversion.Scope) error {
 	out.ObjectMeta = in.ObjectMeta
 	out.LastModified = in.LastModified
-	if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(&in.PolicyRef, &out.PolicyRef, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.PolicyRef, &out.PolicyRef, 0); err != nil {
 		return err
 	}
 	if err := Convert_v1_NamedRoleBindings_To_authorization_RoleBindingsByName(&in.RoleBindings, &out.RoleBindings, s); err != nil {
@@ -571,7 +548,8 @@ func autoConvert_v1_PolicyBinding_To_authorization_PolicyBinding(in *PolicyBindi
 func autoConvert_authorization_PolicyBinding_To_v1_PolicyBinding(in *authorization.PolicyBinding, out *PolicyBinding, s conversion.Scope) error {
 	out.ObjectMeta = in.ObjectMeta
 	out.LastModified = in.LastModified
-	if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(&in.PolicyRef, &out.PolicyRef, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.PolicyRef, &out.PolicyRef, 0); err != nil {
 		return err
 	}
 	if err := Convert_authorization_RoleBindingsByName_To_v1_NamedRoleBindings(&in.RoleBindings, &out.RoleBindings, s); err != nil {
@@ -617,7 +595,7 @@ func autoConvert_authorization_PolicyBindingList_To_v1_PolicyBindingList(in *aut
 			}
 		}
 	} else {
-		out.Items = make([]PolicyBinding, 0)
+		out.Items = nil
 	}
 	return nil
 }
@@ -659,7 +637,7 @@ func autoConvert_authorization_PolicyList_To_v1_PolicyList(in *authorization.Pol
 			}
 		}
 	} else {
-		out.Items = make([]Policy, 0)
+		out.Items = nil
 	}
 	return nil
 }
@@ -686,11 +664,7 @@ func autoConvert_authorization_PolicyRule_To_v1_PolicyRule(in *authorization.Pol
 	if err := runtime.Convert_runtime_Object_To_runtime_RawExtension(&in.AttributeRestrictions, &out.AttributeRestrictions, s); err != nil {
 		return err
 	}
-	if in.APIGroups == nil {
-		out.APIGroups = make([]string, 0)
-	} else {
-		out.APIGroups = *(*[]string)(unsafe.Pointer(&in.APIGroups))
-	}
+	out.APIGroups = *(*[]string)(unsafe.Pointer(&in.APIGroups))
 	// WARNING: in.Resources requires manual conversion: inconvertible types (k8s.io/apimachinery/pkg/util/sets.String vs []string)
 	// WARNING: in.ResourceNames requires manual conversion: inconvertible types (k8s.io/apimachinery/pkg/util/sets.String vs []string)
 	// WARNING: in.NonResourceURLs requires manual conversion: does not exist in peer-type
@@ -769,7 +743,7 @@ func autoConvert_authorization_Role_To_v1_Role(in *authorization.Role, out *Role
 			}
 		}
 	} else {
-		out.Rules = make([]PolicyRule, 0)
+		out.Rules = nil
 	}
 	return nil
 }
@@ -783,18 +757,9 @@ func autoConvert_v1_RoleBinding_To_authorization_RoleBinding(in *RoleBinding, ou
 	out.ObjectMeta = in.ObjectMeta
 	// INFO: in.UserNames opted out of conversion generation
 	// INFO: in.GroupNames opted out of conversion generation
-	if in.Subjects != nil {
-		in, out := &in.Subjects, &out.Subjects
-		*out = make([]api.ObjectReference, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Subjects = nil
-	}
-	if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(&in.RoleRef, &out.RoleRef, s); err != nil {
+	out.Subjects = *(*[]api.ObjectReference)(unsafe.Pointer(&in.Subjects))
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.RoleRef, &out.RoleRef, 0); err != nil {
 		return err
 	}
 	return nil
@@ -802,18 +767,9 @@ func autoConvert_v1_RoleBinding_To_authorization_RoleBinding(in *RoleBinding, ou
 
 func autoConvert_authorization_RoleBinding_To_v1_RoleBinding(in *authorization.RoleBinding, out *RoleBinding, s conversion.Scope) error {
 	out.ObjectMeta = in.ObjectMeta
-	if in.Subjects != nil {
-		in, out := &in.Subjects, &out.Subjects
-		*out = make([]api_v1.ObjectReference, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Subjects = make([]api_v1.ObjectReference, 0)
-	}
-	if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(&in.RoleRef, &out.RoleRef, s); err != nil {
+	out.Subjects = *(*[]core_v1.ObjectReference)(unsafe.Pointer(&in.Subjects))
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.RoleRef, &out.RoleRef, 0); err != nil {
 		return err
 	}
 	return nil
@@ -851,7 +807,7 @@ func autoConvert_authorization_RoleBindingList_To_v1_RoleBindingList(in *authori
 			}
 		}
 	} else {
-		out.Items = make([]RoleBinding, 0)
+		out.Items = nil
 	}
 	return nil
 }
@@ -900,11 +856,7 @@ func Convert_v1_RoleBindingRestrictionList_To_authorization_RoleBindingRestricti
 
 func autoConvert_authorization_RoleBindingRestrictionList_To_v1_RoleBindingRestrictionList(in *authorization.RoleBindingRestrictionList, out *RoleBindingRestrictionList, s conversion.Scope) error {
 	out.ListMeta = in.ListMeta
-	if in.Items == nil {
-		out.Items = make([]RoleBindingRestriction, 0)
-	} else {
-		out.Items = *(*[]RoleBindingRestriction)(unsafe.Pointer(&in.Items))
-	}
+	out.Items = *(*[]RoleBindingRestriction)(unsafe.Pointer(&in.Items))
 	return nil
 }
 
@@ -969,7 +921,7 @@ func autoConvert_authorization_RoleList_To_v1_RoleList(in *authorization.RoleLis
 			}
 		}
 	} else {
-		out.Items = make([]Role, 0)
+		out.Items = nil
 	}
 	return nil
 }
@@ -1053,16 +1005,8 @@ func Convert_v1_ServiceAccountRestriction_To_authorization_ServiceAccountRestric
 }
 
 func autoConvert_authorization_ServiceAccountRestriction_To_v1_ServiceAccountRestriction(in *authorization.ServiceAccountRestriction, out *ServiceAccountRestriction, s conversion.Scope) error {
-	if in.ServiceAccounts == nil {
-		out.ServiceAccounts = make([]ServiceAccountReference, 0)
-	} else {
-		out.ServiceAccounts = *(*[]ServiceAccountReference)(unsafe.Pointer(&in.ServiceAccounts))
-	}
-	if in.Namespaces == nil {
-		out.Namespaces = make([]string, 0)
-	} else {
-		out.Namespaces = *(*[]string)(unsafe.Pointer(&in.Namespaces))
-	}
+	out.ServiceAccounts = *(*[]ServiceAccountReference)(unsafe.Pointer(&in.ServiceAccounts))
+	out.Namespaces = *(*[]string)(unsafe.Pointer(&in.Namespaces))
 	return nil
 }
 
@@ -1161,16 +1105,8 @@ func Convert_v1_SubjectRulesReviewSpec_To_authorization_SubjectRulesReviewSpec(i
 
 func autoConvert_authorization_SubjectRulesReviewSpec_To_v1_SubjectRulesReviewSpec(in *authorization.SubjectRulesReviewSpec, out *SubjectRulesReviewSpec, s conversion.Scope) error {
 	out.User = in.User
-	if in.Groups == nil {
-		out.Groups = make([]string, 0)
-	} else {
-		out.Groups = *(*[]string)(unsafe.Pointer(&in.Groups))
-	}
-	if in.Scopes == nil {
-		out.Scopes = make(OptionalScopes, 0)
-	} else {
-		out.Scopes = *(*OptionalScopes)(unsafe.Pointer(&in.Scopes))
-	}
+	out.Groups = *(*[]string)(unsafe.Pointer(&in.Groups))
+	out.Scopes = *(*OptionalScopes)(unsafe.Pointer(&in.Scopes))
 	return nil
 }
 
@@ -1210,7 +1146,7 @@ func autoConvert_authorization_SubjectRulesReviewStatus_To_v1_SubjectRulesReview
 			}
 		}
 	} else {
-		out.Rules = make([]PolicyRule, 0)
+		out.Rules = nil
 	}
 	out.EvaluationError = in.EvaluationError
 	return nil
@@ -1234,21 +1170,9 @@ func Convert_v1_UserRestriction_To_authorization_UserRestriction(in *UserRestric
 }
 
 func autoConvert_authorization_UserRestriction_To_v1_UserRestriction(in *authorization.UserRestriction, out *UserRestriction, s conversion.Scope) error {
-	if in.Users == nil {
-		out.Users = make([]string, 0)
-	} else {
-		out.Users = *(*[]string)(unsafe.Pointer(&in.Users))
-	}
-	if in.Groups == nil {
-		out.Groups = make([]string, 0)
-	} else {
-		out.Groups = *(*[]string)(unsafe.Pointer(&in.Groups))
-	}
-	if in.Selectors == nil {
-		out.Selectors = make([]meta_v1.LabelSelector, 0)
-	} else {
-		out.Selectors = *(*[]meta_v1.LabelSelector)(unsafe.Pointer(&in.Selectors))
-	}
+	out.Users = *(*[]string)(unsafe.Pointer(&in.Users))
+	out.Groups = *(*[]string)(unsafe.Pointer(&in.Groups))
+	out.Selectors = *(*[]meta_v1.LabelSelector)(unsafe.Pointer(&in.Selectors))
 	return nil
 }
 

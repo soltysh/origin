@@ -6,16 +6,16 @@ package v1
 
 import (
 	apps "github.com/openshift/origin/pkg/apps/apis/apps"
+	core_v1 "k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	api "k8s.io/kubernetes/pkg/api"
-	api_v1 "k8s.io/kubernetes/pkg/api/v1"
 	unsafe "unsafe"
 )
 
 func init() {
-	SchemeBuilder.Register(RegisterConversions)
+	localSchemeBuilder.Register(RegisterConversions)
 }
 
 // RegisterConversions adds conversion functions to the given scheme.
@@ -71,17 +71,7 @@ func RegisterConversions(scheme *runtime.Scheme) error {
 
 func autoConvert_v1_CustomDeploymentStrategyParams_To_apps_CustomDeploymentStrategyParams(in *CustomDeploymentStrategyParams, out *apps.CustomDeploymentStrategyParams, s conversion.Scope) error {
 	out.Image = in.Image
-	if in.Environment != nil {
-		in, out := &in.Environment, &out.Environment
-		*out = make([]api.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_v1_EnvVar_To_api_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Environment = nil
-	}
+	out.Environment = *(*[]api.EnvVar)(unsafe.Pointer(&in.Environment))
 	out.Command = *(*[]string)(unsafe.Pointer(&in.Command))
 	return nil
 }
@@ -93,17 +83,7 @@ func Convert_v1_CustomDeploymentStrategyParams_To_apps_CustomDeploymentStrategyP
 
 func autoConvert_apps_CustomDeploymentStrategyParams_To_v1_CustomDeploymentStrategyParams(in *apps.CustomDeploymentStrategyParams, out *CustomDeploymentStrategyParams, s conversion.Scope) error {
 	out.Image = in.Image
-	if in.Environment != nil {
-		in, out := &in.Environment, &out.Environment
-		*out = make([]api_v1.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_api_EnvVar_To_v1_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Environment = nil
-	}
+	out.Environment = *(*[]core_v1.EnvVar)(unsafe.Pointer(&in.Environment))
 	out.Command = *(*[]string)(unsafe.Pointer(&in.Command))
 	return nil
 }
@@ -115,15 +95,7 @@ func Convert_apps_CustomDeploymentStrategyParams_To_v1_CustomDeploymentStrategyP
 
 func autoConvert_v1_DeploymentCause_To_apps_DeploymentCause(in *DeploymentCause, out *apps.DeploymentCause, s conversion.Scope) error {
 	out.Type = apps.DeploymentTriggerType(in.Type)
-	if in.ImageTrigger != nil {
-		in, out := &in.ImageTrigger, &out.ImageTrigger
-		*out = new(apps.DeploymentCauseImageTrigger)
-		if err := Convert_v1_DeploymentCauseImageTrigger_To_apps_DeploymentCauseImageTrigger(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.ImageTrigger = nil
-	}
+	out.ImageTrigger = (*apps.DeploymentCauseImageTrigger)(unsafe.Pointer(in.ImageTrigger))
 	return nil
 }
 
@@ -134,15 +106,7 @@ func Convert_v1_DeploymentCause_To_apps_DeploymentCause(in *DeploymentCause, out
 
 func autoConvert_apps_DeploymentCause_To_v1_DeploymentCause(in *apps.DeploymentCause, out *DeploymentCause, s conversion.Scope) error {
 	out.Type = DeploymentTriggerType(in.Type)
-	if in.ImageTrigger != nil {
-		in, out := &in.ImageTrigger, &out.ImageTrigger
-		*out = new(DeploymentCauseImageTrigger)
-		if err := Convert_apps_DeploymentCauseImageTrigger_To_v1_DeploymentCauseImageTrigger(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.ImageTrigger = nil
-	}
+	out.ImageTrigger = (*DeploymentCauseImageTrigger)(unsafe.Pointer(in.ImageTrigger))
 	return nil
 }
 
@@ -152,7 +116,8 @@ func Convert_apps_DeploymentCause_To_v1_DeploymentCause(in *apps.DeploymentCause
 }
 
 func autoConvert_v1_DeploymentCauseImageTrigger_To_apps_DeploymentCauseImageTrigger(in *DeploymentCauseImageTrigger, out *apps.DeploymentCauseImageTrigger, s conversion.Scope) error {
-	if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(&in.From, &out.From, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.From, &out.From, 0); err != nil {
 		return err
 	}
 	return nil
@@ -164,7 +129,8 @@ func Convert_v1_DeploymentCauseImageTrigger_To_apps_DeploymentCauseImageTrigger(
 }
 
 func autoConvert_apps_DeploymentCauseImageTrigger_To_v1_DeploymentCauseImageTrigger(in *apps.DeploymentCauseImageTrigger, out *DeploymentCauseImageTrigger, s conversion.Scope) error {
-	if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(&in.From, &out.From, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.From, &out.From, 0); err != nil {
 		return err
 	}
 	return nil
@@ -192,7 +158,7 @@ func Convert_v1_DeploymentCondition_To_apps_DeploymentCondition(in *DeploymentCo
 
 func autoConvert_apps_DeploymentCondition_To_v1_DeploymentCondition(in *apps.DeploymentCondition, out *DeploymentCondition, s conversion.Scope) error {
 	out.Type = DeploymentConditionType(in.Type)
-	out.Status = api_v1.ConditionStatus(in.Status)
+	out.Status = core_v1.ConditionStatus(in.Status)
 	out.LastUpdateTime = in.LastUpdateTime
 	out.LastTransitionTime = in.LastTransitionTime
 	out.Reason = string(in.Reason)
@@ -269,7 +235,7 @@ func autoConvert_apps_DeploymentConfigList_To_v1_DeploymentConfigList(in *apps.D
 			}
 		}
 	} else {
-		out.Items = make([]DeploymentConfig, 0)
+		out.Items = nil
 	}
 	return nil
 }
@@ -308,7 +274,8 @@ func Convert_apps_DeploymentConfigRollback_To_v1_DeploymentConfigRollback(in *ap
 }
 
 func autoConvert_v1_DeploymentConfigRollbackSpec_To_apps_DeploymentConfigRollbackSpec(in *DeploymentConfigRollbackSpec, out *apps.DeploymentConfigRollbackSpec, s conversion.Scope) error {
-	if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(&in.From, &out.From, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.From, &out.From, 0); err != nil {
 		return err
 	}
 	out.Revision = in.Revision
@@ -325,7 +292,8 @@ func Convert_v1_DeploymentConfigRollbackSpec_To_apps_DeploymentConfigRollbackSpe
 }
 
 func autoConvert_apps_DeploymentConfigRollbackSpec_To_v1_DeploymentConfigRollbackSpec(in *apps.DeploymentConfigRollbackSpec, out *DeploymentConfigRollbackSpec, s conversion.Scope) error {
-	if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(&in.From, &out.From, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.From, &out.From, 0); err != nil {
 		return err
 	}
 	out.Revision = in.Revision
@@ -365,7 +333,8 @@ func autoConvert_v1_DeploymentConfigSpec_To_apps_DeploymentConfigSpec(in *Deploy
 	if in.Template != nil {
 		in, out := &in.Template, &out.Template
 		*out = new(api.PodTemplateSpec)
-		if err := api_v1.Convert_v1_PodTemplateSpec_To_api_PodTemplateSpec(*in, *out, s); err != nil {
+		// TODO: Inefficient conversion - can we improve it?
+		if err := s.Convert(*in, *out, 0); err != nil {
 			return err
 		}
 	} else {
@@ -393,7 +362,7 @@ func autoConvert_apps_DeploymentConfigSpec_To_v1_DeploymentConfigSpec(in *apps.D
 			}
 		}
 	} else {
-		out.Triggers = make(DeploymentTriggerPolicies, 0)
+		out.Triggers = nil
 	}
 	out.Replicas = in.Replicas
 	out.RevisionHistoryLimit = (*int32)(unsafe.Pointer(in.RevisionHistoryLimit))
@@ -402,8 +371,9 @@ func autoConvert_apps_DeploymentConfigSpec_To_v1_DeploymentConfigSpec(in *apps.D
 	out.Selector = *(*map[string]string)(unsafe.Pointer(&in.Selector))
 	if in.Template != nil {
 		in, out := &in.Template, &out.Template
-		*out = new(api_v1.PodTemplateSpec)
-		if err := api_v1.Convert_api_PodTemplateSpec_To_v1_PodTemplateSpec(*in, *out, s); err != nil {
+		*out = new(core_v1.PodTemplateSpec)
+		// TODO: Inefficient conversion - can we improve it?
+		if err := s.Convert(*in, *out, 0); err != nil {
 			return err
 		}
 	} else {
@@ -424,15 +394,7 @@ func autoConvert_v1_DeploymentConfigStatus_To_apps_DeploymentConfigStatus(in *De
 	out.UpdatedReplicas = in.UpdatedReplicas
 	out.AvailableReplicas = in.AvailableReplicas
 	out.UnavailableReplicas = in.UnavailableReplicas
-	if in.Details != nil {
-		in, out := &in.Details, &out.Details
-		*out = new(apps.DeploymentDetails)
-		if err := Convert_v1_DeploymentDetails_To_apps_DeploymentDetails(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.Details = nil
-	}
+	out.Details = (*apps.DeploymentDetails)(unsafe.Pointer(in.Details))
 	out.Conditions = *(*[]apps.DeploymentCondition)(unsafe.Pointer(&in.Conditions))
 	out.ReadyReplicas = in.ReadyReplicas
 	return nil
@@ -450,15 +412,7 @@ func autoConvert_apps_DeploymentConfigStatus_To_v1_DeploymentConfigStatus(in *ap
 	out.UpdatedReplicas = in.UpdatedReplicas
 	out.AvailableReplicas = in.AvailableReplicas
 	out.UnavailableReplicas = in.UnavailableReplicas
-	if in.Details != nil {
-		in, out := &in.Details, &out.Details
-		*out = new(DeploymentDetails)
-		if err := Convert_apps_DeploymentDetails_To_v1_DeploymentDetails(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.Details = nil
-	}
+	out.Details = (*DeploymentDetails)(unsafe.Pointer(in.Details))
 	out.Conditions = *(*[]DeploymentCondition)(unsafe.Pointer(&in.Conditions))
 	out.ReadyReplicas = in.ReadyReplicas
 	return nil
@@ -471,17 +425,7 @@ func Convert_apps_DeploymentConfigStatus_To_v1_DeploymentConfigStatus(in *apps.D
 
 func autoConvert_v1_DeploymentDetails_To_apps_DeploymentDetails(in *DeploymentDetails, out *apps.DeploymentDetails, s conversion.Scope) error {
 	out.Message = in.Message
-	if in.Causes != nil {
-		in, out := &in.Causes, &out.Causes
-		*out = make([]apps.DeploymentCause, len(*in))
-		for i := range *in {
-			if err := Convert_v1_DeploymentCause_To_apps_DeploymentCause(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Causes = nil
-	}
+	out.Causes = *(*[]apps.DeploymentCause)(unsafe.Pointer(&in.Causes))
 	return nil
 }
 
@@ -492,17 +436,7 @@ func Convert_v1_DeploymentDetails_To_apps_DeploymentDetails(in *DeploymentDetail
 
 func autoConvert_apps_DeploymentDetails_To_v1_DeploymentDetails(in *apps.DeploymentDetails, out *DeploymentDetails, s conversion.Scope) error {
 	out.Message = in.Message
-	if in.Causes != nil {
-		in, out := &in.Causes, &out.Causes
-		*out = make([]DeploymentCause, len(*in))
-		for i := range *in {
-			if err := Convert_apps_DeploymentCause_To_v1_DeploymentCause(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Causes = make([]DeploymentCause, 0)
-	}
+	out.Causes = *(*[]DeploymentCause)(unsafe.Pointer(&in.Causes))
 	return nil
 }
 
@@ -595,24 +529,8 @@ func Convert_apps_DeploymentRequest_To_v1_DeploymentRequest(in *apps.DeploymentR
 
 func autoConvert_v1_DeploymentStrategy_To_apps_DeploymentStrategy(in *DeploymentStrategy, out *apps.DeploymentStrategy, s conversion.Scope) error {
 	out.Type = apps.DeploymentStrategyType(in.Type)
-	if in.CustomParams != nil {
-		in, out := &in.CustomParams, &out.CustomParams
-		*out = new(apps.CustomDeploymentStrategyParams)
-		if err := Convert_v1_CustomDeploymentStrategyParams_To_apps_CustomDeploymentStrategyParams(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.CustomParams = nil
-	}
-	if in.RecreateParams != nil {
-		in, out := &in.RecreateParams, &out.RecreateParams
-		*out = new(apps.RecreateDeploymentStrategyParams)
-		if err := Convert_v1_RecreateDeploymentStrategyParams_To_apps_RecreateDeploymentStrategyParams(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.RecreateParams = nil
-	}
+	out.CustomParams = (*apps.CustomDeploymentStrategyParams)(unsafe.Pointer(in.CustomParams))
+	out.RecreateParams = (*apps.RecreateDeploymentStrategyParams)(unsafe.Pointer(in.RecreateParams))
 	if in.RollingParams != nil {
 		in, out := &in.RollingParams, &out.RollingParams
 		*out = new(apps.RollingDeploymentStrategyParams)
@@ -622,7 +540,8 @@ func autoConvert_v1_DeploymentStrategy_To_apps_DeploymentStrategy(in *Deployment
 	} else {
 		out.RollingParams = nil
 	}
-	if err := api_v1.Convert_v1_ResourceRequirements_To_api_ResourceRequirements(&in.Resources, &out.Resources, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.Resources, &out.Resources, 0); err != nil {
 		return err
 	}
 	out.Labels = *(*map[string]string)(unsafe.Pointer(&in.Labels))
@@ -638,24 +557,8 @@ func Convert_v1_DeploymentStrategy_To_apps_DeploymentStrategy(in *DeploymentStra
 
 func autoConvert_apps_DeploymentStrategy_To_v1_DeploymentStrategy(in *apps.DeploymentStrategy, out *DeploymentStrategy, s conversion.Scope) error {
 	out.Type = DeploymentStrategyType(in.Type)
-	if in.CustomParams != nil {
-		in, out := &in.CustomParams, &out.CustomParams
-		*out = new(CustomDeploymentStrategyParams)
-		if err := Convert_apps_CustomDeploymentStrategyParams_To_v1_CustomDeploymentStrategyParams(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.CustomParams = nil
-	}
-	if in.RecreateParams != nil {
-		in, out := &in.RecreateParams, &out.RecreateParams
-		*out = new(RecreateDeploymentStrategyParams)
-		if err := Convert_apps_RecreateDeploymentStrategyParams_To_v1_RecreateDeploymentStrategyParams(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.RecreateParams = nil
-	}
+	out.CustomParams = (*CustomDeploymentStrategyParams)(unsafe.Pointer(in.CustomParams))
+	out.RecreateParams = (*RecreateDeploymentStrategyParams)(unsafe.Pointer(in.RecreateParams))
 	if in.RollingParams != nil {
 		in, out := &in.RollingParams, &out.RollingParams
 		*out = new(RollingDeploymentStrategyParams)
@@ -665,7 +568,8 @@ func autoConvert_apps_DeploymentStrategy_To_v1_DeploymentStrategy(in *apps.Deplo
 	} else {
 		out.RollingParams = nil
 	}
-	if err := api_v1.Convert_api_ResourceRequirements_To_v1_ResourceRequirements(&in.Resources, &out.Resources, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.Resources, &out.Resources, 0); err != nil {
 		return err
 	}
 	out.Labels = *(*map[string]string)(unsafe.Pointer(&in.Labels))
@@ -682,7 +586,8 @@ func Convert_apps_DeploymentStrategy_To_v1_DeploymentStrategy(in *apps.Deploymen
 func autoConvert_v1_DeploymentTriggerImageChangeParams_To_apps_DeploymentTriggerImageChangeParams(in *DeploymentTriggerImageChangeParams, out *apps.DeploymentTriggerImageChangeParams, s conversion.Scope) error {
 	out.Automatic = in.Automatic
 	out.ContainerNames = *(*[]string)(unsafe.Pointer(&in.ContainerNames))
-	if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(&in.From, &out.From, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.From, &out.From, 0); err != nil {
 		return err
 	}
 	out.LastTriggeredImage = in.LastTriggeredImage
@@ -692,7 +597,8 @@ func autoConvert_v1_DeploymentTriggerImageChangeParams_To_apps_DeploymentTrigger
 func autoConvert_apps_DeploymentTriggerImageChangeParams_To_v1_DeploymentTriggerImageChangeParams(in *apps.DeploymentTriggerImageChangeParams, out *DeploymentTriggerImageChangeParams, s conversion.Scope) error {
 	out.Automatic = in.Automatic
 	out.ContainerNames = *(*[]string)(unsafe.Pointer(&in.ContainerNames))
-	if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(&in.From, &out.From, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.From, &out.From, 0); err != nil {
 		return err
 	}
 	out.LastTriggeredImage = in.LastTriggeredImage
@@ -739,17 +645,7 @@ func Convert_apps_DeploymentTriggerPolicy_To_v1_DeploymentTriggerPolicy(in *apps
 
 func autoConvert_v1_ExecNewPodHook_To_apps_ExecNewPodHook(in *ExecNewPodHook, out *apps.ExecNewPodHook, s conversion.Scope) error {
 	out.Command = *(*[]string)(unsafe.Pointer(&in.Command))
-	if in.Env != nil {
-		in, out := &in.Env, &out.Env
-		*out = make([]api.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_v1_EnvVar_To_api_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Env = nil
-	}
+	out.Env = *(*[]api.EnvVar)(unsafe.Pointer(&in.Env))
 	out.ContainerName = in.ContainerName
 	out.Volumes = *(*[]string)(unsafe.Pointer(&in.Volumes))
 	return nil
@@ -761,22 +657,8 @@ func Convert_v1_ExecNewPodHook_To_apps_ExecNewPodHook(in *ExecNewPodHook, out *a
 }
 
 func autoConvert_apps_ExecNewPodHook_To_v1_ExecNewPodHook(in *apps.ExecNewPodHook, out *ExecNewPodHook, s conversion.Scope) error {
-	if in.Command == nil {
-		out.Command = make([]string, 0)
-	} else {
-		out.Command = *(*[]string)(unsafe.Pointer(&in.Command))
-	}
-	if in.Env != nil {
-		in, out := &in.Env, &out.Env
-		*out = make([]api_v1.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_api_EnvVar_To_v1_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Env = nil
-	}
+	out.Command = *(*[]string)(unsafe.Pointer(&in.Command))
+	out.Env = *(*[]core_v1.EnvVar)(unsafe.Pointer(&in.Env))
 	out.ContainerName = in.ContainerName
 	out.Volumes = *(*[]string)(unsafe.Pointer(&in.Volumes))
 	return nil
@@ -789,26 +671,8 @@ func Convert_apps_ExecNewPodHook_To_v1_ExecNewPodHook(in *apps.ExecNewPodHook, o
 
 func autoConvert_v1_LifecycleHook_To_apps_LifecycleHook(in *LifecycleHook, out *apps.LifecycleHook, s conversion.Scope) error {
 	out.FailurePolicy = apps.LifecycleHookFailurePolicy(in.FailurePolicy)
-	if in.ExecNewPod != nil {
-		in, out := &in.ExecNewPod, &out.ExecNewPod
-		*out = new(apps.ExecNewPodHook)
-		if err := Convert_v1_ExecNewPodHook_To_apps_ExecNewPodHook(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.ExecNewPod = nil
-	}
-	if in.TagImages != nil {
-		in, out := &in.TagImages, &out.TagImages
-		*out = make([]apps.TagImageHook, len(*in))
-		for i := range *in {
-			if err := Convert_v1_TagImageHook_To_apps_TagImageHook(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.TagImages = nil
-	}
+	out.ExecNewPod = (*apps.ExecNewPodHook)(unsafe.Pointer(in.ExecNewPod))
+	out.TagImages = *(*[]apps.TagImageHook)(unsafe.Pointer(&in.TagImages))
 	return nil
 }
 
@@ -819,26 +683,8 @@ func Convert_v1_LifecycleHook_To_apps_LifecycleHook(in *LifecycleHook, out *apps
 
 func autoConvert_apps_LifecycleHook_To_v1_LifecycleHook(in *apps.LifecycleHook, out *LifecycleHook, s conversion.Scope) error {
 	out.FailurePolicy = LifecycleHookFailurePolicy(in.FailurePolicy)
-	if in.ExecNewPod != nil {
-		in, out := &in.ExecNewPod, &out.ExecNewPod
-		*out = new(ExecNewPodHook)
-		if err := Convert_apps_ExecNewPodHook_To_v1_ExecNewPodHook(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.ExecNewPod = nil
-	}
-	if in.TagImages != nil {
-		in, out := &in.TagImages, &out.TagImages
-		*out = make([]TagImageHook, len(*in))
-		for i := range *in {
-			if err := Convert_apps_TagImageHook_To_v1_TagImageHook(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.TagImages = nil
-	}
+	out.ExecNewPod = (*ExecNewPodHook)(unsafe.Pointer(in.ExecNewPod))
+	out.TagImages = *(*[]TagImageHook)(unsafe.Pointer(&in.TagImages))
 	return nil
 }
 
@@ -849,33 +695,9 @@ func Convert_apps_LifecycleHook_To_v1_LifecycleHook(in *apps.LifecycleHook, out 
 
 func autoConvert_v1_RecreateDeploymentStrategyParams_To_apps_RecreateDeploymentStrategyParams(in *RecreateDeploymentStrategyParams, out *apps.RecreateDeploymentStrategyParams, s conversion.Scope) error {
 	out.TimeoutSeconds = (*int64)(unsafe.Pointer(in.TimeoutSeconds))
-	if in.Pre != nil {
-		in, out := &in.Pre, &out.Pre
-		*out = new(apps.LifecycleHook)
-		if err := Convert_v1_LifecycleHook_To_apps_LifecycleHook(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.Pre = nil
-	}
-	if in.Mid != nil {
-		in, out := &in.Mid, &out.Mid
-		*out = new(apps.LifecycleHook)
-		if err := Convert_v1_LifecycleHook_To_apps_LifecycleHook(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.Mid = nil
-	}
-	if in.Post != nil {
-		in, out := &in.Post, &out.Post
-		*out = new(apps.LifecycleHook)
-		if err := Convert_v1_LifecycleHook_To_apps_LifecycleHook(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.Post = nil
-	}
+	out.Pre = (*apps.LifecycleHook)(unsafe.Pointer(in.Pre))
+	out.Mid = (*apps.LifecycleHook)(unsafe.Pointer(in.Mid))
+	out.Post = (*apps.LifecycleHook)(unsafe.Pointer(in.Post))
 	return nil
 }
 
@@ -886,33 +708,9 @@ func Convert_v1_RecreateDeploymentStrategyParams_To_apps_RecreateDeploymentStrat
 
 func autoConvert_apps_RecreateDeploymentStrategyParams_To_v1_RecreateDeploymentStrategyParams(in *apps.RecreateDeploymentStrategyParams, out *RecreateDeploymentStrategyParams, s conversion.Scope) error {
 	out.TimeoutSeconds = (*int64)(unsafe.Pointer(in.TimeoutSeconds))
-	if in.Pre != nil {
-		in, out := &in.Pre, &out.Pre
-		*out = new(LifecycleHook)
-		if err := Convert_apps_LifecycleHook_To_v1_LifecycleHook(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.Pre = nil
-	}
-	if in.Mid != nil {
-		in, out := &in.Mid, &out.Mid
-		*out = new(LifecycleHook)
-		if err := Convert_apps_LifecycleHook_To_v1_LifecycleHook(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.Mid = nil
-	}
-	if in.Post != nil {
-		in, out := &in.Post, &out.Post
-		*out = new(LifecycleHook)
-		if err := Convert_apps_LifecycleHook_To_v1_LifecycleHook(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.Post = nil
-	}
+	out.Pre = (*LifecycleHook)(unsafe.Pointer(in.Pre))
+	out.Mid = (*LifecycleHook)(unsafe.Pointer(in.Mid))
+	out.Post = (*LifecycleHook)(unsafe.Pointer(in.Post))
 	return nil
 }
 
@@ -927,24 +725,8 @@ func autoConvert_v1_RollingDeploymentStrategyParams_To_apps_RollingDeploymentStr
 	out.TimeoutSeconds = (*int64)(unsafe.Pointer(in.TimeoutSeconds))
 	// WARNING: in.MaxUnavailable requires manual conversion: inconvertible types (*k8s.io/apimachinery/pkg/util/intstr.IntOrString vs k8s.io/apimachinery/pkg/util/intstr.IntOrString)
 	// WARNING: in.MaxSurge requires manual conversion: inconvertible types (*k8s.io/apimachinery/pkg/util/intstr.IntOrString vs k8s.io/apimachinery/pkg/util/intstr.IntOrString)
-	if in.Pre != nil {
-		in, out := &in.Pre, &out.Pre
-		*out = new(apps.LifecycleHook)
-		if err := Convert_v1_LifecycleHook_To_apps_LifecycleHook(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.Pre = nil
-	}
-	if in.Post != nil {
-		in, out := &in.Post, &out.Post
-		*out = new(apps.LifecycleHook)
-		if err := Convert_v1_LifecycleHook_To_apps_LifecycleHook(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.Post = nil
-	}
+	out.Pre = (*apps.LifecycleHook)(unsafe.Pointer(in.Pre))
+	out.Post = (*apps.LifecycleHook)(unsafe.Pointer(in.Post))
 	return nil
 }
 
@@ -954,30 +736,15 @@ func autoConvert_apps_RollingDeploymentStrategyParams_To_v1_RollingDeploymentStr
 	out.TimeoutSeconds = (*int64)(unsafe.Pointer(in.TimeoutSeconds))
 	// WARNING: in.MaxUnavailable requires manual conversion: inconvertible types (k8s.io/apimachinery/pkg/util/intstr.IntOrString vs *k8s.io/apimachinery/pkg/util/intstr.IntOrString)
 	// WARNING: in.MaxSurge requires manual conversion: inconvertible types (k8s.io/apimachinery/pkg/util/intstr.IntOrString vs *k8s.io/apimachinery/pkg/util/intstr.IntOrString)
-	if in.Pre != nil {
-		in, out := &in.Pre, &out.Pre
-		*out = new(LifecycleHook)
-		if err := Convert_apps_LifecycleHook_To_v1_LifecycleHook(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.Pre = nil
-	}
-	if in.Post != nil {
-		in, out := &in.Post, &out.Post
-		*out = new(LifecycleHook)
-		if err := Convert_apps_LifecycleHook_To_v1_LifecycleHook(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.Post = nil
-	}
+	out.Pre = (*LifecycleHook)(unsafe.Pointer(in.Pre))
+	out.Post = (*LifecycleHook)(unsafe.Pointer(in.Post))
 	return nil
 }
 
 func autoConvert_v1_TagImageHook_To_apps_TagImageHook(in *TagImageHook, out *apps.TagImageHook, s conversion.Scope) error {
 	out.ContainerName = in.ContainerName
-	if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(&in.To, &out.To, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.To, &out.To, 0); err != nil {
 		return err
 	}
 	return nil
@@ -990,7 +757,8 @@ func Convert_v1_TagImageHook_To_apps_TagImageHook(in *TagImageHook, out *apps.Ta
 
 func autoConvert_apps_TagImageHook_To_v1_TagImageHook(in *apps.TagImageHook, out *TagImageHook, s conversion.Scope) error {
 	out.ContainerName = in.ContainerName
-	if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(&in.To, &out.To, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.To, &out.To, 0); err != nil {
 		return err
 	}
 	return nil
