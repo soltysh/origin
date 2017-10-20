@@ -9,16 +9,15 @@ import (
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 
+	kclientv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
 	kv1core "k8s.io/client-go/kubernetes/typed/core/v1"
-	kclientv1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/kubernetes/pkg/apis/componentconfig"
-	kclientsetcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	proxy "k8s.io/kubernetes/pkg/proxy"
 	pconfig "k8s.io/kubernetes/pkg/proxy/config"
 	"k8s.io/kubernetes/pkg/proxy/healthcheck"
@@ -28,7 +27,6 @@ import (
 	utiliptables "k8s.io/kubernetes/pkg/util/iptables"
 	utilnode "k8s.io/kubernetes/pkg/util/node"
 	utilsysctl "k8s.io/kubernetes/pkg/util/sysctl"
-	kexec "k8s.io/utils/exec"
 	utilexec "k8s.io/utils/exec"
 
 	"github.com/openshift/origin/pkg/proxy/hybrid"
@@ -71,7 +69,7 @@ func (c *NetworkConfig) RunProxy() {
 	eventBroadcaster.StartRecordingToSink(&kv1core.EventSinkImpl{Interface: c.KubeClientset.CoreV1().Events("")})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, kclientv1.EventSource{Component: "kube-proxy", Host: hostname})
 
-	execer := kexec.New()
+	execer := utilexec.New()
 	dbus := utildbus.New()
 	iptInterface := utiliptables.New(execer, dbus, protocol)
 
@@ -227,7 +225,7 @@ func (c *NetworkConfig) RunProxy() {
 }
 
 // getNodeIP is copied from the upstream proxy config to retrieve the IP of a node.
-func getNodeIP(client kclientsetcorev1.CoreV1Interface, hostname string) net.IP {
+func getNodeIP(client kv1core.CoreV1Interface, hostname string) net.IP {
 	var nodeIP net.IP
 	node, err := client.Nodes().Get(hostname, metav1.GetOptions{})
 	if err != nil {

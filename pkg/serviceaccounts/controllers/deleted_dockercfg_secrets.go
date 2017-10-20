@@ -12,8 +12,8 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	informers "k8s.io/client-go/informers/core/v1"
+	kclientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 )
 
 // NumServiceAccountUpdateRetries controls the number of times we will retry on conflict errors.
