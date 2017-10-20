@@ -42,6 +42,8 @@ type ClusterNetworkEntry struct {
 	HostSubnetLength uint32 `json:"hostSubnetLength" protobuf:"varint,2,opt,name=hostSubnetLength"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // ClusterNetworkList is a collection of ClusterNetworks
 type ClusterNetworkList struct {
 	metav1.TypeMeta `json:",inline"`
