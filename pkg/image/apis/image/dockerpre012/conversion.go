@@ -1,7 +1,6 @@
 package dockerpre012
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -19,7 +18,7 @@ func Convert_dockerpre012_ImagePre_012_to_api_DockerImage(in *ImagePre012, out *
 	out.ID = in.ID
 	out.Parent = in.Parent
 	out.Comment = in.Comment
-	out.Created = metav1.NewTime(in.Created)
+	out.Created = in.Created
 	out.Container = in.Container
 	out.DockerVersion = in.DockerVersion
 	out.Author = in.Author
@@ -37,7 +36,7 @@ func Convert_api_DockerImage_to_dockerpre012_ImagePre_012(in *newer.DockerImage,
 	out.ID = in.ID
 	out.Parent = in.Parent
 	out.Comment = in.Comment
-	out.Created = in.Created.Time
+	out.Created = in.Created
 	out.Container = in.Container
 	out.DockerVersion = in.DockerVersion
 	out.Author = in.Author
