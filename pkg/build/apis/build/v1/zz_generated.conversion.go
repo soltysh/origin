@@ -6,17 +6,17 @@ package v1
 
 import (
 	build "github.com/openshift/origin/pkg/build/apis/build"
+	core_v1 "k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	api "k8s.io/kubernetes/pkg/api"
-	api_v1 "k8s.io/kubernetes/pkg/api/v1"
 	time "time"
 	unsafe "unsafe"
 )
 
 func init() {
-	SchemeBuilder.Register(RegisterConversions)
+	localSchemeBuilder.Register(RegisterConversions)
 }
 
 // RegisterConversions adds conversion functions to the given scheme.
@@ -295,7 +295,7 @@ func autoConvert_build_BuildConfigList_To_v1_BuildConfigList(in *build.BuildConf
 			}
 		}
 	} else {
-		out.Items = make([]BuildConfig, 0)
+		out.Items = nil
 	}
 	return nil
 }
@@ -341,7 +341,7 @@ func autoConvert_build_BuildConfigSpec_To_v1_BuildConfigSpec(in *build.BuildConf
 			}
 		}
 	} else {
-		out.Triggers = make([]BuildTriggerPolicy, 0)
+		out.Triggers = nil
 	}
 	out.RunPolicy = BuildRunPolicy(in.RunPolicy)
 	if err := Convert_build_CommonSpec_To_v1_CommonSpec(&in.CommonSpec, &out.CommonSpec, s); err != nil {
@@ -409,7 +409,7 @@ func autoConvert_build_BuildList_To_v1_BuildList(in *build.BuildList, out *Build
 			}
 		}
 	} else {
-		out.Items = make([]Build, 0)
+		out.Items = nil
 	}
 	return nil
 }
@@ -476,47 +476,15 @@ func Convert_build_BuildLogOptions_To_v1_BuildLogOptions(in *build.BuildLogOptio
 }
 
 func autoConvert_v1_BuildOutput_To_build_BuildOutput(in *BuildOutput, out *build.BuildOutput, s conversion.Scope) error {
-	if in.To != nil {
-		in, out := &in.To, &out.To
-		*out = new(api.ObjectReference)
-		if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.To = nil
-	}
-	if in.PushSecret != nil {
-		in, out := &in.PushSecret, &out.PushSecret
-		*out = new(api.LocalObjectReference)
-		if err := api_v1.Convert_v1_LocalObjectReference_To_api_LocalObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.PushSecret = nil
-	}
+	out.To = (*api.ObjectReference)(unsafe.Pointer(in.To))
+	out.PushSecret = (*api.LocalObjectReference)(unsafe.Pointer(in.PushSecret))
 	out.ImageLabels = *(*[]build.ImageLabel)(unsafe.Pointer(&in.ImageLabels))
 	return nil
 }
 
 func autoConvert_build_BuildOutput_To_v1_BuildOutput(in *build.BuildOutput, out *BuildOutput, s conversion.Scope) error {
-	if in.To != nil {
-		in, out := &in.To, &out.To
-		*out = new(api_v1.ObjectReference)
-		if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.To = nil
-	}
-	if in.PushSecret != nil {
-		in, out := &in.PushSecret, &out.PushSecret
-		*out = new(api_v1.LocalObjectReference)
-		if err := api_v1.Convert_api_LocalObjectReference_To_v1_LocalObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.PushSecret = nil
-	}
+	out.To = (*core_v1.ObjectReference)(unsafe.Pointer(in.To))
+	out.PushSecret = (*core_v1.LocalObjectReference)(unsafe.Pointer(in.PushSecret))
 	out.ImageLabels = *(*[]ImageLabel)(unsafe.Pointer(&in.ImageLabels))
 	return nil
 }
@@ -561,37 +529,11 @@ func autoConvert_v1_BuildRequest_To_build_BuildRequest(in *BuildRequest, out *bu
 	} else {
 		out.Revision = nil
 	}
-	if in.TriggeredByImage != nil {
-		in, out := &in.TriggeredByImage, &out.TriggeredByImage
-		*out = new(api.ObjectReference)
-		if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.TriggeredByImage = nil
-	}
-	if in.From != nil {
-		in, out := &in.From, &out.From
-		*out = new(api.ObjectReference)
-		if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.From = nil
-	}
+	out.TriggeredByImage = (*api.ObjectReference)(unsafe.Pointer(in.TriggeredByImage))
+	out.From = (*api.ObjectReference)(unsafe.Pointer(in.From))
 	out.Binary = (*build.BinaryBuildSource)(unsafe.Pointer(in.Binary))
 	out.LastVersion = (*int64)(unsafe.Pointer(in.LastVersion))
-	if in.Env != nil {
-		in, out := &in.Env, &out.Env
-		*out = make([]api.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_v1_EnvVar_To_api_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Env = nil
-	}
+	out.Env = *(*[]api.EnvVar)(unsafe.Pointer(&in.Env))
 	if in.TriggeredBy != nil {
 		in, out := &in.TriggeredBy, &out.TriggeredBy
 		*out = make([]build.BuildTriggerCause, len(*in))
@@ -603,15 +545,7 @@ func autoConvert_v1_BuildRequest_To_build_BuildRequest(in *BuildRequest, out *bu
 	} else {
 		out.TriggeredBy = nil
 	}
-	if in.DockerStrategyOptions != nil {
-		in, out := &in.DockerStrategyOptions, &out.DockerStrategyOptions
-		*out = new(build.DockerStrategyOptions)
-		if err := Convert_v1_DockerStrategyOptions_To_build_DockerStrategyOptions(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.DockerStrategyOptions = nil
-	}
+	out.DockerStrategyOptions = (*build.DockerStrategyOptions)(unsafe.Pointer(in.DockerStrategyOptions))
 	out.SourceStrategyOptions = (*build.SourceStrategyOptions)(unsafe.Pointer(in.SourceStrategyOptions))
 	return nil
 }
@@ -632,37 +566,11 @@ func autoConvert_build_BuildRequest_To_v1_BuildRequest(in *build.BuildRequest, o
 	} else {
 		out.Revision = nil
 	}
-	if in.TriggeredByImage != nil {
-		in, out := &in.TriggeredByImage, &out.TriggeredByImage
-		*out = new(api_v1.ObjectReference)
-		if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.TriggeredByImage = nil
-	}
-	if in.From != nil {
-		in, out := &in.From, &out.From
-		*out = new(api_v1.ObjectReference)
-		if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.From = nil
-	}
+	out.TriggeredByImage = (*core_v1.ObjectReference)(unsafe.Pointer(in.TriggeredByImage))
+	out.From = (*core_v1.ObjectReference)(unsafe.Pointer(in.From))
 	out.Binary = (*BinaryBuildSource)(unsafe.Pointer(in.Binary))
 	out.LastVersion = (*int64)(unsafe.Pointer(in.LastVersion))
-	if in.Env != nil {
-		in, out := &in.Env, &out.Env
-		*out = make([]api_v1.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_api_EnvVar_To_v1_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Env = nil
-	}
+	out.Env = *(*[]core_v1.EnvVar)(unsafe.Pointer(&in.Env))
 	if in.TriggeredBy != nil {
 		in, out := &in.TriggeredBy, &out.TriggeredBy
 		*out = make([]BuildTriggerCause, len(*in))
@@ -672,17 +580,9 @@ func autoConvert_build_BuildRequest_To_v1_BuildRequest(in *build.BuildRequest, o
 			}
 		}
 	} else {
-		out.TriggeredBy = make([]BuildTriggerCause, 0)
+		out.TriggeredBy = nil
 	}
-	if in.DockerStrategyOptions != nil {
-		in, out := &in.DockerStrategyOptions, &out.DockerStrategyOptions
-		*out = new(DockerStrategyOptions)
-		if err := Convert_build_DockerStrategyOptions_To_v1_DockerStrategyOptions(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.DockerStrategyOptions = nil
-	}
+	out.DockerStrategyOptions = (*DockerStrategyOptions)(unsafe.Pointer(in.DockerStrategyOptions))
 	out.SourceStrategyOptions = (*SourceStrategyOptions)(unsafe.Pointer(in.SourceStrategyOptions))
 	return nil
 }
@@ -697,38 +597,10 @@ func autoConvert_v1_BuildSource_To_build_BuildSource(in *BuildSource, out *build
 	out.Binary = (*build.BinaryBuildSource)(unsafe.Pointer(in.Binary))
 	out.Dockerfile = (*string)(unsafe.Pointer(in.Dockerfile))
 	out.Git = (*build.GitBuildSource)(unsafe.Pointer(in.Git))
-	if in.Images != nil {
-		in, out := &in.Images, &out.Images
-		*out = make([]build.ImageSource, len(*in))
-		for i := range *in {
-			if err := Convert_v1_ImageSource_To_build_ImageSource(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Images = nil
-	}
+	out.Images = *(*[]build.ImageSource)(unsafe.Pointer(&in.Images))
 	out.ContextDir = in.ContextDir
-	if in.SourceSecret != nil {
-		in, out := &in.SourceSecret, &out.SourceSecret
-		*out = new(api.LocalObjectReference)
-		if err := api_v1.Convert_v1_LocalObjectReference_To_api_LocalObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.SourceSecret = nil
-	}
-	if in.Secrets != nil {
-		in, out := &in.Secrets, &out.Secrets
-		*out = make([]build.SecretBuildSource, len(*in))
-		for i := range *in {
-			if err := Convert_v1_SecretBuildSource_To_build_SecretBuildSource(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Secrets = nil
-	}
+	out.SourceSecret = (*api.LocalObjectReference)(unsafe.Pointer(in.SourceSecret))
+	out.Secrets = *(*[]build.SecretBuildSource)(unsafe.Pointer(&in.Secrets))
 	return nil
 }
 
@@ -741,38 +613,10 @@ func autoConvert_build_BuildSource_To_v1_BuildSource(in *build.BuildSource, out 
 	out.Binary = (*BinaryBuildSource)(unsafe.Pointer(in.Binary))
 	out.Dockerfile = (*string)(unsafe.Pointer(in.Dockerfile))
 	out.Git = (*GitBuildSource)(unsafe.Pointer(in.Git))
-	if in.Images != nil {
-		in, out := &in.Images, &out.Images
-		*out = make([]ImageSource, len(*in))
-		for i := range *in {
-			if err := Convert_build_ImageSource_To_v1_ImageSource(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Images = nil
-	}
+	out.Images = *(*[]ImageSource)(unsafe.Pointer(&in.Images))
 	out.ContextDir = in.ContextDir
-	if in.SourceSecret != nil {
-		in, out := &in.SourceSecret, &out.SourceSecret
-		*out = new(api_v1.LocalObjectReference)
-		if err := api_v1.Convert_api_LocalObjectReference_To_v1_LocalObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.SourceSecret = nil
-	}
-	if in.Secrets != nil {
-		in, out := &in.Secrets, &out.Secrets
-		*out = make([]SecretBuildSource, len(*in))
-		for i := range *in {
-			if err := Convert_build_SecretBuildSource_To_v1_SecretBuildSource(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Secrets = nil
-	}
+	out.SourceSecret = (*core_v1.LocalObjectReference)(unsafe.Pointer(in.SourceSecret))
+	out.Secrets = *(*[]SecretBuildSource)(unsafe.Pointer(&in.Secrets))
 	return nil
 }
 
@@ -812,7 +656,7 @@ func autoConvert_build_BuildSpec_To_v1_BuildSpec(in *build.BuildSpec, out *Build
 			}
 		}
 	} else {
-		out.TriggeredBy = make([]BuildTriggerCause, 0)
+		out.TriggeredBy = nil
 	}
 	return nil
 }
@@ -831,15 +675,7 @@ func autoConvert_v1_BuildStatus_To_build_BuildStatus(in *BuildStatus, out *build
 	out.CompletionTimestamp = (*meta_v1.Time)(unsafe.Pointer(in.CompletionTimestamp))
 	out.Duration = time.Duration(in.Duration)
 	out.OutputDockerImageReference = in.OutputDockerImageReference
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = new(api.ObjectReference)
-		if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.Config = nil
-	}
+	out.Config = (*api.ObjectReference)(unsafe.Pointer(in.Config))
 	if err := Convert_v1_BuildStatusOutput_To_build_BuildStatusOutput(&in.Output, &out.Output, s); err != nil {
 		return err
 	}
@@ -862,15 +698,7 @@ func autoConvert_build_BuildStatus_To_v1_BuildStatus(in *build.BuildStatus, out 
 	out.CompletionTimestamp = (*meta_v1.Time)(unsafe.Pointer(in.CompletionTimestamp))
 	out.Duration = time.Duration(in.Duration)
 	out.OutputDockerImageReference = in.OutputDockerImageReference
-	if in.Config != nil {
-		in, out := &in.Config, &out.Config
-		*out = new(api_v1.ObjectReference)
-		if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.Config = nil
-	}
+	out.Config = (*core_v1.ObjectReference)(unsafe.Pointer(in.Config))
 	if err := Convert_build_BuildStatusOutput_To_v1_BuildStatusOutput(&in.Output, &out.Output, s); err != nil {
 		return err
 	}
@@ -953,15 +781,7 @@ func autoConvert_v1_BuildStrategy_To_build_BuildStrategy(in *BuildStrategy, out 
 	} else {
 		out.CustomStrategy = nil
 	}
-	if in.JenkinsPipelineStrategy != nil {
-		in, out := &in.JenkinsPipelineStrategy, &out.JenkinsPipelineStrategy
-		*out = new(build.JenkinsPipelineBuildStrategy)
-		if err := Convert_v1_JenkinsPipelineBuildStrategy_To_build_JenkinsPipelineBuildStrategy(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.JenkinsPipelineStrategy = nil
-	}
+	out.JenkinsPipelineStrategy = (*build.JenkinsPipelineBuildStrategy)(unsafe.Pointer(in.JenkinsPipelineStrategy))
 	return nil
 }
 
@@ -998,15 +818,7 @@ func autoConvert_build_BuildStrategy_To_v1_BuildStrategy(in *build.BuildStrategy
 	} else {
 		out.CustomStrategy = nil
 	}
-	if in.JenkinsPipelineStrategy != nil {
-		in, out := &in.JenkinsPipelineStrategy, &out.JenkinsPipelineStrategy
-		*out = new(JenkinsPipelineBuildStrategy)
-		if err := Convert_build_JenkinsPipelineBuildStrategy_To_v1_JenkinsPipelineBuildStrategy(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.JenkinsPipelineStrategy = nil
-	}
+	out.JenkinsPipelineStrategy = (*JenkinsPipelineBuildStrategy)(unsafe.Pointer(in.JenkinsPipelineStrategy))
 	return nil
 }
 
@@ -1030,15 +842,7 @@ func autoConvert_v1_BuildTriggerCause_To_build_BuildTriggerCause(in *BuildTrigge
 	} else {
 		out.GitHubWebHook = nil
 	}
-	if in.ImageChangeBuild != nil {
-		in, out := &in.ImageChangeBuild, &out.ImageChangeBuild
-		*out = new(build.ImageChangeCause)
-		if err := Convert_v1_ImageChangeCause_To_build_ImageChangeCause(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.ImageChangeBuild = nil
-	}
+	out.ImageChangeBuild = (*build.ImageChangeCause)(unsafe.Pointer(in.ImageChangeBuild))
 	if in.GitLabWebHook != nil {
 		in, out := &in.GitLabWebHook, &out.GitLabWebHook
 		*out = new(build.GitLabWebHookCause)
@@ -1085,15 +889,7 @@ func autoConvert_build_BuildTriggerCause_To_v1_BuildTriggerCause(in *build.Build
 	} else {
 		out.GitHubWebHook = nil
 	}
-	if in.ImageChangeBuild != nil {
-		in, out := &in.ImageChangeBuild, &out.ImageChangeBuild
-		*out = new(ImageChangeCause)
-		if err := Convert_build_ImageChangeCause_To_v1_ImageChangeCause(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.ImageChangeBuild = nil
-	}
+	out.ImageChangeBuild = (*ImageChangeCause)(unsafe.Pointer(in.ImageChangeBuild))
 	if in.GitLabWebHook != nil {
 		in, out := &in.GitLabWebHook, &out.GitLabWebHook
 		*out = new(GitLabWebHookCause)
@@ -1124,15 +920,7 @@ func autoConvert_v1_BuildTriggerPolicy_To_build_BuildTriggerPolicy(in *BuildTrig
 	out.Type = build.BuildTriggerType(in.Type)
 	out.GitHubWebHook = (*build.WebHookTrigger)(unsafe.Pointer(in.GitHubWebHook))
 	out.GenericWebHook = (*build.WebHookTrigger)(unsafe.Pointer(in.GenericWebHook))
-	if in.ImageChange != nil {
-		in, out := &in.ImageChange, &out.ImageChange
-		*out = new(build.ImageChangeTrigger)
-		if err := Convert_v1_ImageChangeTrigger_To_build_ImageChangeTrigger(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.ImageChange = nil
-	}
+	out.ImageChange = (*build.ImageChangeTrigger)(unsafe.Pointer(in.ImageChange))
 	out.GitLabWebHook = (*build.WebHookTrigger)(unsafe.Pointer(in.GitLabWebHook))
 	out.BitbucketWebHook = (*build.WebHookTrigger)(unsafe.Pointer(in.BitbucketWebHook))
 	return nil
@@ -1142,15 +930,7 @@ func autoConvert_build_BuildTriggerPolicy_To_v1_BuildTriggerPolicy(in *build.Bui
 	out.Type = BuildTriggerType(in.Type)
 	out.GitHubWebHook = (*WebHookTrigger)(unsafe.Pointer(in.GitHubWebHook))
 	out.GenericWebHook = (*WebHookTrigger)(unsafe.Pointer(in.GenericWebHook))
-	if in.ImageChange != nil {
-		in, out := &in.ImageChange, &out.ImageChange
-		*out = new(ImageChangeTrigger)
-		if err := Convert_build_ImageChangeTrigger_To_v1_ImageChangeTrigger(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.ImageChange = nil
-	}
+	out.ImageChange = (*ImageChangeTrigger)(unsafe.Pointer(in.ImageChange))
 	out.GitLabWebHook = (*WebHookTrigger)(unsafe.Pointer(in.GitLabWebHook))
 	out.BitbucketWebHook = (*WebHookTrigger)(unsafe.Pointer(in.BitbucketWebHook))
 	return nil
@@ -1181,7 +961,8 @@ func autoConvert_v1_CommonSpec_To_build_CommonSpec(in *CommonSpec, out *build.Co
 	if err := Convert_v1_BuildOutput_To_build_BuildOutput(&in.Output, &out.Output, s); err != nil {
 		return err
 	}
-	if err := api_v1.Convert_v1_ResourceRequirements_To_api_ResourceRequirements(&in.Resources, &out.Resources, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.Resources, &out.Resources, 0); err != nil {
 		return err
 	}
 	if err := Convert_v1_BuildPostCommitSpec_To_build_BuildPostCommitSpec(&in.PostCommit, &out.PostCommit, s); err != nil {
@@ -1217,7 +998,8 @@ func autoConvert_build_CommonSpec_To_v1_CommonSpec(in *build.CommonSpec, out *Co
 	if err := Convert_build_BuildOutput_To_v1_BuildOutput(&in.Output, &out.Output, s); err != nil {
 		return err
 	}
-	if err := api_v1.Convert_api_ResourceRequirements_To_v1_ResourceRequirements(&in.Resources, &out.Resources, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.Resources, &out.Resources, 0); err != nil {
 		return err
 	}
 	if err := Convert_build_BuildPostCommitSpec_To_v1_BuildPostCommitSpec(&in.PostCommit, &out.PostCommit, s); err != nil {
@@ -1272,83 +1054,29 @@ func Convert_build_CommonWebHookCause_To_v1_CommonWebHookCause(in *build.CommonW
 }
 
 func autoConvert_v1_CustomBuildStrategy_To_build_CustomBuildStrategy(in *CustomBuildStrategy, out *build.CustomBuildStrategy, s conversion.Scope) error {
-	if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(&in.From, &out.From, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.From, &out.From, 0); err != nil {
 		return err
 	}
-	if in.PullSecret != nil {
-		in, out := &in.PullSecret, &out.PullSecret
-		*out = new(api.LocalObjectReference)
-		if err := api_v1.Convert_v1_LocalObjectReference_To_api_LocalObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.PullSecret = nil
-	}
-	if in.Env != nil {
-		in, out := &in.Env, &out.Env
-		*out = make([]api.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_v1_EnvVar_To_api_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Env = nil
-	}
+	out.PullSecret = (*api.LocalObjectReference)(unsafe.Pointer(in.PullSecret))
+	out.Env = *(*[]api.EnvVar)(unsafe.Pointer(&in.Env))
 	out.ExposeDockerSocket = in.ExposeDockerSocket
 	out.ForcePull = in.ForcePull
-	if in.Secrets != nil {
-		in, out := &in.Secrets, &out.Secrets
-		*out = make([]build.SecretSpec, len(*in))
-		for i := range *in {
-			if err := Convert_v1_SecretSpec_To_build_SecretSpec(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Secrets = nil
-	}
+	out.Secrets = *(*[]build.SecretSpec)(unsafe.Pointer(&in.Secrets))
 	out.BuildAPIVersion = in.BuildAPIVersion
 	return nil
 }
 
 func autoConvert_build_CustomBuildStrategy_To_v1_CustomBuildStrategy(in *build.CustomBuildStrategy, out *CustomBuildStrategy, s conversion.Scope) error {
-	if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(&in.From, &out.From, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.From, &out.From, 0); err != nil {
 		return err
 	}
-	if in.PullSecret != nil {
-		in, out := &in.PullSecret, &out.PullSecret
-		*out = new(api_v1.LocalObjectReference)
-		if err := api_v1.Convert_api_LocalObjectReference_To_v1_LocalObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.PullSecret = nil
-	}
-	if in.Env != nil {
-		in, out := &in.Env, &out.Env
-		*out = make([]api_v1.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_api_EnvVar_To_v1_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Env = nil
-	}
+	out.PullSecret = (*core_v1.LocalObjectReference)(unsafe.Pointer(in.PullSecret))
+	out.Env = *(*[]core_v1.EnvVar)(unsafe.Pointer(&in.Env))
 	out.ExposeDockerSocket = in.ExposeDockerSocket
 	out.ForcePull = in.ForcePull
-	if in.Secrets != nil {
-		in, out := &in.Secrets, &out.Secrets
-		*out = make([]SecretSpec, len(*in))
-		for i := range *in {
-			if err := Convert_build_SecretSpec_To_v1_SecretSpec(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Secrets = nil
-	}
+	out.Secrets = *(*[]SecretSpec)(unsafe.Pointer(&in.Secrets))
 	out.BuildAPIVersion = in.BuildAPIVersion
 	return nil
 }
@@ -1359,95 +1087,23 @@ func Convert_build_CustomBuildStrategy_To_v1_CustomBuildStrategy(in *build.Custo
 }
 
 func autoConvert_v1_DockerBuildStrategy_To_build_DockerBuildStrategy(in *DockerBuildStrategy, out *build.DockerBuildStrategy, s conversion.Scope) error {
-	if in.From != nil {
-		in, out := &in.From, &out.From
-		*out = new(api.ObjectReference)
-		if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.From = nil
-	}
-	if in.PullSecret != nil {
-		in, out := &in.PullSecret, &out.PullSecret
-		*out = new(api.LocalObjectReference)
-		if err := api_v1.Convert_v1_LocalObjectReference_To_api_LocalObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.PullSecret = nil
-	}
+	out.From = (*api.ObjectReference)(unsafe.Pointer(in.From))
+	out.PullSecret = (*api.LocalObjectReference)(unsafe.Pointer(in.PullSecret))
 	out.NoCache = in.NoCache
-	if in.Env != nil {
-		in, out := &in.Env, &out.Env
-		*out = make([]api.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_v1_EnvVar_To_api_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Env = nil
-	}
+	out.Env = *(*[]api.EnvVar)(unsafe.Pointer(&in.Env))
 	out.ForcePull = in.ForcePull
 	out.DockerfilePath = in.DockerfilePath
-	if in.BuildArgs != nil {
-		in, out := &in.BuildArgs, &out.BuildArgs
-		*out = make([]api.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_v1_EnvVar_To_api_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.BuildArgs = nil
-	}
+	out.BuildArgs = *(*[]api.EnvVar)(unsafe.Pointer(&in.BuildArgs))
 	out.ImageOptimizationPolicy = (*build.ImageOptimizationPolicy)(unsafe.Pointer(in.ImageOptimizationPolicy))
 	return nil
 }
 
 func autoConvert_build_DockerBuildStrategy_To_v1_DockerBuildStrategy(in *build.DockerBuildStrategy, out *DockerBuildStrategy, s conversion.Scope) error {
-	if in.From != nil {
-		in, out := &in.From, &out.From
-		*out = new(api_v1.ObjectReference)
-		if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.From = nil
-	}
-	if in.PullSecret != nil {
-		in, out := &in.PullSecret, &out.PullSecret
-		*out = new(api_v1.LocalObjectReference)
-		if err := api_v1.Convert_api_LocalObjectReference_To_v1_LocalObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.PullSecret = nil
-	}
+	out.From = (*core_v1.ObjectReference)(unsafe.Pointer(in.From))
+	out.PullSecret = (*core_v1.LocalObjectReference)(unsafe.Pointer(in.PullSecret))
 	out.NoCache = in.NoCache
-	if in.Env != nil {
-		in, out := &in.Env, &out.Env
-		*out = make([]api_v1.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_api_EnvVar_To_v1_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Env = nil
-	}
-	if in.BuildArgs != nil {
-		in, out := &in.BuildArgs, &out.BuildArgs
-		*out = make([]api_v1.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_api_EnvVar_To_v1_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.BuildArgs = nil
-	}
+	out.Env = *(*[]core_v1.EnvVar)(unsafe.Pointer(&in.Env))
+	out.BuildArgs = *(*[]core_v1.EnvVar)(unsafe.Pointer(&in.BuildArgs))
 	out.ForcePull = in.ForcePull
 	out.DockerfilePath = in.DockerfilePath
 	out.ImageOptimizationPolicy = (*ImageOptimizationPolicy)(unsafe.Pointer(in.ImageOptimizationPolicy))
@@ -1460,17 +1116,7 @@ func Convert_build_DockerBuildStrategy_To_v1_DockerBuildStrategy(in *build.Docke
 }
 
 func autoConvert_v1_DockerStrategyOptions_To_build_DockerStrategyOptions(in *DockerStrategyOptions, out *build.DockerStrategyOptions, s conversion.Scope) error {
-	if in.BuildArgs != nil {
-		in, out := &in.BuildArgs, &out.BuildArgs
-		*out = make([]api.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_v1_EnvVar_To_api_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.BuildArgs = nil
-	}
+	out.BuildArgs = *(*[]api.EnvVar)(unsafe.Pointer(&in.BuildArgs))
 	out.NoCache = (*bool)(unsafe.Pointer(in.NoCache))
 	return nil
 }
@@ -1481,17 +1127,7 @@ func Convert_v1_DockerStrategyOptions_To_build_DockerStrategyOptions(in *DockerS
 }
 
 func autoConvert_build_DockerStrategyOptions_To_v1_DockerStrategyOptions(in *build.DockerStrategyOptions, out *DockerStrategyOptions, s conversion.Scope) error {
-	if in.BuildArgs != nil {
-		in, out := &in.BuildArgs, &out.BuildArgs
-		*out = make([]api_v1.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_api_EnvVar_To_v1_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.BuildArgs = nil
-	}
+	out.BuildArgs = *(*[]core_v1.EnvVar)(unsafe.Pointer(&in.BuildArgs))
 	out.NoCache = (*bool)(unsafe.Pointer(in.NoCache))
 	return nil
 }
@@ -1550,26 +1186,8 @@ func autoConvert_v1_GenericWebHookEvent_To_build_GenericWebHookEvent(in *Generic
 	} else {
 		out.Git = nil
 	}
-	if in.Env != nil {
-		in, out := &in.Env, &out.Env
-		*out = make([]api.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_v1_EnvVar_To_api_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Env = nil
-	}
-	if in.DockerStrategyOptions != nil {
-		in, out := &in.DockerStrategyOptions, &out.DockerStrategyOptions
-		*out = new(build.DockerStrategyOptions)
-		if err := Convert_v1_DockerStrategyOptions_To_build_DockerStrategyOptions(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.DockerStrategyOptions = nil
-	}
+	out.Env = *(*[]api.EnvVar)(unsafe.Pointer(&in.Env))
+	out.DockerStrategyOptions = (*build.DockerStrategyOptions)(unsafe.Pointer(in.DockerStrategyOptions))
 	return nil
 }
 
@@ -1588,26 +1206,8 @@ func autoConvert_build_GenericWebHookEvent_To_v1_GenericWebHookEvent(in *build.G
 	} else {
 		out.Git = nil
 	}
-	if in.Env != nil {
-		in, out := &in.Env, &out.Env
-		*out = make([]api_v1.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_api_EnvVar_To_v1_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Env = nil
-	}
-	if in.DockerStrategyOptions != nil {
-		in, out := &in.DockerStrategyOptions, &out.DockerStrategyOptions
-		*out = new(DockerStrategyOptions)
-		if err := Convert_build_DockerStrategyOptions_To_v1_DockerStrategyOptions(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.DockerStrategyOptions = nil
-	}
+	out.Env = *(*[]core_v1.EnvVar)(unsafe.Pointer(&in.Env))
+	out.DockerStrategyOptions = (*DockerStrategyOptions)(unsafe.Pointer(in.DockerStrategyOptions))
 	return nil
 }
 
@@ -1773,15 +1373,7 @@ func Convert_build_GitSourceRevision_To_v1_GitSourceRevision(in *build.GitSource
 
 func autoConvert_v1_ImageChangeCause_To_build_ImageChangeCause(in *ImageChangeCause, out *build.ImageChangeCause, s conversion.Scope) error {
 	out.ImageID = in.ImageID
-	if in.FromRef != nil {
-		in, out := &in.FromRef, &out.FromRef
-		*out = new(api.ObjectReference)
-		if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.FromRef = nil
-	}
+	out.FromRef = (*api.ObjectReference)(unsafe.Pointer(in.FromRef))
 	return nil
 }
 
@@ -1792,15 +1384,7 @@ func Convert_v1_ImageChangeCause_To_build_ImageChangeCause(in *ImageChangeCause,
 
 func autoConvert_build_ImageChangeCause_To_v1_ImageChangeCause(in *build.ImageChangeCause, out *ImageChangeCause, s conversion.Scope) error {
 	out.ImageID = in.ImageID
-	if in.FromRef != nil {
-		in, out := &in.FromRef, &out.FromRef
-		*out = new(api_v1.ObjectReference)
-		if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.FromRef = nil
-	}
+	out.FromRef = (*core_v1.ObjectReference)(unsafe.Pointer(in.FromRef))
 	return nil
 }
 
@@ -1811,15 +1395,7 @@ func Convert_build_ImageChangeCause_To_v1_ImageChangeCause(in *build.ImageChange
 
 func autoConvert_v1_ImageChangeTrigger_To_build_ImageChangeTrigger(in *ImageChangeTrigger, out *build.ImageChangeTrigger, s conversion.Scope) error {
 	out.LastTriggeredImageID = in.LastTriggeredImageID
-	if in.From != nil {
-		in, out := &in.From, &out.From
-		*out = new(api.ObjectReference)
-		if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.From = nil
-	}
+	out.From = (*api.ObjectReference)(unsafe.Pointer(in.From))
 	return nil
 }
 
@@ -1830,15 +1406,7 @@ func Convert_v1_ImageChangeTrigger_To_build_ImageChangeTrigger(in *ImageChangeTr
 
 func autoConvert_build_ImageChangeTrigger_To_v1_ImageChangeTrigger(in *build.ImageChangeTrigger, out *ImageChangeTrigger, s conversion.Scope) error {
 	out.LastTriggeredImageID = in.LastTriggeredImageID
-	if in.From != nil {
-		in, out := &in.From, &out.From
-		*out = new(api_v1.ObjectReference)
-		if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.From = nil
-	}
+	out.From = (*core_v1.ObjectReference)(unsafe.Pointer(in.From))
 	return nil
 }
 
@@ -1870,19 +1438,12 @@ func Convert_build_ImageLabel_To_v1_ImageLabel(in *build.ImageLabel, out *ImageL
 }
 
 func autoConvert_v1_ImageSource_To_build_ImageSource(in *ImageSource, out *build.ImageSource, s conversion.Scope) error {
-	if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(&in.From, &out.From, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.From, &out.From, 0); err != nil {
 		return err
 	}
 	out.Paths = *(*[]build.ImageSourcePath)(unsafe.Pointer(&in.Paths))
-	if in.PullSecret != nil {
-		in, out := &in.PullSecret, &out.PullSecret
-		*out = new(api.LocalObjectReference)
-		if err := api_v1.Convert_v1_LocalObjectReference_To_api_LocalObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.PullSecret = nil
-	}
+	out.PullSecret = (*api.LocalObjectReference)(unsafe.Pointer(in.PullSecret))
 	return nil
 }
 
@@ -1892,23 +1453,12 @@ func Convert_v1_ImageSource_To_build_ImageSource(in *ImageSource, out *build.Ima
 }
 
 func autoConvert_build_ImageSource_To_v1_ImageSource(in *build.ImageSource, out *ImageSource, s conversion.Scope) error {
-	if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(&in.From, &out.From, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.From, &out.From, 0); err != nil {
 		return err
 	}
-	if in.Paths == nil {
-		out.Paths = make([]ImageSourcePath, 0)
-	} else {
-		out.Paths = *(*[]ImageSourcePath)(unsafe.Pointer(&in.Paths))
-	}
-	if in.PullSecret != nil {
-		in, out := &in.PullSecret, &out.PullSecret
-		*out = new(api_v1.LocalObjectReference)
-		if err := api_v1.Convert_api_LocalObjectReference_To_v1_LocalObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.PullSecret = nil
-	}
+	out.Paths = *(*[]ImageSourcePath)(unsafe.Pointer(&in.Paths))
+	out.PullSecret = (*core_v1.LocalObjectReference)(unsafe.Pointer(in.PullSecret))
 	return nil
 }
 
@@ -1942,17 +1492,7 @@ func Convert_build_ImageSourcePath_To_v1_ImageSourcePath(in *build.ImageSourcePa
 func autoConvert_v1_JenkinsPipelineBuildStrategy_To_build_JenkinsPipelineBuildStrategy(in *JenkinsPipelineBuildStrategy, out *build.JenkinsPipelineBuildStrategy, s conversion.Scope) error {
 	out.JenkinsfilePath = in.JenkinsfilePath
 	out.Jenkinsfile = in.Jenkinsfile
-	if in.Env != nil {
-		in, out := &in.Env, &out.Env
-		*out = make([]api.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_v1_EnvVar_To_api_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Env = nil
-	}
+	out.Env = *(*[]api.EnvVar)(unsafe.Pointer(&in.Env))
 	return nil
 }
 
@@ -1964,17 +1504,7 @@ func Convert_v1_JenkinsPipelineBuildStrategy_To_build_JenkinsPipelineBuildStrate
 func autoConvert_build_JenkinsPipelineBuildStrategy_To_v1_JenkinsPipelineBuildStrategy(in *build.JenkinsPipelineBuildStrategy, out *JenkinsPipelineBuildStrategy, s conversion.Scope) error {
 	out.JenkinsfilePath = in.JenkinsfilePath
 	out.Jenkinsfile = in.Jenkinsfile
-	if in.Env != nil {
-		in, out := &in.Env, &out.Env
-		*out = make([]api_v1.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_api_EnvVar_To_v1_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Env = nil
-	}
+	out.Env = *(*[]core_v1.EnvVar)(unsafe.Pointer(&in.Env))
 	return nil
 }
 
@@ -2008,7 +1538,8 @@ func Convert_build_ProxyConfig_To_v1_ProxyConfig(in *build.ProxyConfig, out *Pro
 }
 
 func autoConvert_v1_SecretBuildSource_To_build_SecretBuildSource(in *SecretBuildSource, out *build.SecretBuildSource, s conversion.Scope) error {
-	if err := api_v1.Convert_v1_LocalObjectReference_To_api_LocalObjectReference(&in.Secret, &out.Secret, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.Secret, &out.Secret, 0); err != nil {
 		return err
 	}
 	out.DestinationDir = in.DestinationDir
@@ -2021,7 +1552,8 @@ func Convert_v1_SecretBuildSource_To_build_SecretBuildSource(in *SecretBuildSour
 }
 
 func autoConvert_build_SecretBuildSource_To_v1_SecretBuildSource(in *build.SecretBuildSource, out *SecretBuildSource, s conversion.Scope) error {
-	if err := api_v1.Convert_api_LocalObjectReference_To_v1_LocalObjectReference(&in.Secret, &out.Secret, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.Secret, &out.Secret, 0); err != nil {
 		return err
 	}
 	out.DestinationDir = in.DestinationDir
@@ -2034,7 +1566,8 @@ func Convert_build_SecretBuildSource_To_v1_SecretBuildSource(in *build.SecretBui
 }
 
 func autoConvert_v1_SecretSpec_To_build_SecretSpec(in *SecretSpec, out *build.SecretSpec, s conversion.Scope) error {
-	if err := api_v1.Convert_v1_LocalObjectReference_To_api_LocalObjectReference(&in.SecretSource, &out.SecretSource, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.SecretSource, &out.SecretSource, 0); err != nil {
 		return err
 	}
 	out.MountPath = in.MountPath
@@ -2047,7 +1580,8 @@ func Convert_v1_SecretSpec_To_build_SecretSpec(in *SecretSpec, out *build.Secret
 }
 
 func autoConvert_build_SecretSpec_To_v1_SecretSpec(in *build.SecretSpec, out *SecretSpec, s conversion.Scope) error {
-	if err := api_v1.Convert_api_LocalObjectReference_To_v1_LocalObjectReference(&in.SecretSource, &out.SecretSource, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.SecretSource, &out.SecretSource, 0); err != nil {
 		return err
 	}
 	out.MountPath = in.MountPath
@@ -2060,29 +1594,12 @@ func Convert_build_SecretSpec_To_v1_SecretSpec(in *build.SecretSpec, out *Secret
 }
 
 func autoConvert_v1_SourceBuildStrategy_To_build_SourceBuildStrategy(in *SourceBuildStrategy, out *build.SourceBuildStrategy, s conversion.Scope) error {
-	if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(&in.From, &out.From, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.From, &out.From, 0); err != nil {
 		return err
 	}
-	if in.PullSecret != nil {
-		in, out := &in.PullSecret, &out.PullSecret
-		*out = new(api.LocalObjectReference)
-		if err := api_v1.Convert_v1_LocalObjectReference_To_api_LocalObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.PullSecret = nil
-	}
-	if in.Env != nil {
-		in, out := &in.Env, &out.Env
-		*out = make([]api.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_v1_EnvVar_To_api_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Env = nil
-	}
+	out.PullSecret = (*api.LocalObjectReference)(unsafe.Pointer(in.PullSecret))
+	out.Env = *(*[]api.EnvVar)(unsafe.Pointer(&in.Env))
 	out.Scripts = in.Scripts
 	out.Incremental = (*bool)(unsafe.Pointer(in.Incremental))
 	out.ForcePull = in.ForcePull
@@ -2090,29 +1607,12 @@ func autoConvert_v1_SourceBuildStrategy_To_build_SourceBuildStrategy(in *SourceB
 }
 
 func autoConvert_build_SourceBuildStrategy_To_v1_SourceBuildStrategy(in *build.SourceBuildStrategy, out *SourceBuildStrategy, s conversion.Scope) error {
-	if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(&in.From, &out.From, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.From, &out.From, 0); err != nil {
 		return err
 	}
-	if in.PullSecret != nil {
-		in, out := &in.PullSecret, &out.PullSecret
-		*out = new(api_v1.LocalObjectReference)
-		if err := api_v1.Convert_api_LocalObjectReference_To_v1_LocalObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.PullSecret = nil
-	}
-	if in.Env != nil {
-		in, out := &in.Env, &out.Env
-		*out = make([]api_v1.EnvVar, len(*in))
-		for i := range *in {
-			if err := api_v1.Convert_api_EnvVar_To_v1_EnvVar(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Env = nil
-	}
+	out.PullSecret = (*core_v1.LocalObjectReference)(unsafe.Pointer(in.PullSecret))
+	out.Env = *(*[]core_v1.EnvVar)(unsafe.Pointer(&in.Env))
 	out.Scripts = in.Scripts
 	out.Incremental = (*bool)(unsafe.Pointer(in.Incremental))
 	out.ForcePull = in.ForcePull

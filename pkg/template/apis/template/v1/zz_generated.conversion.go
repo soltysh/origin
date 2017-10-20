@@ -6,15 +6,15 @@ package v1
 
 import (
 	template "github.com/openshift/origin/pkg/template/apis/template"
+	core_v1 "k8s.io/api/core/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	api "k8s.io/kubernetes/pkg/api"
-	api_v1 "k8s.io/kubernetes/pkg/api/v1"
 	unsafe "unsafe"
 )
 
 func init() {
-	SchemeBuilder.Register(RegisterConversions)
+	localSchemeBuilder.Register(RegisterConversions)
 }
 
 // RegisterConversions adds conversion functions to the given scheme.
@@ -78,17 +78,7 @@ func Convert_template_BrokerTemplateInstance_To_v1_BrokerTemplateInstance(in *te
 
 func autoConvert_v1_BrokerTemplateInstanceList_To_template_BrokerTemplateInstanceList(in *BrokerTemplateInstanceList, out *template.BrokerTemplateInstanceList, s conversion.Scope) error {
 	out.ListMeta = in.ListMeta
-	if in.Items != nil {
-		in, out := &in.Items, &out.Items
-		*out = make([]template.BrokerTemplateInstance, len(*in))
-		for i := range *in {
-			if err := Convert_v1_BrokerTemplateInstance_To_template_BrokerTemplateInstance(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Items = nil
-	}
+	out.Items = *(*[]template.BrokerTemplateInstance)(unsafe.Pointer(&in.Items))
 	return nil
 }
 
@@ -99,17 +89,7 @@ func Convert_v1_BrokerTemplateInstanceList_To_template_BrokerTemplateInstanceLis
 
 func autoConvert_template_BrokerTemplateInstanceList_To_v1_BrokerTemplateInstanceList(in *template.BrokerTemplateInstanceList, out *BrokerTemplateInstanceList, s conversion.Scope) error {
 	out.ListMeta = in.ListMeta
-	if in.Items != nil {
-		in, out := &in.Items, &out.Items
-		*out = make([]BrokerTemplateInstance, len(*in))
-		for i := range *in {
-			if err := Convert_template_BrokerTemplateInstance_To_v1_BrokerTemplateInstance(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Items = make([]BrokerTemplateInstance, 0)
-	}
+	out.Items = *(*[]BrokerTemplateInstance)(unsafe.Pointer(&in.Items))
 	return nil
 }
 
@@ -119,10 +99,12 @@ func Convert_template_BrokerTemplateInstanceList_To_v1_BrokerTemplateInstanceLis
 }
 
 func autoConvert_v1_BrokerTemplateInstanceSpec_To_template_BrokerTemplateInstanceSpec(in *BrokerTemplateInstanceSpec, out *template.BrokerTemplateInstanceSpec, s conversion.Scope) error {
-	if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(&in.TemplateInstance, &out.TemplateInstance, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.TemplateInstance, &out.TemplateInstance, 0); err != nil {
 		return err
 	}
-	if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(&in.Secret, &out.Secret, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.Secret, &out.Secret, 0); err != nil {
 		return err
 	}
 	out.BindingIDs = *(*[]string)(unsafe.Pointer(&in.BindingIDs))
@@ -135,10 +117,12 @@ func Convert_v1_BrokerTemplateInstanceSpec_To_template_BrokerTemplateInstanceSpe
 }
 
 func autoConvert_template_BrokerTemplateInstanceSpec_To_v1_BrokerTemplateInstanceSpec(in *template.BrokerTemplateInstanceSpec, out *BrokerTemplateInstanceSpec, s conversion.Scope) error {
-	if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(&in.TemplateInstance, &out.TemplateInstance, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.TemplateInstance, &out.TemplateInstance, 0); err != nil {
 		return err
 	}
-	if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(&in.Secret, &out.Secret, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.Secret, &out.Secret, 0); err != nil {
 		return err
 	}
 	out.BindingIDs = *(*[]string)(unsafe.Pointer(&in.BindingIDs))
@@ -219,7 +203,7 @@ func autoConvert_template_Template_To_v1_Template(in *template.Template, out *Te
 			}
 		}
 	} else {
-		out.Objects = make([]runtime.RawExtension, 0)
+		out.Objects = nil
 	}
 	out.ObjectLabels = *(*map[string]string)(unsafe.Pointer(&in.ObjectLabels))
 	return nil
@@ -278,7 +262,7 @@ func Convert_v1_TemplateInstanceCondition_To_template_TemplateInstanceCondition(
 
 func autoConvert_template_TemplateInstanceCondition_To_v1_TemplateInstanceCondition(in *template.TemplateInstanceCondition, out *TemplateInstanceCondition, s conversion.Scope) error {
 	out.Type = TemplateInstanceConditionType(in.Type)
-	out.Status = api_v1.ConditionStatus(in.Status)
+	out.Status = core_v1.ConditionStatus(in.Status)
 	out.LastTransitionTime = in.LastTransitionTime
 	out.Reason = in.Reason
 	out.Message = in.Message
@@ -322,7 +306,7 @@ func autoConvert_template_TemplateInstanceList_To_v1_TemplateInstanceList(in *te
 			}
 		}
 	} else {
-		out.Items = make([]TemplateInstance, 0)
+		out.Items = nil
 	}
 	return nil
 }
@@ -333,7 +317,8 @@ func Convert_template_TemplateInstanceList_To_v1_TemplateInstanceList(in *templa
 }
 
 func autoConvert_v1_TemplateInstanceObject_To_template_TemplateInstanceObject(in *TemplateInstanceObject, out *template.TemplateInstanceObject, s conversion.Scope) error {
-	if err := api_v1.Convert_v1_ObjectReference_To_api_ObjectReference(&in.Ref, &out.Ref, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.Ref, &out.Ref, 0); err != nil {
 		return err
 	}
 	return nil
@@ -345,7 +330,8 @@ func Convert_v1_TemplateInstanceObject_To_template_TemplateInstanceObject(in *Te
 }
 
 func autoConvert_template_TemplateInstanceObject_To_v1_TemplateInstanceObject(in *template.TemplateInstanceObject, out *TemplateInstanceObject, s conversion.Scope) error {
-	if err := api_v1.Convert_api_ObjectReference_To_v1_ObjectReference(&in.Ref, &out.Ref, s); err != nil {
+	// TODO: Inefficient conversion - can we improve it?
+	if err := s.Convert(&in.Ref, &out.Ref, 0); err != nil {
 		return err
 	}
 	return nil
@@ -386,15 +372,7 @@ func autoConvert_v1_TemplateInstanceSpec_To_template_TemplateInstanceSpec(in *Te
 	if err := Convert_v1_Template_To_template_Template(&in.Template, &out.Template, s); err != nil {
 		return err
 	}
-	if in.Secret != nil {
-		in, out := &in.Secret, &out.Secret
-		*out = new(api.LocalObjectReference)
-		if err := api_v1.Convert_v1_LocalObjectReference_To_api_LocalObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.Secret = nil
-	}
+	out.Secret = (*api.LocalObjectReference)(unsafe.Pointer(in.Secret))
 	out.Requester = (*template.TemplateInstanceRequester)(unsafe.Pointer(in.Requester))
 	return nil
 }
@@ -408,15 +386,7 @@ func autoConvert_template_TemplateInstanceSpec_To_v1_TemplateInstanceSpec(in *te
 	if err := Convert_template_Template_To_v1_Template(&in.Template, &out.Template, s); err != nil {
 		return err
 	}
-	if in.Secret != nil {
-		in, out := &in.Secret, &out.Secret
-		*out = new(api_v1.LocalObjectReference)
-		if err := api_v1.Convert_api_LocalObjectReference_To_v1_LocalObjectReference(*in, *out, s); err != nil {
-			return err
-		}
-	} else {
-		out.Secret = nil
-	}
+	out.Secret = (*core_v1.LocalObjectReference)(unsafe.Pointer(in.Secret))
 	out.Requester = (*TemplateInstanceRequester)(unsafe.Pointer(in.Requester))
 	return nil
 }
@@ -428,17 +398,7 @@ func Convert_template_TemplateInstanceSpec_To_v1_TemplateInstanceSpec(in *templa
 
 func autoConvert_v1_TemplateInstanceStatus_To_template_TemplateInstanceStatus(in *TemplateInstanceStatus, out *template.TemplateInstanceStatus, s conversion.Scope) error {
 	out.Conditions = *(*[]template.TemplateInstanceCondition)(unsafe.Pointer(&in.Conditions))
-	if in.Objects != nil {
-		in, out := &in.Objects, &out.Objects
-		*out = make([]template.TemplateInstanceObject, len(*in))
-		for i := range *in {
-			if err := Convert_v1_TemplateInstanceObject_To_template_TemplateInstanceObject(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Objects = nil
-	}
+	out.Objects = *(*[]template.TemplateInstanceObject)(unsafe.Pointer(&in.Objects))
 	return nil
 }
 
@@ -449,17 +409,7 @@ func Convert_v1_TemplateInstanceStatus_To_template_TemplateInstanceStatus(in *Te
 
 func autoConvert_template_TemplateInstanceStatus_To_v1_TemplateInstanceStatus(in *template.TemplateInstanceStatus, out *TemplateInstanceStatus, s conversion.Scope) error {
 	out.Conditions = *(*[]TemplateInstanceCondition)(unsafe.Pointer(&in.Conditions))
-	if in.Objects != nil {
-		in, out := &in.Objects, &out.Objects
-		*out = make([]TemplateInstanceObject, len(*in))
-		for i := range *in {
-			if err := Convert_template_TemplateInstanceObject_To_v1_TemplateInstanceObject(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Objects = nil
-	}
+	out.Objects = *(*[]TemplateInstanceObject)(unsafe.Pointer(&in.Objects))
 	return nil
 }
 
@@ -500,7 +450,7 @@ func autoConvert_template_TemplateList_To_v1_TemplateList(in *template.TemplateL
 			}
 		}
 	} else {
-		out.Items = make([]Template, 0)
+		out.Items = nil
 	}
 	return nil
 }
