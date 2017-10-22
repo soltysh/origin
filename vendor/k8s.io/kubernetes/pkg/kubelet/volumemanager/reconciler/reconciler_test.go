@@ -22,16 +22,19 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/runtime"
+	k8stypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
+	core "k8s.io/client-go/testing"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 	"k8s.io/kubernetes/pkg/client/record"
 	"k8s.io/kubernetes/pkg/client/testing/core"
-	"k8s.io/kubernetes/pkg/kubelet/config"
 	"k8s.io/kubernetes/pkg/kubelet/volumemanager/cache"
 	"k8s.io/kubernetes/pkg/runtime"
 	k8stypes "k8s.io/kubernetes/pkg/types"
 	"k8s.io/kubernetes/pkg/util/mount"
-	"k8s.io/kubernetes/pkg/util/sets"
 	"k8s.io/kubernetes/pkg/util/wait"
 	"k8s.io/kubernetes/pkg/volume"
 	volumetesting "k8s.io/kubernetes/pkg/volume/testing"
@@ -42,7 +45,7 @@ import (
 const (
 	// reconcilerLoopSleepDuration is the amount of time the reconciler loop
 	// waits between successive executions
-	reconcilerLoopSleepDuration     time.Duration = 0 * time.Millisecond
+	reconcilerLoopSleepDuration     time.Duration = 1 * time.Nanosecond
 	reconcilerSyncStatesSleepPeriod time.Duration = 10 * time.Minute
 	// waitForAttachTimeout is the maximum amount of time a
 	// operationexecutor.Mount call will wait for a volume to be attached.
@@ -50,6 +53,8 @@ const (
 	nodeName             k8stypes.NodeName = k8stypes.NodeName("mynodename")
 	kubeletPodsDir       string            = "fake-dir"
 )
+
+func hasAddedPods() bool { return true }
 
 // Calls Run()
 // Verifies there are no calls to attach, detach, mount, unmount, etc.
@@ -70,6 +75,7 @@ func Test_Run_Positive_DoNothing(t *testing.T) {
 		nodeName,
 		dsw,
 		asw,
+		hasAddedPods,
 		oex,
 		&mount.FakeMounter{},
 		volumePluginMgr,
@@ -107,6 +113,7 @@ func Test_Run_Positive_VolumeAttachAndMount(t *testing.T) {
 		nodeName,
 		dsw,
 		asw,
+		hasAddedPods,
 		oex,
 		&mount.FakeMounter{},
 		volumePluginMgr,
@@ -178,6 +185,7 @@ func Test_Run_Positive_VolumeMountControllerAttachEnabled(t *testing.T) {
 		nodeName,
 		dsw,
 		asw,
+		hasAddedPods,
 		oex,
 		&mount.FakeMounter{},
 		volumePluginMgr,
@@ -250,6 +258,7 @@ func Test_Run_Positive_VolumeAttachMountUnmountDetach(t *testing.T) {
 		nodeName,
 		dsw,
 		asw,
+		hasAddedPods,
 		oex,
 		&mount.FakeMounter{},
 		volumePluginMgr,
@@ -333,6 +342,7 @@ func Test_Run_Positive_VolumeUnmountControllerAttachEnabled(t *testing.T) {
 		nodeName,
 		dsw,
 		asw,
+		hasAddedPods,
 		oex,
 		&mount.FakeMounter{},
 		volumePluginMgr,
@@ -471,6 +481,5 @@ func createTestClient() *fake.Clientset {
 }
 
 func runReconciler(reconciler Reconciler) {
-	sourcesReady := config.NewSourcesReady(func(_ sets.String) bool { return false })
-	go reconciler.Run(sourcesReady, wait.NeverStop)
+	go reconciler.Run(wait.NeverStop)
 }
