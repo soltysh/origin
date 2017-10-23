@@ -6,6 +6,7 @@ package v1
 
 import (
 	build_v1 "github.com/openshift/origin/pkg/build/apis/build/v1"
+	core_v1 "k8s.io/api/core/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	reflect "reflect"
@@ -38,9 +39,9 @@ func (in *BuildDefaultsConfig) DeepCopyInto(out *BuildDefaultsConfig) {
 	out.TypeMeta = in.TypeMeta
 	if in.Env != nil {
 		in, out := &in.Env, &out.Env
-		*out = make([]unnameable_Unsupported, len(*in))
+		*out = make([]core_v1.EnvVar, len(*in))
 		for i := range *in {
-			(*out)[i] = (*in)[i].DeepCopy()
+			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.SourceStrategyDefaults != nil {
@@ -71,7 +72,7 @@ func (in *BuildDefaultsConfig) DeepCopyInto(out *BuildDefaultsConfig) {
 			(*out)[key] = val
 		}
 	}
-	out.Resources = in.Resources.DeepCopy()
+	in.Resources.DeepCopyInto(&out.Resources)
 	return
 }
 
