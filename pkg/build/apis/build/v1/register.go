@@ -19,6 +19,8 @@ var (
 
 	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes, addConversionFuncs, addFieldSelectorKeyConversions, RegisterDefaults)
 	AddToScheme   = SchemeBuilder.AddToScheme
+
+	localSchemeBuilder = SchemeBuilder
 )
 
 func Resource(resource string) schema.GroupResource {
