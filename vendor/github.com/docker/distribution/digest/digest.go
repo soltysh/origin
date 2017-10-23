@@ -5,7 +5,8 @@ import (
 	"hash"
 	"io"
 	"regexp"
-	"strings"
+
+	"github.com/opencontainers/go-digest"
 )
 
 const (
@@ -24,7 +25,7 @@ const (
 //
 // This allows to abstract the digest behind this type and work only in those
 // terms.
-type Digest string
+type Digest = digest.Digest
 
 // NewDigest returns a Digest from alg and a hash.Hash object.
 func NewDigest(alg Algorithm, h hash.Hash) Digest {
@@ -82,58 +83,3 @@ func FromBytes(p []byte) Digest {
 
 // Validate checks that the contents of d is a valid digest, returning an
 // error if not.
-func (d Digest) Validate() error {
-	s := string(d)
-
-	if !DigestRegexpAnchored.MatchString(s) {
-		return ErrDigestInvalidFormat
-	}
-
-	i := strings.Index(s, ":")
-	if i < 0 {
-		return ErrDigestInvalidFormat
-	}
-
-	// case: "sha256:" with no hex.
-	if i+1 == len(s) {
-		return ErrDigestInvalidFormat
-	}
-
-	switch algorithm := Algorithm(s[:i]); algorithm {
-	case SHA256, SHA384, SHA512:
-		if algorithm.Size()*2 != len(s[i+1:]) {
-			return ErrDigestInvalidLength
-		}
-		break
-	default:
-		return ErrDigestUnsupported
-	}
-
-	return nil
-}
-
-// Algorithm returns the algorithm portion of the digest. This will panic if
-// the underlying digest is not in a valid format.
-func (d Digest) Algorithm() Algorithm {
-	return Algorithm(d[:d.sepIndex()])
-}
-
-// Hex returns the hex digest portion of the digest. This will panic if the
-// underlying digest is not in a valid format.
-func (d Digest) Hex() string {
-	return string(d[d.sepIndex()+1:])
-}
-
-func (d Digest) String() string {
-	return string(d)
-}
-
-func (d Digest) sepIndex() int {
-	i := strings.Index(string(d), ":")
-
-	if i < 0 {
-		panic("could not find ':' in digest: " + d)
-	}
-
-	return i
-}
