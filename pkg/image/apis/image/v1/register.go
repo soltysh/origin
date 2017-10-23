@@ -24,6 +24,8 @@ var (
 
 	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes, addConversionFuncs, addFieldSelectorKeyConversions, RegisterDefaults, docker10.AddToScheme, dockerpre012.AddToScheme)
 	AddToScheme   = SchemeBuilder.AddToScheme
+
+	localSchemeBuilder = SchemeBuilder
 )
 
 func Resource(resource string) schema.GroupResource {
