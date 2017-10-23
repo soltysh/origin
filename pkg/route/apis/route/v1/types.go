@@ -160,7 +160,7 @@ type RouteIngressCondition struct {
 	Type RouteIngressConditionType `json:"type" protobuf:"bytes,1,opt,name=type,casttype=RouteIngressConditionType"`
 	// Status is the status of the condition.
 	// Can be True, False, Unknown.
-	Status kapi.ConditionStatus `json:"status" protobuf:"bytes,2,opt,name=status,casttype=k8s.io/kubernetes/pkg/api/v1.ConditionStatus"`
+	Status kapi.ConditionStatus `json:"status" protobuf:"bytes,2,opt,name=status,casttype=k8s.io/api/core/v1.ConditionStatus"`
 	// (brief) reason for the condition's last transition, and is usually a machine and human
 	// readable constant
 	Reason string `json:"reason,omitempty" protobuf:"bytes,3,opt,name=reason"`
