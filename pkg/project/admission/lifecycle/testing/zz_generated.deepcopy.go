@@ -18,7 +18,7 @@ func GetGeneratedDeepCopyFuncs() []conversion.GeneratedDeepCopyFunc {
 		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*UnknownObject).DeepCopyInto(out.(*UnknownObject))
 			return nil
-		}, InType: reflect.TypeOf(&UnknownObject{})},
+		}, InType: reflect.TypeOf(new(UnknownObject))},
 	}
 }
 

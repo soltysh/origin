@@ -23,7 +23,7 @@ func RegisterDeepCopies(scheme *runtime.Scheme) error {
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*TemplateServiceBrokerConfig).DeepCopyInto(out.(*TemplateServiceBrokerConfig))
 			return nil
-		}, InType: reflect.TypeOf(&TemplateServiceBrokerConfig{})},
+		}, InType: reflect.TypeOf(new(TemplateServiceBrokerConfig))},
 	)
 }
 

@@ -23,7 +23,7 @@ func RegisterDeepCopies(scheme *runtime.Scheme) error {
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*PodNodeConstraintsConfig).DeepCopyInto(out.(*PodNodeConstraintsConfig))
 			return nil
-		}, InType: reflect.TypeOf(&PodNodeConstraintsConfig{})},
+		}, InType: reflect.TypeOf(new(PodNodeConstraintsConfig))},
 	)
 }
 

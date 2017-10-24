@@ -23,7 +23,7 @@ func RegisterDeepCopies(scheme *runtime.Scheme) error {
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*ClusterResourceOverrideConfig).DeepCopyInto(out.(*ClusterResourceOverrideConfig))
 			return nil
-		}, InType: reflect.TypeOf(&ClusterResourceOverrideConfig{})},
+		}, InType: reflect.TypeOf(new(ClusterResourceOverrideConfig))},
 	)
 }
 

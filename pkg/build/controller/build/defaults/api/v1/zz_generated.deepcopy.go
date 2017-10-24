@@ -25,11 +25,11 @@ func RegisterDeepCopies(scheme *runtime.Scheme) error {
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*BuildDefaultsConfig).DeepCopyInto(out.(*BuildDefaultsConfig))
 			return nil
-		}, InType: reflect.TypeOf(&BuildDefaultsConfig{})},
+		}, InType: reflect.TypeOf(new(BuildDefaultsConfig))},
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*SourceStrategyDefaultsConfig).DeepCopyInto(out.(*SourceStrategyDefaultsConfig))
 			return nil
-		}, InType: reflect.TypeOf(&SourceStrategyDefaultsConfig{})},
+		}, InType: reflect.TypeOf(new(SourceStrategyDefaultsConfig))},
 	)
 }
 

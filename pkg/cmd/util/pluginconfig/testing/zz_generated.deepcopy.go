@@ -18,11 +18,11 @@ func GetGeneratedDeepCopyFuncs() []conversion.GeneratedDeepCopyFunc {
 		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*TestConfig).DeepCopyInto(out.(*TestConfig))
 			return nil
-		}, InType: reflect.TypeOf(&TestConfig{})},
+		}, InType: reflect.TypeOf(new(TestConfig))},
 		{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*TestConfigV1).DeepCopyInto(out.(*TestConfigV1))
 			return nil
-		}, InType: reflect.TypeOf(&TestConfigV1{})},
+		}, InType: reflect.TypeOf(new(TestConfigV1))},
 	}
 }
 

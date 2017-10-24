@@ -23,31 +23,31 @@ func RegisterDeepCopies(scheme *runtime.Scheme) error {
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*Group).DeepCopyInto(out.(*Group))
 			return nil
-		}, InType: reflect.TypeOf(&Group{})},
+		}, InType: reflect.TypeOf(new(Group))},
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*GroupList).DeepCopyInto(out.(*GroupList))
 			return nil
-		}, InType: reflect.TypeOf(&GroupList{})},
+		}, InType: reflect.TypeOf(new(GroupList))},
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*Identity).DeepCopyInto(out.(*Identity))
 			return nil
-		}, InType: reflect.TypeOf(&Identity{})},
+		}, InType: reflect.TypeOf(new(Identity))},
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*IdentityList).DeepCopyInto(out.(*IdentityList))
 			return nil
-		}, InType: reflect.TypeOf(&IdentityList{})},
+		}, InType: reflect.TypeOf(new(IdentityList))},
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*User).DeepCopyInto(out.(*User))
 			return nil
-		}, InType: reflect.TypeOf(&User{})},
+		}, InType: reflect.TypeOf(new(User))},
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*UserIdentityMapping).DeepCopyInto(out.(*UserIdentityMapping))
 			return nil
-		}, InType: reflect.TypeOf(&UserIdentityMapping{})},
+		}, InType: reflect.TypeOf(new(UserIdentityMapping))},
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*UserList).DeepCopyInto(out.(*UserList))
 			return nil
-		}, InType: reflect.TypeOf(&UserList{})},
+		}, InType: reflect.TypeOf(new(UserList))},
 	)
 }
 

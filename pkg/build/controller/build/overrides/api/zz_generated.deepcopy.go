@@ -24,7 +24,7 @@ func RegisterDeepCopies(scheme *runtime.Scheme) error {
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*BuildOverridesConfig).DeepCopyInto(out.(*BuildOverridesConfig))
 			return nil
-		}, InType: reflect.TypeOf(&BuildOverridesConfig{})},
+		}, InType: reflect.TypeOf(new(BuildOverridesConfig))},
 	)
 }
 

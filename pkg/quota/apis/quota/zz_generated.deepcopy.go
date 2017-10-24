@@ -24,35 +24,35 @@ func RegisterDeepCopies(scheme *runtime.Scheme) error {
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*AppliedClusterResourceQuota).DeepCopyInto(out.(*AppliedClusterResourceQuota))
 			return nil
-		}, InType: reflect.TypeOf(&AppliedClusterResourceQuota{})},
+		}, InType: reflect.TypeOf(new(AppliedClusterResourceQuota))},
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*AppliedClusterResourceQuotaList).DeepCopyInto(out.(*AppliedClusterResourceQuotaList))
 			return nil
-		}, InType: reflect.TypeOf(&AppliedClusterResourceQuotaList{})},
+		}, InType: reflect.TypeOf(new(AppliedClusterResourceQuotaList))},
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*ClusterResourceQuota).DeepCopyInto(out.(*ClusterResourceQuota))
 			return nil
-		}, InType: reflect.TypeOf(&ClusterResourceQuota{})},
+		}, InType: reflect.TypeOf(new(ClusterResourceQuota))},
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*ClusterResourceQuotaList).DeepCopyInto(out.(*ClusterResourceQuotaList))
 			return nil
-		}, InType: reflect.TypeOf(&ClusterResourceQuotaList{})},
+		}, InType: reflect.TypeOf(new(ClusterResourceQuotaList))},
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*ClusterResourceQuotaSelector).DeepCopyInto(out.(*ClusterResourceQuotaSelector))
 			return nil
-		}, InType: reflect.TypeOf(&ClusterResourceQuotaSelector{})},
+		}, InType: reflect.TypeOf(new(ClusterResourceQuotaSelector))},
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*ClusterResourceQuotaSpec).DeepCopyInto(out.(*ClusterResourceQuotaSpec))
 			return nil
-		}, InType: reflect.TypeOf(&ClusterResourceQuotaSpec{})},
+		}, InType: reflect.TypeOf(new(ClusterResourceQuotaSpec))},
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*ClusterResourceQuotaStatus).DeepCopyInto(out.(*ClusterResourceQuotaStatus))
 			return nil
-		}, InType: reflect.TypeOf(&ClusterResourceQuotaStatus{})},
+		}, InType: reflect.TypeOf(new(ClusterResourceQuotaStatus))},
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*ResourceQuotasStatusByNamespace).DeepCopyInto(out.(*ResourceQuotasStatusByNamespace))
 			return nil
-		}, InType: reflect.TypeOf(&ResourceQuotasStatusByNamespace{})},
+		}, InType: reflect.TypeOf(new(ResourceQuotasStatusByNamespace))},
 	)
 }
 

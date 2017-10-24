@@ -23,11 +23,11 @@ func RegisterDeepCopies(scheme *runtime.Scheme) error {
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*ProjectLimitBySelector).DeepCopyInto(out.(*ProjectLimitBySelector))
 			return nil
-		}, InType: reflect.TypeOf(&ProjectLimitBySelector{})},
+		}, InType: reflect.TypeOf(new(ProjectLimitBySelector))},
 		conversion.GeneratedDeepCopyFunc{Fn: func(in interface{}, out interface{}, c *conversion.Cloner) error {
 			in.(*ProjectRequestLimitConfig).DeepCopyInto(out.(*ProjectRequestLimitConfig))
 			return nil
-		}, InType: reflect.TypeOf(&ProjectRequestLimitConfig{})},
+		}, InType: reflect.TypeOf(new(ProjectRequestLimitConfig))},
 	)
 }
 
