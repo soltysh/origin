@@ -144,7 +144,7 @@ func (c *FakeDeploymentConfigs) Rollback(deploymentConfigName string, deployment
 	return obj.(*apps.DeploymentConfig), err
 }
 
-// GetScale takes name of the deploymentConfig, and returns the corresponding deploymentConfig object, and an error if there is any.
+// GetScale takes name of the deploymentConfig, and returns the corresponding scale object, and an error if there is any.
 func (c *FakeDeploymentConfigs) GetScale(deploymentConfigName string, options v1.GetOptions) (result *v1beta1.Scale, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetSubresourceAction(deploymentconfigsResource, c.ns, "scale", deploymentConfigName), &v1beta1.Scale{})
