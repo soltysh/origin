@@ -80,5 +80,5 @@ go-to-protobuf \
   --go-header-file="${OS_ROOT}/hack/boilerplate.txt" \
   --proto-import="${OS_ROOT}/vendor" \
   --proto-import="${OS_ROOT}/vendor/k8s.io/kubernetes/third_party/protobuf" \
-  --packages=$(IFS=, ; echo "${PACKAGES[*]}")
+  --packages=$(IFS=, ; echo "${PACKAGES[*]}") \
   "$@"
