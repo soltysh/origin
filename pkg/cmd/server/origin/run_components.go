@@ -8,9 +8,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
+	kexternalinformers "k8s.io/client-go/informers"
 	kapi "k8s.io/kubernetes/pkg/api"
 	kclientsetexternal "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	kexternalinformers "k8s.io/client-go/informers"
 	"k8s.io/kubernetes/pkg/registry/core/service/allocator"
 	etcdallocator "k8s.io/kubernetes/pkg/registry/core/service/allocator/storage"
 

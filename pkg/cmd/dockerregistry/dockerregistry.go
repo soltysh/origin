@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	logrus_logstash "github.com/bshuster-repo/logrus-logstash-hook"
 	"github.com/docker/go-units"
 	gorillahandlers "github.com/gorilla/handlers"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/docker/distribution/configuration"
 	"github.com/docker/distribution/context"

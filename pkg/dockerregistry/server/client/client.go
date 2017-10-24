@@ -1,8 +1,8 @@
 package client
 
 import (
-	restclient "k8s.io/client-go/rest"
 	authclientv1 "k8s.io/client-go/kubernetes/typed/authorization/v1"
+	restclient "k8s.io/client-go/rest"
 	kcoreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 
 	"github.com/openshift/origin/pkg/cmd/util/clientcmd"

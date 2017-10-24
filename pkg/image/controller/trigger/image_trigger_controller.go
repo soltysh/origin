@@ -9,11 +9,11 @@ import (
 
 	"github.com/golang/glog"
 
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	kv1core "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"

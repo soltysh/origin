@@ -8,24 +8,23 @@ import (
 
 	"github.com/golang/glog"
 	metrics "github.com/openshift/origin/pkg/build/metrics/prometheus"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apimachinery/pkg/util/wait"
+	kexternalcoreinformers "k8s.io/client-go/informers/core/v1"
+	kexternalcoreclient "k8s.io/client-go/kubernetes/typed/core/v1"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
-	clientv1 "k8s.io/api/core/v1"
+	v1lister "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	kapi "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/v1"
-	kexternalclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	kexternalcoreclient "k8s.io/client-go/kubernetes/typed/core/v1"
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	kexternalcoreinformers "k8s.io/client-go/informers/core/v1"
-	v1lister "k8s.io/client-go/listers/core/v1"
+	kexternalclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	"github.com/openshift/origin/pkg/api/meta"
 	buildapi "github.com/openshift/origin/pkg/build/apis/build"
@@ -203,7 +202,7 @@ func NewBuildController(params *BuildControllerParams) *BuildController {
 		imageStreamQueue: newResourceTriggerQueue(),
 		buildConfigQueue: workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
 
-		recorder:    eventBroadcaster.NewRecorder(kapi.Scheme, clientv1.EventSource{Component: "build-controller"}),
+		recorder:    eventBroadcaster.NewRecorder(kapi.Scheme, v1.EventSource{Component: "build-controller"}),
 		runPolicies: policy.GetAllRunPolicies(buildLister, buildClient),
 	}
 

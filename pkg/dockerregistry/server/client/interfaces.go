@@ -1,14 +1,14 @@
 package client
 
 import (
+	kapiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kapi "k8s.io/kubernetes/pkg/api"
-	kapiv1 "k8s.io/kubernetes/pkg/api/v1"
 	kcoreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 
 	imageapiv1 "github.com/openshift/origin/pkg/image/apis/image/v1"
 	userapiv1 "github.com/openshift/origin/pkg/user/apis/user/v1"
-	authapiv1 "k8s.io/kubernetes/pkg/apis/authorization/v1"
+	authapiv1 "k8s.io/api/authorization/v1"
 
 	imageclientv1 "github.com/openshift/origin/pkg/image/generated/clientset/typed/image/v1"
 	userclientv1 "github.com/openshift/origin/pkg/user/generated/clientset/typed/user/v1"

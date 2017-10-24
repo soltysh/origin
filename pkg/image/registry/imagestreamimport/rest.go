@@ -8,6 +8,7 @@ import (
 	"github.com/golang/glog"
 	gocontext "golang.org/x/net/context"
 
+	kapiv1 "k8s.io/api/core/v1"
 	kapierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,7 +18,6 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	kapi "k8s.io/kubernetes/pkg/api"
 	kapihelper "k8s.io/kubernetes/pkg/api/helper"
-	kapiv1 "k8s.io/kubernetes/pkg/api/v1"
 	authorizationapi "k8s.io/kubernetes/pkg/apis/authorization"
 	authorizationclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/authorization/internalversion"
 

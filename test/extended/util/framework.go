@@ -16,6 +16,8 @@ import (
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 
+	batchv1 "k8s.io/api/batch/v1"
+	kapiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,9 +29,7 @@ import (
 	kbatchclient "k8s.io/client-go/kubernetes/typed/batch/v1"
 	kcoreclient "k8s.io/client-go/kubernetes/typed/core/v1"
 	kapi "k8s.io/kubernetes/pkg/api"
-	kapiv1 "k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/apis/authorization"
-	batchv1 "k8s.io/kubernetes/pkg/apis/batch/v1"
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	kinternalcoreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	"k8s.io/kubernetes/pkg/quota"

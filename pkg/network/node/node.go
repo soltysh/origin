@@ -16,6 +16,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/vishvananda/netlink"
 
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -23,7 +24,6 @@ import (
 	kubeutilnet "k8s.io/apimachinery/pkg/util/net"
 	kwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	kapi "k8s.io/kubernetes/pkg/api"
 	kapihelper "k8s.io/kubernetes/pkg/api/helper"

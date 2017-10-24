@@ -10,14 +10,14 @@ import (
 
 	"github.com/ghodss/yaml"
 
+	kapiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
-	kapi "k8s.io/kubernetes/pkg/api"
-	kapiv1 "k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/client-go/util/retry"
+	kapi "k8s.io/kubernetes/pkg/api"
 	kcontroller "k8s.io/kubernetes/pkg/controller"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 

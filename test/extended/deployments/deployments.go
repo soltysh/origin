@@ -10,12 +10,12 @@ import (
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 
+	kapiv1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
-	kapiv1 "k8s.io/kubernetes/pkg/api/v1"
 	kcontroller "k8s.io/kubernetes/pkg/controller"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 

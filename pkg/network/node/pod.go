@@ -18,10 +18,10 @@ import (
 
 	"github.com/golang/glog"
 
+	kapiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	kapi "k8s.io/kubernetes/pkg/api"
-	kapiv1 "k8s.io/kubernetes/pkg/api/v1"
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	kcontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	knetwork "k8s.io/kubernetes/pkg/kubelet/network"

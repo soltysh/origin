@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sirupsen/logrus"
 	"github.com/docker/distribution/context"
+	"github.com/sirupsen/logrus"
 )
 
 type logrusHook struct {

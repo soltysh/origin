@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
+	kapiv1 "k8s.io/api/core/v1"
 	kapierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	kapi "k8s.io/kubernetes/pkg/api"
-	kapiv1 "k8s.io/kubernetes/pkg/api/v1"
 
 	projectapi "github.com/openshift/origin/pkg/project/apis/project"
 	projectclient "github.com/openshift/origin/pkg/project/generated/internalclientset"
