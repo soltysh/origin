@@ -11,8 +11,8 @@ import (
 	kschema "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	kutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	kclientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
-	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	kcontroller "k8s.io/kubernetes/pkg/controller"
 )
 
