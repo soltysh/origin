@@ -421,8 +421,6 @@ type ImagePolicyConfig struct {
 	ExternalRegistryHostname string `json:"externalRegistryHostname,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // AllowedRegistries represents a list of registries allowed for the image import.
 type AllowedRegistries []RegistryLocation
 
