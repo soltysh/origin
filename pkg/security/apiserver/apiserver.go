@@ -7,6 +7,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	genericregistry "k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	restclient "k8s.io/client-go/rest"
@@ -22,9 +23,7 @@ import (
 	oscc "github.com/openshift/origin/pkg/security/securitycontextconstraints"
 )
 
-type SecurityAPIServerConfig struct {
-	GenericConfig *genericapiserver.Config
-
+type ExtraConfig struct {
 	CoreAPIServerClientConfig *restclient.Config
 	// SCCStorage is actually created with a kubernetes restmapper options to have the correct prefix,
 	// so we have to have it special cased here to point to the right spot.
@@ -42,29 +41,33 @@ type SecurityAPIServerConfig struct {
 	v1StorageErr  error
 }
 
+type SecurityAPIServerConfig struct {
+	GenericConfig *genericapiserver.RecommendedConfig
+	ExtraConfig   ExtraConfig
+}
+
 type SecurityAPIServer struct {
 	GenericAPIServer *genericapiserver.GenericAPIServer
 }
 
 type completedConfig struct {
-	*SecurityAPIServerConfig
+	GenericConfig genericapiserver.CompletedConfig
+	ExtraConfig   *ExtraConfig
 }
 
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
 func (c *SecurityAPIServerConfig) Complete() completedConfig {
-	c.GenericConfig.Complete()
+	cfg := completedConfig{
+		c.GenericConfig.Complete(),
+		&c.ExtraConfig,
+	}
 
-	return completedConfig{c}
-}
-
-// SkipComplete provides a way to construct a server instance without config completion.
-func (c *SecurityAPIServerConfig) SkipComplete() completedConfig {
-	return completedConfig{c}
+	return cfg
 }
 
 // New returns a new instance of SecurityAPIServer from the given config.
 func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget) (*SecurityAPIServer, error) {
-	genericServer, err := c.SecurityAPIServerConfig.GenericConfig.SkipComplete().New("security.openshift.io-apiserver", delegationTarget) // completion is done in Complete, no need for a second time
+	genericServer, err := c.GenericConfig.New("security.openshift.io-apiserver", delegationTarget)
 	if err != nil {
 		return nil, err
 	}
@@ -73,12 +76,12 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		GenericAPIServer: genericServer,
 	}
 
-	v1Storage, err := c.V1RESTStorage()
+	v1Storage, err := c.ExtraConfig.V1RESTStorage(c.GenericConfig.RESTOptionsGetter)
 	if err != nil {
 		return nil, err
 	}
 
-	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(securityapiv1.GroupName, c.Registry, c.Scheme, metav1.ParameterCodec, c.Codecs)
+	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(securityapiv1.GroupName, c.ExtraConfig.Registry, c.ExtraConfig.Scheme, metav1.ParameterCodec, c.ExtraConfig.Codecs)
 	apiGroupInfo.GroupMeta.GroupVersion = securityapiv1.SchemeGroupVersion
 	apiGroupInfo.VersionedResourcesStorageMap[securityapiv1.SchemeGroupVersion.Version] = v1Storage
 	if err := s.GenericAPIServer.InstallAPIGroup(&apiGroupInfo); err != nil {
@@ -88,15 +91,15 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 	return s, nil
 }
 
-func (c *SecurityAPIServerConfig) V1RESTStorage() (map[string]rest.Storage, error) {
+func (c *ExtraConfig) V1RESTStorage(RESTOptionsGetter genericregistry.RESTOptionsGetter) (map[string]rest.Storage, error) {
 	c.makeV1Storage.Do(func() {
-		c.v1Storage, c.v1StorageErr = c.newV1RESTStorage()
+		c.v1Storage, c.v1StorageErr = c.newV1RESTStorage(RESTOptionsGetter)
 	})
 
 	return c.v1Storage, c.v1StorageErr
 }
 
-func (c *SecurityAPIServerConfig) newV1RESTStorage() (map[string]rest.Storage, error) {
+func (c *ExtraConfig) newV1RESTStorage(RESTOptionsGetter genericregistry.RESTOptionsGetter) (map[string]rest.Storage, error) {
 	kubeInternalClient, err := kclientsetinternal.NewForConfig(c.CoreAPIServerClientConfig)
 	if err != nil {
 		return nil, err
@@ -105,7 +108,7 @@ func (c *SecurityAPIServerConfig) newV1RESTStorage() (map[string]rest.Storage, e
 	sccStorage := c.SCCStorage
 	// TODO allow this when we're sure that its storing correctly and we want to allow starting up without embedding kube
 	if false && sccStorage == nil {
-		sccStorage = sccstorage.NewREST(c.GenericConfig.RESTOptionsGetter)
+		sccStorage = sccstorage.NewREST(RESTOptionsGetter)
 	}
 	podSecurityPolicyReviewStorage := podsecuritypolicyreview.NewREST(
 		oscc.NewDefaultSCCMatcher(c.SecurityInformers.Security().InternalVersion().SecurityContextConstraints().Lister()),
