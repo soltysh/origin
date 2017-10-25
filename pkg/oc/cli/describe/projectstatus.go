@@ -903,7 +903,8 @@ func describeAdditionalBuildDetail(build *buildgraph.BuildConfigNode, lastSucces
 			activeOut = append(activeOut, describeBuildPhase(activeBuilds[i].Build, nil, build.BuildConfig.Name, pushTargetResolved))
 		}
 
-		if buildTimestamp(activeBuilds[0].Build).Before(&lastTime) {
+		buildTimestamp := buildTimestamp(activeBuilds[0].Build)
+		if buildTimestamp.Before(&lastTime) {
 			out = append(out, activeOut...)
 		} else {
 			out = append(activeOut, out...)

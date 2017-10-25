@@ -151,7 +151,7 @@ func determineSourceKind(f *clientcmd.Factory, input string) string {
 // Complete completes all the required options for the tag command.
 func (o *TagOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, args []string, out io.Writer) error {
 	if len(args) < 2 && (len(args) < 1 && !o.deleteTag) {
-		return kcmdutil.UsageError(cmd, "you must specify a source and at least one destination or one or more tags to delete")
+		return kcmdutil.UsageErrorf(cmd, "you must specify a source and at least one destination or one or more tags to delete")
 	}
 
 	// Setup writer.
@@ -185,7 +185,7 @@ func (o *TagOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, args []s
 		if len(sourceKind) > 0 {
 			validSources := sets.NewString("imagestreamtag", "istag", "imagestreamimage", "isimage", "docker", "dockerimage")
 			if !validSources.Has(strings.ToLower(sourceKind)) {
-				kcmdutil.CheckErr(kcmdutil.UsageError(cmd, "invalid source %q; valid values are %v", o.sourceKind, strings.Join(validSources.List(), ", ")))
+				kcmdutil.CheckErr(kcmdutil.UsageErrorf(cmd, "invalid source %q; valid values are %v", o.sourceKind, strings.Join(validSources.List(), ", ")))
 			}
 		}
 

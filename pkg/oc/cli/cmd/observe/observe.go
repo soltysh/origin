@@ -181,7 +181,7 @@ func NewCmdObserve(fullName string, f *clientcmd.Factory, out, errOut io.Writer)
 			}
 
 			if err := options.Validate(args); err != nil {
-				cmdutil.CheckErr(cmdutil.UsageError(cmd, err.Error()))
+				cmdutil.CheckErr(cmdutil.UsageErrorf(cmd, err.Error()))
 			}
 
 			if err := options.Run(); err != nil {

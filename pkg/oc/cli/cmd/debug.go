@@ -179,14 +179,14 @@ func (o *DebugOptions) Complete(cmd *cobra.Command, f *clientcmd.Factory, args [
 	}
 	resources, envArgs, ok := cmdutil.SplitEnvironmentFromResources(args)
 	if !ok {
-		return kcmdutil.UsageError(cmd, "all resources must be specified before environment changes: %s", strings.Join(args, " "))
+		return kcmdutil.UsageErrorf(cmd, "all resources must be specified before environment changes: %s", strings.Join(args, " "))
 	}
 
 	switch {
 	case o.ForceTTY && o.NoStdin:
-		return kcmdutil.UsageError(cmd, "you may not specify -I and -t together")
+		return kcmdutil.UsageErrorf(cmd, "you may not specify -I and -t together")
 	case o.ForceTTY && o.DisableTTY:
-		return kcmdutil.UsageError(cmd, "you may not specify -t and -T together")
+		return kcmdutil.UsageErrorf(cmd, "you may not specify -t and -T together")
 	case o.ForceTTY:
 		o.Attach.TTY = true
 	// since ForceTTY is defaulted to false, check if user specifically passed in "=false" flag
