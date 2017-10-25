@@ -198,7 +198,7 @@ func (f *Factory) ApproximatePodTemplateForObject(object runtime.Object) (*api.P
 
 		for i := range pods.Items {
 			pod := &pods.Items[i]
-			if fallback == nil || pod.CreationTimestamp.Before(fallback.CreationTimestamp) {
+			if fallback == nil || pod.CreationTimestamp.Before(&fallback.CreationTimestamp) {
 				fallback = &api.PodTemplateSpec{
 					ObjectMeta: pod.ObjectMeta,
 					Spec:       pod.Spec,
