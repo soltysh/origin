@@ -7,8 +7,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	genericregistry "k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
+	restclient "k8s.io/client-go/rest"
 
 	userapiv1 "github.com/openshift/origin/pkg/user/apis/user/v1"
 	userclient "github.com/openshift/origin/pkg/user/generated/internalclientset"
@@ -18,9 +20,7 @@ import (
 	"github.com/openshift/origin/pkg/user/registry/useridentitymapping"
 )
 
-type UserConfig struct {
-	GenericConfig *genericapiserver.Config
-
+type ExtraConfig struct {
 	// TODO these should all become local eventually
 	Scheme   *runtime.Scheme
 	Registry *registered.APIRegistrationManager
@@ -31,29 +31,33 @@ type UserConfig struct {
 	v1StorageErr  error
 }
 
+type UserConfig struct {
+	GenericConfig *genericapiserver.RecommendedConfig
+	ExtraConfig   ExtraConfig
+}
+
 type UserServer struct {
 	GenericAPIServer *genericapiserver.GenericAPIServer
 }
 
 type completedConfig struct {
-	*UserConfig
+	GenericConfig genericapiserver.CompletedConfig
+	ExtraConfig   *ExtraConfig
 }
 
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
 func (c *UserConfig) Complete() completedConfig {
-	c.GenericConfig.Complete()
+	cfg := completedConfig{
+		c.GenericConfig.Complete(),
+		&c.ExtraConfig,
+	}
 
-	return completedConfig{c}
-}
-
-// SkipComplete provides a way to construct a server instance without config completion.
-func (c *UserConfig) SkipComplete() completedConfig {
-	return completedConfig{c}
+	return cfg
 }
 
 // New returns a new instance of UserServer from the given config.
 func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget) (*UserServer, error) {
-	genericServer, err := c.UserConfig.GenericConfig.SkipComplete().New("user.openshift.io-apiserver", delegationTarget) // completion is done in Complete, no need for a second time
+	genericServer, err := c.GenericConfig.New("user.openshift.io-apiserver", delegationTarget)
 	if err != nil {
 		return nil, err
 	}
@@ -62,12 +66,12 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		GenericAPIServer: genericServer,
 	}
 
-	v1Storage, err := c.V1RESTStorage()
+	v1Storage, err := c.ExtraConfig.V1RESTStorage(c.GenericConfig.RESTOptionsGetter, c.GenericConfig.LoopbackClientConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(userapiv1.GroupName, c.Registry, c.Scheme, metav1.ParameterCodec, c.Codecs)
+	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(userapiv1.GroupName, c.ExtraConfig.Registry, c.ExtraConfig.Scheme, metav1.ParameterCodec, c.ExtraConfig.Codecs)
 	apiGroupInfo.GroupMeta.GroupVersion = userapiv1.SchemeGroupVersion
 	apiGroupInfo.VersionedResourcesStorageMap[userapiv1.SchemeGroupVersion.Version] = v1Storage
 	if err := s.GenericAPIServer.InstallAPIGroup(&apiGroupInfo); err != nil {
@@ -77,29 +81,29 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 	return s, nil
 }
 
-func (c *UserConfig) V1RESTStorage() (map[string]rest.Storage, error) {
+func (c *ExtraConfig) V1RESTStorage(RESTOptionsGetter genericregistry.RESTOptionsGetter, LoopbackClientConfig *restclient.Config) (map[string]rest.Storage, error) {
 	c.makeV1Storage.Do(func() {
-		c.v1Storage, c.v1StorageErr = c.newV1RESTStorage()
+		c.v1Storage, c.v1StorageErr = c.newV1RESTStorage(RESTOptionsGetter, LoopbackClientConfig)
 	})
 
 	return c.v1Storage, c.v1StorageErr
 }
 
-func (c *UserConfig) newV1RESTStorage() (map[string]rest.Storage, error) {
-	userClient, err := userclient.NewForConfig(c.GenericConfig.LoopbackClientConfig)
+func (c *ExtraConfig) newV1RESTStorage(RESTOptionsGetter genericregistry.RESTOptionsGetter, LoopbackClientConfig *restclient.Config) (map[string]rest.Storage, error) {
+	userClient, err := userclient.NewForConfig(LoopbackClientConfig)
 	if err != nil {
 		return nil, err
 	}
-	userStorage, err := useretcd.NewREST(c.GenericConfig.RESTOptionsGetter)
+	userStorage, err := useretcd.NewREST(RESTOptionsGetter)
 	if err != nil {
 		return nil, err
 	}
-	identityStorage, err := identityetcd.NewREST(c.GenericConfig.RESTOptionsGetter)
+	identityStorage, err := identityetcd.NewREST(RESTOptionsGetter)
 	if err != nil {
 		return nil, err
 	}
-	userIdentityMappingStorage := useridentitymapping.NewREST(userClient.Users(), userClient.Identities())
-	groupStorage, err := groupetcd.NewREST(c.GenericConfig.RESTOptionsGetter)
+	userIdentityMappingStorage := useridentitymapping.NewREST(userClient.User().Users(), userClient.User().Identities())
+	groupStorage, err := groupetcd.NewREST(RESTOptionsGetter)
 	if err != nil {
 		return nil, err
 	}

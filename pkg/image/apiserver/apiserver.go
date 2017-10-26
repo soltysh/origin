@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	genericregistry "k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	restclient "k8s.io/client-go/rest"
@@ -36,9 +37,7 @@ import (
 	"github.com/openshift/origin/pkg/image/registry/imagestreamtag"
 )
 
-type ImageAPIServerConfig struct {
-	GenericConfig *genericapiserver.Config
-
+type ExtraConfig struct {
 	CoreAPIServerClientConfig          *restclient.Config
 	LimitVerifier                      imageadmission.LimitVerifier
 	RegistryHostnameRetriever          imageapi.RegistryHostnameRetriever
@@ -55,29 +54,33 @@ type ImageAPIServerConfig struct {
 	v1StorageErr  error
 }
 
+type ImageAPIServerConfig struct {
+	GenericConfig *genericapiserver.RecommendedConfig
+	ExtraConfig   ExtraConfig
+}
+
 type ImageAPIServer struct {
 	GenericAPIServer *genericapiserver.GenericAPIServer
 }
 
 type completedConfig struct {
-	*ImageAPIServerConfig
+	GenericConfig genericapiserver.CompletedConfig
+	ExtraConfig   *ExtraConfig
 }
 
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
 func (c *ImageAPIServerConfig) Complete() completedConfig {
-	c.GenericConfig.Complete()
+	cfg := completedConfig{
+		c.GenericConfig.Complete(),
+		&c.ExtraConfig,
+	}
 
-	return completedConfig{c}
-}
-
-// SkipComplete provides a way to construct a server instance without config completion.
-func (c *ImageAPIServerConfig) SkipComplete() completedConfig {
-	return completedConfig{c}
+	return cfg
 }
 
 // New returns a new instance of ImageAPIServer from the given config.
 func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget) (*ImageAPIServer, error) {
-	genericServer, err := c.ImageAPIServerConfig.GenericConfig.SkipComplete().New("image.openshift.io-apiserver", delegationTarget) // completion is done in Complete, no need for a second time
+	genericServer, err := c.GenericConfig.New("image.openshift.io-apiserver", delegationTarget)
 	if err != nil {
 		return nil, err
 	}
@@ -86,12 +89,12 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		GenericAPIServer: genericServer,
 	}
 
-	v1Storage, err := c.V1RESTStorage()
+	v1Storage, err := c.ExtraConfig.V1RESTStorage(c.GenericConfig.RESTOptionsGetter, c.GenericConfig.LoopbackClientConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(imageapiv1.GroupName, c.Registry, c.Scheme, metav1.ParameterCodec, c.Codecs)
+	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(imageapiv1.GroupName, c.ExtraConfig.Registry, c.ExtraConfig.Scheme, metav1.ParameterCodec, c.ExtraConfig.Codecs)
 	apiGroupInfo.GroupMeta.GroupVersion = imageapiv1.SchemeGroupVersion
 	apiGroupInfo.VersionedResourcesStorageMap[imageapiv1.SchemeGroupVersion.Version] = v1Storage
 	if err := s.GenericAPIServer.InstallAPIGroup(&apiGroupInfo); err != nil {
@@ -101,15 +104,15 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 	return s, nil
 }
 
-func (c *ImageAPIServerConfig) V1RESTStorage() (map[string]rest.Storage, error) {
+func (c *ExtraConfig) V1RESTStorage(RESTOptionsGetter genericregistry.RESTOptionsGetter, LoopbackClientConfig *restclient.Config) (map[string]rest.Storage, error) {
 	c.makeV1Storage.Do(func() {
-		c.v1Storage, c.v1StorageErr = c.newV1RESTStorage()
+		c.v1Storage, c.v1StorageErr = c.newV1RESTStorage(RESTOptionsGetter, LoopbackClientConfig)
 	})
 
 	return c.v1Storage, c.v1StorageErr
 }
 
-func (c *ImageAPIServerConfig) newV1RESTStorage() (map[string]rest.Storage, error) {
+func (c *ExtraConfig) newV1RESTStorage(RESTOptionsGetter genericregistry.RESTOptionsGetter, LoopbackClientConfig *restclient.Config) (map[string]rest.Storage, error) {
 	// TODO: allow the system CAs and the local CAs to be joined together.
 	importTransport, err := restclient.TransportFor(&restclient.Config{})
 	if err != nil {
@@ -128,23 +131,23 @@ func (c *ImageAPIServerConfig) newV1RESTStorage() (map[string]rest.Storage, erro
 	if err != nil {
 		return nil, err
 	}
-	authorizationClient, err := authorizationclient.NewForConfig(c.GenericConfig.LoopbackClientConfig)
+	authorizationClient, err := authorizationclient.NewForConfig(LoopbackClientConfig)
 	if err != nil {
 		return nil, err
 	}
-	imageClient, err := imageclient.NewForConfig(c.GenericConfig.LoopbackClientConfig)
+	imageClient, err := imageclient.NewForConfig(LoopbackClientConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	imageStorage, err := imageetcd.NewREST(c.GenericConfig.RESTOptionsGetter)
+	imageStorage, err := imageetcd.NewREST(RESTOptionsGetter)
 	if err != nil {
 		return nil, fmt.Errorf("error building REST storage: %v", err)
 	}
 	imageRegistry := image.NewRegistry(imageStorage)
 	imageSignatureStorage := imagesignature.NewREST(imageClient)
 	imageStreamSecretsStorage := imagesecret.NewREST(coreClient)
-	imageStreamStorage, imageStreamStatusStorage, internalImageStreamStorage, err := imagestreametcd.NewREST(c.GenericConfig.RESTOptionsGetter, c.RegistryHostnameRetriever, authorizationClient.SubjectAccessReviews(), c.LimitVerifier)
+	imageStreamStorage, imageStreamStatusStorage, internalImageStreamStorage, err := imagestreametcd.NewREST(RESTOptionsGetter, c.RegistryHostnameRetriever, authorizationClient.SubjectAccessReviews(), c.LimitVerifier)
 	if err != nil {
 		return nil, fmt.Errorf("error building REST storage: %v", err)
 	}

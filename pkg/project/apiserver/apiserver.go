@@ -26,9 +26,7 @@ import (
 	templateclient "github.com/openshift/origin/pkg/template/generated/internalclientset"
 )
 
-type ProjectAPIServerConfig struct {
-	GenericConfig *genericapiserver.Config
-
+type ExtraConfig struct {
 	CoreAPIServerClientConfig *restclient.Config
 	KubeInternalInformers     kinternalinformers.SharedInformerFactory
 	ProjectAuthorizationCache *projectauth.AuthorizationCache
@@ -46,30 +44,34 @@ type ProjectAPIServerConfig struct {
 	v1StorageErr  error
 }
 
+type ProjectAPIServerConfig struct {
+	GenericConfig *genericapiserver.RecommendedConfig
+	ExtraConfig   ExtraConfig
+}
+
 // ProjectAPIServer contains state for a Kubernetes cluster master/api server.
 type ProjectAPIServer struct {
 	GenericAPIServer *genericapiserver.GenericAPIServer
 }
 
 type completedConfig struct {
-	*ProjectAPIServerConfig
+	GenericConfig genericapiserver.CompletedConfig
+	ExtraConfig   *ExtraConfig
 }
 
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
 func (c *ProjectAPIServerConfig) Complete() completedConfig {
-	c.GenericConfig.Complete()
+	cfg := completedConfig{
+		c.GenericConfig.Complete(),
+		&c.ExtraConfig,
+	}
 
-	return completedConfig{c}
-}
-
-// SkipComplete provides a way to construct a server instance without config completion.
-func (c *ProjectAPIServerConfig) SkipComplete() completedConfig {
-	return completedConfig{c}
+	return cfg
 }
 
 // New returns a new instance of ProjectAPIServer from the given config.
 func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget) (*ProjectAPIServer, error) {
-	genericServer, err := c.ProjectAPIServerConfig.GenericConfig.SkipComplete().New("project.openshift.io-apiserver", delegationTarget) // completion is done in Complete, no need for a second time
+	genericServer, err := c.GenericConfig.New("project.openshift.io-apiserver", delegationTarget)
 	if err != nil {
 		return nil, err
 	}
@@ -78,12 +80,12 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		GenericAPIServer: genericServer,
 	}
 
-	v1Storage, err := c.V1RESTStorage()
+	v1Storage, err := c.ExtraConfig.V1RESTStorage(c.GenericConfig.LoopbackClientConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(projectapiv1.GroupName, c.Registry, c.Scheme, metav1.ParameterCodec, c.Codecs)
+	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(projectapiv1.GroupName, c.ExtraConfig.Registry, c.ExtraConfig.Scheme, metav1.ParameterCodec, c.ExtraConfig.Codecs)
 	apiGroupInfo.GroupMeta.GroupVersion = projectapiv1.SchemeGroupVersion
 	apiGroupInfo.VersionedResourcesStorageMap[projectapiv1.SchemeGroupVersion.Version] = v1Storage
 	if err := s.GenericAPIServer.InstallAPIGroup(&apiGroupInfo); err != nil {
@@ -93,15 +95,15 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 	return s, nil
 }
 
-func (c *ProjectAPIServerConfig) V1RESTStorage() (map[string]rest.Storage, error) {
+func (c *ExtraConfig) V1RESTStorage(LoopbackClientConfig *restclient.Config) (map[string]rest.Storage, error) {
 	c.makeV1Storage.Do(func() {
-		c.v1Storage, c.v1StorageErr = c.newV1RESTStorage()
+		c.v1Storage, c.v1StorageErr = c.newV1RESTStorage(LoopbackClientConfig)
 	})
 
 	return c.v1Storage, c.v1StorageErr
 }
 
-func (c *ProjectAPIServerConfig) newV1RESTStorage() (map[string]rest.Storage, error) {
+func (c *ExtraConfig) newV1RESTStorage(LoopbackClientConfig *restclient.Config) (map[string]rest.Storage, error) {
 	kubeInternalClient, err := kclientsetinternal.NewForConfig(c.CoreAPIServerClientConfig)
 	if err != nil {
 		return nil, err
@@ -133,7 +135,7 @@ func (c *ProjectAPIServerConfig) newV1RESTStorage() (map[string]rest.Storage, er
 		projectClient.Project(),
 		templateClient,
 		authorizationClient.SubjectAccessReviews(),
-		c.GenericConfig.LoopbackClientConfig,
+		LoopbackClientConfig,
 		c.KubeInternalInformers.Rbac().InternalVersion().RoleBindings().Lister(),
 	)
 

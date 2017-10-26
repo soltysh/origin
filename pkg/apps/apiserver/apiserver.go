@@ -8,11 +8,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	kadmission "k8s.io/apiserver/pkg/admission"
+	genericregistry "k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
+	kclientsetexternal "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	kapi "k8s.io/kubernetes/pkg/api"
-	kclientsetexternal "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	kclientsetinternal "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	kubeletclient "k8s.io/kubernetes/pkg/kubelet/client"
 
@@ -26,10 +28,7 @@ import (
 	imageclientinternal "github.com/openshift/origin/pkg/image/generated/internalclientset"
 )
 
-// AppsConfig is a non-serializeable config for running an apps.openshift.io apiserver
-type AppsConfig struct {
-	GenericConfig *genericapiserver.Config
-
+type ExtraConfig struct {
 	CoreAPIServerClientConfig *restclient.Config
 	KubeletClientConfig       *kubeletclient.KubeletClientConfig
 
@@ -43,30 +42,33 @@ type AppsConfig struct {
 	v1StorageErr  error
 }
 
+type AppsServerConfig struct {
+	GenericConfig *genericapiserver.RecommendedConfig
+	ExtraConfig   ExtraConfig
+}
+
 type AppsServer struct {
 	GenericAPIServer *genericapiserver.GenericAPIServer
 }
 
 type completedConfig struct {
-	*AppsConfig
+	GenericConfig genericapiserver.CompletedConfig
+	ExtraConfig   *ExtraConfig
 }
 
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
-func (c *AppsConfig) Complete() completedConfig {
-	c.GenericConfig.Complete()
+func (c *AppsServerConfig) Complete() completedConfig {
+	cfg := completedConfig{
+		c.GenericConfig.Complete(),
+		&c.ExtraConfig,
+	}
 
-	return completedConfig{c}
-}
-
-// SkipComplete provides a way to construct a server instance without config completion.
-func (c *AppsConfig) SkipComplete() completedConfig {
-	return completedConfig{c}
+	return cfg
 }
 
 // New returns a new instance of AppsServer from the given config.
 func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget) (*AppsServer, error) {
-	// completion is done in Complete, no need for a second time
-	genericServer, err := c.AppsConfig.GenericConfig.SkipComplete().New("apps.openshift.io-apiserver", delegationTarget)
+	genericServer, err := c.GenericConfig.New("apps.openshift.io-apiserver", delegationTarget)
 	if err != nil {
 		return nil, err
 	}
@@ -75,13 +77,13 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		GenericAPIServer: genericServer,
 	}
 
-	v1Storage, err := c.V1RESTStorage()
+	v1Storage, err := c.ExtraConfig.V1RESTStorage(c.GenericConfig.RESTOptionsGetter, c.GenericConfig.LoopbackClientConfig, c.GenericConfig.AdmissionControl)
 	if err != nil {
 		return nil, err
 	}
 
-	parameterCodec := runtime.NewParameterCodec(c.Scheme)
-	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(appsapiv1.GroupName, c.Registry, c.Scheme, parameterCodec, c.Codecs)
+	parameterCodec := runtime.NewParameterCodec(c.ExtraConfig.Scheme)
+	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(appsapiv1.GroupName, c.ExtraConfig.Registry, c.ExtraConfig.Scheme, parameterCodec, c.ExtraConfig.Codecs)
 	apiGroupInfo.GroupMeta.GroupVersion = appsapiv1.SchemeGroupVersion
 	apiGroupInfo.VersionedResourcesStorageMap[appsapiv1.SchemeGroupVersion.Version] = v1Storage
 	if err := s.GenericAPIServer.InstallAPIGroup(&apiGroupInfo); err != nil {
@@ -91,19 +93,19 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 	return s, nil
 }
 
-func (c *AppsConfig) V1RESTStorage() (map[string]rest.Storage, error) {
+func (c *ExtraConfig) V1RESTStorage(RESTOptionsGetter genericregistry.RESTOptionsGetter, LoopbackClientConfig *restclient.Config, AdmissionControl kadmission.Interface) (map[string]rest.Storage, error) {
 	c.makeV1Storage.Do(func() {
-		c.v1Storage, c.v1StorageErr = c.newV1RESTStorage()
+		c.v1Storage, c.v1StorageErr = c.newV1RESTStorage(RESTOptionsGetter, LoopbackClientConfig, AdmissionControl)
 	})
 
 	return c.v1Storage, c.v1StorageErr
 }
 
-func (c *AppsConfig) newV1RESTStorage() (map[string]rest.Storage, error) {
+func (c *ExtraConfig) newV1RESTStorage(RESTOptionsGetter genericregistry.RESTOptionsGetter, LoopbackClientConfig *restclient.Config, AdmissionControl kadmission.Interface) (map[string]rest.Storage, error) {
 	// TODO sort out who is using this and why.  it was hardcoded before the migration and I suspect that it is being used
 	// to serialize out objects into annotations.
 	externalVersionCodec := kapi.Codecs.LegacyCodec(schema.GroupVersion{Group: "", Version: "v1"})
-	openshiftInternalAppsClient, err := appsclientinternal.NewForConfig(c.GenericConfig.LoopbackClientConfig)
+	openshiftInternalAppsClient, err := appsclientinternal.NewForConfig(LoopbackClientConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +127,7 @@ func (c *AppsConfig) newV1RESTStorage() (map[string]rest.Storage, error) {
 		return nil, fmt.Errorf("unable to configure the node connection info getter: %v", err)
 	}
 
-	deployConfigStorage, deployConfigStatusStorage, deployConfigScaleStorage, err := deployconfigetcd.NewREST(c.GenericConfig.RESTOptionsGetter)
+	deployConfigStorage, deployConfigStatusStorage, deployConfigScaleStorage, err := deployconfigetcd.NewREST(RESTOptionsGetter)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +136,7 @@ func (c *AppsConfig) newV1RESTStorage() (map[string]rest.Storage, error) {
 		openshiftInternalImageClient,
 		kubeInternalClient,
 		externalVersionCodec,
-		c.GenericConfig.AdmissionControl,
+		AdmissionControl,
 	)
 	deployConfigRollbackStorage := deployrollback.NewREST(openshiftInternalAppsClient, kubeInternalClient, externalVersionCodec)
 
@@ -143,7 +145,7 @@ func (c *AppsConfig) newV1RESTStorage() (map[string]rest.Storage, error) {
 	v1Storage["deploymentConfigs/scale"] = deployConfigScaleStorage
 	v1Storage["deploymentConfigs/status"] = deployConfigStatusStorage
 	v1Storage["deploymentConfigs/rollback"] = deployConfigRollbackStorage
-	v1Storage["deploymentConfigs/log"] = deploylogregistry.NewREST(openshiftInternalAppsClient, kubeInternalClient.Core(), kubeInternalClient.Core(), nodeConnectionInfoGetter)
+	v1Storage["deploymentConfigs/log"] = deploylogregistry.NewREST(openshiftInternalAppsClient.Apps(), kubeInternalClient.Core(), kubeInternalClient.Core(), nodeConnectionInfoGetter)
 	v1Storage["deploymentConfigs/instantiate"] = dcInstantiateStorage
 	return v1Storage, nil
 }

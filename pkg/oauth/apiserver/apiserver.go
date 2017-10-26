@@ -6,6 +6,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	genericregistry "k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -26,9 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type OAuthAPIServerConfig struct {
-	GenericConfig *genericapiserver.Config
-
+type ExtraConfig struct {
 	CoreAPIServerClientConfig *restclient.Config
 	ServiceAccountMethod      configapi.GrantHandlerType
 
@@ -41,30 +40,33 @@ type OAuthAPIServerConfig struct {
 	v1Storage     map[string]rest.Storage
 	v1StorageErr  error
 }
+type OAuthAPIServerConfig struct {
+	GenericConfig *genericapiserver.RecommendedConfig
+	ExtraConfig   ExtraConfig
+}
 
 type OAuthAPIServer struct {
 	GenericAPIServer *genericapiserver.GenericAPIServer
 }
 
 type completedConfig struct {
-	*OAuthAPIServerConfig
+	GenericConfig genericapiserver.CompletedConfig
+	ExtraConfig   *ExtraConfig
 }
 
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
 func (c *OAuthAPIServerConfig) Complete() completedConfig {
-	c.GenericConfig.Complete()
+	cfg := completedConfig{
+		c.GenericConfig.Complete(),
+		&c.ExtraConfig,
+	}
 
-	return completedConfig{c}
-}
-
-// SkipComplete provides a way to construct a server instance without config completion.
-func (c *OAuthAPIServerConfig) SkipComplete() completedConfig {
-	return completedConfig{c}
+	return cfg
 }
 
 // New returns a new instance of OAuthAPIServer from the given config.
 func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget) (*OAuthAPIServer, error) {
-	genericServer, err := c.OAuthAPIServerConfig.GenericConfig.SkipComplete().New("oauth.openshift.io-apiserver", delegationTarget) // completion is done in Complete, no need for a second time
+	genericServer, err := c.GenericConfig.New("oauth.openshift.io-apiserver", delegationTarget)
 	if err != nil {
 		return nil, err
 	}
@@ -73,12 +75,12 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		GenericAPIServer: genericServer,
 	}
 
-	v1Storage, err := c.V1RESTStorage()
+	v1Storage, err := c.ExtraConfig.V1RESTStorage(c.GenericConfig.RESTOptionsGetter, c.GenericConfig.LoopbackClientConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(oauthapiv1.GroupName, c.Registry, c.Scheme, metav1.ParameterCodec, c.Codecs)
+	apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo(oauthapiv1.GroupName, c.ExtraConfig.Registry, c.ExtraConfig.Scheme, metav1.ParameterCodec, c.ExtraConfig.Codecs)
 	apiGroupInfo.GroupMeta.GroupVersion = oauthapiv1.SchemeGroupVersion
 	apiGroupInfo.VersionedResourcesStorageMap[oauthapiv1.SchemeGroupVersion.Version] = v1Storage
 	if err := s.GenericAPIServer.InstallAPIGroup(&apiGroupInfo); err != nil {
@@ -88,17 +90,17 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 	return s, nil
 }
 
-func (c *OAuthAPIServerConfig) V1RESTStorage() (map[string]rest.Storage, error) {
+func (c *ExtraConfig) V1RESTStorage(RESTOptionsGetter genericregistry.RESTOptionsGetter, LoopbackClientConfig *restclient.Config) (map[string]rest.Storage, error) {
 	c.makeV1Storage.Do(func() {
-		c.v1Storage, c.v1StorageErr = c.newV1RESTStorage()
+		c.v1Storage, c.v1StorageErr = c.newV1RESTStorage(RESTOptionsGetter, LoopbackClientConfig)
 	})
 
 	return c.v1Storage, c.v1StorageErr
 }
 
-func (c *OAuthAPIServerConfig) newV1RESTStorage() (map[string]rest.Storage, error) {
+func (c *ExtraConfig) newV1RESTStorage(RESTOptionsGetter genericregistry.RESTOptionsGetter, LoopbackClientConfig *restclient.Config) (map[string]rest.Storage, error) {
 
-	clientStorage, err := clientetcd.NewREST(c.GenericConfig.RESTOptionsGetter)
+	clientStorage, err := clientetcd.NewREST(RESTOptionsGetter)
 	if err != nil {
 		return nil, fmt.Errorf("error building REST storage: %v", err)
 	}
@@ -110,7 +112,7 @@ func (c *OAuthAPIServerConfig) newV1RESTStorage() (map[string]rest.Storage, erro
 		saAccountGrantMethod = oauthapi.GrantHandlerType(c.ServiceAccountMethod)
 	}
 
-	oauthClient, err := oauthclient.NewForConfig(c.GenericConfig.LoopbackClientConfig)
+	oauthClient, err := oauthclient.NewForConfig(LoopbackClientConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -131,19 +133,19 @@ func (c *OAuthAPIServerConfig) newV1RESTStorage() (map[string]rest.Storage, erro
 		coreClient,
 		coreClient,
 		coreV1Client.Events(""),
-		routeClient,
+		routeClient.Route(),
 		oauthClient.OAuthClients(),
 		saAccountGrantMethod,
 	)
-	authorizeTokenStorage, err := authorizetokenetcd.NewREST(c.GenericConfig.RESTOptionsGetter, combinedOAuthClientGetter)
+	authorizeTokenStorage, err := authorizetokenetcd.NewREST(RESTOptionsGetter, combinedOAuthClientGetter)
 	if err != nil {
 		return nil, fmt.Errorf("error building REST storage: %v", err)
 	}
-	accessTokenStorage, err := accesstokenetcd.NewREST(c.GenericConfig.RESTOptionsGetter, combinedOAuthClientGetter)
+	accessTokenStorage, err := accesstokenetcd.NewREST(RESTOptionsGetter, combinedOAuthClientGetter)
 	if err != nil {
 		return nil, fmt.Errorf("error building REST storage: %v", err)
 	}
-	clientAuthorizationStorage, err := clientauthetcd.NewREST(c.GenericConfig.RESTOptionsGetter, combinedOAuthClientGetter)
+	clientAuthorizationStorage, err := clientauthetcd.NewREST(RESTOptionsGetter, combinedOAuthClientGetter)
 	if err != nil {
 		return nil, fmt.Errorf("error building REST storage: %v", err)
 	}
