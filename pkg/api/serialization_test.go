@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"github.com/google/gofuzz"
-	apitesting "k8s.io/apimachinery/pkg/api/testing"
+
+	"k8s.io/apimachinery/pkg/api/testing/fuzzer"
+	"k8s.io/apimachinery/pkg/api/testing/roundtrip"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -37,8 +39,7 @@ import (
 )
 
 func originFuzzer(t *testing.T, seed int64) *fuzz.Fuzzer {
-	f := apitesting.FuzzerFor(apitesting.GenericFuzzerFuncs(t, kapi.Codecs), rand.NewSource(seed))
-	f.Funcs(kapitesting.FuzzerFuncs(t, kapi.Codecs)...)
+	f := fuzzer.FuzzerFor(kapitesting.FuzzerFuncs, rand.NewSource(seed), kapi.Codecs)
 	f.Funcs(
 		// Roles and RoleBindings maps are never nil
 		func(j *authorizationapi.Policy, c fuzz.Continue) {
@@ -522,7 +523,7 @@ func TestSpecificKind(t *testing.T) {
 	// TODO: make upstream CodecFactory customizable
 	codecs := serializer.NewCodecFactory(kapi.Scheme)
 	for i := 0; i < fuzzIters; i++ {
-		apitesting.RoundTripSpecificKindWithoutProtobuf(t, gvk, kapi.Scheme, codecs, fuzzer, nil)
+		roundtrip.RoundTripSpecificKindWithoutProtobuf(t, gvk, kapi.Scheme, codecs, fuzzer, nil)
 	}
 }
 
@@ -543,7 +544,7 @@ func TestRoundTripTypes(t *testing.T) {
 		componentconfig.SchemeGroupVersion.WithKind("KubeSchedulerConfiguration"): true,
 	}
 
-	apitesting.RoundTripTypes(t, kapi.Scheme, kapi.Codecs, fuzzer, mergeGvks(kubeExceptions, dockerImageTypes))
+	roundtrip.RoundTripTypes(t, kapi.Scheme, kapi.Codecs, fuzzer, mergeGvks(kubeExceptions, dockerImageTypes))
 }
 
 // TestRoundTripDockerImage tests DockerImage whether it serializes from/into docker's registry API.
@@ -552,8 +553,8 @@ func TestRoundTripDockerImage(t *testing.T) {
 	fuzzer := originFuzzer(t, seed)
 
 	for gvk := range dockerImageTypes {
-		apitesting.RoundTripSpecificKindWithoutProtobuf(t, gvk, kapi.Scheme, kapi.Codecs, fuzzer, nil)
-		apitesting.RoundTripSpecificKindWithoutProtobuf(t, gvk, kapi.Scheme, kapi.Codecs, fuzzer, nil)
+		roundtrip.RoundTripSpecificKindWithoutProtobuf(t, gvk, kapi.Scheme, kapi.Codecs, fuzzer, nil)
+		roundtrip.RoundTripSpecificKindWithoutProtobuf(t, gvk, kapi.Scheme, kapi.Codecs, fuzzer, nil)
 	}
 }
 
