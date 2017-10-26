@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apimachinery/pkg/util/wait"
 	kexternalcoreinformers "k8s.io/client-go/informers/core/v1"
+	kexternalclientset "k8s.io/client-go/kubernetes"
 	kexternalcoreclient "k8s.io/client-go/kubernetes/typed/core/v1"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	v1lister "k8s.io/client-go/listers/core/v1"
@@ -24,7 +25,6 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	kapi "k8s.io/kubernetes/pkg/api"
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	kexternalclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	"github.com/openshift/origin/pkg/api/meta"
 	buildapi "github.com/openshift/origin/pkg/build/apis/build"
@@ -426,7 +426,7 @@ func (bc *BuildController) handleNewBuild(build *buildapi.Build, pod *v1.Pod) (*
 	// means that the build is active and its status should be updated
 	if pod != nil {
 		//TODO: Use a better way to determine whether the pod corresponds to the build (maybe using the owner field)
-		if !pod.CreationTimestamp.Before(build.CreationTimestamp) {
+		if !pod.CreationTimestamp.Before(&build.CreationTimestamp) {
 			return bc.handleActiveBuild(build, pod)
 		}
 		// If a pod was created before the current build, move the build to error
@@ -871,7 +871,7 @@ func (bc *BuildController) createBuildPod(build *buildapi.Build) (*buildUpdate, 
 
 			// If the existing pod was created before this build, switch to the Error state.
 			existingPod, err := bc.podClient.Pods(build.Namespace).Get(buildPod.Name, metav1.GetOptions{})
-			if err == nil && existingPod.CreationTimestamp.Before(build.CreationTimestamp) {
+			if err == nil && existingPod.CreationTimestamp.Before(&build.CreationTimestamp) {
 				update = transitionToPhase(buildapi.BuildPhaseError, buildapi.StatusReasonBuildPodExists, buildapi.StatusMessageBuildPodExists)
 				return update, nil
 			}
