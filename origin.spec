@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 00d4a91eadd570eaf38c3c3ec99c372aaca9d3be
+%global commit 333a034b318a01f5f0e625d8976a89a1dcd2f0dc
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.0-0.177.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.0-rc2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=00d4a91
+%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.0-0.178.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.0-rc2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=333a034
 }
 
 %if 0%{?skip_build}
@@ -59,7 +59,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        3.7.0
-Release:        0.178.0%{?dist}
+Release:        0.178.1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -656,6 +656,21 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Thu Oct 26 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.7.0-0.178.1
+- Fix the check for "pod has HostPorts" (danw@redhat.com)
+- Verify layer sizes in the integrated registry (obulatov@redhat.com)
+- bump(github.com/openshift/origin-web-console):
+  6960e4f7d85d9aa6506a28091b5197a7f32b548d (eparis+openshiftbot@redhat.com)
+- validate user-specified resource, if given (jvallejo@redhat.com)
+- parse resource name before removing deleted secret (jvallejo@redhat.com)
+- UPSTREAM: 53720: Optimize random string generator to avoid multiple locks.
+  This is a modified version of the upstream 53720, as SafeEncodeString
+  function does not exist in 3.7. (avagarwa@redhat.com)
+- UPSTREAM: 53793: User separate client for leader election in scheduler 1.7 PR
+  is https://github.com/kubernetes/kubernetes/pull/53884 (avagarwa@redhat.com)
+- UPSTREAM: 53989: Remove repeated random string generations in scheduler
+  volume predicate (avagarwa@redhat.com)
+
 * Wed Oct 25 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.7.0-0.178.0
 - prevent client from looking up specific node (jvallejo@redhat.com)
 - bump(github.com/openshift/origin-web-console):
