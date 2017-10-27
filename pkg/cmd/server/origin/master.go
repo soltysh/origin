@@ -78,12 +78,16 @@ func (c *MasterConfig) newOpenshiftAPIConfig(kubeAPIServerConfig apiserver.Confi
 
 func (c *MasterConfig) newOpenshiftNonAPIConfig(kubeAPIServerConfig apiserver.Config, controllerPlug plug.Plug) *OpenshiftNonAPIConfig {
 	ret := &OpenshiftNonAPIConfig{
-		GenericConfig:  &kubeAPIServerConfig,
-		ControllerPlug: controllerPlug,
-		EnableOAuth:    c.Options.OAuthConfig != nil,
+		GenericConfig: &apiserver.RecommendedConfig{
+			Config: kubeAPIServerConfig,
+		},
+		ExtraConfig: ExtraConfig{
+			ControllerPlug: controllerPlug,
+			EnableOAuth:    c.Options.OAuthConfig != nil,
+		},
 	}
 	if c.Options.OAuthConfig != nil {
-		ret.MasterPublicURL = c.Options.OAuthConfig.MasterPublicURL
+		ret.ExtraConfig.MasterPublicURL = c.Options.OAuthConfig.MasterPublicURL
 	}
 
 	return ret
@@ -138,7 +142,7 @@ func (c *MasterConfig) withKubeAPI(delegateAPIServer apiserver.DelegationTarget,
 	if err != nil {
 		return nil, err
 	}
-	kubeAPIServer, err := kubeAPIServerConfig.Complete().New(delegateAPIServer, nil /*this is only used for tpr migration and we don't have any to migrate*/)
+	kubeAPIServer, err := kubeAPIServerConfig.Complete(c.ClientGoKubeInformers).New(delegateAPIServer)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +192,7 @@ func (c *MasterConfig) newOAuthServerHandler(genericConfig *apiserver.Config) (h
 		nil
 }
 
-func (c *MasterConfig) withAggregator(delegateAPIServer apiserver.DelegationTarget, kubeAPIServerConfig apiserver.Config, apiExtensionsInformers apiextensionsinformers.SharedInformerFactory) (*aggregatorapiserver.APIAggregator, error) {
+func (c *MasterConfig) withAggregator(delegateAPIServer apiserver.DelegationTarget, kubeAPIServerConfig apiserver.RecommendedConfig, apiExtensionsInformers apiextensionsinformers.SharedInformerFactory) (*aggregatorapiserver.APIAggregator, error) {
 	aggregatorConfig, err := c.createAggregatorConfig(kubeAPIServerConfig)
 	if err != nil {
 		return nil, err
@@ -232,7 +236,7 @@ func (c *MasterConfig) Run(controllerPlug plug.Plug, stopCh <-chan struct{}) err
 	if err != nil {
 		return err
 	}
-	aggregatedAPIServer, err := c.withAggregator(delegateAPIServer, *c.kubeAPIServerConfig.GenericConfig, apiExtensionsInformers)
+	aggregatedAPIServer, err := c.withAggregator(delegateAPIServer, *c.kubeAPIServerConfig, apiExtensionsInformers)
 	if err != nil {
 		return err
 	}
