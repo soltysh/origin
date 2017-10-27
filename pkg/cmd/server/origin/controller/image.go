@@ -11,10 +11,10 @@ import (
 	kextensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	kclientsetexternal "k8s.io/client-go/kubernetes"
 	kv1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	kapi "k8s.io/kubernetes/pkg/api"
 	kbatchv2alpha1 "k8s.io/kubernetes/pkg/apis/batch/v2alpha1"
-	kclientsetexternal "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	buildclient "github.com/openshift/origin/pkg/build/client"
 	"github.com/openshift/origin/pkg/cmd/server/bootstrappolicy"

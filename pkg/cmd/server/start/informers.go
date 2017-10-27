@@ -5,10 +5,10 @@ import (
 
 	kexternalinformers "k8s.io/client-go/informers"
 	kubeclientgoinformers "k8s.io/client-go/informers"
+	kclientsetexternal "k8s.io/client-go/kubernetes"
 	kubeclientgoclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	kclientsetexternal "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	kclientsetinternal "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	kinternalinformers "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion"
 

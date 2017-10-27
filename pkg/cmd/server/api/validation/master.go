@@ -18,10 +18,10 @@ import (
 	auditvalidation "k8s.io/apiserver/pkg/apis/audit/validation"
 	auditpolicy "k8s.io/apiserver/pkg/audit/policy"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/cert"
 	apiserveroptions "k8s.io/kubernetes/cmd/kube-apiserver/app/options"
 	kcmoptions "k8s.io/kubernetes/cmd/kube-controller-manager/app/options"
 	kvalidation "k8s.io/kubernetes/pkg/api/validation"
-	"k8s.io/kubernetes/staging/src/k8s.io/client-go/util/cert"
 
 	"github.com/openshift/origin/pkg/cmd/server/api"
 	"github.com/openshift/origin/pkg/cmd/server/bootstrappolicy"
