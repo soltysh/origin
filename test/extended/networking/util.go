@@ -10,12 +10,13 @@ import (
 	testexutil "github.com/openshift/origin/test/extended/util"
 	testutil "github.com/openshift/origin/test/util"
 
-	kapiv1 "k8s.io/api/core/v1"
-	kapiv1pod "k8s.io/api/core/v1/pod"
+	corev1 "k8s.io/api/core/v1"
 	kapierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kclientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
-	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	kapiv1 "k8s.io/kubernetes/pkg/api/v1"
+	kapiv1pod "k8s.io/kubernetes/pkg/api/v1/pod"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
@@ -46,16 +47,16 @@ func expectNoError(err error, explain ...interface{}) {
 }
 
 // podReady returns whether pod has a condition of Ready with a status of true.
-func podReady(pod *kapiv1.Pod) bool {
+func podReady(pod *corev1.Pod) bool {
 	for _, cond := range pod.Status.Conditions {
-		if cond.Type == kapiv1.PodReady && cond.Status == kapiv1.ConditionTrue {
+		if cond.Type == corev1.PodReady && cond.Status == corev1.ConditionTrue {
 			return true
 		}
 	}
 	return false
 }
 
-type podCondition func(pod *kapiv1.Pod) (bool, error)
+type podCondition func(pod *corev1.Pod) (bool, error)
 
 func waitForPodCondition(c kclientset.Interface, ns, podName, desc string, timeout time.Duration, condition podCondition) error {
 	e2e.Logf("Waiting up to %[1]v for pod %-[2]*[3]s status to be %[4]s", timeout, podPrintWidth, podName, desc)
@@ -80,7 +81,7 @@ func waitForPodCondition(c kclientset.Interface, ns, podName, desc string, timeo
 
 // waitForPodSuccessInNamespace returns nil if the pod reached state success, or an error if it reached failure or ran too long.
 func waitForPodSuccessInNamespace(c kclientset.Interface, podName string, contName string, namespace string) error {
-	return waitForPodCondition(c, namespace, podName, "success or failure", podStartTimeout, func(pod *kapiv1.Pod) (bool, error) {
+	return waitForPodCondition(c, namespace, podName, "success or failure", podStartTimeout, func(pod *corev1.Pod) (bool, error) {
 		// Cannot use pod.Status.Phase == api.PodSucceeded/api.PodFailed due to #2632
 		ci, ok := kapiv1pod.GetContainerStatus(pod.Status.ContainerStatuses, contName)
 		if !ok {
@@ -137,15 +138,15 @@ func launchWebserverService(f *e2e.Framework, serviceName string, nodeName strin
 	expectNoError(err)
 
 	servicePort := 8080
-	service := &kapiv1.Service{
+	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: serviceName,
 		},
-		Spec: kapiv1.ServiceSpec{
-			Type: kapiv1.ServiceTypeClusterIP,
-			Ports: []kapiv1.ServicePort{
+		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceTypeClusterIP,
+			Ports: []corev1.ServicePort{
 				{
-					Protocol: kapiv1.ProtocolTCP,
+					Protocol: corev1.ProtocolTCP,
 					Port:     int32(servicePort),
 				},
 			},
@@ -167,7 +168,7 @@ func launchWebserverService(f *e2e.Framework, serviceName string, nodeName strin
 
 func checkConnectivityToHost(f *e2e.Framework, nodeName string, podName string, host string, timeout time.Duration) error {
 	e2e.Logf("Creating an exec pod on node %v", nodeName)
-	execPodName := e2e.CreateExecPodOrFail(f.ClientSet, f.Namespace.Name, fmt.Sprintf("execpod-sourceip-%s", nodeName), func(pod *kapiv1.Pod) {
+	execPodName := e2e.CreateExecPodOrFail(f.ClientSet, f.Namespace.Name, fmt.Sprintf("execpod-sourceip-%s", nodeName), func(pod *corev1.Pod) {
 		pod.Spec.NodeName = nodeName
 	})
 	defer func() {
@@ -205,20 +206,20 @@ func pluginImplementsNetworkPolicy() bool {
 	return os.Getenv("NETWORKING_E2E_NETWORKPOLICY") == "true"
 }
 
-func makeNamespaceGlobal(ns *kapiv1.Namespace) {
+func makeNamespaceGlobal(ns *corev1.Namespace) {
 	clientConfig, err := testutil.GetClusterAdminClientConfig(testexutil.KubeConfigPath())
 	networkClient := networkclient.NewForConfigOrDie(clientConfig)
 	expectNoError(err)
-	netns, err := networkClient.NetNamespaces().Get(ns.Name, metav1.GetOptions{})
+	netns, err := networkClient.Network().NetNamespaces().Get(ns.Name, metav1.GetOptions{})
 	expectNoError(err)
 	netns.NetID = 0
-	_, err = networkClient.NetNamespaces().Update(netns)
+	_, err = networkClient.Network().NetNamespaces().Update(netns)
 	expectNoError(err)
 }
 
 func checkPodIsolation(f1, f2 *e2e.Framework, nodeType NodeType) error {
 	nodes := e2e.GetReadySchedulableNodesOrDie(f1.ClientSet)
-	var serverNode, clientNode *kapiv1.Node
+	var serverNode, clientNode *corev1.Node
 	serverNode = &nodes.Items[0]
 	if nodeType == DIFFERENT_NODE {
 		if len(nodes.Items) == 1 {
@@ -238,7 +239,7 @@ func checkPodIsolation(f1, f2 *e2e.Framework, nodeType NodeType) error {
 
 func checkServiceConnectivity(serverFramework, clientFramework *e2e.Framework, nodeType NodeType) error {
 	nodes := e2e.GetReadySchedulableNodesOrDie(serverFramework.ClientSet)
-	var serverNode, clientNode *kapiv1.Node
+	var serverNode, clientNode *corev1.Node
 	serverNode = &nodes.Items[0]
 	if nodeType == DIFFERENT_NODE {
 		if len(nodes.Items) == 1 {

@@ -19,7 +19,6 @@ import (
 	"k8s.io/client-go/util/retry"
 	kapi "k8s.io/kubernetes/pkg/api"
 	kapiv1 "k8s.io/kubernetes/pkg/api/v1"
-	kcontroller "k8s.io/kubernetes/pkg/controller"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
 	deployapi "github.com/openshift/origin/pkg/apps/apis/apps"
@@ -411,7 +410,7 @@ func isControllerRefChange(controllee metav1.Object, old *metav1.OwnerReference)
 	if old != nil && old.Controller != nil && *old.Controller == false {
 		return false, fmt.Errorf("old ownerReference is not a controllerRef")
 	}
-	return !reflect.DeepEqual(old, kcontroller.GetControllerOf(controllee)), nil
+	return !reflect.DeepEqual(old, metav1.GetControllerOf(controllee)), nil
 }
 
 func controllerRefChangeCondition(old *metav1.OwnerReference) func(controllee metav1.Object) (bool, error) {
@@ -591,7 +590,7 @@ func failureTrapForDetachedRCs(oc *exutil.CLI, dcName string, failed bool) {
 // Checks controllerRef from controllee to DC.
 // Return true is the controllerRef is valid, false otherwise
 func HasValidDCControllerRef(dc metav1.Object, controllee metav1.Object) bool {
-	ref := kcontroller.GetControllerOf(controllee)
+	ref := metav1.GetControllerOf(controllee)
 	return ref != nil &&
 		ref.UID == dc.GetUID() &&
 		ref.APIVersion == deployutil.DeploymentConfigControllerRefKind.GroupVersion().String() &&
