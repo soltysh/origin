@@ -1,6 +1,8 @@
 package dockerpre012
 
 import (
+	"time"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -60,17 +62,17 @@ type DockerConfig struct {
 // earlier versions of the Docker API (pre-012 to be specific)
 // Exists only for legacy conversion, copy of type from fsouza/go-dockerclient
 type ImagePre012 struct {
-	ID              string      `json:"id"`
-	Parent          string      `json:"parent,omitempty"`
-	Comment         string      `json:"comment,omitempty"`
-	Created         metav1.Time `json:"created"`
-	Container       string      `json:"container,omitempty"`
-	ContainerConfig Config      `json:"container_config,omitempty"`
-	DockerVersion   string      `json:"docker_version,omitempty"`
-	Author          string      `json:"author,omitempty"`
-	Config          *Config     `json:"config,omitempty"`
-	Architecture    string      `json:"architecture,omitempty"`
-	Size            int64       `json:"size,omitempty"`
+	ID              string    `json:"id"`
+	Parent          string    `json:"parent,omitempty"`
+	Comment         string    `json:"comment,omitempty"`
+	Created         time.Time `json:"created"`
+	Container       string    `json:"container,omitempty"`
+	ContainerConfig Config    `json:"container_config,omitempty"`
+	DockerVersion   string    `json:"docker_version,omitempty"`
+	Author          string    `json:"author,omitempty"`
+	Config          *Config   `json:"config,omitempty"`
+	Architecture    string    `json:"architecture,omitempty"`
+	Size            int64     `json:"size,omitempty"`
 }
 
 // Config is the list of configuration options used when creating a container.
