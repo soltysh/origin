@@ -59,6 +59,11 @@ type completedConfig struct {
 	ExtraConfig   *ExtraConfig
 }
 
+type CompletedConfig struct {
+	// Embed a private pointer that cannot be instantiated outside of this package.
+	*completedConfig
+}
+
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
 func (c *ProjectAPIServerConfig) Complete() completedConfig {
 	cfg := completedConfig{
@@ -80,7 +85,7 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		GenericAPIServer: genericServer,
 	}
 
-	v1Storage, err := c.ExtraConfig.V1RESTStorage(c.GenericConfig.LoopbackClientConfig)
+	v1Storage, err := c.V1RESTStorage()
 	if err != nil {
 		return nil, err
 	}
@@ -95,48 +100,48 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 	return s, nil
 }
 
-func (c *ExtraConfig) V1RESTStorage(LoopbackClientConfig *restclient.Config) (map[string]rest.Storage, error) {
-	c.makeV1Storage.Do(func() {
-		c.v1Storage, c.v1StorageErr = c.newV1RESTStorage(LoopbackClientConfig)
+func (c *completedConfig) V1RESTStorage() (map[string]rest.Storage, error) {
+	c.ExtraConfig.makeV1Storage.Do(func() {
+		c.ExtraConfig.v1Storage, c.ExtraConfig.v1StorageErr = c.newV1RESTStorage()
 	})
 
-	return c.v1Storage, c.v1StorageErr
+	return c.ExtraConfig.v1Storage, c.ExtraConfig.v1StorageErr
 }
 
-func (c *ExtraConfig) newV1RESTStorage(LoopbackClientConfig *restclient.Config) (map[string]rest.Storage, error) {
-	kubeInternalClient, err := kclientsetinternal.NewForConfig(c.CoreAPIServerClientConfig)
+func (c *completedConfig) newV1RESTStorage() (map[string]rest.Storage, error) {
+	kubeInternalClient, err := kclientsetinternal.NewForConfig(c.ExtraConfig.CoreAPIServerClientConfig)
 	if err != nil {
 		return nil, err
 	}
-	projectClient, err := projectclient.NewForConfig(c.CoreAPIServerClientConfig)
+	projectClient, err := projectclient.NewForConfig(c.ExtraConfig.CoreAPIServerClientConfig)
 	if err != nil {
 		return nil, err
 	}
-	templateClient, err := templateclient.NewForConfig(c.CoreAPIServerClientConfig)
+	templateClient, err := templateclient.NewForConfig(c.ExtraConfig.CoreAPIServerClientConfig)
 	if err != nil {
 		return nil, err
 	}
-	authorizationClient, err := authorizationclient.NewForConfig(c.CoreAPIServerClientConfig)
+	authorizationClient, err := authorizationclient.NewForConfig(c.ExtraConfig.CoreAPIServerClientConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	projectStorage := projectproxy.NewREST(kubeInternalClient.Core().Namespaces(), c.ProjectAuthorizationCache, c.ProjectAuthorizationCache, c.ProjectCache)
+	projectStorage := projectproxy.NewREST(kubeInternalClient.Core().Namespaces(), c.ExtraConfig.ProjectAuthorizationCache, c.ExtraConfig.ProjectAuthorizationCache, c.ExtraConfig.ProjectCache)
 
-	namespace, templateName, err := configapi.ParseNamespaceAndName(c.ProjectRequestTemplate)
+	namespace, templateName, err := configapi.ParseNamespaceAndName(c.ExtraConfig.ProjectRequestTemplate)
 	if err != nil {
 		glog.Errorf("Error parsing project request template value: %v", err)
 		// we can continue on, the storage that gets created will be valid, it simply won't work properly.  There's no reason to kill the master
 	}
 
 	projectRequestStorage := projectrequeststorage.NewREST(
-		c.ProjectRequestMessage,
+		c.ExtraConfig.ProjectRequestMessage,
 		namespace, templateName,
 		projectClient.Project(),
 		templateClient,
 		authorizationClient.SubjectAccessReviews(),
-		LoopbackClientConfig,
-		c.KubeInternalInformers.Rbac().InternalVersion().RoleBindings().Lister(),
+		c.GenericConfig.LoopbackClientConfig,
+		c.ExtraConfig.KubeInternalInformers.Rbac().InternalVersion().RoleBindings().Lister(),
 	)
 
 	v1Storage := map[string]rest.Storage{}

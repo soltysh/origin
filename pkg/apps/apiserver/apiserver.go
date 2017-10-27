@@ -8,8 +8,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	kadmission "k8s.io/apiserver/pkg/admission"
-	genericregistry "k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	kclientsetexternal "k8s.io/client-go/kubernetes"
@@ -56,6 +54,11 @@ type completedConfig struct {
 	ExtraConfig   *ExtraConfig
 }
 
+type CompletedConfig struct {
+	// Embed a private pointer that cannot be instantiated outside of this package.
+	*completedConfig
+}
+
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
 func (c *AppsServerConfig) Complete() completedConfig {
 	cfg := completedConfig{
@@ -77,7 +80,7 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		GenericAPIServer: genericServer,
 	}
 
-	v1Storage, err := c.ExtraConfig.V1RESTStorage(c.GenericConfig.RESTOptionsGetter, c.GenericConfig.LoopbackClientConfig, c.GenericConfig.AdmissionControl)
+	v1Storage, err := c.V1RESTStorage()
 	if err != nil {
 		return nil, err
 	}
@@ -93,41 +96,41 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 	return s, nil
 }
 
-func (c *ExtraConfig) V1RESTStorage(RESTOptionsGetter genericregistry.RESTOptionsGetter, LoopbackClientConfig *restclient.Config, AdmissionControl kadmission.Interface) (map[string]rest.Storage, error) {
-	c.makeV1Storage.Do(func() {
-		c.v1Storage, c.v1StorageErr = c.newV1RESTStorage(RESTOptionsGetter, LoopbackClientConfig, AdmissionControl)
+func (c *completedConfig) V1RESTStorage() (map[string]rest.Storage, error) {
+	c.ExtraConfig.makeV1Storage.Do(func() {
+		c.ExtraConfig.v1Storage, c.ExtraConfig.v1StorageErr = c.newV1RESTStorage()
 	})
 
-	return c.v1Storage, c.v1StorageErr
+	return c.ExtraConfig.v1Storage, c.ExtraConfig.v1StorageErr
 }
 
-func (c *ExtraConfig) newV1RESTStorage(RESTOptionsGetter genericregistry.RESTOptionsGetter, LoopbackClientConfig *restclient.Config, AdmissionControl kadmission.Interface) (map[string]rest.Storage, error) {
+func (c *completedConfig) newV1RESTStorage() (map[string]rest.Storage, error) {
 	// TODO sort out who is using this and why.  it was hardcoded before the migration and I suspect that it is being used
 	// to serialize out objects into annotations.
 	externalVersionCodec := kapi.Codecs.LegacyCodec(schema.GroupVersion{Group: "", Version: "v1"})
-	openshiftInternalAppsClient, err := appsclientinternal.NewForConfig(LoopbackClientConfig)
+	openshiftInternalAppsClient, err := appsclientinternal.NewForConfig(c.GenericConfig.LoopbackClientConfig)
 	if err != nil {
 		return nil, err
 	}
 	// This client is using the core api server client config, since the apps server doesn't host images
-	openshiftInternalImageClient, err := imageclientinternal.NewForConfig(c.CoreAPIServerClientConfig)
+	openshiftInternalImageClient, err := imageclientinternal.NewForConfig(c.ExtraConfig.CoreAPIServerClientConfig)
 	if err != nil {
 		return nil, err
 	}
-	kubeInternalClient, err := kclientsetinternal.NewForConfig(c.CoreAPIServerClientConfig)
+	kubeInternalClient, err := kclientsetinternal.NewForConfig(c.ExtraConfig.CoreAPIServerClientConfig)
 	if err != nil {
 		return nil, err
 	}
-	kubeExternalClient, err := kclientsetexternal.NewForConfig(c.CoreAPIServerClientConfig)
+	kubeExternalClient, err := kclientsetexternal.NewForConfig(c.ExtraConfig.CoreAPIServerClientConfig)
 	if err != nil {
 		return nil, err
 	}
-	nodeConnectionInfoGetter, err := kubeletclient.NewNodeConnectionInfoGetter(kubeExternalClient.CoreV1().Nodes(), *c.KubeletClientConfig)
+	nodeConnectionInfoGetter, err := kubeletclient.NewNodeConnectionInfoGetter(kubeExternalClient.CoreV1().Nodes(), *c.ExtraConfig.KubeletClientConfig)
 	if err != nil {
 		return nil, fmt.Errorf("unable to configure the node connection info getter: %v", err)
 	}
 
-	deployConfigStorage, deployConfigStatusStorage, deployConfigScaleStorage, err := deployconfigetcd.NewREST(RESTOptionsGetter)
+	deployConfigStorage, deployConfigStatusStorage, deployConfigScaleStorage, err := deployconfigetcd.NewREST(c.GenericConfig.RESTOptionsGetter)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +139,7 @@ func (c *ExtraConfig) newV1RESTStorage(RESTOptionsGetter genericregistry.RESTOpt
 		openshiftInternalImageClient,
 		kubeInternalClient,
 		externalVersionCodec,
-		AdmissionControl,
+		c.GenericConfig.AdmissionControl,
 	)
 	deployConfigRollbackStorage := deployrollback.NewREST(openshiftInternalAppsClient, kubeInternalClient, externalVersionCodec)
 

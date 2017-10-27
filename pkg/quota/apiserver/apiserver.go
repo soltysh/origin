@@ -8,7 +8,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	genericregistry "k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	kinternalinformers "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion"
@@ -49,6 +48,11 @@ type completedConfig struct {
 	ExtraConfig   *ExtraConfig
 }
 
+type CompletedConfig struct {
+	// Embed a private pointer that cannot be instantiated outside of this package.
+	*completedConfig
+}
+
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
 func (c *QuotaAPIServerConfig) Complete() completedConfig {
 	cfg := completedConfig{
@@ -70,7 +74,7 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		GenericAPIServer: genericServer,
 	}
 
-	v1Storage, err := c.ExtraConfig.V1RESTStorage(c.GenericConfig.RESTOptionsGetter)
+	v1Storage, err := c.V1RESTStorage()
 	if err != nil {
 		return nil, err
 	}
@@ -85,16 +89,16 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 	return s, nil
 }
 
-func (c *ExtraConfig) V1RESTStorage(RESTOptionsGetter genericregistry.RESTOptionsGetter) (map[string]rest.Storage, error) {
-	c.makeV1Storage.Do(func() {
-		c.v1Storage, c.v1StorageErr = c.newV1RESTStorage(RESTOptionsGetter)
+func (c *completedConfig) V1RESTStorage() (map[string]rest.Storage, error) {
+	c.ExtraConfig.makeV1Storage.Do(func() {
+		c.ExtraConfig.v1Storage, c.ExtraConfig.v1StorageErr = c.newV1RESTStorage()
 	})
 
-	return c.v1Storage, c.v1StorageErr
+	return c.ExtraConfig.v1Storage, c.ExtraConfig.v1StorageErr
 }
 
-func (c *ExtraConfig) newV1RESTStorage(RESTOptionsGetter genericregistry.RESTOptionsGetter) (map[string]rest.Storage, error) {
-	clusterResourceQuotaStorage, clusterResourceQuotaStatusStorage, err := clusterresourcequotaetcd.NewREST(RESTOptionsGetter)
+func (c *completedConfig) newV1RESTStorage() (map[string]rest.Storage, error) {
+	clusterResourceQuotaStorage, clusterResourceQuotaStatusStorage, err := clusterresourcequotaetcd.NewREST(c.GenericConfig.RESTOptionsGetter)
 	if err != nil {
 		return nil, fmt.Errorf("error building REST storage: %v", err)
 	}
@@ -103,9 +107,9 @@ func (c *ExtraConfig) newV1RESTStorage(RESTOptionsGetter genericregistry.RESTOpt
 	v1Storage["clusterResourceQuotas"] = clusterResourceQuotaStorage
 	v1Storage["clusterResourceQuotas/status"] = clusterResourceQuotaStatusStorage
 	v1Storage["appliedClusterResourceQuotas"] = appliedclusterresourcequotaregistry.NewREST(
-		c.ClusterQuotaMappingController.GetClusterQuotaMapper(),
-		c.QuotaInformers.Quota().InternalVersion().ClusterResourceQuotas().Lister(),
-		c.KubeInternalInformers.Core().InternalVersion().Namespaces().Lister(),
+		c.ExtraConfig.ClusterQuotaMappingController.GetClusterQuotaMapper(),
+		c.ExtraConfig.QuotaInformers.Quota().InternalVersion().ClusterResourceQuotas().Lister(),
+		c.ExtraConfig.KubeInternalInformers.Core().InternalVersion().Namespaces().Lister(),
 	)
 	return v1Storage, nil
 }

@@ -7,10 +7,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	genericregistry "k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
-	restclient "k8s.io/client-go/rest"
 
 	userapiv1 "github.com/openshift/origin/pkg/user/apis/user/v1"
 	userclient "github.com/openshift/origin/pkg/user/generated/internalclientset"
@@ -45,6 +43,11 @@ type completedConfig struct {
 	ExtraConfig   *ExtraConfig
 }
 
+type CompletedConfig struct {
+	// Embed a private pointer that cannot be instantiated outside of this package.
+	*completedConfig
+}
+
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
 func (c *UserConfig) Complete() completedConfig {
 	cfg := completedConfig{
@@ -66,7 +69,7 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 		GenericAPIServer: genericServer,
 	}
 
-	v1Storage, err := c.ExtraConfig.V1RESTStorage(c.GenericConfig.RESTOptionsGetter, c.GenericConfig.LoopbackClientConfig)
+	v1Storage, err := c.V1RESTStorage()
 	if err != nil {
 		return nil, err
 	}
@@ -81,29 +84,29 @@ func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget)
 	return s, nil
 }
 
-func (c *ExtraConfig) V1RESTStorage(RESTOptionsGetter genericregistry.RESTOptionsGetter, LoopbackClientConfig *restclient.Config) (map[string]rest.Storage, error) {
-	c.makeV1Storage.Do(func() {
-		c.v1Storage, c.v1StorageErr = c.newV1RESTStorage(RESTOptionsGetter, LoopbackClientConfig)
+func (c *completedConfig) V1RESTStorage() (map[string]rest.Storage, error) {
+	c.ExtraConfig.makeV1Storage.Do(func() {
+		c.ExtraConfig.v1Storage, c.ExtraConfig.v1StorageErr = c.newV1RESTStorage()
 	})
 
-	return c.v1Storage, c.v1StorageErr
+	return c.ExtraConfig.v1Storage, c.ExtraConfig.v1StorageErr
 }
 
-func (c *ExtraConfig) newV1RESTStorage(RESTOptionsGetter genericregistry.RESTOptionsGetter, LoopbackClientConfig *restclient.Config) (map[string]rest.Storage, error) {
-	userClient, err := userclient.NewForConfig(LoopbackClientConfig)
+func (c *completedConfig) newV1RESTStorage() (map[string]rest.Storage, error) {
+	userClient, err := userclient.NewForConfig(c.GenericConfig.LoopbackClientConfig)
 	if err != nil {
 		return nil, err
 	}
-	userStorage, err := useretcd.NewREST(RESTOptionsGetter)
+	userStorage, err := useretcd.NewREST(c.GenericConfig.RESTOptionsGetter)
 	if err != nil {
 		return nil, err
 	}
-	identityStorage, err := identityetcd.NewREST(RESTOptionsGetter)
+	identityStorage, err := identityetcd.NewREST(c.GenericConfig.RESTOptionsGetter)
 	if err != nil {
 		return nil, err
 	}
 	userIdentityMappingStorage := useridentitymapping.NewREST(userClient.User().Users(), userClient.User().Identities())
-	groupStorage, err := groupetcd.NewREST(RESTOptionsGetter)
+	groupStorage, err := groupetcd.NewREST(c.GenericConfig.RESTOptionsGetter)
 	if err != nil {
 		return nil, err
 	}

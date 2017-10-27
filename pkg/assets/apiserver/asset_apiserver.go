@@ -57,9 +57,14 @@ type AssetServer struct {
 	PublicURL url.URL
 }
 
-type completedAssetServerConfig struct {
+type completedConfig struct {
 	GenericConfig genericapiserver.CompletedConfig
 	ExtraConfig   *ExtraConfig
+}
+
+type CompletedConfig struct {
+	// Embed a private pointer that cannot be instantiated outside of this package.
+	*completedConfig
 }
 
 func NewAssetServerConfig(assetConfig oapi.AssetConfig) (*AssetServerConfig, error) {
@@ -109,8 +114,8 @@ func NewAssetServerConfig(assetConfig oapi.AssetConfig) (*AssetServerConfig, err
 }
 
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
-func (c *AssetServerConfig) Complete() completedAssetServerConfig {
-	cfg := completedAssetServerConfig{
+func (c *AssetServerConfig) Complete() completedConfig {
+	cfg := completedConfig{
 		c.GenericConfig.Complete(),
 		&c.ExtraConfig,
 	}
@@ -118,7 +123,7 @@ func (c *AssetServerConfig) Complete() completedAssetServerConfig {
 	return cfg
 }
 
-func (c completedAssetServerConfig) New(delegationTarget genericapiserver.DelegationTarget) (*AssetServer, error) {
+func (c completedConfig) New(delegationTarget genericapiserver.DelegationTarget) (*AssetServer, error) {
 	genericServer, err := c.GenericConfig.New("openshift-non-api-routes", delegationTarget)
 	if err != nil {
 		return nil, err
@@ -165,7 +170,7 @@ func buildHandlerChainForAssets(consoleRedirectPath string) func(startingHandler
 	}
 }
 
-func (c completedAssetServerConfig) addAssets(serverMux *genericmux.PathRecorderMux) error {
+func (c completedConfig) addAssets(serverMux *genericmux.PathRecorderMux) error {
 	assetHandler, err := c.buildAssetHandler()
 	if err != nil {
 		return err
@@ -176,7 +181,7 @@ func (c completedAssetServerConfig) addAssets(serverMux *genericmux.PathRecorder
 	return nil
 }
 
-func (c completedAssetServerConfig) addExtensionScripts(serverMux *genericmux.PathRecorderMux) error {
+func (c completedConfig) addExtensionScripts(serverMux *genericmux.PathRecorderMux) error {
 	// Extension scripts
 	extScriptsPath := path.Join(c.ExtraConfig.PublicURL.Path, "scripts/extensions.js")
 	extScriptsHandler, err := assets.ExtensionScriptsHandler(c.ExtraConfig.Options.ExtensionScripts, c.ExtraConfig.Options.ExtensionDevelopment)
@@ -188,7 +193,7 @@ func (c completedAssetServerConfig) addExtensionScripts(serverMux *genericmux.Pa
 	return nil
 }
 
-func (c completedAssetServerConfig) addExtensionStyleSheets(serverMux *genericmux.PathRecorderMux) error {
+func (c completedConfig) addExtensionStyleSheets(serverMux *genericmux.PathRecorderMux) error {
 	// Extension stylesheets
 	extStylesheetsPath := path.Join(c.ExtraConfig.PublicURL.Path, "styles/extensions.css")
 	extStylesheetsHandler, err := assets.ExtensionStylesheetsHandler(c.ExtraConfig.Options.ExtensionStylesheets, c.ExtraConfig.Options.ExtensionDevelopment)
@@ -200,7 +205,7 @@ func (c completedAssetServerConfig) addExtensionStyleSheets(serverMux *genericmu
 	return nil
 }
 
-func (c completedAssetServerConfig) addExtensionFiles(serverMux *genericmux.PathRecorderMux) {
+func (c completedConfig) addExtensionFiles(serverMux *genericmux.PathRecorderMux) {
 	// Extension files
 	for _, extConfig := range c.ExtraConfig.Options.Extensions {
 		extBasePath := path.Join(c.ExtraConfig.PublicURL.Path, "extensions", extConfig.Name)
@@ -211,7 +216,7 @@ func (c completedAssetServerConfig) addExtensionFiles(serverMux *genericmux.Path
 	}
 }
 
-func (c *completedAssetServerConfig) addWebConsoleConfig(serverMux *genericmux.PathRecorderMux) error {
+func (c *completedConfig) addWebConsoleConfig(serverMux *genericmux.PathRecorderMux) error {
 	masterURL, err := url.Parse(c.ExtraConfig.Options.MasterPublicURL)
 	if err != nil {
 		return err
@@ -254,7 +259,7 @@ func (c *completedAssetServerConfig) addWebConsoleConfig(serverMux *genericmux.P
 	return nil
 }
 
-func (c completedAssetServerConfig) buildAssetHandler() (http.Handler, error) {
+func (c completedConfig) buildAssetHandler() (http.Handler, error) {
 	assets.RegisterMimeTypes()
 
 	assetFunc := assets.JoinAssetFuncs(assets.Asset, java.Asset)
