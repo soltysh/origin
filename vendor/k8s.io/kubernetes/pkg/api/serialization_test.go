@@ -27,7 +27,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	jsoniter "github.com/json-iterator/go"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
@@ -553,7 +552,8 @@ func BenchmarkDecodeIntoJSONCodecGen(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		obj := v1.Pod{}
-		if err := jsoniter.ConfigFastest.Unmarshal(encoded[i%width], &obj); err != nil {
+		// if err := jsoniter.ConfigFastest.Unmarshal(encoded[i%width], &obj); err != nil {
+		if err := json.Unmarshal(encoded[i%width], &obj); err != nil {
 			b.Fatal(err)
 		}
 	}

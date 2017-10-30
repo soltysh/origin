@@ -20,8 +20,6 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
-
-	jsoniter "github.com/json-iterator/go"
 )
 
 func TestVerbsUgorjiMarshalJSON(t *testing.T) {
@@ -58,7 +56,8 @@ func TestVerbsUgorjiUnmarshalJSON(t *testing.T) {
 
 	for i, c := range cases {
 		var result APIResource
-		if err := jsoniter.ConfigFastest.Unmarshal([]byte(c.input), &result); err != nil {
+		// if err := jsoniter.ConfigFastest.Unmarshal([]byte(c.input), &result); err != nil {
+		if err := json.Unmarshal([]byte(c.input), &result); err != nil {
 			t.Errorf("[%d] Failed to unmarshal input '%v': %v", i, c.input, err)
 		}
 		if !reflect.DeepEqual(result, c.result) {
