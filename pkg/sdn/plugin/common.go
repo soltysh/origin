@@ -39,7 +39,7 @@ type NetworkInfo struct {
 func parseNetworkInfo(clusterNetwork string, serviceNetwork string) (*NetworkInfo, error) {
 	cn, err := netutils.ParseCIDRMask(clusterNetwork)
 	if err != nil {
-		_, cn, err := net.ParseCIDR(clusterNetwork)
+		_, cn, err = net.ParseCIDR(clusterNetwork)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse ClusterNetwork CIDR %s: %v", clusterNetwork, err)
 		}
@@ -47,7 +47,7 @@ func parseNetworkInfo(clusterNetwork string, serviceNetwork string) (*NetworkInf
 	}
 	sn, err := netutils.ParseCIDRMask(serviceNetwork)
 	if err != nil {
-		_, sn, err := net.ParseCIDR(serviceNetwork)
+		_, sn, err = net.ParseCIDR(serviceNetwork)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse ServiceNetwork CIDR %s: %v", serviceNetwork, err)
 		}
