@@ -198,7 +198,7 @@ type serviceAge []*v1.Service
 func (s serviceAge) Len() int      { return len(s) }
 func (s serviceAge) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 func (s serviceAge) Less(i, j int) bool {
-	if s[i].CreationTimestamp.Before(s[j].CreationTimestamp) {
+	if s[i].CreationTimestamp.Before(&s[j].CreationTimestamp) {
 		return true
 	}
 	return (s[i].CreationTimestamp == s[j].CreationTimestamp && s[i].UID < s[j].UID)
@@ -329,10 +329,9 @@ func (ic *IngressIPController) recordLocalAllocation(key, ipString string) (real
 	}
 
 	err = ic.ipAllocator.Allocate(ip)
-	switch {
-	case err == ipallocator.ErrNotInRange:
+	if _, ok := err.(*ipallocator.ErrNotInRange); ok {
 		return true, fmt.Errorf("The ingress ip %v for service %v is not in the ingress range.  A new ip will be allocated.", ipString, key)
-	case err != nil:
+	} else if err != nil {
 		// The only other error that Allocate() can throw is ErrAllocated, but that
 		// should not happen after the check against the allocation map.
 		return false, fmt.Errorf("Unexpected error from ip allocator for service %v: %v", key, err)

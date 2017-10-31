@@ -441,10 +441,12 @@ func (o *ObserveOptions) Run() error {
 	}
 
 	defer o.dumpMetrics()
+	stopChan := make(chan struct{})
+	defer close(stopChan)
 
 	// start the reflector
 	reflector := cache.NewNamedReflector("observer", lw, nil, store, o.resyncPeriod)
-	reflector.Run()
+	reflector.Run(stopChan)
 
 	if o.once {
 		// wait until the reflector reports it has completed the initial list and the
