@@ -21,7 +21,7 @@ import (
 	"github.com/docker/distribution/context"
 	"github.com/openshift/origin/pkg/cmd/util/clientcmd"
 	userapi "github.com/openshift/origin/pkg/user/apis/user"
-	authorizationapi "k8s.io/kubernetes/pkg/apis/authorization/v1"
+	authorizationapi "k8s.io/api/authorization/v1"
 
 	"github.com/openshift/origin/pkg/dockerregistry/server/client"
 	"github.com/openshift/origin/pkg/dockerregistry/server/configuration"
