@@ -33,7 +33,8 @@ var expectedGroupPreferredVersions []string = []string{
 	// keep this sorted:
 	"admission.k8s.io/v1alpha1",
 	"admissionregistration.k8s.io/v1alpha1",
-	"apps/v1beta1,authentication.k8s.io/v1",
+	"apps/v1beta1",
+	"authentication.k8s.io/v1",
 	"authorization.k8s.io/v1",
 	"authorization.openshift.io/v1",
 	"autoscaling/v1",
@@ -46,6 +47,7 @@ var expectedGroupPreferredVersions []string = []string{
 	"networking.k8s.io/v1",
 	"policy/v1beta1",
 	"rbac.authorization.k8s.io/v1beta1",
+	"scheduling.k8s.io/v1alpha1",
 	"settings.k8s.io/v1alpha1",
 	"storage.k8s.io/v1",
 	"user.openshift.io/v1",
@@ -121,7 +123,7 @@ func TestAPIServerDefaults(t *testing.T) {
 		},
 		Audit: &apiserveroptions.AuditOptions{
 			LogOptions: apiserveroptions.AuditLogOptions{
-				Format: "legacy",
+				Format: "json",
 			},
 			WebhookOptions: apiserveroptions.AuditWebhookOptions{
 				Mode: "batch",
@@ -132,7 +134,6 @@ func TestAPIServerDefaults(t *testing.T) {
 		},
 		Authentication: &kubeoptions.BuiltInAuthenticationOptions{
 			Anonymous:      &kubeoptions.AnonymousAuthenticationOptions{Allow: true},
-			AnyToken:       &kubeoptions.AnyTokenAuthenticationOptions{},
 			BootstrapToken: &kubeoptions.BootstrapTokenAuthenticationOptions{},
 			ClientCert:     &apiserveroptions.ClientCertAuthenticationOptions{},
 			Keystone:       &kubeoptions.KeystoneAuthenticationOptions{},
@@ -205,22 +206,23 @@ func TestCMServerDefaults(t *testing.T) {
 	// Once we've reacted to the changes appropriately in BuildKubernetesMasterConfig(), update this expected default to match the new upstream defaults
 	expectedDefaults := &cmapp.CMServer{
 		KubeControllerManagerConfiguration: componentconfig.KubeControllerManagerConfiguration{
-			Port:                                            10252, // disabled
-			Address:                                         "0.0.0.0",
-			ConcurrentEndpointSyncs:                         5,
-			ConcurrentRCSyncs:                               5,
-			ConcurrentRSSyncs:                               5,
-			ConcurrentDaemonSetSyncs:                        2,
-			ConcurrentJobSyncs:                              5,
-			ConcurrentResourceQuotaSyncs:                    5,
-			ConcurrentDeploymentSyncs:                       5,
-			ConcurrentNamespaceSyncs:                        10,
-			ConcurrentSATokenSyncs:                          5,
-			ConcurrentServiceSyncs:                          1,
-			ConcurrentGCSyncs:                               20,
-			LookupCacheSizeForRC:                            4096,
-			LookupCacheSizeForRS:                            4096,
-			LookupCacheSizeForDaemonSet:                     1024,
+			Port:                         10252, // disabled
+			Address:                      "0.0.0.0",
+			ConcurrentEndpointSyncs:      5,
+			ConcurrentRCSyncs:            5,
+			ConcurrentRSSyncs:            5,
+			ConcurrentDaemonSetSyncs:     2,
+			ConcurrentJobSyncs:           5,
+			ConcurrentResourceQuotaSyncs: 5,
+			ConcurrentDeploymentSyncs:    5,
+			ConcurrentNamespaceSyncs:     10,
+			ConcurrentSATokenSyncs:       5,
+			ConcurrentServiceSyncs:       1,
+			ConcurrentGCSyncs:            20,
+			// TODO figure out where this moved
+			// LookupCacheSizeForRC:                            4096,
+			// LookupCacheSizeForRS:                            4096,
+			// LookupCacheSizeForDaemonSet:                     1024,
 			ConfigureCloudRoutes:                            true,
 			NodeCIDRMaskSize:                                24,
 			ServiceSyncPeriod:                               metav1.Duration{Duration: 5 * time.Minute},
@@ -275,6 +277,7 @@ func TestCMServerDefaults(t *testing.T) {
 				{Group: "authorization.k8s.io", Resource: "subjectaccessreviews"},
 				{Group: "authorization.k8s.io", Resource: "selfsubjectaccessreviews"},
 				{Group: "authorization.k8s.io", Resource: "localsubjectaccessreviews"},
+				{Group: "authorization.k8s.io", Resource: "selfsubjectrulesreviews"},
 				{Group: "apiregistration.k8s.io", Resource: "apiservices"},
 				{Group: "apiextensions.k8s.io", Resource: "customresourcedefinitions"},
 			},
