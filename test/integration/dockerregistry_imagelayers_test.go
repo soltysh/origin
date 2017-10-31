@@ -173,7 +173,7 @@ func TestRegistryImageLayers(t *testing.T) {
 		t.Fatalf("create namespace: %v", err)
 	}
 
-	adminImageClient := imageclient.NewForConfigOrDie(adminConfig)
+	adminImageClient := imageclient.NewForConfigOrDie(adminConfig).Image()
 	token, err := tokencmd.RequestToken(clusterAdminClientConfig, nil, user, "password")
 	if err != nil {
 		t.Fatalf("error requesting token: %v", err)
