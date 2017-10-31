@@ -7,8 +7,8 @@ import (
 	miekgdns "github.com/miekg/dns"
 
 	kclientset "k8s.io/client-go/kubernetes"
+	kclientsetexternal "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/apis/componentconfig"
-	kclientsetexternal "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	kclientsetinternal "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	kinternalinformers "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion"
 

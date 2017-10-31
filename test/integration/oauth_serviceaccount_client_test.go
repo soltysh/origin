@@ -16,14 +16,15 @@ import (
 	"github.com/RangelReale/osincli"
 	"github.com/golang/glog"
 
+	corev1 "k8s.io/api/core/v1"
 	kapierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	apiserverserviceaccount "k8s.io/apiserver/pkg/authentication/serviceaccount"
 	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/util/retry"
 	kapi "k8s.io/kubernetes/pkg/api"
 	kapiv1 "k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/client/retry"
 	"k8s.io/kubernetes/pkg/serviceaccount"
 
 	buildclient "github.com/openshift/origin/pkg/build/generated/internalclientset"
@@ -118,7 +119,7 @@ func TestOAuthServiceAccountClient(t *testing.T) {
 		}
 		for i := range allSecrets.Items {
 			secret := &allSecrets.Items[i]
-			secretv1 := &kapiv1.Secret{}
+			secretv1 := &corev1.Secret{}
 			err := kapiv1.Convert_api_Secret_To_v1_Secret(secret, secretv1, nil)
 			if err != nil {
 				return false, err

@@ -6,13 +6,12 @@ import (
 	"github.com/golang/glog"
 
 	"k8s.io/apimachinery/pkg/types"
-	clientgoclientset "k8s.io/client-go/kubernetes"
+	kclientset "k8s.io/client-go/kubernetes"
 	kv1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/util/cert"
 	kubeletapp "k8s.io/kubernetes/cmd/kubelet/app"
 	kubeletoptions "k8s.io/kubernetes/cmd/kubelet/app/options"
 	"k8s.io/kubernetes/pkg/apis/componentconfig/v1alpha1"
-	kclientsetexternal "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/kubelet"
 	dockertools "k8s.io/kubernetes/pkg/kubelet/dockershim/libdocker"
@@ -40,7 +39,7 @@ type NodeConfig struct {
 	// KubeletServer contains the KubeletServer configuration
 	KubeletServer *kubeletoptions.KubeletServer
 	// KubeletDeps are the injected code dependencies for the kubelet, fully initialized
-	KubeletDeps *kubelet.KubeletDeps
+	KubeletDeps *kubelet.Dependencies
 }
 
 func New(options configapi.NodeConfig, server *kubeletoptions.KubeletServer) (*NodeConfig, error) {
@@ -58,16 +57,16 @@ func New(options configapi.NodeConfig, server *kubeletoptions.KubeletServer) (*N
 		return nil, err
 	}
 	// Make a separate client for event reporting, to avoid event QPS blocking node calls
-	eventClient, err := kclientsetexternal.NewForConfig(kubeConfig)
+	eventClient, err := kclientset.NewForConfig(kubeConfig)
 	if err != nil {
 		return nil, err
 	}
-	kubeClient, err := clientgoclientset.NewForConfig(kubeConfig)
+	kubeClient, err := kclientset.NewForConfig(kubeConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	deps, err := kubeletapp.UnsecuredKubeletDeps(server)
+	deps, err := kubeletapp.UnsecuredDependencies(server)
 	if err != nil {
 		return nil, err
 	}
