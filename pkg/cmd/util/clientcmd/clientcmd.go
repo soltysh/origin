@@ -54,6 +54,7 @@ func AnonymousClientConfig(config *restclient.Config) restclient.Config {
 		Host:          config.Host,
 		APIPath:       config.APIPath,
 		Prefix:        config.Prefix,
+		CacheDir:      config.CacheDir,
 		ContentConfig: config.ContentConfig,
 		TLSClientConfig: restclient.TLSClientConfig{
 			CAFile:     config.TLSClientConfig.CAFile,

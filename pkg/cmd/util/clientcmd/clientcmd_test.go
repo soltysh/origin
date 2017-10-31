@@ -2,6 +2,7 @@ package clientcmd
 
 import (
 	"io"
+	"net"
 	"net/http"
 	"reflect"
 	"testing"
@@ -114,6 +115,7 @@ func TestAnonymousConfig(t *testing.T) {
 		func(r *api.AuthProviderConfig, f fuzz.Continue) {
 			r.Config = map[string]string{}
 		},
+		func(fn *func(network, addr string) (net.Conn, error), f fuzz.Continue) {},
 	)
 	for i := 0; i < 20; i++ {
 		original := &restclient.Config{}
