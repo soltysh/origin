@@ -12,12 +12,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
-	knet "k8s.io/apimachinery/pkg/util/net"
-	kubeletremotecommand "k8s.io/apimachinery/pkg/util/remotecommand"
 	"k8s.io/apimachinery/pkg/util/wait"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
+	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 	kapi "k8s.io/kubernetes/pkg/api"
 	kcoreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
@@ -260,25 +258,24 @@ func (h *binaryInstantiateHandler) handle(r io.Reader) (runtime.Object, error) {
 		Stderr:    true,
 		Container: buildstrategy.GitCloneContainer,
 	}
-	location, transport, err := pod.AttachLocation(h.r.PodGetter, h.r.ConnectionInfo, h.ctx, buildPodName, opts)
+	location, _ /*transport*/, err := pod.AttachLocation(h.r.PodGetter, h.r.ConnectionInfo, h.ctx, buildPodName, opts)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil, errors.NewNotFound(kapi.Resource("pod"), buildPodName)
 		}
 		return nil, errors.NewBadRequest(err.Error())
 	}
-	tlsClientConfig, err := knet.TLSClientConfig(transport)
-	if err != nil {
-		return nil, errors.NewInternalError(fmt.Errorf("unable to connect to node, could not retrieve TLS client config: %v", err))
-	}
-	upgrader := spdy.NewRoundTripper(tlsClientConfig, false)
-	exec, err := remotecommand.NewStreamExecutor(upgrader, nil, "POST", location)
+	// tlsClientConfig, err := knet.TLSClientConfig(transport)
+	// if err != nil {
+	// 	return nil, errors.NewInternalError(fmt.Errorf("unable to connect to node, could not retrieve TLS client config: %v", err))
+	// }
+	// TODO: fixme
+	exec, err := remotecommand.NewSPDYExecutor(&restclient.Config{}, "POST", location)
 	if err != nil {
 		return nil, errors.NewInternalError(fmt.Errorf("unable to connect to server: %v", err))
 	}
 	streamOptions := remotecommand.StreamOptions{
-		SupportedProtocols: kubeletremotecommand.SupportedStreamingProtocols,
-		Stdin:              r,
+		Stdin: r,
 		// TODO remove Stdout and Stderr once https://github.com/kubernetes/kubernetes/issues/44448 is
 		// fixed
 		Stdout: ioutil.Discard,
