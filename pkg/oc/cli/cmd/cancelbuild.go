@@ -144,7 +144,7 @@ func (o *CancelBuildOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, 
 
 	o.Namespace = namespace
 	o.Client = client
-	o.BuildLister = buildclient.NewClientBuildLister(client)
+	o.BuildLister = buildclient.NewClientBuildLister(client.Build())
 	o.BuildClient = client.Build().Builds(namespace)
 	o.Mapper, _ = f.Object()
 
