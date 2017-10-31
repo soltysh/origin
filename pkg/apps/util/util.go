@@ -858,5 +858,5 @@ type ByMostRecent []*api.ReplicationController
 func (s ByMostRecent) Len() int      { return len(s) }
 func (s ByMostRecent) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 func (s ByMostRecent) Less(i, j int) bool {
-	return !s[i].CreationTimestamp.Before(s[j].CreationTimestamp)
+	return !s[i].CreationTimestamp.Before(&s[j].CreationTimestamp)
 }
