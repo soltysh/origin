@@ -145,7 +145,7 @@ func TestPullThroughInsecure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error creating project: %v", err)
 	}
-	adminImageClient := imageclient.NewForConfigOrDie(adminConfig)
+	adminImageClient := imageclient.NewForConfigOrDie(adminConfig).Image()
 	token, err := tokencmd.RequestToken(clusterAdminClientConfig, nil, user, "password")
 	if err != nil {
 		t.Fatalf("error requesting token: %v", err)
