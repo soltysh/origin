@@ -216,7 +216,7 @@ func TestGetImageStreamTag(t *testing.T) {
 				if e, a := map[string]string{"size": "large", "color": "blue"}, actual.Image.Annotations; !reflect.DeepEqual(e, a) {
 					t.Errorf("%s: annotations: expected %v, got %v", name, e, a)
 				}
-				if e, a := metav1.Date(2015, 3, 24, 9, 38, 0, 0, time.UTC), actual.CreationTimestamp; !a.Equal(e) {
+				if e, a := metav1.Date(2015, 3, 24, 9, 38, 0, 0, time.UTC), actual.CreationTimestamp; !a.Equal(&e) {
 					t.Errorf("%s: timestamp: expected %v, got %v", name, e, a)
 				}
 			}

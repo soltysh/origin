@@ -18,12 +18,12 @@ import (
 	"k8s.io/client-go/dynamic"
 	restclient "k8s.io/client-go/rest"
 	kapi "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/validation"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/kubectl"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/util/openapi"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/kubectl/validation"
 	kprinters "k8s.io/kubernetes/pkg/printers"
 
 	"github.com/openshift/origin/pkg/api/latest"
@@ -437,8 +437,8 @@ func (f *ring1Factory) AttachablePodForObject(object runtime.Object, timeout tim
 	}
 }
 
-func (f *ring1Factory) Validator(validate bool, cacheDir string) (validation.Schema, error) {
-	return f.kubeObjectMappingFactory.Validator(validate, cacheDir)
+func (f *ring1Factory) Validator(validate bool, openAPI bool, cacheDir string) (validation.Schema, error) {
+	return f.kubeObjectMappingFactory.Validator(validate, openAPI, cacheDir)
 }
 
 func (f *ring1Factory) SwaggerSchema(gvk schema.GroupVersionKind) (*swagger.ApiDeclaration, error) {
@@ -452,8 +452,8 @@ func (f *ring1Factory) SwaggerSchema(gvk schema.GroupVersionKind) (*swagger.ApiD
 	return f.OriginSwaggerSchema(kubeClient.Discovery().RESTClient(), gvk.GroupVersion())
 }
 
-func (f *ring1Factory) OpenAPISchema(cacheDir string) (*openapi.Resources, error) {
-	return f.kubeObjectMappingFactory.OpenAPISchema(cacheDir)
+func (f *ring1Factory) OpenAPISchema() (openapi.Resources, error) {
+	return f.kubeObjectMappingFactory.OpenAPISchema()
 }
 
 // OriginSwaggerSchema returns a swagger API doc for an Origin schema under the /oapi prefix.
