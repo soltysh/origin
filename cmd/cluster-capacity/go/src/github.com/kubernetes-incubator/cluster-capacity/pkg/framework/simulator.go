@@ -31,7 +31,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/v1"
 	externalclientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset/fake"
-	einformers "k8s.io/kubernetes/pkg/client/informers/informers_generated/externalversions"
+	einformers "k8s.io/client-go/informers"
 	sapps "k8s.io/kubernetes/plugin/cmd/kube-scheduler/app"
 	soptions "k8s.io/kubernetes/plugin/cmd/kube-scheduler/app/options"
 	"k8s.io/kubernetes/plugin/pkg/scheduler"
