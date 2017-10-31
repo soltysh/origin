@@ -14,13 +14,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	kexternalinformers "k8s.io/client-go/informers"
+	kexternalclientset "k8s.io/client-go/kubernetes"
+	kexternalclientfake "k8s.io/client-go/kubernetes/fake"
 	clientgotesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	kapi "k8s.io/kubernetes/pkg/api"
-	kexternalclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	kinternalclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	kexternalclientfake "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 	kinternalclientfake "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 
 	buildapi "github.com/openshift/origin/pkg/build/apis/build"
@@ -1145,7 +1145,7 @@ func validateUpdate(t *testing.T, name string, expected, actual *buildUpdate) {
 		if actual.startTime == nil {
 			t.Errorf("%s: startTime should not be nil.", name)
 		} else {
-			if !(*expected.startTime).Equal(*actual.startTime) {
+			if !(*expected.startTime).Equal(actual.startTime) {
 				t.Errorf("%s: unexpected value for startTime. Expected: %s. Actual: %s", name, *expected.startTime, *actual.startTime)
 			}
 		}
@@ -1158,7 +1158,7 @@ func validateUpdate(t *testing.T, name string, expected, actual *buildUpdate) {
 		if actual.completionTime == nil {
 			t.Errorf("%s: completionTime should not be nil.", name)
 		} else {
-			if !(*expected.completionTime).Equal(*actual.completionTime) {
+			if !(*expected.completionTime).Equal(actual.completionTime) {
 				t.Errorf("%s: unexpected value for completionTime. Expected: %v. Actual: %v", name, *expected.completionTime, *actual.completionTime)
 			}
 		}
