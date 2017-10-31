@@ -3531,6 +3531,7 @@ items:
     - build.openshift.io
     attributeRestrictions: null
     resources:
+    - builds/custom
     - builds/docker
     - builds/jenkinspipeline
     - builds/optimizeddocker
