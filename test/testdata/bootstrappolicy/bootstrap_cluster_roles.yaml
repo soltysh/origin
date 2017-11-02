@@ -158,8 +158,6 @@ items:
     - cronjobs/status
     - jobs
     - jobs/status
-    - scheduledjobs
-    - scheduledjobs/status
     verbs:
     - get
     - list
@@ -682,7 +680,6 @@ items:
     resources:
     - cronjobs
     - jobs
-    - scheduledjobs
     verbs:
     - create
     - delete
@@ -1115,7 +1112,6 @@ items:
     resources:
     - cronjobs
     - jobs
-    - scheduledjobs
     verbs:
     - create
     - delete
@@ -1431,7 +1427,6 @@ items:
     resources:
     - cronjobs
     - jobs
-    - scheduledjobs
     verbs:
     - get
     - list
@@ -2710,7 +2705,7 @@ items:
       rbac.authorization.kubernetes.io/autoupdate: "true"
     creationTimestamp: null
     name: system:replication-controller
-  rules: []
+  rules: null
 - apiVersion: rbac.authorization.k8s.io/v1beta1
   kind: ClusterRole
   metadata:
@@ -2719,7 +2714,7 @@ items:
       rbac.authorization.kubernetes.io/autoupdate: "true"
     creationTimestamp: null
     name: system:endpoint-controller
-  rules: []
+  rules: null
 - apiVersion: rbac.authorization.k8s.io/v1beta1
   kind: ClusterRole
   metadata:
@@ -2728,7 +2723,7 @@ items:
       rbac.authorization.kubernetes.io/autoupdate: "true"
     creationTimestamp: null
     name: system:replicaset-controller
-  rules: []
+  rules: null
 - apiVersion: rbac.authorization.k8s.io/v1beta1
   kind: ClusterRole
   metadata:
@@ -2737,7 +2732,7 @@ items:
       rbac.authorization.kubernetes.io/autoupdate: "true"
     creationTimestamp: null
     name: system:garbage-collector-controller
-  rules: []
+  rules: null
 - apiVersion: rbac.authorization.k8s.io/v1beta1
   kind: ClusterRole
   metadata:
@@ -2746,7 +2741,7 @@ items:
       rbac.authorization.kubernetes.io/autoupdate: "true"
     creationTimestamp: null
     name: system:job-controller
-  rules: []
+  rules: null
 - apiVersion: rbac.authorization.k8s.io/v1beta1
   kind: ClusterRole
   metadata:
@@ -2755,7 +2750,7 @@ items:
       rbac.authorization.kubernetes.io/autoupdate: "true"
     creationTimestamp: null
     name: system:hpa-controller
-  rules: []
+  rules: null
 - apiVersion: rbac.authorization.k8s.io/v1beta1
   kind: ClusterRole
   metadata:
@@ -2764,7 +2759,7 @@ items:
       rbac.authorization.kubernetes.io/autoupdate: "true"
     creationTimestamp: null
     name: system:daemonset-controller
-  rules: []
+  rules: null
 - apiVersion: rbac.authorization.k8s.io/v1beta1
   kind: ClusterRole
   metadata:
@@ -2773,7 +2768,7 @@ items:
       rbac.authorization.kubernetes.io/autoupdate: "true"
     creationTimestamp: null
     name: system:disruption-controller
-  rules: []
+  rules: null
 - apiVersion: rbac.authorization.k8s.io/v1beta1
   kind: ClusterRole
   metadata:
@@ -2782,7 +2777,7 @@ items:
       rbac.authorization.kubernetes.io/autoupdate: "true"
     creationTimestamp: null
     name: system:namespace-controller
-  rules: []
+  rules: null
 - apiVersion: rbac.authorization.k8s.io/v1beta1
   kind: ClusterRole
   metadata:
@@ -2791,7 +2786,7 @@ items:
       rbac.authorization.kubernetes.io/autoupdate: "true"
     creationTimestamp: null
     name: system:gc-controller
-  rules: []
+  rules: null
 - apiVersion: rbac.authorization.k8s.io/v1beta1
   kind: ClusterRole
   metadata:
@@ -2800,7 +2795,7 @@ items:
       rbac.authorization.kubernetes.io/autoupdate: "true"
     creationTimestamp: null
     name: system:certificate-signing-controller
-  rules: []
+  rules: null
 - apiVersion: rbac.authorization.k8s.io/v1beta1
   kind: ClusterRole
   metadata:
@@ -2809,7 +2804,7 @@ items:
       rbac.authorization.kubernetes.io/autoupdate: "true"
     creationTimestamp: null
     name: system:statefulset-controller
-  rules: []
+  rules: null
 - apiVersion: rbac.authorization.k8s.io/v1beta1
   kind: ClusterRole
   metadata:
@@ -2818,7 +2813,7 @@ items:
       rbac.authorization.kubernetes.io/autoupdate: "true"
     creationTimestamp: null
     name: system:build-controller
-  rules: []
+  rules: null
 - apiVersion: rbac.authorization.k8s.io/v1beta1
   kind: ClusterRole
   metadata:
@@ -2827,7 +2822,7 @@ items:
       rbac.authorization.kubernetes.io/autoupdate: "true"
     creationTimestamp: null
     name: system:deploymentconfig-controller
-  rules: []
+  rules: null
 - apiVersion: rbac.authorization.k8s.io/v1beta1
   kind: ClusterRole
   metadata:
@@ -2836,7 +2831,7 @@ items:
       rbac.authorization.kubernetes.io/autoupdate: "true"
     creationTimestamp: null
     name: system:deployment-controller
-  rules: []
+  rules: null
 - apiVersion: rbac.authorization.k8s.io/v1beta1
   kind: ClusterRole
   metadata:
@@ -4256,18 +4251,21 @@ items:
     - 'http:heapster:'
     - 'https:heapster:'
     resources:
-    - services
-    verbs:
-    - proxy
-  - apiGroups:
-    - ""
-    resourceNames:
-    - 'http:heapster:'
-    - 'https:heapster:'
-    resources:
     - services/proxy
     verbs:
     - get
+  - apiGroups:
+    - metrics.k8s.io
+    resources:
+    - pods
+    verbs:
+    - list
+  - apiGroups:
+    - custom.metrics.k8s.io
+    resources:
+    - '*'
+    verbs:
+    - list
   - apiGroups:
     - ""
     resources:
@@ -4944,6 +4942,14 @@ items:
     - get
     - list
     - watch
+  - apiGroups:
+    - extensions
+    resources:
+    - deployments
+    verbs:
+    - get
+    - list
+    - watch
 - apiVersion: rbac.authorization.k8s.io/v1beta1
   kind: ClusterRole
   metadata:
@@ -5141,8 +5147,16 @@ items:
     - ""
     resources:
     - nodes
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - ""
+    resources:
     - pods
     verbs:
+    - delete
     - get
     - list
     - watch
@@ -5212,5 +5226,39 @@ items:
     verbs:
     - list
     - watch
+- apiVersion: rbac.authorization.k8s.io/v1beta1
+  kind: ClusterRole
+  metadata:
+    annotations:
+      authorization.openshift.io/system-only: "true"
+      rbac.authorization.kubernetes.io/autoupdate: "true"
+    creationTimestamp: null
+    labels:
+      kubernetes.io/bootstrapping: rbac-defaults
+    name: system:certificates.k8s.io:certificatesigningrequests:nodeclient
+  rules:
+  - apiGroups:
+    - certificates.k8s.io
+    resources:
+    - certificatesigningrequests/nodeclient
+    verbs:
+    - create
+- apiVersion: rbac.authorization.k8s.io/v1beta1
+  kind: ClusterRole
+  metadata:
+    annotations:
+      authorization.openshift.io/system-only: "true"
+      rbac.authorization.kubernetes.io/autoupdate: "true"
+    creationTimestamp: null
+    labels:
+      kubernetes.io/bootstrapping: rbac-defaults
+    name: system:certificates.k8s.io:certificatesigningrequests:selfnodeclient
+  rules:
+  - apiGroups:
+    - certificates.k8s.io
+    resources:
+    - certificatesigningrequests/selfnodeclient
+    verbs:
+    - create
 kind: List
 metadata: {}
