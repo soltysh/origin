@@ -40,10 +40,6 @@
     "checkedPackageRoots": [
       "github.com/openshift/origin/pkg"
     ],
-    "ignoredSubTrees": [
-      "github.com/openshift/origin/pkg/dockerregistry",
-      "github.com/openshift/origin/pkg/cmd/dockerregistry"
-    ],
     "forbiddenImportPackageRoots": [
       "github.com/openshift/origin/pkg/dockerregistry"
     ],
