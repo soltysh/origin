@@ -16,7 +16,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	imageapi "github.com/openshift/origin/pkg/image/apis/image"
-	registryutil "github.com/openshift/origin/test/extended/registry/util"
 	exutil "github.com/openshift/origin/test/extended/util"
 	testutil "github.com/openshift/origin/test/util"
 )
@@ -36,7 +35,7 @@ var _ = g.Describe("[Feature:ImagePrune][registry][Serial] Image prune", func() 
 
 	g.JustBeforeEach(func() {
 		if originalAcceptSchema2 == nil {
-			accepts, err := registryutil.DoesRegistryAcceptSchema2(oc)
+			accepts, err := DoesRegistryAcceptSchema2(oc)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			originalAcceptSchema2 = &accepts
 		}
@@ -53,14 +52,14 @@ var _ = g.Describe("[Feature:ImagePrune][registry][Serial] Image prune", func() 
 		g.JustBeforeEach(func() {
 			if *originalAcceptSchema2 {
 				g.By("ensure the registry does not accept schema 2")
-				err := registryutil.EnsureRegistryAcceptsSchema2(oc, false)
+				err := EnsureRegistryAcceptsSchema2(oc, false)
 				o.Expect(err).NotTo(o.HaveOccurred())
 			}
 		})
 
 		g.AfterEach(func() {
 			if *originalAcceptSchema2 {
-				err := registryutil.EnsureRegistryAcceptsSchema2(oc, true)
+				err := EnsureRegistryAcceptsSchema2(oc, true)
 				o.Expect(err).NotTo(o.HaveOccurred())
 			}
 		})
@@ -72,14 +71,14 @@ var _ = g.Describe("[Feature:ImagePrune][registry][Serial] Image prune", func() 
 		g.JustBeforeEach(func() {
 			if !*originalAcceptSchema2 {
 				g.By("ensure the registry accepts schema 2")
-				err := registryutil.EnsureRegistryAcceptsSchema2(oc, true)
+				err := EnsureRegistryAcceptsSchema2(oc, true)
 				o.Expect(err).NotTo(o.HaveOccurred())
 			}
 		})
 
 		g.AfterEach(func() {
 			if !*originalAcceptSchema2 {
-				err := registryutil.EnsureRegistryAcceptsSchema2(oc, false)
+				err := EnsureRegistryAcceptsSchema2(oc, false)
 				o.Expect(err).NotTo(o.HaveOccurred())
 			}
 		})
@@ -91,14 +90,14 @@ var _ = g.Describe("[Feature:ImagePrune][registry][Serial] Image prune", func() 
 		g.JustBeforeEach(func() {
 			if !*originalAcceptSchema2 {
 				g.By("ensure the registry accepts schema 2")
-				err := registryutil.EnsureRegistryAcceptsSchema2(oc, true)
+				err := EnsureRegistryAcceptsSchema2(oc, true)
 				o.Expect(err).NotTo(o.HaveOccurred())
 			}
 		})
 
 		g.AfterEach(func() {
 			if !*originalAcceptSchema2 {
-				err := registryutil.EnsureRegistryAcceptsSchema2(oc, false)
+				err := EnsureRegistryAcceptsSchema2(oc, false)
 				o.Expect(err).NotTo(o.HaveOccurred())
 			}
 		})
@@ -110,14 +109,14 @@ var _ = g.Describe("[Feature:ImagePrune][registry][Serial] Image prune", func() 
 		g.JustBeforeEach(func() {
 			if !*originalAcceptSchema2 {
 				g.By("ensure the registry accepts schema 2")
-				err := registryutil.EnsureRegistryAcceptsSchema2(oc, true)
+				err := EnsureRegistryAcceptsSchema2(oc, true)
 				o.Expect(err).NotTo(o.HaveOccurred())
 			}
 		})
 
 		g.AfterEach(func() {
 			if !*originalAcceptSchema2 {
-				err := registryutil.EnsureRegistryAcceptsSchema2(oc, false)
+				err := EnsureRegistryAcceptsSchema2(oc, false)
 				o.Expect(err).NotTo(o.HaveOccurred())
 			}
 		})
@@ -154,12 +153,12 @@ func testPruneImages(oc *exutil.CLI, schemaVersion int) {
 	o.Expect(err).NotTo(o.HaveOccurred())
 	cleanUp.AddImage(imgPruneName, "", "")
 	cleanUp.AddImageStream(isName)
-	pruneSize, err := registryutil.GetRegistryStorageSize(oc)
+	pruneSize, err := GetRegistryStorageSize(oc)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	imgKeepName, _, err := BuildAndPushImageOfSizeWithDocker(oc, dClient, isName, "latest", testImageSize, 2, outSink, true, true)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	cleanUp.AddImage(imgKeepName, "", "")
-	keepSize, err := registryutil.GetRegistryStorageSize(oc)
+	keepSize, err := GetRegistryStorageSize(oc)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(pruneSize < keepSize).To(o.BeTrue())
 
@@ -195,7 +194,7 @@ func testPruneImages(oc *exutil.CLI, schemaVersion int) {
 		}
 	}
 
-	noConfirmSize, err := registryutil.GetRegistryStorageSize(oc)
+	noConfirmSize, err := GetRegistryStorageSize(oc)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(noConfirmSize).To(o.Equal(keepSize))
 
@@ -231,7 +230,7 @@ func testPruneImages(oc *exutil.CLI, schemaVersion int) {
 		o.Expect(inRepository).To(o.BeTrue())
 	}
 
-	confirmSize, err := registryutil.GetRegistryStorageSize(oc)
+	confirmSize, err := GetRegistryStorageSize(oc)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	g.By(fmt.Sprintf("confirming storage size: sizeOfKeepImage=%d <= sizeAfterPrune=%d < beforePruneSize=%d", imgKeep.DockerImageMetadata.Size, confirmSize, keepSize))
 	o.Expect(confirmSize >= imgKeep.DockerImageMetadata.Size).To(o.BeTrue())

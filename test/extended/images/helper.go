@@ -29,7 +29,6 @@ import (
 
 	imageapi "github.com/openshift/origin/pkg/image/apis/image"
 	imagetypedclientset "github.com/openshift/origin/pkg/image/generated/internalclientset/typed/image/internalversion"
-	registryutil "github.com/openshift/origin/test/extended/registry/util"
 	exutil "github.com/openshift/origin/test/extended/util"
 	testutil "github.com/openshift/origin/test/util"
 )
@@ -314,7 +313,7 @@ func buildImageOfSizeWithDocker(
 	numberOfLayers int,
 	outSink io.Writer,
 ) (string, *dockerclient.Image, error) {
-	registryURL, err := registryutil.GetDockerRegistryURL(oc)
+	registryURL, err := GetDockerRegistryURL(oc)
 	if err != nil {
 		return "", nil, err
 	}
@@ -384,7 +383,7 @@ func pushImageWithDocker(
 	}
 	token := strings.TrimSpace(out)
 
-	registryURL, err := registryutil.GetDockerRegistryURL(oc)
+	registryURL, err := GetDockerRegistryURL(oc)
 	if err != nil {
 		return "", err
 	}
@@ -515,7 +514,7 @@ func MirrorBlobInRegistry(oc *exutil.CLI, dgst digest.Digest, repository string,
 	if presentGlobally || inRepository {
 		return fmt.Errorf("blob %q is already present in the registry", dgst.String())
 	}
-	registryURL, err := registryutil.GetDockerRegistryURL(oc)
+	registryURL, err := GetDockerRegistryURL(oc)
 	if err != nil {
 		return err
 	}
@@ -621,7 +620,7 @@ func IsBlobStoredInRegistry(
 // assumed to be in a read-only mode and using filesystem as a storage driver. It returns lists of deleted
 // files.
 func RunHardPrune(oc *exutil.CLI, dryRun bool) (*RegistryStorageFiles, error) {
-	pod, err := registryutil.GetRegistryPod(oc.AsAdmin().KubeClient().Core())
+	pod, err := GetRegistryPod(oc.AsAdmin().KubeClient().Core())
 	if err != nil {
 		return nil, err
 	}
