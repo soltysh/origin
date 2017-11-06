@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/docker/distribution/digest"
+	godigest "github.com/opencontainers/go-digest"
 
 	"github.com/openshift/origin/pkg/image/importer"
 )
@@ -30,7 +30,7 @@ func getImageManifestByIDFromRegistry(registry *url.URL, repositoryName, imageID
 		return nil, err
 	}
 
-	manifest, err := manifests.Get(ctx, digest.Digest(imageID))
+	manifest, err := manifests.Get(ctx, godigest.Digest(imageID))
 	if err != nil {
 		return nil, err
 	}
