@@ -23,7 +23,9 @@ rsync -av \
   $KUBE_ROOT/ $KUBE_GODEP_ROOT <<EOF
 /api/swagger-spec/*.json
 /examples/***
+/staging/src/k8s.io/***
 /test/e2e/***
+/test/e2e_node/***
 /test/fixtures/***
 /test/e2e/generated/bindata.go
 /test/integration/***
