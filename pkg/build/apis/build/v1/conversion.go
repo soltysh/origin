@@ -149,6 +149,21 @@ func Convert_build_BuildStrategy_To_v1_BuildStrategy(in *newer.BuildStrategy, ou
 	return nil
 }
 
+func Convert_v1_OptionalNodeSelector_To_build_Map(in *OptionalNodeSelector, out *map[string]string, s conversion.Scope) error {
+	if in != nil {
+		*out = *in
+	}
+	return nil
+
+}
+
+func Convert_build_Map_To_v1_OptionalNodeSelector(in *map[string]string, out *OptionalNodeSelector, s conversion.Scope) error {
+	if in != nil {
+		*out = *in
+	}
+	return nil
+}
+
 func addConversionFuncs(scheme *runtime.Scheme) error {
 	return scheme.AddConversionFuncs(
 		Convert_v1_BuildConfig_To_build_BuildConfig,
@@ -169,6 +184,8 @@ func addConversionFuncs(scheme *runtime.Scheme) error {
 		Convert_build_BuildSource_To_v1_BuildSource,
 		Convert_v1_BuildStrategy_To_build_BuildStrategy,
 		Convert_build_BuildStrategy_To_v1_BuildStrategy,
+		Convert_v1_OptionalNodeSelector_To_build_Map,
+		Convert_build_Map_To_v1_OptionalNodeSelector,
 	)
 }
 
