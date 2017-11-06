@@ -20,7 +20,6 @@ readonly OS_SDN_COMPILE_TARGETS_LINUX=(
 )
 readonly OS_IMAGE_COMPILE_TARGETS_LINUX=(
   images/pod
-  cmd/dockerregistry
   cmd/gitserver
   "${OS_SDN_COMPILE_TARGETS_LINUX[@]}"
 )
