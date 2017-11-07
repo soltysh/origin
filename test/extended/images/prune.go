@@ -9,9 +9,9 @@ import (
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
 
-	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/manifest/schema1"
 	"github.com/docker/distribution/manifest/schema2"
+	godigest "github.com/opencontainers/go-digest"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -212,7 +212,7 @@ func testPruneImages(oc *exutil.CLI, schemaVersion int) {
 		if !strings.Contains(output, layer.Name) {
 			o.Expect(output).To(o.ContainSubstring(layer.Name))
 		}
-		globally, inRepository, err := IsBlobStoredInRegistry(oc, digest.Digest(layer.Name), repoName)
+		globally, inRepository, err := IsBlobStoredInRegistry(oc, godigest.Digest(layer.Name), repoName)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(globally).To(o.BeFalse())
 		o.Expect(inRepository).To(o.BeFalse())
@@ -224,7 +224,7 @@ func testPruneImages(oc *exutil.CLI, schemaVersion int) {
 		if !strings.Contains(output, layer.Name) {
 			o.Expect(output).NotTo(o.ContainSubstring(layer.Name))
 		}
-		globally, inRepository, err := IsBlobStoredInRegistry(oc, digest.Digest(layer.Name), repoName)
+		globally, inRepository, err := IsBlobStoredInRegistry(oc, godigest.Digest(layer.Name), repoName)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(globally).To(o.BeTrue())
 		o.Expect(inRepository).To(o.BeTrue())
@@ -275,7 +275,7 @@ func testPruneAllImages(oc *exutil.CLI, setAllImagesToFalse bool, schemaVersion 
 
 		for _, layer := range managedImage.DockerImageLayers {
 			o.Expect(output).To(o.ContainSubstring(layer.Name))
-			globally, inRepository, err := IsBlobStoredInRegistry(oc, digest.Digest(layer.Name), repository)
+			globally, inRepository, err := IsBlobStoredInRegistry(oc, godigest.Digest(layer.Name), repository)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(globally).To(o.Equal(dryRun))
 			o.Expect(inRepository).To(o.Equal(dryRun))
@@ -297,7 +297,7 @@ func testPruneAllImages(oc *exutil.CLI, setAllImagesToFalse bool, schemaVersion 
 			if blobdgst.String() != layer.Name {
 				continue
 			}
-			globally, inRepository, err := IsBlobStoredInRegistry(oc, digest.Digest(layer.Name), repository)
+			globally, inRepository, err := IsBlobStoredInRegistry(oc, godigest.Digest(layer.Name), repository)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(globally).To(o.Equal(dryRun || setAllImagesToFalse))
 			// mirrored blobs are not linked into any repository/_layers directory
@@ -338,7 +338,7 @@ func (bls byLayerSize) Less(i, j int) bool {
 	return false
 }
 
-func importImageAndMirrorItsSmallestBlob(oc *exutil.CLI, imageReference, destISTag string) (*imageapi.Image, digest.Digest, error) {
+func importImageAndMirrorItsSmallestBlob(oc *exutil.CLI, imageReference, destISTag string) (*imageapi.Image, godigest.Digest, error) {
 	g.By(fmt.Sprintf("importing external image %q", imageReference))
 	err := oc.Run("tag").Args("--source=docker", imageReference, destISTag).Execute()
 	if err != nil {
@@ -361,7 +361,7 @@ func importImageAndMirrorItsSmallestBlob(oc *exutil.CLI, imageReference, destIST
 	for i := range istag.Image.DockerImageLayers {
 		layer := istag.Image.DockerImageLayers[i]
 		// skip empty blobs
-		if IsEmptyDigest(digest.Digest(layer.Name)) {
+		if IsEmptyDigest(godigest.Digest(layer.Name)) {
 			continue
 		}
 		tmpLayers = append(tmpLayers, layer)
@@ -373,10 +373,10 @@ func importImageAndMirrorItsSmallestBlob(oc *exutil.CLI, imageReference, destIST
 
 	layer := tmpLayers[0]
 	g.By(fmt.Sprintf("mirroring image's blob of size=%d in repository %q", layer.LayerSize, isName))
-	err = MirrorBlobInRegistry(oc, digest.Digest(layer.Name), oc.Namespace()+"/"+isName, mirrorBlobTimeout)
+	err = MirrorBlobInRegistry(oc, godigest.Digest(layer.Name), oc.Namespace()+"/"+isName, mirrorBlobTimeout)
 	if err != nil {
 		return nil, "", err
 	}
 
-	return &istag.Image, digest.Digest(tmpLayers[0].Name), nil
+	return &istag.Image, godigest.Digest(tmpLayers[0].Name), nil
 }
