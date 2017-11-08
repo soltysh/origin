@@ -474,16 +474,8 @@ func autoConvert_security_SecurityContextConstraints_To_v1_SecurityContextConstr
 	}
 	out.ReadOnlyRootFilesystem = in.ReadOnlyRootFilesystem
 	out.SeccompProfiles = *(*[]string)(unsafe.Pointer(&in.SeccompProfiles))
-	if in.Users == nil {
-		out.Users = make([]string, 0)
-	} else {
-		out.Users = *(*[]string)(unsafe.Pointer(&in.Users))
-	}
-	if in.Groups == nil {
-		out.Groups = make([]string, 0)
-	} else {
-		out.Groups = *(*[]string)(unsafe.Pointer(&in.Groups))
-	}
+	out.Users = *(*[]string)(unsafe.Pointer(&in.Users))
+	out.Groups = *(*[]string)(unsafe.Pointer(&in.Groups))
 	return nil
 }
 
