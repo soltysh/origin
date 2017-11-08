@@ -34,6 +34,7 @@ import (
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/server/healthz"
+	kubeexternalinformers "k8s.io/client-go/informers"
 	"k8s.io/kube-aggregator/pkg/apis/apiregistration"
 	aggregatorapiserver "k8s.io/kube-aggregator/pkg/apiserver"
 	apiregistrationclient "k8s.io/kube-aggregator/pkg/client/clientset_generated/internalclientset/typed/apiregistration/internalversion"
@@ -42,12 +43,14 @@ import (
 	"k8s.io/kubernetes/pkg/master/controller/crdregistration"
 )
 
-func (c *MasterConfig) createAggregatorConfig(genericConfig genericapiserver.RecommendedConfig) (*aggregatorapiserver.Config, error) {
+func (c *MasterConfig) createAggregatorConfig(kubeAPIServerConfig genericapiserver.Config, externalInformers kubeexternalinformers.SharedInformerFactory) (*aggregatorapiserver.Config, error) {
+
+	genericConfig := kubeAPIServerConfig
 	// this is a shallow copy so let's twiddle a few things
 	// the aggregator doesn't wire these up.  It just delegates them to the kubeapiserver
-	genericConfig.Config.EnableSwaggerUI = false
-	genericConfig.Config.SwaggerConfig = nil
-	genericConfig.Config.OpenAPIConfig = nil
+	genericConfig.EnableSwaggerUI = false
+	genericConfig.SwaggerConfig = nil
+	genericConfig.OpenAPIConfig = nil
 
 	// This depends on aggregator types being registered into the kapi.Scheme, which is currently done in Start() to avoid concurrent scheme modification
 	// install our types into the scheme so that "normal" RESTOptionsGetters can work for us
@@ -72,7 +75,10 @@ func (c *MasterConfig) createAggregatorConfig(genericConfig genericapiserver.Rec
 	}
 
 	aggregatorConfig := &aggregatorapiserver.Config{
-		GenericConfig: &genericConfig,
+		GenericConfig: &genericapiserver.RecommendedConfig{
+			Config:                genericConfig,
+			SharedInformerFactory: externalInformers,
+		},
 		ExtraConfig: aggregatorapiserver.ExtraConfig{
 			ProxyClientCert: certBytes,
 			ProxyClientKey:  keyBytes,
@@ -80,6 +86,7 @@ func (c *MasterConfig) createAggregatorConfig(genericConfig genericapiserver.Rec
 			ProxyTransport:  utilnet.SetTransportDefaults(&http.Transport{}),
 		},
 	}
+
 	return aggregatorConfig, nil
 }
 
