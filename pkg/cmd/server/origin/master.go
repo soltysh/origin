@@ -194,7 +194,7 @@ func (c *MasterConfig) newOAuthServerHandler(genericConfig *apiserver.Config) (h
 }
 
 func (c *MasterConfig) withAggregator(delegateAPIServer apiserver.DelegationTarget, kubeAPIServerConfig apiserver.RecommendedConfig, apiExtensionsInformers apiextensionsinformers.SharedInformerFactory) (*aggregatorapiserver.APIAggregator, error) {
-	aggregatorConfig, err := c.createAggregatorConfig(kubeAPIServerConfig)
+	aggregatorConfig, err := c.createAggregatorConfig(kubeAPIServerConfig.Config, c.ClientGoKubeInformers)
 	if err != nil {
 		return nil, err
 	}
