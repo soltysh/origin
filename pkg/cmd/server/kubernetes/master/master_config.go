@@ -270,9 +270,6 @@ func buildUpstreamGenericConfig(s *kapiserveroptions.ServerRunOptions) (*apiserv
 	if err := s.GenericServerRunOptions.ApplyTo(genericConfig); err != nil {
 		return nil, err
 	}
-	if err := s.Etcd.ApplyTo(genericConfig); err != nil {
-		return nil, err
-	}
 	if err := s.SecureServing.ApplyTo(genericConfig); err != nil {
 		return nil, err
 	}
