@@ -5,6 +5,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	// need to import this to register sha256
+	_ "crypto/sha256"
 )
 
 func TestParseNamedDockerImageReference(t *testing.T) {
@@ -14,73 +17,77 @@ func TestParseNamedDockerImageReference(t *testing.T) {
 		Err                                bool
 	}{
 		{
-			From: "foo",
-			Name: "foo",
-			Err:  true,
+			From:      "foo",
+			Registry:  "docker.io",
+			Namespace: "library",
+			Name:      "foo",
 		},
 		{
-			From: "foo:tag",
-			Name: "foo",
-			Tag:  "tag",
-			Err:  true,
+			From:      "foo:tag",
+			Registry:  "docker.io",
+			Namespace: "library",
+			Name:      "foo",
+			Tag:       "tag",
 		},
 		{
-			From: "sha256:3c87c572822935df60f0f5d3665bd376841a7fcfeb806b5f212de6a00e9a7b25",
-			Name: "sha256",
-			Tag:  "3c87c572822935df60f0f5d3665bd376841a7fcfeb806b5f212de6a00e9a7b25",
-			Err:  true,
+			From:      "sha256:3c87c572822935df60f0f5d3665bd376841a7fcfeb806b5f212de6a00e9a7b25",
+			Registry:  "docker.io",
+			Namespace: "library",
+			Name:      "sha256",
+			Tag:       "3c87c572822935df60f0f5d3665bd376841a7fcfeb806b5f212de6a00e9a7b25",
 		},
 		{
-			From: "foo@sha256:3c87c572822935df60f0f5d3665bd376841a7fcfeb806b5f212de6a00e9a7b25",
-			Name: "foo",
-			ID:   "sha256:3c87c572822935df60f0f5d3665bd376841a7fcfeb806b5f212de6a00e9a7b25",
-			Err:  true,
+			From:      "foo@sha256:3c87c572822935df60f0f5d3665bd376841a7fcfeb806b5f212de6a00e9a7b25",
+			Registry:  "docker.io",
+			Namespace: "library",
+			Name:      "foo",
+			ID:        "sha256:3c87c572822935df60f0f5d3665bd376841a7fcfeb806b5f212de6a00e9a7b25",
 		},
 		{
 			From:      "bar/foo",
+			Registry:  "docker.io",
 			Namespace: "bar",
 			Name:      "foo",
-			Err:       true,
 		},
 		{
 			From:      "bar/foo:tag",
+			Registry:  "docker.io",
 			Namespace: "bar",
 			Name:      "foo",
 			Tag:       "tag",
-			Err:       true,
 		},
 		{
 			From:      "bar/foo@sha256:3c87c572822935df60f0f5d3665bd376841a7fcfeb806b5f212de6a00e9a7b25",
+			Registry:  "docker.io",
 			Namespace: "bar",
 			Name:      "foo",
 			ID:        "sha256:3c87c572822935df60f0f5d3665bd376841a7fcfeb806b5f212de6a00e9a7b25",
-			Err:       true,
 		},
 		{
 			From:      "bar/foo/baz",
+			Registry:  "docker.io",
 			Namespace: "bar",
 			Name:      "foo/baz",
-			Err:       true,
 		},
 		{
 			From:      "bar/library/baz",
+			Registry:  "docker.io",
 			Namespace: "bar",
 			Name:      "library/baz",
-			Err:       true,
 		},
 		{
 			From:      "bar/foo/baz:tag",
+			Registry:  "docker.io",
 			Namespace: "bar",
 			Name:      "foo/baz",
 			Tag:       "tag",
-			Err:       true,
 		},
 		{
 			From:      "bar/foo/baz@sha256:3c87c572822935df60f0f5d3665bd376841a7fcfeb806b5f212de6a00e9a7b25",
+			Registry:  "docker.io",
 			Namespace: "bar",
 			Name:      "foo/baz",
 			ID:        "sha256:3c87c572822935df60f0f5d3665bd376841a7fcfeb806b5f212de6a00e9a7b25",
-			Err:       true,
 		},
 		{
 			From:      "bar:5000/foo/baz",
@@ -112,7 +119,6 @@ func TestParseNamedDockerImageReference(t *testing.T) {
 			Namespace: "foo",
 			Name:      "baz",
 			ID:        "sha256:3c87c572822935df60f0f5d3665bd376841a7fcfeb806b5f212de6a00e9a7b25",
-			Err:       true,
 		},
 		{
 			From:     "myregistry.io/foo",
@@ -131,10 +137,10 @@ func TestParseNamedDockerImageReference(t *testing.T) {
 			Name:      "myapp",
 		},
 		{
-			From:     "docker.io/myapp",
-			Registry: "docker.io",
-			Name:     "myapp",
-			Err:      true,
+			From:      "docker.io/myapp",
+			Registry:  "docker.io",
+			Namespace: "library",
+			Name:      "myapp",
 		},
 		{
 			From:      "docker.io/user/myapp",
@@ -149,10 +155,10 @@ func TestParseNamedDockerImageReference(t *testing.T) {
 			Name:      "project/myapp",
 		},
 		{
-			From:     "index.docker.io/bar",
-			Registry: "index.docker.io",
-			Name:     "bar",
-			Err:      true,
+			From:      "index.docker.io/bar",
+			Registry:  "docker.io",
+			Namespace: "library",
+			Name:      "bar",
 		},
 		{
 			// registry/namespace/name == 255 chars
@@ -172,11 +178,11 @@ func TestParseNamedDockerImageReference(t *testing.T) {
 		},
 		{
 			// docker.io/namespace/name == 255 chars with implicit namespace
-			From:     fmt.Sprintf("docker.io/%s:tag", strings.Repeat("b", 231)),
-			Registry: "docker.io",
-			Name:     strings.Repeat("b", 231),
-			Tag:      "tag",
-			Err:      true,
+			From:      fmt.Sprintf("docker.io/%s:tag", strings.Repeat("b", 231)),
+			Registry:  "docker.io",
+			Namespace: "library",
+			Name:      strings.Repeat("b", 231),
+			Tag:       "tag",
 		},
 		{
 			// registry/namespace/name > 255 chars
@@ -226,9 +232,9 @@ func TestParseNamedDockerImageReference(t *testing.T) {
 		},
 		{
 			From:      "bar/foo/baz/biz",
+			Registry:  "docker.io",
 			Namespace: "bar",
 			Name:      "foo/baz/biz",
-			Err:       true,
 		},
 		{
 			From: "bar/foo/baz////biz",
