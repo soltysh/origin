@@ -12,6 +12,7 @@ import (
 	kcontroller "k8s.io/kubernetes/pkg/controller"
 	serviceaccountadmission "k8s.io/kubernetes/plugin/pkg/admission/serviceaccount"
 
+	appsv1 "github.com/openshift/origin/pkg/apps/apis/apps/v1"
 	configapi "github.com/openshift/origin/pkg/cmd/server/api"
 	"github.com/openshift/origin/pkg/cmd/server/crypto"
 	"github.com/openshift/origin/pkg/cmd/util/clientcmd"
@@ -159,6 +160,13 @@ func BuildOpenshiftControllerConfig(options configapi.MasterConfig) (*OpenshiftC
 
 	storageVersion := options.EtcdStorageConfig.OpenShiftStorageVersion
 	groupVersion := schema.GroupVersion{Group: "", Version: storageVersion}
+	// This is needed so the deployment config controller has the necessary
+	// generated conversions when encoding the deployment config into replication
+	// controller annotation.
+	// FIXME: This should not be required and should be investigated.
+	if err := appsv1.RegisterConversions(kapi.Scheme); err != nil {
+		return nil, err
+	}
 	annotationCodec := kapi.Codecs.LegacyCodec(groupVersion)
 
 	imageTemplate := variable.NewDefaultImageTemplate()
