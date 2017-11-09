@@ -106,6 +106,36 @@ func Convert_apps_RollingDeploymentStrategyParams_To_v1_RollingDeploymentStrateg
 	return nil
 }
 
+func Convert_v1_DeploymentTriggerPolicies_To_apps_DeploymentTriggerPolicy(in *DeploymentTriggerPolicies, out *[]newer.DeploymentTriggerPolicy, s conversion.Scope) error {
+	if in != nil {
+		policies := *out
+		for i := range *in {
+			tmp := newer.DeploymentTriggerPolicy{}
+			if err := s.Convert(&(*in)[i], &tmp, 0); err != nil {
+				return err
+			}
+			policies = append(policies, tmp)
+		}
+		*out = policies
+	}
+	return nil
+}
+
+func Convert_apps_DeploymentTriggerPolicy_To_v1_DeploymentTriggerPolicies(in *[]newer.DeploymentTriggerPolicy, out *DeploymentTriggerPolicies, s conversion.Scope) error {
+	if in != nil {
+		policies := *out
+		for i := range *in {
+			tmp := DeploymentTriggerPolicy{}
+			if err := s.Convert(&(*in)[i], &tmp, 0); err != nil {
+				return err
+			}
+			policies = append(policies, tmp)
+		}
+		*out = policies
+	}
+	return nil
+}
+
 func addConversionFuncs(scheme *runtime.Scheme) error {
 	return scheme.AddConversionFuncs(
 		Convert_v1_DeploymentTriggerImageChangeParams_To_apps_DeploymentTriggerImageChangeParams,
@@ -113,5 +143,8 @@ func addConversionFuncs(scheme *runtime.Scheme) error {
 
 		Convert_v1_RollingDeploymentStrategyParams_To_apps_RollingDeploymentStrategyParams,
 		Convert_apps_RollingDeploymentStrategyParams_To_v1_RollingDeploymentStrategyParams,
+
+		Convert_v1_DeploymentTriggerPolicies_To_apps_DeploymentTriggerPolicy,
+		Convert_apps_DeploymentTriggerPolicy_To_v1_DeploymentTriggerPolicies,
 	)
 }
