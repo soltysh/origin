@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 99c7fdab719c25daf35ff620aaadf53c7f61459a
+%global commit 9a4df50cc2df410cc8b839a3fa0001389571fed8
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.44.36 OS_GIT_COMMIT=99c7fda OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.44.37 OS_GIT_COMMIT=9a4df50 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -48,7 +48,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.44.37
+Version:        3.4.1.44.38
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -563,6 +563,9 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Fri Nov 10 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.4.1.44.38
+- 
+
 * Thu Nov 09 2017 Jenkins CD Merge Bot <smunilla@redhat.com> 3.4.1.44.37
 - 
 
