@@ -43,3 +43,4 @@ message MetricValueList {
   // the value of the metric across the described objects
   repeated MetricValue items = 2;
 }
+

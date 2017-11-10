@@ -163,3 +163,4 @@ message Subject {
   // +optional
   optional string namespace = 4;
 }
+
