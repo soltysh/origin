@@ -21,8 +21,8 @@ import (
 
 	oapi "github.com/openshift/origin/pkg/api"
 	osgraph "github.com/openshift/origin/pkg/api/graph"
+	appsapi "github.com/openshift/origin/pkg/apps/apis/apps"
 	appsfakeclient "github.com/openshift/origin/pkg/apps/generated/internalclientset/fake"
-	appsclientscheme "github.com/openshift/origin/pkg/apps/generated/internalclientset/scheme"
 	buildfakeclient "github.com/openshift/origin/pkg/build/generated/internalclientset/fake"
 	buildclientscheme "github.com/openshift/origin/pkg/build/generated/internalclientset/scheme"
 	imagefakeclient "github.com/openshift/origin/pkg/image/generated/internalclientset/fake"
@@ -438,11 +438,17 @@ func TestProjectStatus(t *testing.T) {
 			objs = append(objs, o)
 		}
 
+		// We need an empty scheme for apps to only filter objects included in
+		// apps.openshift.io scheme. The appsclientscheme has kube types registered
+		// which will break the filterByScheme.
+		appsScheme := runtime.NewScheme()
+		appsapi.AddToScheme(appsScheme)
+
 		kc := kubefakeclient.NewSimpleClientset(filterByScheme(kubeclientscheme.Scheme, objs...)...)
 		projectClient := projectfakeclient.NewSimpleClientset(filterByScheme(projectclientscheme.Scheme, objs...)...)
 		buildClient := buildfakeclient.NewSimpleClientset(filterByScheme(buildclientscheme.Scheme, objs...)...)
 		imageClient := imagefakeclient.NewSimpleClientset(filterByScheme(imageclientscheme.Scheme, objs...)...)
-		appsClient := appsfakeclient.NewSimpleClientset(filterByScheme(appsclientscheme.Scheme, objs...)...)
+		appsClient := appsfakeclient.NewSimpleClientset(filterByScheme(appsScheme, objs...)...)
 		routeClient := routefakeclient.NewSimpleClientset(filterByScheme(routeclientscheme.Scheme, objs...)...)
 
 		d := ProjectStatusDescriber{
