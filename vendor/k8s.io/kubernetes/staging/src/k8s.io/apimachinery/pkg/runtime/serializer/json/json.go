@@ -17,7 +17,7 @@ limitations under the License.
 package json
 
 import (
-	"encoding/json"
+	gojson "encoding/json"
 	"io"
 
 	"github.com/ghodss/yaml"
@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/recognizer"
 	"k8s.io/apimachinery/pkg/util/framer"
+	"k8s.io/apimachinery/pkg/util/json"
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -64,40 +65,6 @@ type Serializer struct {
 // Serializer implements Serializer
 var _ runtime.Serializer = &Serializer{}
 var _ recognizer.RecognizingDecoder = &Serializer{}
-
-// TODO: Remove jsoniter for now as it is buggy and fails the serialization
-// test for DockerImage objects.
-/*
-func init() {
-	// Force jsoniter to decode number to interface{} via ints, if possible.
-	decodeNumberAsInt64IfPossible := func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-		switch iter.WhatIsNext() {
-		case jsoniter.NumberValue:
-			var number json.Number
-			iter.ReadVal(&number)
-			u64, err := strconv.ParseUint(string(number), 10, 64)
-			if err == nil {
-				*(*interface{})(ptr) = u64
-				return
-			}
-			i64, err := strconv.ParseInt(string(number), 10, 64)
-			if err == nil {
-				*(*interface{})(ptr) = i64
-				return
-			}
-			f64, err := strconv.ParseFloat(string(number), 64)
-			if err == nil {
-				*(*interface{})(ptr) = f64
-				return
-			}
-			// Not much we can do here.
-		default:
-			*(*interface{})(ptr) = iter.Read()
-		}
-	}
-	jsoniter.RegisterTypeDecoderFunc("interface {}", decodeNumberAsInt64IfPossible)
-}
-*/
 
 // Decode attempts to convert the provided data into YAML or JSON, extract the stored schema kind, apply the provided default gvk, and then
 // load that data into an object matching the desired schema kind or the provided into. If into is *runtime.Unknown, the raw data will be
@@ -154,7 +121,6 @@ func (s *Serializer) Decode(originalData []byte, gvk *schema.GroupVersionKind, i
 		types, _, err := s.typer.ObjectKinds(into)
 		switch {
 		case runtime.IsNotRegisteredError(err):
-			// if err := jsoniter.ConfigFastest.Unmarshal(data, into); err != nil {
 			if err := json.Unmarshal(data, into); err != nil {
 				return nil, actual, err
 			}
@@ -189,7 +155,6 @@ func (s *Serializer) Decode(originalData []byte, gvk *schema.GroupVersionKind, i
 		return nil, actual, err
 	}
 
-	// if err := jsoniter.ConfigFastest.Unmarshal(data, obj); err != nil {
 	if err := json.Unmarshal(data, obj); err != nil {
 		return nil, actual, err
 	}
@@ -199,7 +164,6 @@ func (s *Serializer) Decode(originalData []byte, gvk *schema.GroupVersionKind, i
 // Encode serializes the provided object to the given writer.
 func (s *Serializer) Encode(obj runtime.Object, w io.Writer) error {
 	if s.yaml {
-		// json, err := jsoniter.ConfigFastest.Marshal(obj)
 		json, err := json.Marshal(obj)
 		if err != nil {
 			return err
@@ -213,8 +177,7 @@ func (s *Serializer) Encode(obj runtime.Object, w io.Writer) error {
 	}
 
 	if s.pretty {
-		// data, err := jsoniter.ConfigFastest.MarshalIndent(obj, "", "  ")
-		data, err := json.MarshalIndent(obj, "", "  ")
+		data, err := gojson.MarshalIndent(obj, "", "  ")
 		if err != nil {
 			return err
 		}
