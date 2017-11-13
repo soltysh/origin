@@ -383,7 +383,6 @@ function os::build::images() {
 
   # images that depend on "${tag_prefix}-base"
   ( os::build::image "${tag_prefix}"                       images/origin ) &
-  ( os::build::image "${tag_prefix}-docker-registry"       images/dockerregistry ) &
   ( os::build::image "${tag_prefix}-egress-router"         images/egress/router ) &
   ( os::build::image "${tag_prefix}-egress-http-proxy"     images/egress/http-proxy ) &
   ( os::build::image "${tag_prefix}-federation"            images/federation ) &
