@@ -17,9 +17,10 @@ limitations under the License.
 package v1
 
 import (
-	"encoding/json"
 	"reflect"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/util/json"
 )
 
 type GroupVersionHolder struct {

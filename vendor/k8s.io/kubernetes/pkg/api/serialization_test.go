@@ -19,7 +19,6 @@ package api_test
 import (
 	"bytes"
 	"encoding/hex"
-	"encoding/json"
 	"io/ioutil"
 	"math/rand"
 	"reflect"
@@ -40,6 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
 	"k8s.io/apimachinery/pkg/util/diff"
+	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/kubernetes/pkg/api"
