@@ -108,7 +108,7 @@ func Convert_apps_RollingDeploymentStrategyParams_To_v1_RollingDeploymentStrateg
 
 func Convert_v1_DeploymentTriggerPolicies_To_apps_DeploymentTriggerPolicy(in *DeploymentTriggerPolicies, out *[]newer.DeploymentTriggerPolicy, s conversion.Scope) error {
 	if in != nil {
-		policies := *out
+		policies := []newer.DeploymentTriggerPolicy{}
 		for i := range *in {
 			tmp := newer.DeploymentTriggerPolicy{}
 			if err := s.Convert(&(*in)[i], &tmp, 0); err != nil {
@@ -123,7 +123,7 @@ func Convert_v1_DeploymentTriggerPolicies_To_apps_DeploymentTriggerPolicy(in *De
 
 func Convert_apps_DeploymentTriggerPolicy_To_v1_DeploymentTriggerPolicies(in *[]newer.DeploymentTriggerPolicy, out *DeploymentTriggerPolicies, s conversion.Scope) error {
 	if in != nil {
-		policies := *out
+		policies := DeploymentTriggerPolicies{}
 		for i := range *in {
 			tmp := DeploymentTriggerPolicy{}
 			if err := s.Convert(&(*in)[i], &tmp, 0); err != nil {
