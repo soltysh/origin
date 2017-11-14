@@ -21,6 +21,8 @@ var (
 
 	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes, addConversionFuncs)
 	AddToScheme   = SchemeBuilder.AddToScheme
+
+	localSchemeBuilder = SchemeBuilder
 )
 
 // Kind takes an unqualified kind and returns back a Group qualified GroupKind
