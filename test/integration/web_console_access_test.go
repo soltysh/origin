@@ -52,6 +52,9 @@ func tryAccessURL(t *testing.T, url string, expectedStatus int, expectedRedirect
 	}
 	if resp.StatusCode != expectedStatus {
 		t.Errorf("Expected status %d for %q, got %d", expectedStatus, url, resp.StatusCode)
+		if body, err := ioutil.ReadAll(resp.Body); err != nil {
+			t.Logf("Response body was %s", body)
+		}
 	}
 	// ignore query parameters
 	location := resp.Header.Get("Location")
