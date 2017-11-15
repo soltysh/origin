@@ -133,7 +133,7 @@ func GetOpenshiftBootstrapClusterRoles() []rbac.ClusterRole {
 					"replicationcontrollers/status", "resourcequotas", "resourcequotas/status", "securitycontextconstraints", "serviceaccounts", "services",
 					"services/status").RuleOrDie(),
 
-				rbac.NewRule(read...).Groups(appsGroup).Resources("statefulsets", "statefulsets/status", "deployments", "deployments/scale", "deployments/status", "controllerrevisions").RuleOrDie(),
+				rbac.NewRule(read...).Groups(appsGroup).Resources("statefulsets", "statefulsets/scale", "statefulsets/status", "deployments", "deployments/scale", "deployments/status", "controllerrevisions").RuleOrDie(),
 
 				rbac.NewRule(read...).Groups(apiExtensionsGroup).Resources("customresourcedefinitions", "customresourcedefinitions/status").RuleOrDie(),
 
@@ -193,7 +193,7 @@ func GetOpenshiftBootstrapClusterRoles() []rbac.ClusterRole {
 				// permissions to check access.  These creates are non-mutating
 				rbac.NewRule("create").Groups(authzGroup, legacyAuthzGroup).Resources("localresourceaccessreviews", "localsubjectaccessreviews", "resourceaccessreviews",
 					"selfsubjectrulesreviews", "subjectrulesreviews", "subjectaccessreviews").RuleOrDie(),
-				rbac.NewRule("create").Groups(kAuthzGroup).Resources("selfsubjectaccessreviews", "subjectaccessreviews", "localsubjectaccessreviews").RuleOrDie(),
+				rbac.NewRule("create").Groups(kAuthzGroup).Resources("selfsubjectaccessreviews", "subjectaccessreviews", "selfsubjectrulesreviews", "localsubjectaccessreviews").RuleOrDie(),
 				rbac.NewRule("create").Groups(kAuthnGroup).Resources("tokenreviews").RuleOrDie(),
 				// permissions to check PSP, these creates are non-mutating
 				rbac.NewRule("create").Groups(securityGroup, legacySecurityGroup).Resources("podsecuritypolicysubjectreviews", "podsecuritypolicyselfsubjectreviews", "podsecuritypolicyreviews").RuleOrDie(),
