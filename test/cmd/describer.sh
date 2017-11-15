@@ -31,7 +31,7 @@ __EOF__
 '
 os::cmd::try_until_success 'eventnum=$(oc get events | wc -l) && [[ $eventnum -gt 0 ]]'
 # resources without describers get a default
-os::cmd::expect_success_and_text 'oc describe events' 'Namespace:	cmd-describer'
+os::cmd::expect_success_and_text 'oc describe events' 'Namespace:\w+cmd-describer'
 
 # TemplateInstance
 os::cmd::expect_success 'oc create -f test/extended/testdata/templates/templateinstance_objectkinds.yaml'
