@@ -58,9 +58,9 @@ func StartMaster(networkConfig osconfigapi.MasterNetworkConfig, osClient *osclie
 		TypeMeta:   metav1.TypeMeta{Kind: "ClusterNetwork"},
 		ObjectMeta: metav1.ObjectMeta{Name: osapi.ClusterNetworkDefault},
 
-		Network:          networkConfig.ClusterNetworkCIDR,
+		Network:          master.networkInfo.ClusterNetwork.String(),
 		HostSubnetLength: networkConfig.HostSubnetLength,
-		ServiceNetwork:   networkConfig.ServiceNetworkCIDR,
+		ServiceNetwork:   master.networkInfo.ServiceNetwork.String(),
 		PluginName:       networkConfig.NetworkPluginName,
 	}
 	osapivalidation.SetDefaultClusterNetwork(*configCN)
