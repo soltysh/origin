@@ -122,7 +122,7 @@ func maybeAddMacvlan(pod *kapi.Pod, netns string) error {
 	} else {
 		iface, err = netlink.LinkByName(annotation)
 		if err != nil {
-			return fmt.Errorf("pod annotation %q is neither 'true' nor the name of a local network interface", networkapi.AssignMacvlanAnnotation)
+			return fmt.Errorf("pod annotation %q is neither 'true' nor the name of a local network interface", sdnapi.AssignMacvlanAnnotation)
 		}
 	}
 
