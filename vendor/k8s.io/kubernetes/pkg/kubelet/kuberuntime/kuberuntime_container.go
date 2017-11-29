@@ -139,13 +139,10 @@ func (m *kubeGenericRuntimeManager) generateContainerConfig(container *api.Conta
 	if err != nil {
 		return nil, err
 	}
-	if uid != nil {
-		// Verify RunAsNonRoot. Non-root verification only supports numeric user.
-		if err := verifyRunAsNonRoot(pod, container, *uid); err != nil {
-			return nil, err
-		}
-	} else {
-		glog.Warningf("Non-root verification doesn't support non-numeric user (%s)", *username)
+
+	// Verify RunAsNonRoot. Non-root verification only supports numeric user.
+	if err := verifyRunAsNonRoot(pod, container, uid, username); err != nil {
+		return nil, err
 	}
 
 	command, args := kubecontainer.ExpandContainerCommandAndArgs(container, opts.Envs)
