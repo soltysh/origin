@@ -38,6 +38,7 @@
 // test/extended/testdata/build-timing/test-docker-build.json
 // test/extended/testdata/build-timing/test-is.json
 // test/extended/testdata/build-timing/test-s2i-build.json
+// test/extended/testdata/builds/test-imagechangetriggers.yaml
 // test/extended/testdata/config-map-jenkins-slave-pods.yaml
 // test/extended/testdata/custom-secret-builder/Dockerfile
 // test/extended/testdata/custom-secret-builder/build.sh
@@ -1544,6 +1545,113 @@ func testExtendedTestdataBuildTimingTestS2iBuildJson() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/build-timing/test-s2i-build.json", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataBuildsTestImagechangetriggersYaml = []byte(`kind: List
+apiVersion: v1
+items:
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    name: nodejs-ex
+  spec:
+    tags:
+    - name: latest
+      from:
+        kind: DockerImage
+        name: centos/nodejs-6-centos7:latest
+
+- kind: BuildConfig
+  apiVersion: v1
+  metadata:
+    name: bc-source
+  spec:
+    source:
+      type: Git
+      git:
+        uri: https://github.com/openshift/nodejs-ex.git
+    strategy:
+      type: Source
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: nodejs-ex:latest
+    triggers:
+    - type: ImageChange
+      imageChange:
+        from:
+          kind: ImageStreamTag
+          name: nodejs-ex:latest
+
+- kind: BuildConfig
+  apiVersion: v1
+  metadata:
+    name: bc-docker
+  spec:
+    source:
+      type: Dockerfile
+      dockerfile: FROM nodejs
+    strategy:
+      type: Docker
+      dockerStrategy:
+        from:
+          kind: ImageStreamTag
+          name: nodejs-ex:latest
+    triggers:
+    - type: ImageChange
+      imageChange:
+        from:
+          kind: ImageStreamTag
+          name: nodejs-ex:latest
+
+- kind: BuildConfig
+  apiVersion: v1
+  metadata:
+    name: bc-custom
+  spec:
+    strategy:
+      type: Custom
+      customStrategy:
+        from:
+          kind: ImageStreamTag
+          name: nodejs-ex:latest
+    triggers:
+    - type: ImageChange
+      imageChange:
+        from:
+          kind: ImageStreamTag
+          name: nodejs-ex:latest
+
+- kind: BuildConfig
+  apiVersion: v1
+  metadata:
+    name: bc-jenkins
+  spec:
+    strategy:
+      type: Jenkins
+      jenkinsPipelineStrategy:
+        jenkinsfile: node {}
+    triggers:
+    - type: ImageChange
+      imageChange:
+        from:
+          kind: ImageStreamTag
+          name: nodejs-ex:latest
+`)
+
+func testExtendedTestdataBuildsTestImagechangetriggersYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataBuildsTestImagechangetriggersYaml, nil
+}
+
+func testExtendedTestdataBuildsTestImagechangetriggersYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataBuildsTestImagechangetriggersYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/builds/test-imagechangetriggers.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -20621,6 +20729,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/build-timing/test-docker-build.json": testExtendedTestdataBuildTimingTestDockerBuildJson,
 	"test/extended/testdata/build-timing/test-is.json": testExtendedTestdataBuildTimingTestIsJson,
 	"test/extended/testdata/build-timing/test-s2i-build.json": testExtendedTestdataBuildTimingTestS2iBuildJson,
+	"test/extended/testdata/builds/test-imagechangetriggers.yaml": testExtendedTestdataBuildsTestImagechangetriggersYaml,
 	"test/extended/testdata/config-map-jenkins-slave-pods.yaml": testExtendedTestdataConfigMapJenkinsSlavePodsYaml,
 	"test/extended/testdata/custom-secret-builder/Dockerfile": testExtendedTestdataCustomSecretBuilderDockerfile,
 	"test/extended/testdata/custom-secret-builder/build.sh": testExtendedTestdataCustomSecretBuilderBuildSh,
@@ -20965,6 +21074,9 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"test-docker-build.json": &bintree{testExtendedTestdataBuildTimingTestDockerBuildJson, map[string]*bintree{}},
 					"test-is.json": &bintree{testExtendedTestdataBuildTimingTestIsJson, map[string]*bintree{}},
 					"test-s2i-build.json": &bintree{testExtendedTestdataBuildTimingTestS2iBuildJson, map[string]*bintree{}},
+				}},
+				"builds": &bintree{nil, map[string]*bintree{
+					"test-imagechangetriggers.yaml": &bintree{testExtendedTestdataBuildsTestImagechangetriggersYaml, map[string]*bintree{}},
 				}},
 				"config-map-jenkins-slave-pods.yaml": &bintree{testExtendedTestdataConfigMapJenkinsSlavePodsYaml, map[string]*bintree{}},
 				"custom-secret-builder": &bintree{nil, map[string]*bintree{

@@ -256,7 +256,7 @@ func TestBuildConfigReactor(t *testing.T) {
 			})
 		}
 		instantiator := &instantiator{build: test.response}
-		r := BuildConfigReactor{Instantiator: instantiator}
+		r := buildConfigReactor{instantiator: instantiator}
 		initial, err := kapi.Scheme.DeepCopy(test.obj)
 		if err != nil {
 			t.Fatal(err)
