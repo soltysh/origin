@@ -28,20 +28,13 @@ var _ = g.Describe("[Feature:Builds][Conformance] imagechangetriggers", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 		})
 
-		g.AfterEach(func() {
-			if g.CurrentGinkgoTestDescription().Failed {
-				exutil.DumpPodStates(oc)
-				exutil.DumpPodLogsStartingWith("", oc)
-			}
-		})
-
 		g.It("imagechangetriggers should trigger builds of all types", func() {
 			err := oc.AsAdmin().Run("create").Args("-f", buildFixture).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			err = wait.Poll(time.Second, 30*time.Second, func() (done bool, err error) {
 				for _, build := range []string{"bc-docker-1", "bc-jenkins-1", "bc-source-1", "bc-custom-1"} {
-					_, err := oc.BuildClient().Build().Builds(oc.Namespace()).Get(build, metav1.GetOptions{})
+					_, err := oc.Client().Builds(oc.Namespace()).Get(build, metav1.GetOptions{})
 					if err == nil {
 						continue
 					}
