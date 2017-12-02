@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 
 	ktemplates "k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
@@ -20,16 +19,9 @@ import (
 	"github.com/openshift/origin/pkg/cmd/server/start"
 	"github.com/openshift/origin/pkg/cmd/templates"
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
-	"github.com/openshift/origin/pkg/cmd/util/clientcmd"
-	"github.com/openshift/origin/pkg/oc/admin"
-	diagnostics "github.com/openshift/origin/pkg/oc/admin/diagnostics"
-	sync "github.com/openshift/origin/pkg/oc/admin/groups/sync/cli"
-	"github.com/openshift/origin/pkg/oc/admin/validate"
+	cmdversion "github.com/openshift/origin/pkg/cmd/version"
 	"github.com/openshift/origin/pkg/oc/cli/cmd"
-	"github.com/openshift/origin/pkg/oc/experimental/buildchain"
-	configcmd "github.com/openshift/origin/pkg/oc/experimental/config"
-	"github.com/openshift/origin/pkg/oc/experimental/dockergc"
-	exipfailover "github.com/openshift/origin/pkg/oc/experimental/ipfailover"
+	osversion "github.com/openshift/origin/pkg/version/openshift"
 )
 
 var (
@@ -99,32 +91,10 @@ func NewCommandOpenShift(name string) *cobra.Command {
 		Run:   kcmdutil.DefaultSubCommandRun(out),
 	}
 
-	f := clientcmd.New(pflag.NewFlagSet("", pflag.ContinueOnError))
-
 	startAllInOne, _ := start.NewCommandStartAllInOne(name, out, errout)
 	root.AddCommand(startAllInOne)
-	root.AddCommand(newExperimentalCommand("ex", name+" ex"))
 	root.AddCommand(newCompletionCommand("completion", name+" completion"))
-	root.AddCommand(cmd.NewCmdVersion(name, f, out, cmd.VersionOptions{PrintEtcdVersion: true, IsServer: true}))
-
-	// infra commands are those that are bundled with the binary but not displayed to end users
-	// directly
-	infra := &cobra.Command{
-		Use: "infra", // Because this command exposes no description, it will not be shown in help
-	}
-
-	infra.AddCommand(
-		irouter.NewCommandTemplateRouter("router"),
-		irouter.NewCommandF5Router("f5-router"),
-		deployer.NewCommandDeployer("deploy"),
-		recycle.NewCommandRecycle("recycle", out),
-		builder.NewCommandS2IBuilder("sti-build"),
-		builder.NewCommandDockerBuilder("docker-build"),
-		diagnostics.NewCommandPodDiagnostics("diagnostic-pod", out),
-		diagnostics.NewCommandNetworkPodDiagnostics("network-diagnostic-pod", out),
-	)
-	root.AddCommand(infra)
-
+	root.AddCommand(cmdversion.NewCmdVersion(name, osversion.Get(), os.Stdout))
 	root.AddCommand(cmd.NewCmdOptions(out))
 
 	// TODO: add groups
@@ -133,76 +103,7 @@ func NewCommandOpenShift(name string) *cobra.Command {
 	return root
 }
 
-func newExperimentalCommand(name, fullName string) *cobra.Command {
-	out := os.Stdout
-	errout := os.Stderr
-
-	experimental := &cobra.Command{
-		Use:   name,
-		Short: "Experimental commands under active development",
-		Long:  "The commands grouped here are under development and may change without notice.",
-		Run: func(c *cobra.Command, args []string) {
-			c.SetOutput(out)
-			c.Help()
-		},
-		BashCompletionFunction: admin.BashCompletionFunc,
-	}
-
-	f := clientcmd.New(experimental.PersistentFlags())
-
-	experimental.AddCommand(validate.NewCommandValidate(validate.ValidateRecommendedName, fullName+" "+validate.ValidateRecommendedName, out, errout))
-	experimental.AddCommand(exipfailover.NewCmdIPFailoverConfig(f, fullName, "ipfailover", out, errout))
-	experimental.AddCommand(dockergc.NewCmdDockerGCConfig(f, fullName, "dockergc", out, errout))
-	experimental.AddCommand(buildchain.NewCmdBuildChain(name, fullName+" "+buildchain.BuildChainRecommendedCommandName, f, out))
-	experimental.AddCommand(configcmd.NewCmdConfig(configcmd.ConfigRecommendedName, fullName+" "+configcmd.ConfigRecommendedName, f, out, errout))
-	deprecatedDiag := diagnostics.NewCmdDiagnostics(diagnostics.DiagnosticsRecommendedName, fullName+" "+diagnostics.DiagnosticsRecommendedName, out)
-	deprecatedDiag.Deprecated = fmt.Sprintf(`use "oc adm %[1]s" to run diagnostics instead.`, diagnostics.DiagnosticsRecommendedName)
-	experimental.AddCommand(deprecatedDiag)
-	experimental.AddCommand(cmd.NewCmdOptions(out))
-
-	// these groups also live under `oc adm groups {sync,prune}` and are here only for backwards compatibility
-	experimental.AddCommand(sync.NewCmdSync("sync-groups", fullName+" "+"sync-groups", f, out))
-	experimental.AddCommand(sync.NewCmdPrune("prune-groups", fullName+" "+"prune-groups", f, out))
-	return experimental
-}
-
-var (
-	completion_long = ktemplates.LongDesc(`
-		Output shell completion code for the given shell (bash or zsh).
-
-		This command prints shell code which must be evaluation to provide interactive
-		completion of kubectl commands.`)
-
-	completion_example = ktemplates.Examples(`
-		$ source <(kubectl completion bash)
-
-		will load the kubectl completion code for bash. Note that this depends on the bash-completion
-		framework. It must be sourced before sourcing the kubectl completion, i.e. on the Mac:
-
-		$ brew install bash-completion
-		$ source $(brew --prefix)/etc/bash_completion
-		$ source <(kubectl completion bash)
-
-		If you use zsh, the following will load kubectl zsh completion:
-
-		$ source <(kubectl completion zsh)`)
-)
-
 func newCompletionCommand(name, fullName string) *cobra.Command {
-	out := os.Stdout
-
-	completion := &cobra.Command{
-		Use:     fmt.Sprintf("%s SHELL", name),
-		Short:   "Output shell completion code for the given shell (bash or zsh)",
-		Long:    completion_long,
-		Example: completion_example,
-		Run: func(cmd *cobra.Command, args []string) {
-
-		},
-	}
-
-	f := clientcmd.New(completion.PersistentFlags())
-
-	return cmd.NewCmdCompletion(fullName, f, out)
+	return cmd.NewCmdCompletion(fullName, os.Stdout)
 
 }
