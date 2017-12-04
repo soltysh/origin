@@ -88,6 +88,16 @@ func (proxy *OsdnProxy) Start(baseHandler pconfig.EndpointsConfigHandler) error 
 	return nil
 }
 
+func (proxy *OsdnProxy) updateEgressNetworkPolicyAndEndpoints(policy osapi.EgressNetworkPolicy) {
+	proxy.lock.Lock()
+	defer proxy.lock.Unlock()
+
+	proxy.updateEgressNetworkPolicy(policy)
+	if proxy.allEndpoints != nil {
+		proxy.updateEndpoints()
+	}
+}
+
 func (proxy *OsdnProxy) watchEgressNetworkPolicies() {
 	RunEventQueue(proxy.osClient, EgressNetworkPolicies, func(delta cache.Delta) error {
 		policy := delta.Object.(*osapi.EgressNetworkPolicy)
@@ -99,14 +109,7 @@ func (proxy *OsdnProxy) watchEgressNetworkPolicies() {
 			proxy.egressDNS.Add(*policy)
 		}
 
-		func() {
-			proxy.lock.Lock()
-			defer proxy.lock.Unlock()
-			proxy.updateEgressNetworkPolicy(*policy)
-			if proxy.allEndpoints != nil {
-				proxy.updateEndpoints()
-			}
-		}()
+		proxy.updateEgressNetworkPolicyAndEndpoints(*policy)
 		return nil
 	})
 }
@@ -238,6 +241,7 @@ func (proxy *OsdnProxy) OnEndpointsUpdate(allEndpoints []*kapi.Endpoints) {
 	proxy.updateEndpoints()
 }
 
+// updateEndpoints assumes the caller holds proxy.lock
 func (proxy *OsdnProxy) updateEndpoints() {
 	if len(proxy.firewall) == 0 {
 		proxy.baseEndpointsHandler.OnEndpointsUpdate(proxy.allEndpoints)
@@ -294,13 +298,7 @@ func (proxy *OsdnProxy) syncEgressDNSProxyFirewall() {
 			}
 		}
 
-		proxy.lock.Lock()
-		defer proxy.lock.Unlock()
-
-		proxy.updateEgressNetworkPolicy(policy)
-		if proxy.allEndpoints != nil {
-			proxy.updateEndpoints()
-		}
+		proxy.updateEgressNetworkPolicyAndEndpoints(policy)
 	}
 }
 
