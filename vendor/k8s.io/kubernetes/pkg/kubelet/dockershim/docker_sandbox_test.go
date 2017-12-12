@@ -183,6 +183,11 @@ func TestSandboxStatusAfterRestart(t *testing.T) {
 	err = ds.client.StartContainer(createResp.ID)
 	assert.NoError(t, err)
 
+	// NetNS path only known after creation
+	c, err := ds.client.InspectContainer(createResp.ID)
+	assert.NoError(t, err)
+	expected.Linux.Namespaces.Network, _ = getNetworkNamespace(c)
+
 	// Check status without RunPodSandbox() having set up networking
 	expected.Id = createResp.ID // ID is only known after the creation.
 	status, err := ds.PodSandboxStatus(createResp.ID)
