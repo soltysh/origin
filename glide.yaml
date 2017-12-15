@@ -4,6 +4,8 @@ excludeDirs:
 - cmd/service-catalog
 - pkg/build/builder
 import:
+- package: github.com/ugorji/go
+  version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
 - package: github.com/coreos/etcd
   version: v3.2.8
 - package: github.com/gonum/graph
@@ -78,3 +80,7 @@ import:
   version: openshift-3.8
 - package: github.com/vjeantet/ldapserver
   version: v1.0
+
+# ours because of genapidocs.  This is the current kube level
+- package: github.com/go-openapi/loads
+  version: 18441dfa706d924a39a030ee2c3b1d8d81917b38
