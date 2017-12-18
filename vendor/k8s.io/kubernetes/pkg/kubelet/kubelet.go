@@ -222,6 +222,7 @@ type KubeletDeps struct {
 	ContainerManager   cm.ContainerManager
 	DockerClient       dockertools.DockerInterface
 	EventClient        v1core.EventsGetter
+	HeartbeatClient    clientset.Interface
 	KubeClient         clientset.Interface
 	ExternalKubeClient clientgoclientset.Interface
 	Mounter            mount.Interface
@@ -425,6 +426,7 @@ func NewMainKubelet(kubeCfg *componentconfig.KubeletConfiguration, kubeDeps *Kub
 		nodeName:                       nodeName,
 		dockerClient:                   kubeDeps.DockerClient,
 		kubeClient:                     kubeDeps.KubeClient,
+		heartbeatClient:                kubeDeps.HeartbeatClient,
 		rootDirectory:                  kubeCfg.RootDirectory,
 		resyncInterval:                 kubeCfg.SyncFrequency.Duration,
 		containerRefManager:            containerRefManager,
@@ -837,13 +839,14 @@ type nodeLister interface {
 type Kubelet struct {
 	kubeletConfiguration componentconfig.KubeletConfiguration
 
-	hostname      string
-	nodeName      types.NodeName
-	dockerClient  dockertools.DockerInterface
-	runtimeCache  kubecontainer.RuntimeCache
-	kubeClient    clientset.Interface
-	iptClient     utilipt.Interface
-	rootDirectory string
+	hostname        string
+	nodeName        types.NodeName
+	dockerClient    dockertools.DockerInterface
+	runtimeCache    kubecontainer.RuntimeCache
+	kubeClient      clientset.Interface
+	heartbeatClient clientset.Interface
+	iptClient       utilipt.Interface
+	rootDirectory   string
 
 	// podWorkers handle syncing Pods in response to events.
 	podWorkers PodWorkers
