@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	s2igit "github.com/openshift/source-to-image/pkg/scm/git"
-	s2iutil "github.com/openshift/source-to-image/pkg/util"
+	s2ifs "github.com/openshift/source-to-image/pkg/util/fs"
 )
 
 // ParseRepository parses a string that may be in the Git format (git@) or URL format
@@ -28,7 +28,7 @@ func ParseRepository(s string) (*url.URL, error) {
 	// There are some shortcomings with url.Parse when it comes to GIT, namely wrt
 	// the GIT local/file and ssh protocols - it does not handle implied schema (i.e. no <proto>:// prefix)well;
 	// We handle those caveats here
-	err = s2igit.New(s2iutil.NewFileSystem()).MungeNoProtocolURL(s, uri)
+	err = s2igit.New(s2ifs.NewFileSystem()).MungeNoProtocolURL(s, uri)
 	if err != nil {
 		return nil, err
 	}

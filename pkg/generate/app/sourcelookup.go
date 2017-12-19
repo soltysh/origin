@@ -15,7 +15,7 @@ import (
 
 	s2iapi "github.com/openshift/source-to-image/pkg/api"
 	s2igit "github.com/openshift/source-to-image/pkg/scm/git"
-	s2iutil "github.com/openshift/source-to-image/pkg/util"
+	s2ifs "github.com/openshift/source-to-image/pkg/util/fs"
 
 	kapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/validation"
@@ -68,7 +68,7 @@ func (d dockerfileContents) Contents() string {
 
 // IsRemoteRepository checks whether the provided string is a remote repository or not
 func IsRemoteRepository(s string) (bool, error) {
-	if !s2igit.New(s2iutil.NewFileSystem()).ValidCloneSpecRemoteOnly(s) {
+	if !s2igit.New(s2ifs.NewFileSystem()).ValidCloneSpecRemoteOnly(s) {
 		glog.V(5).Infof("%s is not a valid remote git clone spec", s)
 		return false, nil
 	}
