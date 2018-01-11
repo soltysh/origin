@@ -416,14 +416,15 @@ func (d *DockerBuilder) dockerBuild(dir string, tag string, secrets []buildapi.S
 	}
 
 	opts := docker.BuildImageOptions{
-		Name:           tag,
-		RmTmpContainer: true,
-		OutputStream:   os.Stdout,
-		Dockerfile:     dockerfilePath,
-		NoCache:        noCache,
-		Pull:           forcePull,
-		BuildArgs:      buildArgs,
-		NetworkMode:    string(getDockerNetworkMode()),
+		Name:                tag,
+		RmTmpContainer:      true,
+		ForceRmTmpContainer: true,
+		OutputStream:        os.Stdout,
+		Dockerfile:          dockerfilePath,
+		NoCache:             noCache,
+		Pull:                forcePull,
+		BuildArgs:           buildArgs,
+		NetworkMode:         string(getDockerNetworkMode()),
 	}
 
 	// Though we are capped on memory and cpu at the cgroup parent level,
