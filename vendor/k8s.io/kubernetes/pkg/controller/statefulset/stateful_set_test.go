@@ -24,6 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/kubernetes/pkg/api/v1"
 	apps "k8s.io/kubernetes/pkg/apis/apps/v1beta1"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset/fake"
@@ -590,7 +591,8 @@ func newFakeStatefulSetController(initialObjects ...runtime.Object) (*StatefulSe
 	ssh := history.NewFakeHistory(informerFactory.Apps().V1beta1().ControllerRevisions())
 	ssc.podListerSynced = alwaysReady
 	ssc.setListerSynced = alwaysReady
-	ssc.control = NewDefaultStatefulSetControl(fpc, ssu, ssh)
+	recorder := record.NewFakeRecorder(10)
+	ssc.control = NewDefaultStatefulSetControl(fpc, ssu, ssh, recorder)
 
 	return ssc, fpc
 }
