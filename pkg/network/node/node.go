@@ -84,6 +84,7 @@ type OsdnNodeConfig struct {
 
 	IPTablesSyncPeriod time.Duration
 	ProxyMode          componentconfig.ProxyMode
+	MasqueradeBit      *int32
 }
 
 type OsdnNode struct {
@@ -178,7 +179,7 @@ func New(c *OsdnNodeConfig) (network.NodeInterface, error) {
 		egressPolicies:     make(map[uint32][]networkapi.EgressNetworkPolicy),
 		egressDNS:          common.NewEgressDNS(),
 		kubeInformers:      c.KubeInformers,
-		egressIP:           newEgressIPWatcher(c.SelfIP, oc),
+		egressIP:           newEgressIPWatcher(oc, c.SelfIP, c.MasqueradeBit),
 
 		runtimeEndpoint: c.RuntimeEndpoint,
 		// 2 minutes is the current default value used in kubelet
