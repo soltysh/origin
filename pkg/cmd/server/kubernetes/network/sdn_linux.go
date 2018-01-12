@@ -48,6 +48,7 @@ func NewSDNInterfaces(options configapi.NodeConfig, networkClient networkclient.
 		KClient:            kubeClient,
 		KubeInformers:      internalKubeInformers,
 		IPTablesSyncPeriod: proxyconfig.IPTables.SyncPeriod.Duration,
+		MasqueradeBit:      proxyconfig.IPTables.MasqueradeBit,
 		ProxyMode:          proxyconfig.Mode,
 		EnableHostports:    enableHostports,
 		Recorder:           recorder,
