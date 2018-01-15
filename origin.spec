@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 2282272ab115f3c4c1fdcda6cd437e4623970702
+%global commit 19079aec27d04d9698157ae2203e7f6c7121621f
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=8+ OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.8.29 OS_GIT_TREE_STATE=clean OS_GIT_PATCH=29 KUBE_GIT_VERSION=v1.8.1+0d5291c OS_GIT_CATALOG_VERSION=v0.1.2 KUBE_GIT_COMMIT=0d5291c OS_GIT_COMMIT=2282272 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.8 ETCD_GIT_COMMIT=e211fb6
+%global os_git_vars OS_GIT_MINOR=8+ OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.8.30 OS_GIT_TREE_STATE=clean OS_GIT_PATCH=30 KUBE_GIT_VERSION=v1.8.5+440f8d36da OS_GIT_CATALOG_VERSION=v0.1.2 KUBE_GIT_COMMIT=440f8d3 OS_GIT_COMMIT=19079ae OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.8 ETCD_GIT_COMMIT=e211fb6
 }
 
 %if 0%{?skip_build}
@@ -68,7 +68,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.8.30
+Version:        3.8.31
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -642,6 +642,9 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Mon Jan 15 2018 Jenkins CD Merge Bot <smunilla@redhat.com> 3.8.31-1
+- Automatic commit of package [atomic-openshift] release [3.8.31-1] ; bump origin-web-console 7afcf79
+
 * Wed Jan 10 2018 Jenkins CD Merge Bot <smunilla@redhat.com> 3.8.30-1
 - Automatic commit of package [atomic-openshift] release [3.8.30-1] ; bump origin-web-console 7afcf79
 
