@@ -49,6 +49,7 @@ go_library(
         "//pkg/client/clientset_generated/clientset:go_default_library",
         "//pkg/client/listers/core/v1:go_default_library",
         "//pkg/cloudprovider:go_default_library",
+        "//pkg/cloudprovider/providers/fake:go_default_library",
         "//pkg/features:go_default_library",
         "//pkg/fieldpath:go_default_library",
         "//pkg/kubelet/apis:go_default_library",
