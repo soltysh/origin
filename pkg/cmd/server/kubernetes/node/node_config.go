@@ -104,6 +104,11 @@ func BuildKubernetesNodeConfig(options configapi.NodeConfig, enableProxy, enable
 	if err != nil {
 		return nil, err
 	}
+	// Make a separate client for heartbeat reporting, to avoid event QPS blocking node calls
+	heartbeatClient, _, err := configapi.GetExternalKubeClient(options.MasterKubeConfig, options.MasterClientConnectionOverrides)
+	if err != nil {
+		return nil, err
+	}
 	clientgoClientSet, err := clientgoclientset.NewForConfig(privilegedKubeConfig)
 	if err != nil {
 		return nil, err
@@ -263,6 +268,7 @@ func BuildKubernetesNodeConfig(options configapi.NodeConfig, enableProxy, enable
 	//deps.NodeName = options.NodeName
 	deps.KubeClient = externalKubeClient
 	deps.EventClient = kv1core.New(eventClient.CoreV1().RESTClient())
+	deps.HeartbeatClient = heartbeatClient
 
 	deps.Auth, err = kubeletapp.BuildAuth(types.NodeName(options.NodeName), clientgoClientSet, server.KubeletConfiguration)
 	if err != nil {
