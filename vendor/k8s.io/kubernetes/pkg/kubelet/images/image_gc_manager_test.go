@@ -32,6 +32,7 @@ import (
 )
 
 var zero time.Time
+var sandboxImage = "gcr.io/google_containers/pause-amd64:latest"
 
 func newRealImageGCManager(policy ImageGCPolicy) (*realImageGCManager, *containertest.FakeRuntime, *cadvisortest.Mock) {
 	fakeRuntime := &containertest.FakeRuntime{}
@@ -42,6 +43,7 @@ func newRealImageGCManager(policy ImageGCPolicy) (*realImageGCManager, *containe
 		imageRecords: make(map[string]*imageRecord),
 		cadvisor:     mockCadvisor,
 		recorder:     &record.FakeRecorder{},
+		sandboxImage: sandboxImage,
 	}, fakeRuntime, mockCadvisor
 }
 
@@ -173,6 +175,21 @@ func TestDetectImagesWithNewImage(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(detectedTime, newContainer.firstDetected)
 	assert.Equal(zero, noContainer.lastUsed)
+}
+
+func TestDeleteUnusedImagesExemptSandboxImage(t *testing.T) {
+	manager, fakeRuntime, _ := newRealImageGCManager(ImageGCPolicy{})
+	fakeRuntime.ImageList = []container.Image{
+		{
+			ID:   sandboxImage,
+			Size: 1024,
+		},
+	}
+
+	spaceFreed, err := manager.DeleteUnusedImages()
+	assert := assert.New(t)
+	require.NoError(t, err)
+	assert.EqualValues(0, spaceFreed)
 }
 
 func TestDetectImagesContainerStopped(t *testing.T) {
