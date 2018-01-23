@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit e3e13ac5b76424e51ede7eded874cbcd1ed03ba6
+%global commit 8070c71def1b5b59ae81b064896509c6c9cff6c5
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.95 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=e3e13ac
+%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.96 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=8070c71
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.6.173.0.96
+Version:        3.6.173.0.97
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -642,6 +642,17 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Tue Jan 23 2018 Jenkins CD Merge Bot <smunilla@redhat.com> 3.6.173.0.97-1
+- Fix old replicas count in scaled RC event message (sjenning@redhat.com)
+- bump(github.com/gophercloud/gophercloud):
+  ed590d9afe113c6107cd60717b196155e6579e78 (ppospisi@redhat.com)
+- Force removal of temporary build containers (bparees@redhat.com)
+- UPSTREAM: 43590: Eviction does not evict unless the previous pod has been
+  cleaned up (sjenning@redhat.com)
+- Add kube-system as an immortal namespace (jliggitt@redhat.com)
+- UPSTREAM: 55008: Check for available volume before calling attach/delete
+  (hekumar@redhat.com)
+
 * Mon Jan 08 2018 Jenkins CD Merge Bot <smunilla@redhat.com> 3.6.173.0.96-1
 - 
 
