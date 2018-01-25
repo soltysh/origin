@@ -1,16 +1,22 @@
 #
-# This is the integrated OpenShift Origin Docker registry. It is configured to
+# This is the integrated OpenShift Docker registry. It is configured to
 # publish metadata to OpenShift to provide automatic management of images on push.
 #
-# The standard name for this image is openshift/origin-docker-registry
+# The standard name for this image is openshift3/ose-dockerregistry
 #
-FROM openshift/origin-base
+FROM openshift3/origin-base
+
+RUN yum-config-manager --enable rhel-7-server-ose-3.5-rpms && \
+    INSTALL_PKGS="origin-openshift-dockerregistry" && \
+    yum install -y $INSTALL_PKGS && \
+    rpm -V $INSTALL_PKGS && \
+    yum clean all
 
 COPY config.yml $REGISTRY_CONFIGURATION_PATH
-COPY bin/dockerregistry /dockerregistry
 
-LABEL io.k8s.display-name="OpenShift Origin Image Registry" \
-      io.k8s.description="This is a component of OpenShift Origin and exposes a Docker registry that is integrated with the cluster for authentication and management."
+LABEL io.k8s.display-name="OpenShift Image Registry" \
+      io.k8s.description="This is a component of OpenShift and exposes a Docker registry that is integrated with the cluster for authentication and management." \
+      io.openshift.tags="openshift,docker,registry"
 
 # The registry doesn't require a root user.
 USER 1001
@@ -18,4 +24,4 @@ EXPOSE 5000
 VOLUME /registry
 ENV REGISTRY_CONFIGURATION_PATH=/config.yml
 
-CMD DOCKER_REGISTRY_URL=${DOCKER_REGISTRY_SERVICE_HOST}:${DOCKER_REGISTRY_SERVICE_PORT} /dockerregistry ${REGISTRY_CONFIGURATION_PATH}
+CMD DOCKER_REGISTRY_URL=${DOCKER_REGISTRY_SERVICE_HOST}:${DOCKER_REGISTRY_SERVICE_PORT} /usr/bin/dockerregistry ${REGISTRY_CONFIGURATION_PATH}

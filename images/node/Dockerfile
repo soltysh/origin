@@ -1,23 +1,21 @@
 #
-# This is an OpenShift Origin node image with integrated OpenvSwitch SDN
-# If you do not require OVS SDN use the openshift/origin image instead.
-#
-# This image expects to have a volume mounted at /etc/origin/node that contains
-# a KUBECONFIG file giving the node permission to talk to the master and a
-# node configuration file.
+# This is an OpenShift node image with integrated OpenvSwitch SDN
+# If you do not require OVS SDN you should just use the origin image
 #
 # The standard name for this image is openshift/node
 #
-FROM openshift/origin
 
-COPY centos-paas-sig-openshift-origin15.repo /etc/yum.repos.d/
-COPY usr/bin/* /usr/bin/
-COPY opt/cni/bin/* /opt/cni/bin/
-COPY etc/cni/net.d/* /etc/cni/net.d/
-COPY conf/openshift-sdn-ovs.conf /usr/lib/systemd/system/origin-node.service.d/
+FROM openshift3/origin
+
+# Based on work by: Peter Schiffer <pschiffe@redhat.com>
+MAINTAINER Devan Goodwin <dgoodwin@redhat.com>
+
 COPY scripts/* /usr/local/bin/
 
-RUN INSTALL_PKGS="libmnl libnetfilter_conntrack conntrack-tools openvswitch \
+RUN yum-config-manager --enable rhel-7-server-ose-3.5-rpms && \
+    yum-config-manager --enable rhel-7-server-extras-rpms && \
+    yum-config-manager --enable rhel-7-fast-datapath-rpms && \
+    INSTALL_PKGS="origin-sdn-ovs libmnl libnetfilter_conntrack conntrack-tools openvswitch \
       libnfnetlink iptables iproute bridge-utils procps-ng ethtool socat openssl \
       binutils xz kmod-libs kmod sysvinit-tools device-mapper-libs dbus \
       iscsi-initiator-utils" && \
@@ -27,8 +25,9 @@ RUN INSTALL_PKGS="libmnl libnetfilter_conntrack conntrack-tools openvswitch \
     mkdir -p /usr/lib/systemd/system/origin-node.service.d /usr/lib/systemd/system/docker.service.d && \
     chmod +x /usr/local/bin/* /usr/bin/openshift-* /opt/cni/bin/*
 
-LABEL io.k8s.display-name="OpenShift Origin Node" \
-      io.k8s.description="This is a component of OpenShift Origin and contains the software for individual nodes when using SDN."
+LABEL io.k8s.display-name="OpenShift Node" \
+      io.k8s.description="This is a component of OpenShift and contains the software for individual nodes when using SDN." \
+      io.openshift.tags="openshift,node"
 VOLUME /etc/origin/node
 ENV KUBECONFIG=/etc/origin/node/node.kubeconfig
 
