@@ -55,9 +55,6 @@ func timeStampNow() string {
 	return time.Now().Format("0102 15:04:05.000000")
 }
 
-// NotChanged is a Reporter returned by operations that are guaranteed to be read-only
-var NotChanged = ReporterBool(false)
-
 // ResourceOptions assists in performing migrations on any object that
 // can be retrieved via the API.
 type ResourceOptions struct {
@@ -351,10 +348,13 @@ var ErrUnchanged = fmt.Errorf("migration was not necessary")
 // both status and spec must be changed).
 var ErrRecalculate = fmt.Errorf("recalculate migration")
 
+// MigrateError is an exported alias to error to allow external packages to use ErrRetriable and ErrNotRetriable
+type MigrateError error
+
 // ErrRetriable is a wrapper for an error that a migrator may use to indicate the
 // specific error can be retried.
 type ErrRetriable struct {
-	error
+	MigrateError
 }
 
 func (ErrRetriable) Temporary() bool { return true }
@@ -362,12 +362,14 @@ func (ErrRetriable) Temporary() bool { return true }
 // ErrNotRetriable is a wrapper for an error that a migrator may use to indicate the
 // specific error cannot be retried.
 type ErrNotRetriable struct {
-	error
+	MigrateError
 }
 
 func (ErrNotRetriable) Temporary() bool { return false }
 
-type temporary interface {
+// TemporaryError is a wrapper interface that is used to determine if an error can be retried.
+type TemporaryError interface {
+	error
 	// Temporary should return true if this is a temporary error
 	Temporary() bool
 }
@@ -479,7 +481,7 @@ func (t *migrateTracker) try(info *resource.Info, retries int) (attemptResult, e
 
 // canRetry returns true if the provided error indicates a retry is possible.
 func canRetry(err error) bool {
-	if temp, ok := err.(temporary); ok && temp.Temporary() {
+	if temp, ok := err.(TemporaryError); ok && temp.Temporary() {
 		return true
 	}
 	return err == ErrRecalculate
@@ -501,6 +503,11 @@ func DefaultRetriable(info *resource.Info, err error) error {
 		return ErrNotRetriable{err}
 	case errors.IsConflict(err):
 		if refreshErr := info.Get(); refreshErr != nil {
+			// tolerate the deletion of resources during migration
+			// report unchanged since we did not actually migrate this object
+			if isNotFoundForInfo(info, refreshErr) {
+				return ErrUnchanged
+			}
 			return ErrNotRetriable{err}
 		}
 		return ErrRetriable{err}
@@ -524,11 +531,14 @@ func isNotFoundForInfo(info *resource.Info, err error) bool {
 	if details == nil {
 		return false
 	}
-	// get schema.GroupKind from the mapping since the actual object may not have type meta filled out
+	// get schema.GroupKind and Resource from the mapping since the actual object may not have type meta filled out
 	gk := info.Mapping.GroupVersionKind.GroupKind()
+	mappingResource := info.Mapping.Resource
 	// based on case-insensitive string comparisons, the error matches info iff
-	// the name and kind match
-	// the group match, but only if both the error and info specify a group
-	return strings.EqualFold(details.Name, info.Name) && strings.EqualFold(details.Kind, gk.Kind) &&
+	// the names match
+	// the error's kind matches the mapping's kind or the mapping's resource
+	// the groups match, but only if both the error and info specify a group
+	return strings.EqualFold(details.Name, info.Name) &&
+		(strings.EqualFold(details.Kind, gk.Kind) || strings.EqualFold(details.Kind, mappingResource)) &&
 		(len(details.Group) == 0 || len(gk.Group) == 0 || strings.EqualFold(details.Group, gk.Group))
 }
