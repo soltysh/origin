@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit ac111a9c822d41d532745b65b4f58154d8d2a2b9
+%global commit 1ff2ca97797dce0f33129fbf97e735e955193642
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.31.58 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=2fccfac
+%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.31.59 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=1ff2ca9
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.5.5.31.59
+Version:        3.5.5.31.60
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -586,6 +586,10 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Sun Jan 28 2018 Jenkins CD Merge Bot <smunilla@redhat.com> 3.5.5.31.60-1
+- Merge remote-tracking branch enterprise-3.5, bump origin-web-console 51036f8
+  (smunilla@redhat.com)
+
 * Wed Jan 24 2018 Jenkins CD Merge Bot <smunilla@redhat.com> 3.5.5.31.59-1
 - Adding pod Dockerfile.rhel7 to match old distgit (adammhaile@gmail.com)
 - UPSTREAM: <carry>: Fix to avoid REST API calls at log level 2
