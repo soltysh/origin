@@ -9,7 +9,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"k8s.io/api/core/v1"
 	kapierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
@@ -19,6 +18,7 @@ import (
 	kv1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	kclientv1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/apis/componentconfig"
 	kclientsetcorev1 "k8s.io/kubernetes/pkg/client/clientset_generated/clientset/typed/core/v1"
 	proxy "k8s.io/kubernetes/pkg/proxy"
@@ -233,7 +233,7 @@ func (c *NetworkConfig) RunProxy() {
 }
 
 // getNodeIP is copied from the upstream proxy config to retrieve the IP of a node.
-func getNodeIP(client kv1core.CoreV1Interface, hostname string) (net.IP, error) {
+func getNodeIP(client kclientsetcorev1.CoreV1Interface, hostname string) (net.IP, error) {
 	var node *v1.Node
 	var nodeErr error
 
