@@ -212,7 +212,7 @@ func (b *azureFileMounter) SetUpAt(dir string, fsGroup *int64) error {
 
 	source := fmt.Sprintf("//%s.file.%s/%s", accountName, getStorageEndpointSuffix(b.plugin.host.GetCloudProvider()), b.shareName)
 	// parameters suggested by https://azure.microsoft.com/en-us/documentation/articles/storage-how-to-use-files-linux/
-	options := []string{fmt.Sprintf("vers=3.0,username=%s,password=%s,dir_mode=0700,file_mode=0700", accountName, accountKey)}
+	options := []string{fmt.Sprintf("vers=3.0,username=%s,password=%s,dir_mode=0755,file_mode=0755", accountName, accountKey)}
 	if b.readOnly {
 		options = append(options, "ro")
 	}
