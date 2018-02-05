@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 51d47f595d394be9ba6d60b8388b8fd560ad5e41
+%global commit ebba8c56ee4ed4bba6e60186420927d14224edbe
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.26 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=51d47f5
+%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.27 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=eeedf42
 }
 
 %if 0%{?skip_build}
@@ -58,7 +58,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.7.27
+Version:        3.7.28
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -654,6 +654,19 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Mon Feb 05 2018 Justin Pierce <jupierce@redhat.com> 3.7.28-1
+- UPSTREAM: 58572: Automated cherry pick of #58547: Send correct resource
+  version for delete events from watch (tnozicka@gmail.com)
+- UPSTREAM: 55316: Make StatefulSet report an event when recreating failed pod
+  (tnozicka@gmail.com)
+- Fixes to the backport of Origin PR 17564 (bbennett@redhat.com)
+- track deployment scaleRefs for hpas (jvallejo@redhat.com)
+- Change the userspace proxy to wait for the node record (bbennett@redhat.com)
+- Include proto swagger in discovery (jvallejo@redhat.com)
+- Handle OPTIONS as additional argments (nakayamakenjiro@gmail.com)
+- Remove double quotations from docker env to run node
+  (nakayamakenjiro@gmail.com)
+
 * Sat Jan 27 2018 Jenkins CD Merge Bot <smunilla@redhat.com> 3.7.27-1
 - Automatic commit of package [atomic-openshift] release [3.7.27-1] ; bump origin-web-console ae9ff57
 
