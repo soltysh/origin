@@ -18,8 +18,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/sets"
 	kapi "k8s.io/kubernetes/pkg/api"
-
-	"github.com/vishvananda/netlink"
 )
 
 type ovsController struct {
@@ -36,7 +34,7 @@ const (
 	Vxlan0 = "vxlan0"
 
 	// rule versioning; increment each time flow rules change
-	ruleVersion = 5
+	ruleVersion = 6
 
 	ruleVersionTable = 253
 )
@@ -86,13 +84,6 @@ func (oc *ovsController) SetupOVS(clusterNetworkCIDR []string, serviceNetworkCID
 	_, err = oc.ovs.AddPort(Tun0, 2, "type=internal")
 	if err != nil {
 		return err
-	}
-	if oc.tunMAC == "" {
-		link, err := netlink.LinkByName(Tun0)
-		if err != nil {
-			return err
-		}
-		oc.tunMAC = link.Attrs().HardwareAddr.String()
 	}
 
 	otx := oc.ovs.NewTransaction()
@@ -675,18 +666,36 @@ func (oc *ovsController) FindUnusedVNIDs() []int {
 	return policyVNIDs.Difference(inUseVNIDs).UnsortedList()
 }
 
-func (oc *ovsController) UpdateNamespaceEgressRules(vnid uint32, nodeIP, egressHex string) error {
+func (oc *ovsController) ensureTunMAC() error {
+	if oc.tunMAC != "" {
+		return nil
+	}
+
+	val, err := oc.ovs.Get("Interface", Tun0, "mac_in_use")
+	if err != nil {
+		return fmt.Errorf("could not get %s MAC address: %v", Tun0, err)
+	} else if len(val) != 19 || val[0] != '"' || val[18] != '"' {
+		return fmt.Errorf("bad MAC address for %s: %q", Tun0, val)
+	}
+	oc.tunMAC = val[1:18]
+	return nil
+}
+
+func (oc *ovsController) UpdateNamespaceEgressRules(vnid uint32, nodeIP, mark string) error {
 	otx := oc.ovs.NewTransaction()
 	otx.DeleteFlows("table=100, reg0=%d", vnid)
 
-	if egressHex == "" {
+	if mark == "" {
 		// Namespace no longer has an EgressIP; no VNID-specific rules needed
 	} else if nodeIP == "" {
 		// Namespace has Egress IP, but it is unavailable, so drop egress traffic
 		otx.AddFlow("table=100, priority=100, reg0=%d, actions=drop", vnid)
 	} else if nodeIP == oc.localIP {
 		// Local Egress IP
-		otx.AddFlow("table=100, priority=100, reg0=%d, ip, actions=set_field:%s->eth_dst,set_field:%s->pkt_mark,goto_table:101", vnid, oc.tunMAC, egressHex)
+		if err := oc.ensureTunMAC(); err != nil {
+			return err
+		}
+		otx.AddFlow("table=100, priority=100, reg0=%d, ip, actions=set_field:%s->eth_dst,set_field:%s->pkt_mark,goto_table:101", vnid, oc.tunMAC, mark)
 	} else {
 		// Remote Egress IP; send via VXLAN
 		otx.AddFlow("table=100, priority=100, reg0=%d, ip, actions=move:NXM_NX_REG0[]->NXM_NX_TUN_ID[0..31],set_field:%s->tun_dst,output:1", vnid, nodeIP)
