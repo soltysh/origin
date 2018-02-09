@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 1b4c9757e6029e988880c37ea4f5f4815f7105e8
+%global commit 2b6b90caeedbec41cbaba1f058fd626c6a6de5c3
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.100 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=1b4c975
+%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.101 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=2b6b90c
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.6.173.0.101
+Version:        3.6.173.0.102
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -642,6 +642,19 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Fri Feb 09 2018 Justin Pierce <jupierce@redhat.com> 3.6.173.0.102-1
+- Merge remote-tracking branch enterprise-3.6, bump origin-web-console 0a2028e
+  (jupierce@redhat.com)
+- cli: use the image namespace for image change trigger (mfojtik@redhat.com)
+- UPSTREAM: 58572: Automated cherry pick of #58547: Send correct resource
+  version for delete events from watch (tnozicka@gmail.com)
+- UPSTREAM: 46223: (partial pick): Cache watch returns incorrect object on
+  DELETED events (tnozicka@gmail.com)
+- Handle OPTIONS as additional argments (nakayamakenjiro@gmail.com)
+- Remove double quotations from docker env to run node
+  (nakayamakenjiro@gmail.com)
+- [Backport][3.6] SWEET32 mitigation: Disable Triple-DES (mrogers@redhat.com)
+
 * Mon Jan 29 2018 Jenkins CD Merge Bot <smunilla@redhat.com> 3.6.173.0.101-1
 - 
 
