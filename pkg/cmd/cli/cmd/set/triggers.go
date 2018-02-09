@@ -671,8 +671,9 @@ func (t *TriggerDefinition) Apply(obj runtime.Object) error {
 				ImageChangeParams: &deployapi.DeploymentTriggerImageChangeParams{
 					Automatic: trigger.Auto,
 					From: kapi.ObjectReference{
-						Kind: "ImageStreamTag",
-						Name: trigger.From,
+						Kind:      "ImageStreamTag",
+						Name:      trigger.From,
+						Namespace: trigger.Namespace,
 					},
 					ContainerNames: trigger.Names,
 				},
