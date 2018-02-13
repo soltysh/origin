@@ -6,8 +6,7 @@
 #
 FROM openshift3/origin-base
 
-RUN yum-config-manager --enable rhel-7-server-ose-3.5-rpms && \
-    INSTALL_PKGS="origin-openshift-dockerregistry" && \
+RUN INSTALL_PKGS="origin-dockerregistry" && \
     yum install -y $INSTALL_PKGS && \
     rpm -V $INSTALL_PKGS && \
     yum clean all
