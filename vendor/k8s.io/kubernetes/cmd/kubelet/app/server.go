@@ -154,6 +154,7 @@ func UnsecuredKubeletDeps(s *options.KubeletServer) (*kubelet.KubeletDeps, error
 		ContainerManager:   nil,
 		DockerClient:       dockerClient,
 		KubeClient:         nil,
+		HeartbeatClient:    nil,
 		ExternalKubeClient: nil,
 		Mounter:            mounter,
 		NetworkPlugins:     ProbeNetworkPlugins(s.NetworkPluginDir, s.CNIConfDir, s.CNIBinDir),
@@ -417,6 +418,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.KubeletDeps) (err error) {
 	if kubeDeps == nil {
 		var kubeClient clientset.Interface
 		var eventClient v1core.EventsGetter
+		var heartbeatClient clientset.Interface
 		var externalKubeClient clientgoclientset.Interface
 		var cloud cloudprovider.Interface
 
@@ -461,6 +463,15 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.KubeletDeps) (err error) {
 			if err != nil {
 				glog.Warningf("Failed to create API Server client: %v", err)
 			}
+
+			// make a separate client for heartbeat with throttling disabled and a timeout attached
+			heartbeatClientConfig := *clientConfig
+			heartbeatClientConfig.Timeout = s.KubeletConfiguration.NodeStatusUpdateFrequency.Duration
+			heartbeatClientConfig.QPS = float32(-1)
+			heartbeatClient, err = clientset.NewForConfig(&heartbeatClientConfig)
+			if err != nil {
+				glog.Warningf("Failed to create API Server client for heartbeat: %v", err)
+			}
 		} else {
 			if s.RequireKubeConfig {
 				return fmt.Errorf("invalid kubeconfig: %v", err)
@@ -479,6 +490,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.KubeletDeps) (err error) {
 		kubeDeps.KubeClient = kubeClient
 		kubeDeps.ExternalKubeClient = externalKubeClient
 		kubeDeps.EventClient = eventClient
+		kubeDeps.HeartbeatClient = heartbeatClient
 	}
 
 	nodeName, err := getNodeName(kubeDeps.Cloud, nodeutil.GetHostname(s.HostnameOverride))
