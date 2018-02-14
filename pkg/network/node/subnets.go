@@ -59,6 +59,9 @@ func (node *OsdnNode) watchSubnets() {
 			node.AddHostSubnetRules(hs)
 			subnets[string(hs.UID)] = hs
 		case cache.Deleted:
+			if _, exists := subnets[string(hs.UID)]; !exists {
+				return
+			}
 			delete(subnets, string(hs.UID))
 			node.DeleteHostSubnetRules(hs)
 		}
