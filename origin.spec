@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit c4738b2252bff03460cbf340e545027086a02ae1
+%global commit b0485cce23b8ecb0960c69018f87521b20bf7cb3
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.102 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=c4738b2
+%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.103 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=b0485cc
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.6.173.0.103
+Version:        3.6.173.0.104
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -642,6 +642,13 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Fri Feb 16 2018 Justin Pierce <jupierce@redhat.com> 3.6.173.0.104-1
+- UPSTREAM: 52046: [BugFix] Soft Eviction timer works correctly
+  (ravisantoshgudimetla@gmail.com)
+- Origin changes to wire the heartbeat client (maszulik@redhat.com)
+- UPSTREAM: 52604: Use separate client for node status loop
+  (maszulik@redhat.com)
+
 * Fri Feb 09 2018 Justin Pierce <jupierce@redhat.com> 3.6.173.0.103-1
 - 
 
