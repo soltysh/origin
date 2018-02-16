@@ -518,7 +518,7 @@ func TestSync(t *testing.T) {
 			noevents, noerrors, testSyncClaim,
 		},
 	}
-	runSyncTests(t, tests, []*storage.StorageClass{})
+	runSyncTests(t, tests, []*storage.StorageClass{}, []*v1.Pod{})
 }
 
 // Test multiple calls to syncClaim/syncVolume and periodic sync of all
