@@ -195,16 +195,11 @@ func (plugin *glusterfsPlugin) execCommand(command string, args []string) ([]byt
 }
 
 func (plugin *glusterfsPlugin) ConstructVolumeSpec(volumeName, mountPath string) (*volume.Spec, error) {
-	glusterfsVolume := &v1.Volume{
-		Name: volumeName,
-		VolumeSource: v1.VolumeSource{
-			Glusterfs: &v1.GlusterfsVolumeSource{
-				EndpointsName: volumeName,
-				Path:          volumeName,
-			},
-		},
-	}
-	return volume.NewSpecFromVolume(glusterfsVolume), nil
+
+	// To reconstrcut volume spec we need endpoint where fetching endpoint from mount
+	// string looks to be impossible, so returning error.
+	return nil, fmt.Errorf("impossible to reconstruct glusterfs volume spec from volume mountpath")
+
 }
 
 // Glusterfs volumes represent a bare host file or directory mount of an Glusterfs export.
