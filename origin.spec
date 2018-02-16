@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 09f69a01f517c0ad531c7a5f1cb3559344beaa3e
+%global commit cb3ac5990268635615baf3fbeb7718d056dee517
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.28 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=50c2704
+%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.29 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=cb3ac59
 }
 
 %if 0%{?skip_build}
@@ -58,7 +58,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.7.29
+Version:        3.7.30
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -654,6 +654,15 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Fri Feb 16 2018 Justin Pierce <jupierce@redhat.com> 3.7.30-1
+- Automatic commit of package [atomic-openshift] release [3.7.30-1] ; bump
+  origin-web-console c3c68b6 (jupierce@redhat.com)
+- [3.7] UPSTREAM: 52046: [BugFix] Soft Eviction timer works correctly
+  (ravisantoshgudimetla@gmail.com)
+- UPSTREAM: 55631: Parse and return the last line in the log even if it is
+  partial (runcom@redhat.com)
+- [BACKPORT] setup selinux labels for build containers (bparees@redhat.com)
+
 * Wed Feb 07 2018 Justin Pierce <jupierce@redhat.com> 3.7.29-1
 - return gone on unbind from non-existent templateinstance (bparees@redhat.com)
 - check all buildrequest options for validity against build type
