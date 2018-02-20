@@ -17,11 +17,14 @@ limitations under the License.
 package util
 
 import (
+	"os"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utiltesting "k8s.io/client-go/util/testing"
 	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/api/v1/helper"
+	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 var nodeLabels map[string]string = map[string]string{
@@ -138,5 +141,44 @@ func testVolumeWithNodeAffinity(t *testing.T, affinity *v1.NodeAffinity) *v1.Per
 
 	return &v1.PersistentVolume{
 		ObjectMeta: objMeta,
+	}
+}
+
+func TestDoUnmountMountPoint(t *testing.T) {
+
+	tmpDir1, err1 := utiltesting.MkTmpdir("umount_test1")
+	if err1 != nil {
+		t.Fatalf("error creating temp dir: %v", err1)
+	}
+	defer os.RemoveAll(tmpDir1)
+
+	tmpDir2, err2 := utiltesting.MkTmpdir("umount_test2")
+	if err2 != nil {
+		t.Fatalf("error creating temp dir: %v", err2)
+	}
+	defer os.RemoveAll(tmpDir2)
+
+	// Second part: want no error
+	tests := []struct {
+		mountPath    string
+		corruptedMnt bool
+	}{
+		{
+			mountPath:    tmpDir1,
+			corruptedMnt: true,
+		},
+		{
+			mountPath:    tmpDir2,
+			corruptedMnt: false,
+		},
+	}
+
+	fake := &mount.FakeMounter{}
+
+	for _, tt := range tests {
+		err := doUnmountMountPoint(tt.mountPath, fake, false, tt.corruptedMnt)
+		if err != nil {
+			t.Errorf("err Expected nil, but got: %v", err)
+		}
 	}
 }
