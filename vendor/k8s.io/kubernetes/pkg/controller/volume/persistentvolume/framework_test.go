@@ -46,6 +46,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset/fake"
 	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/externalversions"
+	corelisters "k8s.io/kubernetes/pkg/client/listers/core/v1"
 	storagelisters "k8s.io/kubernetes/pkg/client/listers/storage/v1"
 	"k8s.io/kubernetes/pkg/controller"
 	vol "k8s.io/kubernetes/pkg/volume"
@@ -607,6 +608,7 @@ func newTestController(kubeClient clientset.Interface, informerFactory informers
 		VolumeInformer:            informerFactory.Core().V1().PersistentVolumes(),
 		ClaimInformer:             informerFactory.Core().V1().PersistentVolumeClaims(),
 		ClassInformer:             informerFactory.Storage().V1().StorageClasses(),
+		PodInformer:               informerFactory.Core().V1().Pods(),
 		EventRecorder:             record.NewFakeRecorder(1000),
 		EnableDynamicProvisioning: enableDynamicProvisioning,
 	}
@@ -909,7 +911,7 @@ func evaluateTestResults(ctrl *PersistentVolumeController, reactor *volumeReacto
 // 2. Call the tested function (syncClaim/syncVolume) via
 //    controllerTest.testCall *once*.
 // 3. Compare resulting volumes and claims with expected volumes and claims.
-func runSyncTests(t *testing.T, tests []controllerTest, storageClasses []*storage.StorageClass) {
+func runSyncTests(t *testing.T, tests []controllerTest, storageClasses []*storage.StorageClass, pods []*v1.Pod) {
 	for _, test := range tests {
 		glog.V(4).Infof("starting test %q", test.name)
 
@@ -935,6 +937,12 @@ func runSyncTests(t *testing.T, tests []controllerTest, storageClasses []*storag
 			indexer.Add(class)
 		}
 		ctrl.classLister = storagelisters.NewStorageClassLister(indexer)
+
+		podIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
+		for _, pod := range pods {
+			podIndexer.Add(pod)
+		}
+		ctrl.podLister = corelisters.NewPodLister(podIndexer)
 
 		// Run the tested functions
 		err = test.test(ctrl, reactor, test)
