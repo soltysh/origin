@@ -208,6 +208,7 @@ func (eip *egressIPWatcher) deleteEgressIP(egressIP string) {
 		if err := eip.releaseEgressIP(egressIP, mark); err != nil {
 			glog.Errorf("Error releasing Egress IP %q: %v", egressIP, err)
 		}
+		node.assignedIPs.Delete(egressIP)
 	}
 
 	if ns.assignedIP == egressIP {
