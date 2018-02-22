@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit b79ea0d71cbd54575e5c48ed0411d793fba584f6
+%global commit e7ad59f7139766b2c35b49e5782dbc84dce94f86
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.30 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=5c85aeb
+%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.31 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=e7ad59f
 }
 
 %if 0%{?skip_build}
@@ -58,7 +58,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.7.31
+Version:        3.7.32
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -654,6 +654,28 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Thu Feb 22 2018 Justin Pierce <jupierce@redhat.com> 3.7.32-1
+- Automatic commit of package [atomic-openshift] release [3.7.32-1] ; bump
+  origin-web-console 64c5039 (jupierce@redhat.com)
+- Cleanup duplicate checking for empty images in DC controller loop
+  (tnozicka@gmail.com)
+- Never deploy unspecified images in DC (tnozicka@gmail.com)
+- Fix DC image reactor to reconcile on DC dc.Spec.Template.Spec.Containers
+  changes (tnozicka@gmail.com)
+- Add test to verify we don't deploy unspecified images in DC
+  (tnozicka@gmail.com)
+- Rename deploy* -> apps* in deployments to aviod conflicts for backports
+  (tnozicka@gmail.com)
+- Fixup variable names in DC controller (tnozicka@gmail.com)
+- Don't call DeleteHostSubnetRules on a replayed Deleted event
+  (danw@redhat.com)
+- UPSTREAM: 52324: Fix bug on kubelet failure to umount mount points.
+  (hchiramm@redhat.com)
+- UPSTREAM: 59350: Do not recycle volumes that are used by pods
+  (jsafrane@redhat.com)
+- UPSTREAM: 55796: Correct ConstructVolumeSpec() (hchiramm@redhat.com)
+- Fix cleanup of auto egress IPs when deleting a NetNamespace (danw@redhat.com)
+
 * Fri Feb 16 2018 Justin Pierce <jupierce@redhat.com> 3.7.31-1
 - 
 
