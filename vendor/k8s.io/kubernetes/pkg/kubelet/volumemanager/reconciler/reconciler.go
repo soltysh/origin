@@ -178,7 +178,7 @@ func (rc *reconciler) reconcile() {
 				mountedVolume.PodName,
 				mountedVolume.PodUID)
 			err := rc.operationExecutor.UnmountVolume(
-				mountedVolume.MountedVolume, rc.actualStateOfWorld)
+				mountedVolume.MountedVolume, rc.actualStateOfWorld, rc.kubeletPodsDir)
 			if err != nil &&
 				!nestedpendingoperations.IsAlreadyExists(err) &&
 				!exponentialbackoff.IsExponentialBackoff(err) {

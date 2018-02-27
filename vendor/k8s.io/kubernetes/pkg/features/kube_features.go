@@ -88,6 +88,13 @@ const (
 	// Changes the logic behind evicting Pods from not ready Nodes
 	// to take advantage of NoExecute Taints and Tolerations.
 	TaintBasedEvictions utilfeature.Feature = "TaintBasedEvictions"
+
+	// owner: @saad-ali
+	// ga
+	//
+	// Allow mounting a subpath of a volume in a container
+	// Do not remove this feature gate even though it's GA
+	VolumeSubpath utilfeature.Feature = "VolumeSubpath"
 )
 
 func init() {
@@ -107,6 +114,7 @@ var defaultKubernetesFeatureGates = map[utilfeature.Feature]utilfeature.FeatureS
 	AffinityInAnnotations:                       {Default: false, PreRelease: utilfeature.Alpha},
 	Accelerators:                                {Default: false, PreRelease: utilfeature.Alpha},
 	TaintBasedEvictions:                         {Default: false, PreRelease: utilfeature.Alpha},
+	VolumeSubpath:                               {Default: true, PreRelease: utilfeature.GA},
 
 	// inherited features from generic apiserver, relisted here to get a conflict if it is changed
 	// unintentionally on either side:

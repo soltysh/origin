@@ -40,10 +40,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	utilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/v1"
 	utilpod "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/pkg/api/v1/validation"
+	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/fieldpath"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
@@ -56,6 +58,7 @@ import (
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
 	"k8s.io/kubernetes/pkg/kubelet/util/format"
 	"k8s.io/kubernetes/pkg/util"
+	mountutil "k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/util/term"
 	"k8s.io/kubernetes/pkg/volume"
 	"k8s.io/kubernetes/pkg/volume/util/volumehelper"
@@ -105,7 +108,7 @@ func (kl *Kubelet) makeDevices(pod *v1.Pod, container *v1.Container) ([]kubecont
 }
 
 // makeMounts determines the mount points for the given container.
-func makeMounts(pod *v1.Pod, podDir string, container *v1.Container, hostName, hostDomain, podIP string, podVolumes kubecontainer.VolumeMap) ([]kubecontainer.Mount, error) {
+func makeMounts(pod *v1.Pod, podDir string, container *v1.Container, hostName, hostDomain, podIP string, podVolumes kubecontainer.VolumeMap, mounter mountutil.Interface) ([]kubecontainer.Mount, error) {
 	// Kubernetes only mounts on /etc/hosts if :
 	// - container does not use hostNetwork and
 	// - container is not an infrastructure(pause) container
@@ -115,7 +118,7 @@ func makeMounts(pod *v1.Pod, podDir string, container *v1.Container, hostName, h
 	mountEtcHostsFile := (pod.Spec.SecurityContext == nil || !pod.Spec.HostNetwork) && len(podIP) > 0 && runtime.GOOS != "windows"
 	glog.V(3).Infof("container: %v/%v/%v podIP: %q creating hosts mount: %v", pod.Namespace, pod.Name, container.Name, podIP, mountEtcHostsFile)
 	mounts := []kubecontainer.Mount{}
-	for _, mount := range container.VolumeMounts {
+	for i, mount := range container.VolumeMounts {
 		mountEtcHostsFile = mountEtcHostsFile && (mount.MountPath != etcHostsPath)
 		vol, ok := podVolumes[mount.Name]
 		if !ok || vol.Mounter == nil {
@@ -136,13 +139,21 @@ func makeMounts(pod *v1.Pod, podDir string, container *v1.Container, hostName, h
 			return nil, err
 		}
 		if mount.SubPath != "" {
+			if !utilfeature.DefaultFeatureGate.Enabled(features.VolumeSubpath) {
+				return nil, fmt.Errorf("volume subpaths are disabled")
+			}
+
 			fileinfo, err := os.Lstat(hostPath)
 			if err != nil {
 				return nil, err
 			}
 			perm := fileinfo.Mode()
 
-			hostPath = filepath.Join(hostPath, mount.SubPath)
+			volumePath, err := filepath.EvalSymlinks(hostPath)
+			if err != nil {
+				return nil, err
+			}
+			hostPath = filepath.Join(volumePath, mount.SubPath)
 
 			if subPathExists, err := util.FileExists(hostPath); err != nil {
 				glog.Errorf("Could not determine if subPath %s exists; will not attempt to change its permissions", hostPath)
@@ -151,16 +162,24 @@ func makeMounts(pod *v1.Pod, podDir string, container *v1.Container, hostName, h
 				// incorrect ownership and mode. For example, the sub path directory must have at least g+rwx
 				// when the pod specifies an fsGroup, and if the directory is not created here, Docker will
 				// later auto-create it with the incorrect mode 0750
-				if err := os.MkdirAll(hostPath, perm); err != nil {
-					glog.Errorf("failed to mkdir:%s", hostPath)
-					return nil, err
+				// Make extra care not to escape the volume!
+				if err := mounter.SafeMakeDir(hostPath, volumePath, perm); err != nil {
+					glog.Errorf("failed to mkdir %q: %v", hostPath, err)
+					return nil, fmt.Errorf("failed to prepare subPath: %s", err)
 				}
-
-				// chmod the sub path because umask may have prevented us from making the sub path with the same
-				// permissions as the mounter path
-				if err := os.Chmod(hostPath, perm); err != nil {
-					return nil, err
-				}
+			}
+			hostPath, err = mounter.PrepareSafeSubpath(mountutil.Subpath{
+				VolumeMountIndex: i,
+				Path:             hostPath,
+				VolumeName:       mount.Name,
+				VolumePath:       volumePath,
+				PodDir:           podDir,
+				ContainerName:    container.Name,
+			})
+			if err != nil {
+				// Don't pass detailed error back to the user because it could give information about host filesystem
+				glog.Errorf("failed to prepare subPath for volumeMount %q of container %q: %v", mount.Name, container.Name, err)
+				return nil, fmt.Errorf("failed to prepare subPath for volumeMount %q of container %q", mount.Name, container.Name)
 			}
 		}
 
@@ -321,7 +340,7 @@ func (kl *Kubelet) GenerateRunContainerOptions(pod *v1.Pod, container *v1.Contai
 		return nil, false, err
 	}
 
-	opts.Mounts, err = makeMounts(pod, kl.getPodDir(pod.UID), container, hostname, hostDomainName, podIP, volumes)
+	opts.Mounts, err = makeMounts(pod, kl.getPodDir(pod.UID), container, hostname, hostDomainName, podIP, volumes, kl.mounter)
 	if err != nil {
 		return nil, false, err
 	}

@@ -34,7 +34,10 @@ go_test(
     ],
     library = ":go_default_library",
     tags = ["automanaged"],
-    deps = ["//pkg/util/exec:go_default_library"],
+    deps = [
+        "//pkg/util/exec:go_default_library",
+        "//vendor/github.com/golang/glog:go_default_library",
+    ],
 )
 
 filegroup(
