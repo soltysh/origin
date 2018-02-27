@@ -17,6 +17,7 @@ go_library(
         "doc.go",
         "fs.go",
         "io_util.go",
+        "nested_volumes.go",
         "util.go",
     ],
     tags = ["automanaged"],
@@ -37,10 +38,12 @@ go_test(
     srcs = [
         "atomic_writer_test.go",
         "device_util_linux_test.go",
+        "nested_volumes_test.go",
     ],
     library = ":go_default_library",
     tags = ["automanaged"],
     deps = [
+        "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
         "//vendor:k8s.io/apimachinery/pkg/util/sets",
         "//vendor:k8s.io/client-go/util/testing",
     ],
