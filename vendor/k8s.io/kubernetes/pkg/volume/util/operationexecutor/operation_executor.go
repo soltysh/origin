@@ -22,6 +22,7 @@ package operationexecutor
 
 import (
 	"fmt"
+	"path"
 	"time"
 
 	"github.com/golang/glog"
@@ -85,7 +86,7 @@ type OperationExecutor interface {
 
 	// UnmountVolume unmounts the volume from the pod specified in
 	// volumeToUnmount and updates the actual state of the world to reflect that.
-	UnmountVolume(volumeToUnmount MountedVolume, actualStateOfWorld ActualStateOfWorldMounterUpdater) error
+	UnmountVolume(volumeToUnmount MountedVolume, actualStateOfWorld ActualStateOfWorldMounterUpdater, podsDir string) error
 
 	// UnmountDevice unmounts the volumes global mount path from the device (for
 	// attachable volumes only, freeing it for detach. It then updates the
@@ -422,10 +423,11 @@ func (oe *operationExecutor) MountVolume(
 
 func (oe *operationExecutor) UnmountVolume(
 	volumeToUnmount MountedVolume,
-	actualStateOfWorld ActualStateOfWorldMounterUpdater) error {
+	actualStateOfWorld ActualStateOfWorldMounterUpdater,
+	podsDir string) error {
 
 	unmountFunc, err :=
-		oe.generateUnmountVolumeFunc(volumeToUnmount, actualStateOfWorld)
+		oe.generateUnmountVolumeFunc(volumeToUnmount, actualStateOfWorld, podsDir)
 	if err != nil {
 		return err
 	}
@@ -827,7 +829,8 @@ func (oe *operationExecutor) generateMountVolumeFunc(
 
 func (oe *operationExecutor) generateUnmountVolumeFunc(
 	volumeToUnmount MountedVolume,
-	actualStateOfWorld ActualStateOfWorldMounterUpdater) (func() error, error) {
+	actualStateOfWorld ActualStateOfWorldMounterUpdater,
+	podsDir string) (func() error, error) {
 	// Get mountable plugin
 	volumePlugin, err :=
 		oe.volumePluginMgr.FindPluginByName(volumeToUnmount.PluginName)
@@ -854,6 +857,19 @@ func (oe *operationExecutor) generateUnmountVolumeFunc(
 	}
 
 	return func() error {
+		mounter := oe.volumePluginMgr.Host.GetMounter()
+		// Remove all bind-mounts for subPaths
+		podDir := path.Join(podsDir, string(volumeToUnmount.PodUID))
+		if err := mounter.CleanSubPaths(podDir, volumeToUnmount.OuterVolumeSpecName); err != nil {
+			return fmt.Errorf(
+				"error cleaning subPath mounts for volume %q (volume.spec.Name: %q) pod %q (UID: %q) with: %v",
+				volumeToUnmount.VolumeName,
+				volumeToUnmount.OuterVolumeSpecName,
+				volumeToUnmount.PodName,
+				volumeToUnmount.PodUID,
+				err)
+		}
+
 		// Execute unmount
 		unmountErr := volumeUnmounter.TearDown()
 		if unmountErr != nil {

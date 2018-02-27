@@ -42,6 +42,7 @@ const (
 	appArmor                  = "AppArmor"
 	dynamicKubeletConfig      = "DynamicKubeletConfig"
 	dynamicVolumeProvisioning = "DynamicVolumeProvisioning"
+	volumeSubpath             = "VolumeSubpath"
 )
 
 var (
@@ -53,6 +54,7 @@ var (
 		appArmor:                  {true, beta},
 		dynamicKubeletConfig:      {false, alpha},
 		dynamicVolumeProvisioning: {true, alpha},
+		volumeSubpath:             {true, ga},
 	}
 
 	// Special handling for a few gates.
@@ -193,6 +195,11 @@ func (f *featureGate) DynamicKubeletConfig() bool {
 // DynamicVolumeProvisioning returns value for dynamicVolumeProvisioning
 func (f *featureGate) DynamicVolumeProvisioning() bool {
 	return f.lookup(dynamicVolumeProvisioning)
+}
+
+// VolumeSubpath returns value for volumeSubpath
+func (f *featureGate) VolumeSubpath() bool {
+	return f.lookup(volumeSubpath)
 }
 
 func (f *featureGate) lookup(key string) bool {
