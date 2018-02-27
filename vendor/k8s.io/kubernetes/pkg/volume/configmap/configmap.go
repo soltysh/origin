@@ -156,6 +156,9 @@ func (b *configMapVolumeMounter) SetUpAt(dir string, fsGroup *int64) error {
 	if err := wrapped.SetUpAt(dir, fsGroup); err != nil {
 		return err
 	}
+	if err := volumeutil.MakeNestedMountpoints(b.volName, dir, b.pod); err != nil {
+		return err
+	}
 
 	kubeClient := b.plugin.host.GetKubeClient()
 	if kubeClient == nil {
