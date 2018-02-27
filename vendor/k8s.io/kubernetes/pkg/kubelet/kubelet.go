@@ -1442,11 +1442,14 @@ func makeMounts(pod *api.Pod, podDir string, container *api.Container, hostName,
 				return nil, fmt.Errorf("failed to prepare subPath for volumeMount %q of container %q", mount.Name, container.Name)
 			}
 		}
+
+		mustMountRO := vol.Mounter.GetAttributes().ReadOnly
+
 		mounts = append(mounts, kubecontainer.Mount{
 			Name:           mount.Name,
 			ContainerPath:  mount.MountPath,
 			HostPath:       hostPath,
-			ReadOnly:       mount.ReadOnly,
+			ReadOnly:       mount.ReadOnly || mustMountRO,
 			SELinuxRelabel: relabelVolume,
 		})
 	}
