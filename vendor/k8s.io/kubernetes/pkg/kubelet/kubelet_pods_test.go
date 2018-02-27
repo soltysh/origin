@@ -36,6 +36,8 @@ import (
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/types"
+	utilconfig "k8s.io/kubernetes/pkg/util/config"
+	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 func TestMakeMounts(t *testing.T) {
@@ -78,7 +80,8 @@ func TestMakeMounts(t *testing.T) {
 		},
 	}
 
-	mounts, _ := makeMounts(&pod, "/pod", &container, "fakepodname", "", "", podVolumes)
+	fm := &mount.FakeMounter{}
+	mounts, _ := makeMounts(&pod, "/pod", &container, "fakepodname", "", "", podVolumes, fm)
 
 	expectedMounts := []kubecontainer.Mount{
 		{
@@ -1521,5 +1524,59 @@ func TestTruncatePodHostname(t *testing.T) {
 		output, err := truncatePodHostnameIfNeeded("test-pod", test.input)
 		assert.NoError(t, err)
 		assert.Equal(t, test.output, output)
+	}
+}
+
+func TestDisabledSubpath(t *testing.T) {
+	fm := &mount.FakeMounter{}
+	pod := api.Pod{
+		Spec: api.PodSpec{},
+	}
+	podVolumes := kubecontainer.VolumeMap{
+		"disk": kubecontainer.VolumeInfo{Mounter: &stubVolume{path: "/mnt/disk"}},
+	}
+
+	cases := map[string]struct {
+		container   api.Container
+		expectError bool
+	}{
+		"subpath not specified": {
+			api.Container{
+				VolumeMounts: []api.VolumeMount{
+					{
+						MountPath: "/mnt/path3",
+						Name:      "disk",
+						ReadOnly:  true,
+					},
+				},
+			},
+			false,
+		},
+		"subpath specified": {
+			api.Container{
+				VolumeMounts: []api.VolumeMount{
+					{
+						MountPath: "/mnt/path3",
+						SubPath:   "/must/not/be/absolute",
+						Name:      "disk",
+						ReadOnly:  true,
+					},
+				},
+			},
+			true,
+		},
+	}
+
+	utilconfig.DefaultFeatureGate.Set("VolumeSubpath=false")
+	defer utilconfig.DefaultFeatureGate.Set("VolumeSubpath=true")
+
+	for name, test := range cases {
+		_, err := makeMounts(&pod, "/pod", &test.container, "fakepodname", "", "", podVolumes, fm)
+		if err != nil && !test.expectError {
+			t.Errorf("test %v failed: %v", name, err)
+		}
+		if err == nil && test.expectError {
+			t.Errorf("test %v failed: expected error", name)
+		}
 	}
 }
