@@ -185,11 +185,13 @@ func makeMounts(pod *api.Pod, podDir string, container *api.Container, hostName,
 			}
 		}
 
+		mustMountRO := vol.Mounter.GetAttributes().ReadOnly
+
 		mounts = append(mounts, kubecontainer.Mount{
 			Name:           mount.Name,
 			ContainerPath:  containerPath,
 			HostPath:       hostPath,
-			ReadOnly:       mount.ReadOnly,
+			ReadOnly:       mount.ReadOnly || mustMountRO,
 			SELinuxRelabel: relabelVolume,
 		})
 	}
