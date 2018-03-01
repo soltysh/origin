@@ -81,7 +81,7 @@ func (pbs *pullthroughBlobStore) ServeBlob(ctx context.Context, w http.ResponseW
 		inflight[dgst] = struct{}{}
 		mu.Unlock()
 
-		storeLocalInBackground(ctx, pbs.repo, pbs.BlobStore, dgst)
+		storeLocalInBackground(ctx, remoteGetter, pbs.BlobStore, dgst)
 	}
 
 	_, err = copyContent(remoteGetter, ctx, dgst, w, req)
@@ -177,19 +177,9 @@ func copyContent(store BlobGetterService, ctx context.Context, dgst digest.Diges
 // storeLocalInBackground spawns a separate thread to copy the remote blob from the remote registry to the
 // local blob store.
 // The function assumes that localBlobStore is thread-safe.
-func storeLocalInBackground(ctx context.Context, repo *repository, localBlobStore distribution.BlobStore, dgst digest.Digest) {
+func storeLocalInBackground(ctx context.Context, remoteGetter BlobGetterService, localBlobStore distribution.BlobStore, dgst digest.Digest) {
 	// leave only the essential entries in the context (logger)
 	newCtx := context.WithLogger(context.Background(), context.GetLogger(ctx))
-
-	// the blob getter service is not thread-safe, we need to setup a new one
-	// TODO: make it thread-safe instead of instantiating a new one
-	remoteGetter := NewBlobGetterService(
-		repo.namespace,
-		repo.name,
-		repo.blobrepositorycachettl,
-		repo.imageStreamGetter.get,
-		repo.registryOSClient,
-		repo.cachedLayers)
 
 	go func(dgst digest.Digest) {
 		context.GetLogger(newCtx).Infof("Start background mirroring of %q", dgst)
