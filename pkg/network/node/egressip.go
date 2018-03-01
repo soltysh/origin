@@ -189,7 +189,7 @@ func (eip *egressIPWatcher) maybeAddEgressIP(egressIP string) {
 		ns.assignedIP = egressIP
 		ns.nodeIP = nodeIP
 
-		err := eip.oc.UpdateNamespaceEgressRules(ns.vnid, ns.nodeIP, mark)
+		err := eip.oc.SetNamespaceEgressViaEgressIP(ns.vnid, ns.nodeIP, mark)
 		if err != nil {
 			glog.Errorf("Error updating Namespace egress rules: %v", err)
 		}
@@ -219,10 +219,10 @@ func (eip *egressIPWatcher) deleteEgressIP(egressIP string) {
 	var err error
 	if ns.requestedIP == "" {
 		// Namespace no longer wants EgressIP
-		err = eip.oc.UpdateNamespaceEgressRules(ns.vnid, "", "")
+		err = eip.oc.SetNamespaceEgressNormal(ns.vnid)
 	} else {
 		// Namespace still wants EgressIP but no node provides it
-		err = eip.oc.UpdateNamespaceEgressRules(ns.vnid, "", mark)
+		err = eip.oc.SetNamespaceEgressDropped(ns.vnid)
 	}
 	if err != nil {
 		glog.Errorf("Error updating Namespace egress rules: %v", err)
