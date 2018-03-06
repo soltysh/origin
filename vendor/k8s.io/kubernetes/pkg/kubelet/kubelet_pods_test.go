@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	core "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/kubernetes/pkg/api"
@@ -39,6 +40,7 @@ import (
 	containertest "k8s.io/kubernetes/pkg/kubelet/container/testing"
 	"k8s.io/kubernetes/pkg/kubelet/server/portforward"
 	"k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
+	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 func TestMakeMounts(t *testing.T) {
@@ -79,7 +81,8 @@ func TestMakeMounts(t *testing.T) {
 		},
 	}
 
-	mounts, _ := makeMounts(&pod, "/pod", &container, "fakepodname", "", "", podVolumes)
+	fm := &mount.FakeMounter{}
+	mounts, _ := makeMounts(&pod, "/pod", &container, "fakepodname", "", "", podVolumes, fm)
 
 	expectedMounts := []kubecontainer.Mount{
 		{
@@ -1980,5 +1983,61 @@ func TestTruncatePodHostname(t *testing.T) {
 		output, err := truncatePodHostnameIfNeeded("test-pod", test.input)
 		assert.NoError(t, err)
 		assert.Equal(t, test.output, output)
+	}
+}
+
+func TestDisabledSubpath(t *testing.T) {
+	fm := &mount.FakeMounter{}
+	pod := v1.Pod{
+		Spec: v1.PodSpec{
+			HostNetwork: true,
+		},
+	}
+	podVolumes := kubecontainer.VolumeMap{
+		"disk": kubecontainer.VolumeInfo{Mounter: &stubVolume{path: "/mnt/disk"}},
+	}
+
+	cases := map[string]struct {
+		container   v1.Container
+		expectError bool
+	}{
+		"subpath not specified": {
+			v1.Container{
+				VolumeMounts: []v1.VolumeMount{
+					{
+						MountPath: "/mnt/path3",
+						Name:      "disk",
+						ReadOnly:  true,
+					},
+				},
+			},
+			false,
+		},
+		"subpath specified": {
+			v1.Container{
+				VolumeMounts: []v1.VolumeMount{
+					{
+						MountPath: "/mnt/path3",
+						SubPath:   "/must/not/be/absolute",
+						Name:      "disk",
+						ReadOnly:  true,
+					},
+				},
+			},
+			true,
+		},
+	}
+
+	utilfeature.DefaultFeatureGate.Set("VolumeSubpath=false")
+	defer utilfeature.DefaultFeatureGate.Set("VolumeSubpath=true")
+
+	for name, test := range cases {
+		_, err := makeMounts(&pod, "/pod", &test.container, "fakepodname", "", "", podVolumes, fm)
+		if err != nil && !test.expectError {
+			t.Errorf("test %v failed: %v", name, err)
+		}
+		if err == nil && test.expectError {
+			t.Errorf("test %v failed: expected error", name)
+		}
 	}
 }

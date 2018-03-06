@@ -18,6 +18,10 @@ limitations under the License.
 
 package mount
 
+import (
+	"os"
+)
+
 type Mounter struct {
 	mounterPath string
 }
@@ -69,4 +73,16 @@ func (mounter *SafeFormatAndMount) diskLooksUnformatted(disk string) (bool, erro
 
 func IsNotMountPoint(file string) (bool, error) {
 	return true, nil
+}
+
+func (mounter *Mounter) PrepareSafeSubpath(subPath Subpath) (newHostPath string, err error) {
+	return subPath.Path, nil
+}
+
+func (mounter *Mounter) CleanSubPaths(podDir string, volumeName string) error {
+	return nil
+}
+
+func (mounter *Mounter) SafeMakeDir(pathname string, base string, perm os.FileMode) error {
+	return nil
 }
