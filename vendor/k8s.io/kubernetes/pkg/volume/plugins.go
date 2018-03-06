@@ -226,6 +226,7 @@ type VolumeHost interface {
 type VolumePluginMgr struct {
 	mutex   sync.Mutex
 	plugins map[string]VolumePlugin
+	Host    VolumeHost
 }
 
 // Spec is an internal representation of a volume.  All API volume types translate to Spec.
@@ -327,6 +328,7 @@ func (pm *VolumePluginMgr) InitPlugins(plugins []VolumePlugin, host VolumeHost) 
 	if pm.plugins == nil {
 		pm.plugins = map[string]VolumePlugin{}
 	}
+	pm.Host = host
 
 	allErrs := []error{}
 	for _, plugin := range plugins {
