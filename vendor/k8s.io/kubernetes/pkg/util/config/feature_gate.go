@@ -43,6 +43,7 @@ const (
 	dynamicKubeletConfig      = "DynamicKubeletConfig"
 	dynamicVolumeProvisioning = "DynamicVolumeProvisioning"
 	streamingProxyRedirects   = "StreamingProxyRedirects"
+	volumeSubpath             = "VolumeSubpath"
 
 	// experimentalHostUserNamespaceDefaulting Default userns=host for containers
 	// that are using other host namespaces, host mounts, the pod contains a privileged container,
@@ -63,6 +64,7 @@ var (
 		dynamicVolumeProvisioning:                   {true, alpha},
 		streamingProxyRedirects:                     {false, alpha},
 		experimentalHostUserNamespaceDefaultingGate: {false, alpha},
+		volumeSubpath:                               {true, ga},
 	}
 
 	// Special handling for a few gates.
@@ -224,6 +226,11 @@ func (f *featureGate) StreamingProxyRedirects() bool {
 // ExperimentalHostUserNamespaceDefaulting returns value for experimentalHostUserNamespaceDefaulting
 func (f *featureGate) ExperimentalHostUserNamespaceDefaulting() bool {
 	return f.lookup(experimentalHostUserNamespaceDefaultingGate)
+}
+
+// VolumeSubpath returns value for volumeSubpath
+func (f *featureGate) VolumeSubpath() bool {
+	return f.lookup(volumeSubpath)
 }
 
 func (f *featureGate) lookup(key string) bool {
