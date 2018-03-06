@@ -54,6 +54,18 @@ func (mi *fakeMountInterface) GetDeviceNameFromMount(mountPath, pluginDir string
 	return "", nil
 }
 
+func (mi *fakeMountInterface) PrepareSafeSubpath(subPath mount.Subpath) (newHostPath string, err error) {
+	return "", nil
+}
+
+func (mi *fakeMountInterface) CleanSubPaths(_, _ string) error {
+	return nil
+}
+
+func (mi *fakeMountInterface) SafeMakeDir(_, _ string, _ os.FileMode) error {
+	return nil
+}
+
 func fakeContainerMgrMountInt() mount.Interface {
 	return &fakeMountInterface{
 		[]mount.MountPoint{

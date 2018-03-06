@@ -83,6 +83,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/flowcontrol"
 	kubeio "k8s.io/kubernetes/pkg/util/io"
 	"k8s.io/kubernetes/pkg/util/mount"
+	mountutil "k8s.io/kubernetes/pkg/util/mount"
 	utilnet "k8s.io/kubernetes/pkg/util/net"
 	"k8s.io/kubernetes/pkg/util/oom"
 	"k8s.io/kubernetes/pkg/util/procfs"
@@ -1380,7 +1381,7 @@ func (kl *Kubelet) relabelVolumes(pod *api.Pod, volumes kubecontainer.VolumeMap)
 }
 
 // makeMounts determines the mount points for the given container.
-func makeMounts(pod *api.Pod, podDir string, container *api.Container, hostName, hostDomain, podIP string, podVolumes kubecontainer.VolumeMap) ([]kubecontainer.Mount, error) {
+func makeMounts(pod *api.Pod, podDir string, container *api.Container, hostName, hostDomain, podIP string, podVolumes kubecontainer.VolumeMap, mounter mountutil.Interface) ([]kubecontainer.Mount, error) {
 	// Kubernetes only mounts on /etc/hosts if :
 	// - container does not use hostNetwork and
 	// - container is not a infrastructure(pause) container
@@ -1389,7 +1390,7 @@ func makeMounts(pod *api.Pod, podDir string, container *api.Container, hostName,
 	mountEtcHostsFile := (pod.Spec.SecurityContext == nil || !pod.Spec.SecurityContext.HostNetwork) && len(podIP) > 0
 	glog.V(3).Infof("container: %v/%v/%v podIP: %q creating hosts mount: %v", pod.Namespace, pod.Name, container.Name, podIP, mountEtcHostsFile)
 	mounts := []kubecontainer.Mount{}
-	for _, mount := range container.VolumeMounts {
+	for i, mount := range container.VolumeMounts {
 		mountEtcHostsFile = mountEtcHostsFile && (mount.MountPath != etcHostsPath)
 		vol, ok := podVolumes[mount.Name]
 		if !ok {
@@ -1407,13 +1408,48 @@ func makeMounts(pod *api.Pod, podDir string, container *api.Container, hostName,
 		}
 		hostPath := vol.Mounter.GetPath()
 		if mount.SubPath != "" {
-			hostPath = filepath.Join(hostPath, mount.SubPath)
+			fileinfo, err := os.Lstat(hostPath)
+			if err != nil {
+				return nil, err
+			}
+			perm := fileinfo.Mode()
+
+			volumePath, err := filepath.EvalSymlinks(hostPath)
+			if err != nil {
+				return nil, err
+			}
+			hostPath = filepath.Join(volumePath, mount.SubPath)
+			// Create the sub path now because if it's auto-created later when referenced, it may have an
+			// incorrect ownership and mode. For example, the sub path directory must have at least g+rwx
+			// when the pod specifies an fsGroup, and if the directory is not created here, Docker will
+			// later auto-create it with the incorrect mode 0750
+			// Make extra care not to escape the volume!
+			if err := mounter.SafeMakeDir(hostPath, volumePath, perm); err != nil {
+				glog.Errorf("failed to mkdir %q: %v", hostPath, err)
+				return nil, fmt.Errorf("failed to prepare subPath: %s", err)
+			}
+			hostPath, err = mounter.PrepareSafeSubpath(mountutil.Subpath{
+				VolumeMountIndex: i,
+				Path:             hostPath,
+				VolumeName:       mount.Name,
+				VolumePath:       volumePath,
+				PodDir:           podDir,
+				ContainerName:    container.Name,
+			})
+			if err != nil {
+				// Don't pass detailed error back to the user because it could give information about host filesystem
+				glog.Errorf("failed to prepare subPath for volumeMount %q of container %q: %v", mount.Name, container.Name, err)
+				return nil, fmt.Errorf("failed to prepare subPath for volumeMount %q of container %q", mount.Name, container.Name)
+			}
 		}
+
+		mustMountRO := vol.Mounter.GetAttributes().ReadOnly
+
 		mounts = append(mounts, kubecontainer.Mount{
 			Name:           mount.Name,
 			ContainerPath:  mount.MountPath,
 			HostPath:       hostPath,
-			ReadOnly:       mount.ReadOnly,
+			ReadOnly:       mount.ReadOnly || mustMountRO,
 			SELinuxRelabel: relabelVolume,
 		})
 	}
@@ -1561,7 +1597,7 @@ func (kl *Kubelet) GenerateRunContainerOptions(pod *api.Pod, container *api.Cont
 		}
 	}
 
-	opts.Mounts, err = makeMounts(pod, kl.getPodDir(pod.UID), container, hostname, hostDomainName, podIP, volumes)
+	opts.Mounts, err = makeMounts(pod, kl.getPodDir(pod.UID), container, hostname, hostDomainName, podIP, volumes, kl.mounter)
 	if err != nil {
 		return nil, err
 	}
