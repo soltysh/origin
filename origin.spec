@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 22728e43079451b6f746d58d8e0196b7f330246f
+%global commit 6bfb94544681325d99bf7464f77d718348acd9e5
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=8+ OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.8.31 OS_GIT_TREE_STATE=clean OS_GIT_PATCH=31 KUBE_GIT_VERSION=v1.8.5+440f8d36da OS_GIT_CATALOG_VERSION=v0.1.2 KUBE_GIT_COMMIT=440f8d3 OS_GIT_COMMIT=22728e4 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.8 ETCD_GIT_COMMIT=e211fb6
+%global os_git_vars OS_GIT_MINOR=8+ OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.8.32 OS_GIT_TREE_STATE=clean OS_GIT_PATCH=32 KUBE_GIT_VERSION=v1.8.5+440f8d36da OS_GIT_CATALOG_VERSION=v0.1.2 KUBE_GIT_COMMIT=440f8d3 OS_GIT_COMMIT=6bfb945 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.8 ETCD_GIT_COMMIT=e211fb6
 }
 
 %if 0%{?skip_build}
@@ -68,7 +68,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.8.32
+Version:        3.8.33
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -642,6 +642,40 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Thu Mar 08 2018 Justin Pierce <jupierce@redhat.com> 3.8.33-1
+- Automatic commit of package [atomic-openshift] release [3.8.33-1] ; bump
+  origin-web-console 6609a00 (jupierce@redhat.com)
+- fix build (danw@redhat.com)
+- watchSubnets: Add missing return value (miciah.masters@gmail.com)
+- UPSTREAM: 60342: Fix nested volume mounts for read-only API data volumes
+  (joesmith@redhat.com)
+- UPSTREAM: 58720: Ensure that the runtime mounts RO volumes read-only
+  (joesmith@redhat.com)
+- UPSTREAM: 57422: Rework method of updating atomic-updated data volumes
+  (joesmith@redhat.com)
+- UPSTREAM: carry: Lock subPath volumes (jsafrane@redhat.com)
+- Update OpenShift roles for networking.k8s.io (danw@redhat.com)
+- Fix reassignment of egress IP after removal, add test (danw@redhat.com)
+- Change the haproxy reload detection to tolerate routes named localhost
+  (bbennett@redhat.com)
+- Don't call DeleteHostSubnetRules on a replayed Deleted event
+  (danw@redhat.com)
+- Fix cleanup of auto egress IPs when deleting a NetNamespace (danw@redhat.com)
+- return gone on unbind from non-existent templateinstance (bparees@redhat.com)
+- check all buildrequest options for validity against build type
+  (bparees@redhat.com)
+- Add node system-container ADDLT_MOUNTS (mgugino@redhat.com)
+- use version specific jenkins image in imagestream (bparees@redhat.com)
+- Change auto-egress-ip pkt_mark to be based on VNID, avoid masqueradeBit
+  (danw@redhat.com)
+- Rework auto-egress-IP code to only assign IPs to nodes when they are in use
+  (danw@redhat.com)
+- futureproof ovscontroller_test.go (danw@redhat.com)
+- Make sure oc.tunMAC gets set even if AlreadySetUp() (danw@redhat.com)
+- Change the userspace proxy to wait for the node record (bbennett@redhat.com)
+- UPSTREAM: 55316: Make StatefulSet report an event when recreating failed pod
+  (tnozicka@gmail.com)
+
 * Sat Jan 27 2018 Jenkins CD Merge Bot <smunilla@redhat.com> 3.8.32-1
 - Automatic commit of package [atomic-openshift] release [3.8.32-1] ; bump origin-web-console 9b09da5
 
