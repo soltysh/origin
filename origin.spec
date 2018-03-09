@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 6bfb94544681325d99bf7464f77d718348acd9e5
+%global commit 6f6a469f917256336156cee317af99b58eed5dd0
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=8+ OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.8.32 OS_GIT_TREE_STATE=clean OS_GIT_PATCH=32 KUBE_GIT_VERSION=v1.8.5+440f8d36da OS_GIT_CATALOG_VERSION=v0.1.2 KUBE_GIT_COMMIT=440f8d3 OS_GIT_COMMIT=6bfb945 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.8 ETCD_GIT_COMMIT=e211fb6
+%global os_git_vars OS_GIT_MINOR=8+ OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.8.33 OS_GIT_TREE_STATE=clean OS_GIT_PATCH=33 KUBE_GIT_VERSION=v1.8.5+440f8d36da OS_GIT_CATALOG_VERSION=v0.1.2 KUBE_GIT_COMMIT=440f8d3 OS_GIT_COMMIT=f2d3408 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.8 ETCD_GIT_COMMIT=e211fb6
 }
 
 %if 0%{?skip_build}
@@ -68,7 +68,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.8.33
+Version:        3.8.34
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -642,6 +642,24 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Fri Mar 09 2018 Justin Pierce <jupierce@redhat.com> 3.8.34-1
+- By default, push images as multiple tags beyond :latest (ccoleman@redhat.com)
+- UPSTREAM: 58375: Recheck if transformed data is stale when doing live lookup
+  during update (jliggitt@redhat.com)
+- use jenkins v3.8 tag for rhel imagestream (bparees@redhat.com)
+- track deployment scaleRefs for hpas (jvallejo@redhat.com)
+- UPSTREAM: 58955: pkg: kubelet: do not assume anything about images names
+  (sjenning@redhat.com)
+- Prometheus scrape is 60s, so ensure we see at least one (ccoleman@redhat.com)
+- Prevent races across prometheus installs (ccoleman@redhat.com)
+- Fix oc secrets new-dockercfg to create secret identical like oc create secret
+  (maszulik@redhat.com)
+- Add node system-container ADDLT_MOUNTS (mgugino@redhat.com)
+- Migrate: handle NotFound via resource matching and during conflicts
+  (mkhan@redhat.com)
+- UPSTREAM: 58571: Automated cherry pick of #58547: Send correct resource
+  version for delete events from watch (tnozicka@gmail.com)
+
 * Thu Mar 08 2018 Justin Pierce <jupierce@redhat.com> 3.8.33-1
 - Automatic commit of package [atomic-openshift] release [3.8.33-1] ; bump
   origin-web-console 6609a00 (jupierce@redhat.com)
