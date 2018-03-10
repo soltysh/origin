@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit ad1a7fb8549a5e724749e11c061f1c834fbbea81
+%global commit 87e3b591abfc5989785fc01f8573bd3a45770238
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.31.60 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=0851190
+%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.31.61 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=87e3b59
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.5.5.31.61
+Version:        3.5.5.31.62
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -586,6 +586,18 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Sat Mar 10 2018 Justin Pierce <jupierce@redhat.com> 3.5.5.31.62-1
+- Merge remote-tracking branch enterprise-3.5, bump origin-web-console 7b466e9
+  (jupierce@redhat.com)
+- Make remoteBlobGetterService thread-safe (obulatov@redhat.com)
+- UPSTREAM: 60342: Fix nested volume mounts for read-only API data volumes
+  (joesmith@redhat.com)
+- UPSTREAM: 58720: Ensure that the runtime mounts RO volumes read-only
+  (joesmith@redhat.com)
+- UPSTREAM: 57422: Rework method of updating atomic-updated data volumes
+  (joesmith@redhat.com)
+- UPSTREAM: carry: Lock subPath volumes (jsafrane@redhat.com)
+
 * Fri Feb 16 2018 Justin Pierce <jupierce@redhat.com> 3.5.5.31.61-1
 - Fixing bad Dockerfile reconcile (adammhaile@gmail.com)
 - Better reconcile of Dockerfiles (adammhaile@gmail.com)
