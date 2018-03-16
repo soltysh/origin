@@ -1,6 +1,8 @@
 package server
 
 import (
+	"fmt"
+
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/digest"
@@ -16,7 +18,8 @@ import (
 type pullthroughManifestService struct {
 	distribution.ManifestService
 
-	repo *repository
+	repo         *repository
+	registryAddr string
 }
 
 var _ distribution.ManifestService = &pullthroughManifestService{}
@@ -49,6 +52,14 @@ func (m *pullthroughManifestService) remoteGet(ctx context.Context, dgst digest.
 		return nil, err
 	}
 	ref = ref.DockerClientDefaults()
+
+	// don't attempt to pullthrough from ourself
+	if ref.Registry == m.registryAddr {
+		return nil, distribution.ErrManifestUnknownRevision{
+			Name:     fmt.Sprintf("%s/%s", m.repo.namespace, m.repo.name),
+			Revision: dgst,
+		}
+	}
 
 	repo, err := m.getRemoteRepositoryClient(ctx, &ref, dgst, options...)
 	if err != nil {

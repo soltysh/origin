@@ -149,6 +149,7 @@ func (r *repository) Manifests(ctx context.Context, options ...distribution.Mani
 		ms = &pullthroughManifestService{
 			ManifestService: ms,
 			repo:            r,
+			registryAddr:    r.config.registryAddr,
 		}
 	}
 
