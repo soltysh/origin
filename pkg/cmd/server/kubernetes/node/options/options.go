@@ -119,6 +119,13 @@ func Build(options configapi.NodeConfig) (*kubeletoptions.KubeletServer, error) 
 		},
 	}
 
+	// Override kubelet iptables-masquerade-bit value to match overridden kube-proxy
+	// iptables-masquerade-bit value, UNLESS the user has overridden kube-proxy to match the
+	// previously-not-overridden kubelet value, in which case we don't want to re-break them.
+	if len(options.ProxyArguments["iptables-masquerade-bit"]) != 1 || options.ProxyArguments["iptables-masquerade-bit"][0] != "14" {
+		server.IPTablesMasqueradeBit = 0
+	}
+
 	// resolve extended arguments
 	// TODO: this should be done in config validation (along with the above) so we can provide
 	// proper errors
