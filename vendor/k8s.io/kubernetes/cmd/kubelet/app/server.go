@@ -587,6 +587,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.KubeletDeps) (err error) {
 					HardEvictionThresholds:   hardEvictionThresholds,
 				},
 				ExperimentalQOSReserved: *experimentalQOSReserved,
+				EnforceCPULimits:        s.CPUCFSQuota,
 			},
 			s.ExperimentalFailSwapOn,
 			kubeDeps.Recorder)

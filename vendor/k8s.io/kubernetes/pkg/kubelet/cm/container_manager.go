@@ -79,6 +79,7 @@ type NodeConfig struct {
 	ProtectKernelDefaults bool
 	NodeAllocatableConfig
 	ExperimentalQOSReserved map[v1.ResourceName]int64
+	EnforceCPULimits        bool
 }
 
 type NodeAllocatableConfig struct {
