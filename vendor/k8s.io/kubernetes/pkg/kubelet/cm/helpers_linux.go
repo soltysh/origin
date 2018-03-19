@@ -83,7 +83,7 @@ func MilliCPUToShares(milliCPU int64) int64 {
 }
 
 // ResourceConfigForPod takes the input pod and outputs the cgroup resource config.
-func ResourceConfigForPod(pod *v1.Pod) *ResourceConfig {
+func ResourceConfigForPod(pod *v1.Pod, enforceCPULimits bool) *ResourceConfig {
 	// sum requests and limits.
 	reqs, limits, err := v1.PodRequestsAndLimits(pod)
 	if err != nil {
@@ -117,6 +117,11 @@ func ResourceConfigForPod(pod *v1.Pod) *ResourceConfig {
 		if container.Resources.Limits.Memory().IsZero() {
 			memoryLimitsDeclared = false
 		}
+	}
+
+	// quota is not capped when cfs quota is disabled
+	if !enforceCPULimits {
+		cpuQuota = int64(-1)
 	}
 
 	// determine the qos class
