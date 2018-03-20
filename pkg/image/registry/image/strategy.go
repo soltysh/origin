@@ -19,6 +19,9 @@ import (
 	"github.com/openshift/origin/pkg/image/apis/image/validation"
 )
 
+// managedSignatureAnnotation used to be set by image signature import controller as a signature annotation.
+const managedSignatureAnnotation = "image.openshift.io/managed-signature"
+
 // imageStrategy implements behavior for Images.
 type imageStrategy struct {
 	runtime.ObjectTyper
@@ -46,6 +49,8 @@ func (s imageStrategy) PrepareForCreate(ctx apirequest.Context, obj runtime.Obje
 	if err := imageapi.ImageWithMetadata(newImage); err != nil {
 		utilruntime.HandleError(fmt.Errorf("Unable to update image metadata for %q: %v", newImage.Name, err))
 	}
+
+	removeManagedSignatureAnnotation(newImage)
 }
 
 // Validate validates a new image.
@@ -119,6 +124,8 @@ func (s imageStrategy) PrepareForUpdate(ctx apirequest.Context, obj, old runtime
 	if err = imageapi.ImageWithMetadata(newImage); err != nil {
 		utilruntime.HandleError(fmt.Errorf("Unable to update image metadata for %q: %v", newImage.Name, err))
 	}
+
+	removeManagedSignatureAnnotation(newImage)
 }
 
 // ValidateUpdate is the default update validation for an end user.
@@ -147,4 +154,13 @@ func Matcher(label labels.Selector, field fields.Selector) kstorage.SelectionPre
 // SelectableFields returns a field set that can be used for filter selection
 func SelectableFields(obj *imageapi.Image) fields.Set {
 	return generic.ObjectMetaFieldsSet(&obj.ObjectMeta, false)
+}
+
+// removeManagedSignatureAnnotation removes deprecated annotation from image signatures. A bug in image update
+// logic allowed to set arbitrary annotations that would otherwise be rejected by validation.
+// Resolves rhbz#1557607
+func removeManagedSignatureAnnotation(img *imageapi.Image) {
+	for i := range img.Signatures {
+		delete(img.Signatures[i].Annotations, managedSignatureAnnotation)
+	}
 }
