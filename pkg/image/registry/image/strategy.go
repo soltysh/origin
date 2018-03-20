@@ -16,6 +16,9 @@ import (
 	"github.com/openshift/origin/pkg/image/api/validation"
 )
 
+// managedSignatureAnnotation used to be set by image signature import controller as a signature annotation.
+const managedSignatureAnnotation = "image.openshift.io/managed-signature"
+
 // imageStrategy implements behavior for Images.
 type imageStrategy struct {
 	runtime.ObjectTyper
@@ -136,6 +139,11 @@ func (imageStrategy) clearSignatureDetails(image *api.Image) {
 		signature.Created = nil
 		signature.IssuedBy = nil
 		signature.IssuedTo = nil
+
+		// removeManagedSignatureAnnotation removes deprecated annotation from image signatures. A bug in
+		// image update logic allowed to set arbitrary annotations that would otherwise be rejected by
+		// validation. Resolves rhbz#1557607
+		delete(signature.Annotations, managedSignatureAnnotation)
 	}
 }
 
