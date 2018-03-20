@@ -427,7 +427,7 @@ func (os *OpenStack) DiskIsAttachedByName(nodeName types.NodeName, volumeID stri
 	if err != nil {
 		return false, "", err
 	}
-	srv, err := getServerByName(cClient, nodeName, false)
+	srv, err := getServerByName(cClient, nodeName)
 	if err != nil {
 		if err == ErrNotFound {
 			// instance not found anymore in cloudprovider, assume that cinder is detached
@@ -461,7 +461,7 @@ func (os *OpenStack) DisksAreAttachedByName(nodeName types.NodeName, volumeIDs [
 	if err != nil {
 		return attached, err
 	}
-	srv, err := getServerByName(cClient, nodeName, false)
+	srv, err := getServerByName(cClient, nodeName)
 	if err != nil {
 		if err == ErrNotFound {
 			// instance not found anymore, mark all volumes as detached
