@@ -121,7 +121,7 @@ func (s imageStrategy) PrepareForUpdate(ctx kapi.Context, obj, old runtime.Objec
 
 // ValidateUpdate is the default update validation for an end user.
 func (imageStrategy) ValidateUpdate(ctx kapi.Context, obj, old runtime.Object) field.ErrorList {
-	return validation.ValidateImageUpdate(old.(*api.Image), obj.(*api.Image))
+	return validation.ValidateImageUpdate(obj.(*api.Image), old.(*api.Image))
 }
 
 // clearSignatureDetails removes signature details from all the signatures of given image. It also clear all
