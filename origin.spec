@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 3b3df554620147ab862cdfc4c9f7b53372ace8e0
+%global commit 12d0ad54a01969be2ee791790d2ad69bde67a648
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.39 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=7e86cf8
+%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.40 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=148dd9b
 }
 
 %if 0%{?skip_build}
@@ -58,7 +58,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.7.40
+Version:        3.7.41
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -654,6 +654,15 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Wed Mar 28 2018 Justin Pierce <jupierce@redhat.com> 3.7.41-1
+- Skip managed images when importing signatures (obulatov@redhat.com)
+- setup binary input for custom builds properly (bparees@redhat.com)
+- switch reversed old/new objects to validation (deads@redhat.com)
+- image-strategy: unset image signature annotations (miminar@redhat.com)
+- signature-controller: stop adding managed annotation (miminar@redhat.com)
+- UPSTREAM: 61294: Fix cpu cfs quota flag with pod cgroups
+  (sjenning@redhat.com)
+
 * Wed Mar 21 2018 Justin Pierce <jupierce@redhat.com> 3.7.40-1
 - don't attempt manifest pullthrough against internal registry
   (bparees@redhat.com)
