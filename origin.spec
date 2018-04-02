@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit c7c55a69558f9d466469a9baded8a04692688a9d
+%global commit 9561ac240faa3fa346cc11780f26507548d46042
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.44.50 OS_GIT_COMMIT=c7c55a6 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.44.51 OS_GIT_COMMIT=9561ac2 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -48,7 +48,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.44.51
+Version:        3.4.1.44.52
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -563,6 +563,21 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Mon Apr 02 2018 Justin Pierce <jupierce@redhat.com> 3.4.1.44.52
+- Merge remote-tracking branch enterprise-3.4, bump origin-web-console 4039790
+  (jupierce@redhat.com)
+- switch reversed old/new objects to validation (deads@redhat.com)
+- UPSTREAM: 00000: set IdleConnTimeout for etcd2 client (jliggitt@redhat.com)
+- UPSTREAM: coreos/etcd: 8519: Fix for etcd client oneshot cluster member
+  cycling (rrati@redhat.com)
+- UPSTREAM: 60342: Fix nested volume mounts for read-only API data volumes
+  (joesmith@redhat.com)
+- UPSTREAM: 58720: Ensure that the runtime mounts RO volumes read-only
+  (joesmith@redhat.com)
+- UPSTREAM: 57422: Rework method of updating atomic-updated data volumes
+  (joesmith@redhat.com)
+- UPSTREAM: carry: Lock subPath volumes (jsafrane@redhat.com)
+
 * Sat Jan 27 2018 Jenkins CD Merge Bot <smunilla@redhat.com> 3.4.1.44.51
 - 
 
