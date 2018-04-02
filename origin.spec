@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 94ac6745a5d681ac5e746bccc6bcb68c9cbd1fad
+%global commit 01637df39444c7ffdba89740b2bbcc853a6015a3
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.46.38
+Version:        3.3.1.46.39
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -562,6 +562,18 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Mon Apr 02 2018 Justin Pierce <jupierce@redhat.com> 3.3.1.46.39
+- Merge remote-tracking branch enterprise-3.3, bump origin-web-console 6cd94c5
+  (jupierce@redhat.com)
+- switch reversed old/new objects to validation (deads@redhat.com)
+- UPSTREAM: 60342: Fix nested volume mounts for read-only API data volumes
+  (joesmith@redhat.com)
+- UPSTREAM: 58720: Ensure that the runtime mounts RO volumes read-only
+  (joesmith@redhat.com)
+- UPSTREAM: 57422: Rework method of updating atomic-updated data volumes
+  (joesmith@redhat.com)
+- UPSTREAM: carry: Lock subPath volumes (jsafrane@redhat.com)
+
 * Sat Jan 27 2018 Jenkins CD Merge Bot <smunilla@redhat.com> 3.3.1.46.38
 - Removing epel-release from base (adammhaile@gmail.com)
 
