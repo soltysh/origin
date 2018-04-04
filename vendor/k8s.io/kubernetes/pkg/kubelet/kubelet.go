@@ -79,6 +79,7 @@ import (
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/security/apparmor"
 	"k8s.io/kubernetes/pkg/types"
+	"k8s.io/kubernetes/pkg/util"
 	"k8s.io/kubernetes/pkg/util/bandwidth"
 	"k8s.io/kubernetes/pkg/util/clock"
 	utilconfig "k8s.io/kubernetes/pkg/util/config"
@@ -1248,14 +1249,18 @@ func makeMounts(pod *api.Pod, podDir string, container *api.Container, hostName,
 			}
 			hostPath = filepath.Join(volumePath, mount.SubPath)
 
-			// Create the sub path now because if it's auto-created later when referenced, it may have an
-			// incorrect ownership and mode. For example, the sub path directory must have at least g+rwx
-			// when the pod specifies an fsGroup, and if the directory is not created here, Docker will
-			// later auto-create it with the incorrect mode 0750
-			// Make extra care not to escape the volume!
-			if err := mounter.SafeMakeDir(hostPath, volumePath, perm); err != nil {
-				glog.Errorf("failed to mkdir %q: %v", hostPath, err)
-				return nil, fmt.Errorf("failed to prepare subPath: %s", err)
+			if subPathExists, err := util.FileExists(hostPath); err != nil {
+				glog.Errorf("Could not determine if subPath %s exists; will not attempt to change its permissions", hostPath)
+			} else if !subPathExists {
+				// Create the sub path now because if it's auto-created later when referenced, it may have an
+				// incorrect ownership and mode. For example, the sub path directory must have at least g+rwx
+				// when the pod specifies an fsGroup, and if the directory is not created here, Docker will
+				// later auto-create it with the incorrect mode 0750
+				// Make extra care not to escape the volume!
+				if err := mounter.SafeMakeDir(hostPath, volumePath, perm); err != nil {
+					glog.Errorf("failed to mkdir %q: %v", hostPath, err)
+					return nil, fmt.Errorf("failed to prepare subPath: %s", err)
+				}
 			}
 			hostPath, err = mounter.PrepareSafeSubpath(mountutil.Subpath{
 				VolumeMountIndex: i,
