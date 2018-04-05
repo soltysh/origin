@@ -104,7 +104,7 @@ func New(config *api.Config, fs util.FileSystem, overrides build.Overrides) (*ST
 		config.PullAuthentication,
 		fs,
 	)
-	tarHandler := tar.New(fs)
+	tarHandler := tar.NewParanoid(fs)
 	tarHandler.SetExclusionPattern(regexp.MustCompile(config.ExcludeRegExp))
 
 	builder := &STI{
