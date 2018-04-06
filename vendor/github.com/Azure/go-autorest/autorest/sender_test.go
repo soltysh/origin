@@ -734,7 +734,7 @@ func newAcceptedResponse() *http.Response {
 }
 
 func TestDelayWithRetryAfterWithSuccess(t *testing.T) {
-	after, retries := 5, 2
+	after, retries := 2, 2
 	totalSecs := after * retries
 
 	client := mocks.NewSender()
@@ -746,7 +746,7 @@ func TestDelayWithRetryAfterWithSuccess(t *testing.T) {
 	d := time.Second * time.Duration(totalSecs)
 	start := time.Now()
 	r, _ := SendWithSender(client, mocks.NewRequest(),
-		DoRetryForStatusCodes(5, time.Duration(time.Second), http.StatusTooManyRequests),
+		DoRetryForStatusCodes(1, time.Duration(time.Second), http.StatusTooManyRequests),
 	)
 
 	if time.Since(start) < d {
