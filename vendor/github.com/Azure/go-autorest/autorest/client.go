@@ -24,6 +24,7 @@ const (
 
 var statusCodesForRetry = []int{
 	http.StatusRequestTimeout,      // 408
+	http.StatusTooManyRequests,     // 429
 	http.StatusInternalServerError, // 500
 	http.StatusBadGateway,          // 502
 	http.StatusServiceUnavailable,  // 503
