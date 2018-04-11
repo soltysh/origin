@@ -97,7 +97,7 @@ func New(config *api.Config, overrides build.Overrides) (*STI, error) {
 	}
 
 	inst := scripts.NewInstaller(config.BuilderImage, config.ScriptsURL, config.ScriptDownloadProxyConfig, docker, config.PullAuthentication)
-	tarHandler := tar.New()
+	tarHandler := tar.NewParanoid()
 	tarHandler.SetExclusionPattern(regexp.MustCompile(config.ExcludeRegExp))
 
 	builder := &STI{
