@@ -240,7 +240,7 @@ func createRouterEndpoints(endpoints *kapi.Endpoints, excludeUDP bool, lookupSvc
 			return []Endpoint{}
 		}
 
-		if service.Spec.ClusterIP == "" {
+		if !kapi.IsServiceIPSet(service) {
 			utilruntime.HandleError(fmt.Errorf("headless service %s/%s was marked as idled, but cannot setup unidling without a cluster IP", endpoints.Namespace, endpoints.Name))
 			return []Endpoint{}
 		}
