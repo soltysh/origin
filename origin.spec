@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit dd5e629d1e26618670e9133e63192c70113b0217
+%global commit 06b0134d6999171dd3151124ec99b0f2f20c13c8
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.112 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=dd5e629
+%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.113 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=06b0134
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.6.173.0.113
+Version:        3.6.173.0.114
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -642,6 +642,24 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Mon Apr 30 2018 Justin Pierce <jupierce@redhat.com> 3.6.173.0.114-1
+- Merge remote-tracking branch enterprise-3.6, bump origin-web-console c76f851
+  (jupierce@redhat.com)
+- Timeout on instances.NodeAddresses cloud provider request
+  (jchaloup@redhat.com)
+- UPSTREAM: Azure/go-autorest: 217: Check for nil response before dereferencing
+  it (sjenning@redhat.com)
+- UPSTREAM: Azure/go-autorest: 215: Don't count 429 as a retry attempt
+  (sjenning@redhat.com)
+- UPSTREAM: Azure/go-autorest: 155: Retry with 429 status code
+  (sjenning@redhat.com)
+- UPSTREAM: Azure/go-autorest: 143: Add type RetriableRequest to wrap retrying
+  an HTTP request (sjenning@redhat.com)
+- Bug 1567532 - Unidle handling in router should ignore headless services.
+  (rpenta@redhat.com)
+- UPSTREAM: 61480: Fix mounting of unix sockets in subpaths
+  (hekumar@redhat.com)
+
 * Wed Apr 11 2018 Justin Pierce <jupierce@redhat.com> 3.6.173.0.113-1
 - Merge remote-tracking branch enterprise-3.6, bump origin-web-console 6a3972a
   (jupierce@redhat.com)
