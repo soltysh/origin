@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 06b0134d6999171dd3151124ec99b0f2f20c13c8
+%global commit 461b2cb6b88531f59e085cabf2823065cbf45cdc
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.113 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=06b0134
+%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.114 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=461b2cb
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.6.173.0.114
+Version:        3.6.173.0.115
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -642,6 +642,11 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Wed May 02 2018 Justin Pierce <jupierce@redhat.com> 3.6.173.0.115-1
+- handle non-generic output - oc export (jvallejo@redhat.com)
+- UPSTREAM: 46265: fallback GetGenericPrinter to HumanReadablePrinter
+  (jvallejo@redhat.com)
+
 * Mon Apr 30 2018 Justin Pierce <jupierce@redhat.com> 3.6.173.0.114-1
 - Merge remote-tracking branch enterprise-3.6, bump origin-web-console c76f851
   (jupierce@redhat.com)
