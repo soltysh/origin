@@ -765,3 +765,51 @@ func newAcceptedResponse() *http.Response {
 	mocks.SetAcceptedHeaders(resp)
 	return resp
 }
+
+func TestDelayWithRetryAfterWithSuccess(t *testing.T) {
+	after, retries := 2, 2
+	totalSecs := after * retries
+
+	client := mocks.NewSender()
+	resp := mocks.NewResponseWithStatus("429 Too many requests", http.StatusTooManyRequests)
+	mocks.SetResponseHeader(resp, "Retry-After", fmt.Sprintf("%v", after))
+	client.AppendAndRepeatResponse(resp, retries)
+	client.AppendResponse(mocks.NewResponseWithStatus("200 OK", http.StatusOK))
+
+	d := time.Second * time.Duration(totalSecs)
+	start := time.Now()
+	r, _ := SendWithSender(client, mocks.NewRequest(),
+		DoRetryForStatusCodes(1, time.Duration(time.Second), http.StatusTooManyRequests),
+	)
+
+	if time.Since(start) < d {
+		t.Fatal("autorest: DelayWithRetryAfter failed stopped too soon")
+	}
+
+	Respond(r,
+		ByDiscardingBody(),
+		ByClosing())
+
+	if client.Attempts() != 3 {
+		t.Fatalf("autorest: Sender#DelayWithRetryAfter -- Got: StatusCode %v in %v attempts; Want: StatusCode 200 OK in 2 attempts -- ",
+			r.Status, client.Attempts()-1)
+	}
+}
+
+func TestDoRetryForStatusCodes_NilResponse(t *testing.T) {
+	client := mocks.NewSender()
+	client.AppendResponse(nil)
+	client.SetError(fmt.Errorf("faux error"))
+
+	r, err := SendWithSender(client, mocks.NewRequest(),
+		DoRetryForStatusCodes(3, time.Duration(1*time.Second), StatusCodesForRetry...),
+	)
+
+	Respond(r,
+		ByDiscardingBody(),
+		ByClosing())
+
+	if err != nil || client.Attempts() != 2 {
+		t.Fatalf("autorest: Sender#TestDoRetryForStatusCodes_NilResponse -- Got: non-nil error or wrong number of attempts - %v", err)
+	}
+}
