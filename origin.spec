@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 5a20e121421c1531334b25370b9df6aca9b1167d
+%global commit 8395e26ad50061eb22cea8537fb544c46ca5f4e2
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.43 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=c789a81
+%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.44 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=8395e26
 }
 
 %if 0%{?skip_build}
@@ -58,7 +58,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.7.44
+Version:        3.7.45
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -654,6 +654,40 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Fri May 04 2018 Justin Pierce <jupierce@redhat.com> 3.7.45-1
+- Automatic commit of package [atomic-openshift] release [3.7.45-1] ; bump
+  origin-web-console 5831d1b (jupierce@redhat.com)
+- UPSTREAM: 55381: fix bazel issue and fall back the permission Note, this
+  backport only picks up 593653c38413a7f86c7b141a62a8e0b5cda71d9b
+  (hchen@redhat.com)
+- UPSTREAM: 61183: Node status be more verbose (jchaloup@redhat.com)
+- UPSTREAM: 62543: Timeout on instances.NodeAddresses cloud provider request
+  (jchaloup@redhat.com)
+- Bug 1567532 - Unidle handling in router should ignore headless services.
+  (rpenta@redhat.com)
+- Make image pruner tolerate since to empty docker image reference
+  (agladkov@redhat.com)
+- Improve patching ovs flow rules in UpdateEgressNetworkPolicyRules
+  (rpenta@redhat.com)
+- UPSTREAM: Azure/go-autorest: 217: Check for nil response before dereferencing
+  it (sjenning@redhat.com)
+- UPSTREAM: Azure/go-autorest: 215: Don't count 429 as a retry attempt
+  (sjenning@redhat.com)
+- UPSTREAM: Azure/go-autorest: 155: Retry with 429 status code
+  (sjenning@redhat.com)
+- UPSTREAM: Azure/go-autorest: 143: Add type RetriableRequest to wrap retrying
+  an HTTP request (sjenning@redhat.com)
+- Make DNS to the local node IP bypass auto-egress-IP routing (danw@redhat.com)
+- Fix use of cookies in HostSubnet deletion (danw@redhat.com)
+- Use cookies in HostSubnet-related OVS flows to avoid misdeletions
+  (danw@redhat.com)
+- Use internal client for scaling (jliggitt@redhat.com)
+- Delete broken GetScale/UpdateScale methods (jliggitt@redhat.com)
+- UPSTREAM: 61480: Fix mounting of unix sockets in subpaths
+  (hekumar@redhat.com)
+- Default the kubelet IPTablesMasqueradeBit to the same value as the kube-proxy
+  IPTablesMasqueradeBit (danw@redhat.com)
+
 * Thu Apr 12 2018 Justin Pierce <jupierce@redhat.com> 3.7.44-1
 - UPSTREAM: <carry> prevent save-artifact tar extraction from overwriting files
   outside the working dir (bparees@redhat.com)
