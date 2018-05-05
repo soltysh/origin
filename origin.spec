@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit acdac6757f99f03ba7b85afd0dab14f9e19bcd74
+%global commit 88e6e71e2dbd4e0404d95a6e28d83f923ec30d3f
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=8+ OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.8.36 OS_GIT_TREE_STATE=clean OS_GIT_PATCH=36 KUBE_GIT_VERSION=v1.8.5+440f8d36da OS_GIT_CATALOG_VERSION=v0.1.2 KUBE_GIT_COMMIT=440f8d3 OS_GIT_COMMIT=acdac67 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.8 ETCD_GIT_COMMIT=e211fb6
+%global os_git_vars OS_GIT_MINOR=8+ OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.8.37 OS_GIT_TREE_STATE=clean OS_GIT_PATCH=37 KUBE_GIT_VERSION=v1.8.5+440f8d36da OS_GIT_CATALOG_VERSION=v0.1.2 KUBE_GIT_COMMIT=440f8d3 OS_GIT_COMMIT=88e6e71 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.8 ETCD_GIT_COMMIT=e211fb6
 }
 
 %if 0%{?skip_build}
@@ -68,7 +68,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.8.37
+Version:        3.8.38
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -642,6 +642,27 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Sat May 05 2018 Justin Pierce <jupierce@redhat.com> 3.8.38-1
+- Automatic commit of package [atomic-openshift] release [3.8.38-1] ; bump
+  origin-web-console 57f8f33 (jupierce@redhat.com)
+- Ensure Continue token is proxied for openshift RBAC list calls
+  (jliggitt@redhat.com)
+- UPSTREAM: 62543: Timeout on instances.NodeAddresses cloud provider request
+  (jchaloup@redhat.com)
+- new-app: remove check for volumes in new-app test (mfojtik@redhat.com)
+- Bug 1567532 - Unidle handling in router should ignore headless services.
+  (rpenta@redhat.com)
+- Make image pruner tolerate since to empty docker image reference
+  (agladkov@redhat.com)
+- Improve patching ovs flow rules in UpdateEgressNetworkPolicyRules
+  (rpenta@redhat.com)
+- Make DNS to the local node IP bypass auto-egress-IP routing (danw@redhat.com)
+- Fix use of cookies in HostSubnet deletion (danw@redhat.com)
+- Use cookies in HostSubnet-related OVS flows to avoid misdeletions
+  (danw@redhat.com)
+- Default the kubelet IPTablesMasqueradeBit to the same value as the kube-proxy
+  IPTablesMasqueradeBit (danw@redhat.com)
+
 * Tue Apr 10 2018 Justin Pierce <jupierce@redhat.com> 3.8.37-1
 - Automatic commit of package [atomic-openshift] release [3.8.37-1] ; bump
   origin-web-console 66357b0 (jupierce@redhat.com)
