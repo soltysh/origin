@@ -228,6 +228,7 @@ type KubeletDeps struct {
 	DockerClient       libdocker.Interface
 	EventClient        v1core.EventsGetter
 	HeartbeatClient    v1coregenerated.CoreV1Interface
+	OnHeartbeatFailure func()
 	KubeClient         clientset.Interface
 	ExternalKubeClient clientgoclientset.Interface
 	Mounter            mount.Interface
@@ -441,6 +442,7 @@ func NewMainKubelet(kubeCfg *componentconfig.KubeletConfiguration, kubeDeps *Kub
 		nodeName:                       nodeName,
 		kubeClient:                     kubeDeps.KubeClient,
 		heartbeatClient:                kubeDeps.HeartbeatClient,
+		onRepeatedHeartbeatFailure:     kubeDeps.OnHeartbeatFailure,
 		rootDirectory:                  kubeCfg.RootDirectory,
 		resyncInterval:                 kubeCfg.SyncFrequency.Duration,
 		sourcesReady:                   config.NewSourcesReady(kubeDeps.PodConfig.SeenAllSources),
@@ -857,6 +859,9 @@ type Kubelet struct {
 	heartbeatClient v1coregenerated.CoreV1Interface
 	iptClient       utilipt.Interface
 	rootDirectory   string
+
+	// onRepeatedHeartbeatFailure is called when a heartbeat operation fails more than once. optional.
+	onRepeatedHeartbeatFailure func()
 
 	// podWorkers handle syncing Pods in response to events.
 	podWorkers PodWorkers
