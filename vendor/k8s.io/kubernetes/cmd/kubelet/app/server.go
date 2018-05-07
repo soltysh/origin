@@ -468,11 +468,12 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.KubeletDeps) (err error) {
 				if err != nil {
 					return err
 				}
-				// we set exitIfExpired to true because we use this client configuration to request new certs - if we are unable
-				// to request new certs we will need to re-bootstrap
-				if err := certificate.UpdateTransport(wait.NeverStop, clientConfig, clientCertificateManager, true); err != nil {
-					return err
-				}
+			}
+			// we set exitIfExpired to true because we use this client configuration to request new certs - if we are unable
+			// to request new certs we will need to re-bootstrap
+			_, err = certificate.UpdateTransport(wait.NeverStop, clientConfig, clientCertificateManager, true)
+			if err != nil {
+				return err
 			}
 
 			kubeClient, err = clientset.NewForConfig(clientConfig)
