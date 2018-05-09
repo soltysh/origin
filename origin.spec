@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit aa30a152b389f12fd23761a98ee7de89ff902fb5
+%global commit d7eb02895334cf38a944decdc4836baacbb51ae0
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.44.52 OS_GIT_COMMIT=aa30a15 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.4.1.44.53 OS_GIT_COMMIT=d7eb028 OS_GIT_MAJOR=3 OS_GIT_MINOR=4+
 }
 
 %{!?make_redistributable:
@@ -48,7 +48,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.4.1.44.53
+Version:        3.4.1.44.54
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -563,6 +563,9 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Wed May 09 2018 Justin Pierce <jupierce@redhat.com> 3.4.1.44.54
+- 
+
 * Thu Apr 12 2018 Justin Pierce <jupierce@redhat.com> 3.4.1.44.53
 - Merge remote-tracking branch enterprise-3.4, bump origin-web-console 9f4e616
   (jupierce@redhat.com)
