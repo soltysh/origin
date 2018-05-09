@@ -74,13 +74,11 @@ func init() {
 	signalToNodeCondition[evictionapi.SignalNodeFsAvailable] = v1.NodeDiskPressure
 	signalToNodeCondition[evictionapi.SignalImageFsInodesFree] = v1.NodeDiskPressure
 	signalToNodeCondition[evictionapi.SignalNodeFsInodesFree] = v1.NodeDiskPressure
-	signalToNodeCondition[evictionapi.SignalAllocatableNodeFsAvailable] = v1.NodeDiskPressure
 
 	// map signals to resources (and vice-versa)
 	signalToResource = map[evictionapi.Signal]v1.ResourceName{}
 	signalToResource[evictionapi.SignalMemoryAvailable] = v1.ResourceMemory
 	signalToResource[evictionapi.SignalAllocatableMemoryAvailable] = v1.ResourceMemory
-	signalToResource[evictionapi.SignalAllocatableNodeFsAvailable] = resourceNodeFs
 	signalToResource[evictionapi.SignalImageFsAvailable] = resourceImageFs
 	signalToResource[evictionapi.SignalImageFsInodesFree] = resourceImageFsInodes
 	signalToResource[evictionapi.SignalNodeFsAvailable] = resourceNodeFs
@@ -232,16 +230,6 @@ func getAllocatableThreshold(allocatableConfig []string) []evictionapi.Threshold
 			return []evictionapi.Threshold{
 				{
 					Signal:   evictionapi.SignalAllocatableMemoryAvailable,
-					Operator: evictionapi.OpLessThan,
-					Value: evictionapi.ThresholdValue{
-						Quantity: resource.NewQuantity(int64(0), resource.BinarySI),
-					},
-					MinReclaim: &evictionapi.ThresholdValue{
-						Quantity: resource.NewQuantity(int64(0), resource.BinarySI),
-					},
-				},
-				{
-					Signal:   evictionapi.SignalAllocatableNodeFsAvailable,
 					Operator: evictionapi.OpLessThan,
 					Value: evictionapi.ThresholdValue{
 						Quantity: resource.NewQuantity(int64(0), resource.BinarySI),
@@ -665,7 +653,7 @@ func (a byEvictionPriority) Less(i, j int) bool {
 }
 
 // makeSignalObservations derives observations using the specified summary provider.
-func makeSignalObservations(summaryProvider stats.SummaryProvider, capacityProvider CapacityProvider, pods []*v1.Pod, withImageFs bool) (signalObservations, statsFunc, error) {
+func makeSignalObservations(summaryProvider stats.SummaryProvider, capacityProvider CapacityProvider, pods []*v1.Pod) (signalObservations, statsFunc, error) {
 	summary, err := summaryProvider.Get()
 	if err != nil {
 		return nil, nil, err
@@ -717,11 +705,11 @@ func makeSignalObservations(summaryProvider stats.SummaryProvider, capacityProvi
 		}
 	}
 
-	nodeCapacity := capacityProvider.GetCapacity()
-	allocatableReservation := capacityProvider.GetNodeAllocatableReservation()
-
-	memoryAllocatableCapacity, memoryAllocatableAvailable, exist := getResourceAllocatable(nodeCapacity, allocatableReservation, v1.ResourceMemory)
-	if exist {
+	if memoryAllocatableCapacity, ok := capacityProvider.GetCapacity()[v1.ResourceMemory]; ok {
+		memoryAllocatableAvailable := memoryAllocatableCapacity.Copy()
+		if reserved, exists := capacityProvider.GetNodeAllocatableReservation()[v1.ResourceMemory]; exists {
+			memoryAllocatableAvailable.Sub(reserved)
+		}
 		for _, pod := range summary.Pods {
 			mu, err := podMemoryUsage(pod)
 			if err == nil {
@@ -730,53 +718,14 @@ func makeSignalObservations(summaryProvider stats.SummaryProvider, capacityProvi
 		}
 		result[evictionapi.SignalAllocatableMemoryAvailable] = signalObservation{
 			available: memoryAllocatableAvailable,
-			capacity:  memoryAllocatableCapacity,
+			capacity:  &memoryAllocatableCapacity,
 		}
-	}
+	} else {
+		glog.Errorf("Could not find capacity information for resource %v", v1.ResourceMemory)
 
-	storageScratchCapacity, storageScratchAllocatable, exist := getResourceAllocatable(nodeCapacity, allocatableReservation, v1.ResourceStorageScratch)
-	if exist {
-		for _, pod := range pods {
-			podStat, ok := statsFunc(pod)
-			if !ok {
-				continue
-			}
-
-			usage, err := podDiskUsage(podStat, pod, []fsStatsType{fsStatsLogs, fsStatsLocalVolumeSource, fsStatsRoot})
-			if err != nil {
-				glog.Warningf("eviction manager: error getting pod disk usage %v", err)
-				continue
-			}
-			// If there is a seperate imagefs set up for container runtimes, the scratch disk usage from nodefs should exclude the overlay usage
-			if withImageFs {
-				diskUsage := usage[resourceDisk]
-				diskUsageP := &diskUsage
-				diskUsagep := diskUsageP.Copy()
-				diskUsagep.Sub(usage[resourceOverlay])
-				storageScratchAllocatable.Sub(*diskUsagep)
-			} else {
-				storageScratchAllocatable.Sub(usage[resourceDisk])
-			}
-		}
-		result[evictionapi.SignalAllocatableNodeFsAvailable] = signalObservation{
-			available: storageScratchAllocatable,
-			capacity:  storageScratchCapacity,
-		}
 	}
 
 	return result, statsFunc, nil
-}
-
-func getResourceAllocatable(capacity v1.ResourceList, reservation v1.ResourceList, resourceName v1.ResourceName) (*resource.Quantity, *resource.Quantity, bool) {
-	if capacity, ok := capacity[resourceName]; ok {
-		allocate := capacity.Copy()
-		if reserved, exists := reservation[resourceName]; exists {
-			allocate.Sub(reserved)
-		}
-		return capacity.Copy(), allocate, true
-	}
-	glog.Errorf("Could not find capacity information for resource %v", resourceName)
-	return nil, nil, false
 }
 
 // thresholdsMet returns the set of thresholds that were met independent of grace period
