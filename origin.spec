@@ -21,7 +21,7 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit ecd5eaafb727bd6c2590ec797bd0b48050960c81
+%global commit 02e5b30318666eb247b2f464002fffc7a8e697ea
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.46.42
+Version:        3.3.1.46.43
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -562,6 +562,9 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Fri May 11 2018 Justin Pierce <jupierce@redhat.com> 3.3.1.46.43
+- 
+
 * Wed May 09 2018 Justin Pierce <jupierce@redhat.com> 3.3.1.46.42
 - 
 
