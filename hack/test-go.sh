@@ -131,6 +131,8 @@ if [[ -n "${junit_report}" ]]; then
     # we need to generate jUnit xml
 
     test_error_file="${LOG_DIR}/test-go-err.log"
+    export JUNIT_REPORT_OUTPUT="${LOG_DIR}/test-go-raw.log"
+    os::log::info "Logging raw into JUNIT_REPORT_OUTPUT=\`${JUNIT_REPORT_OUTPUT}\`..."
 
     os::log::info "Running \`go test\`..."
     # we don't care if the `go test` fails in this pipe, as we want to generate the report and summarize the output anyway
