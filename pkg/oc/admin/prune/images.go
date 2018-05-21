@@ -117,6 +117,7 @@ type PruneImagesOptions struct {
 	RegistryUrlOverride string
 	Namespace           string
 	ForceInsecure       bool
+	IgnoreInvalidRefs   bool
 
 	ClientConfig    *restclient.Config
 	AppsClient      appsclient.AppsInterface
@@ -162,6 +163,7 @@ func NewCmdPruneImages(f *clientcmd.Factory, parentName, name string, out io.Wri
 	cmd.Flags().StringVar(&opts.CABundle, "certificate-authority", opts.CABundle, "The path to a certificate authority bundle to use when communicating with the managed Docker registries. Defaults to the certificate authority data from the current user's config file. It cannot be used together with --force-insecure.")
 	cmd.Flags().StringVar(&opts.RegistryUrlOverride, "registry-url", opts.RegistryUrlOverride, "The address to use when contacting the registry, instead of using the default value. This is useful if you can't resolve or reach the registry (e.g.; the default is a cluster-internal URL) but you do have an alternative route that works. Particular transport protocol can be enforced using '<scheme>://' prefix.")
 	cmd.Flags().BoolVar(&opts.ForceInsecure, "force-insecure", opts.ForceInsecure, "If true, allow an insecure connection to the docker registry that is hosted via HTTP or has an invalid HTTPS certificate. Whenever possible, use --certificate-authority instead of this dangerous option.")
+	cmd.Flags().BoolVar(&opts.IgnoreInvalidRefs, "ignore-invalid-refs", opts.IgnoreInvalidRefs, "If true, the pruning process will ignore all errors while parsing image references. This means that the pruning process will ignore the intended connection between the object and the referenced image. As a result an image may be incorrectly deleted as unused.")
 
 	return cmd
 }
@@ -383,6 +385,7 @@ func (o PruneImagesOptions) Run() error {
 		DryRun:             o.Confirm == false,
 		RegistryClient:     registryClient,
 		RegistryURL:        registryURL,
+		IgnoreInvalidRefs:  o.IgnoreInvalidRefs,
 	}
 	if o.Namespace != metav1.NamespaceAll {
 		options.Namespace = o.Namespace
