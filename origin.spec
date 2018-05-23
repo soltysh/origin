@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit c82d7639563870a56358ec1c9f400051787f86cb
+%global commit 24669f42c733fc7601a24ecb68c50b9c973f3cf0
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.47 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=c5d5a0b
+%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.48 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=84b3088
 }
 
 %if 0%{?skip_build}
@@ -58,7 +58,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.7.48
+Version:        3.7.49
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -654,6 +654,25 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Wed May 23 2018 Justin Pierce <jupierce@redhat.com> 3.7.49-1
+- UPSTREAM: 55338: Remove Ephemeral Storage Allocatable Evictions
+  (sjenning@redhat.com)
+- UPSTREAM: 57020: ignore images in used by running containers when GC
+  (sjenning@redhat.com)
+- Add option to ignore image reference errors (agladkov@redhat.com)
+- Remove test reference to deleted content (ccoleman@redhat.com)
+- new-app: remove check for volumes in new-app test (mfojtik@redhat.com)
+- UPSTREAM: 49688: Don't block watch cache Get/List on unready
+  (ccoleman@redhat.com)
+- UPSTREAM: 63492: Close all kubelet->API connections on heartbeat failure
+  (jliggitt@redhat.com)
+- UPSTREAM: 63492: Always track kubelet -> API connections
+  (jliggitt@redhat.com)
+- UPSTREAM: 54701: Refactor `reconcileAutoscaler` method in hpa
+  (mattjmcnaughton@gmail.com)
+- UPSTREAM: 53690: Fix hpa scaling above max replicas w/ scaleUpLimit
+  (mattjmcnaughton@gmail.com)
+
 * Fri May 11 2018 Justin Pierce <jupierce@redhat.com> 3.7.48-1
 - 
 
