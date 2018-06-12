@@ -185,12 +185,7 @@ func (attacher *cinderDiskAttacher) VolumesAreAttached(specs []*volume.Spec, nod
 		volumeSpecMap[volumeSource.VolumeID] = spec
 	}
 
-	instanceID, err := attacher.nodeInstanceID(nodeName)
-	if err != nil {
-		return volumesAttachedCheck, err
-	}
-
-	attachedResult, err := attacher.cinderProvider.DisksAreAttached(instanceID, volumeIDList)
+	attachedResult, err := attacher.cinderProvider.DisksAreAttachedByName(nodeName, volumeIDList)
 	if err != nil {
 		// Log error and continue with attach
 		glog.Errorf(
@@ -364,20 +359,12 @@ func (detacher *cinderDiskDetacher) waitDiskDetached(instanceID, volumeID string
 
 func (detacher *cinderDiskDetacher) Detach(deviceMountPath string, nodeName types.NodeName) error {
 	volumeID := path.Base(deviceMountPath)
-	instances, res := detacher.cinderProvider.Instances()
-	if !res {
-		return fmt.Errorf("failed to list openstack instances")
-	}
-	instanceID, err := instances.InstanceID(nodeName)
-	if ind := strings.LastIndex(instanceID, "/"); ind >= 0 {
-		instanceID = instanceID[(ind + 1):]
-	}
 
 	if err := detacher.waitOperationFinished(volumeID); err != nil {
 		return err
 	}
+	attached, instanceID, err := detacher.cinderProvider.DiskIsAttachedByName(nodeName, volumeID)
 
-	attached, err := detacher.cinderProvider.DiskIsAttached(instanceID, volumeID)
 	if err != nil {
 		// Log error and continue with detach
 		glog.Errorf(

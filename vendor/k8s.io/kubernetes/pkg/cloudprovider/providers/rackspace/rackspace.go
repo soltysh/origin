@@ -676,25 +676,14 @@ func (rs *Rackspace) DiskIsAttached(instanceID, volumeID string) (bool, error) {
 	return false, nil
 }
 
-// query if a list volumes are attached to a compute instance
-func (rs *Rackspace) DisksAreAttached(instanceID string, volumeIDs []string) (map[string]bool, error) {
-	attached := make(map[string]bool)
-	for _, volumeID := range volumeIDs {
-		attached[volumeID] = false
-	}
-	var returnedErr error
-	for _, volumeID := range volumeIDs {
-		result, err := rs.DiskIsAttached(instanceID, volumeID)
-		if err != nil {
-			returnedErr = fmt.Errorf("Error in checking disk %q attached: %v \n %v", volumeID, err, returnedErr)
-			continue
-		}
-		if result {
-			attached[volumeID] = true
-		}
+// DiskIsAttachedByName only satisfies CinderProvider interface.
+func (rs *Rackspace) DiskIsAttachedByName(nodeName types.NodeName, volumeID string) (bool, string, error) {
+	return false, "", nil
+}
 
-	}
-	return attached, returnedErr
+// DisksAreAttachedByName only satisfies CinderProvider interface.
+func (rs *Rackspace) DisksAreAttachedByName(nodeName types.NodeName, volumeIDs []string) (map[string]bool, error) {
+	return nil, nil
 }
 
 // query if we should trust the cinder provide deviceName, See issue #33128
