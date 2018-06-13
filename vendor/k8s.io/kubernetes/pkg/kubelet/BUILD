@@ -12,6 +12,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "active_deadline.go",
+	"cloud_request_manager.go",
         "disk_manager.go",
         "doc.go",
         "kubelet.go",
@@ -151,6 +152,7 @@ go_test(
     name = "go_default_test",
     srcs = [
         "active_deadline_test.go",
+	"cloud_request_manager_test.go",
         "disk_manager_test.go",
         "kubelet_cadvisor_test.go",
         "kubelet_getters_test.go",
