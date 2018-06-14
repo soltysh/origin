@@ -521,7 +521,7 @@
 		},
 		{
 			"ImportPath": "github.com/cockroachdb/cmux",
-			"Rev": "3bbbe9847675a1300cce193d9efe458b9f0bdd23"
+			"Rev": "b64f5908f4945f4b11ed4a0a9d3cc1e23350866d"
 		},
 		{
 			"ImportPath": "github.com/codedellemc/goscaleio",

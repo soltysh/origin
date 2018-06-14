@@ -1,3 +1,17 @@
+// Copyright 2016 The CMux Authors. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// permissions and limitations under the License.
+
 package cmux
 
 import (
@@ -8,8 +22,8 @@ import (
 // patriciaTree is a simple patricia tree that handles []byte instead of string
 // and cannot be changed after instantiation.
 type patriciaTree struct {
-	root *ptNode
-	buf  []byte // preallocated buffer to read data while matching
+	root     *ptNode
+	maxDepth int // max depth of the tree.
 }
 
 func newPatriciaTree(bs ...[]byte) *patriciaTree {
@@ -20,8 +34,8 @@ func newPatriciaTree(bs ...[]byte) *patriciaTree {
 		}
 	}
 	return &patriciaTree{
-		root: newNode(bs),
-		buf:  make([]byte, max+1),
+		root:     newNode(bs),
+		maxDepth: max + 1,
 	}
 }
 
@@ -34,13 +48,15 @@ func newPatriciaTreeString(strs ...string) *patriciaTree {
 }
 
 func (t *patriciaTree) matchPrefix(r io.Reader) bool {
-	n, _ := io.ReadFull(r, t.buf)
-	return t.root.match(t.buf[:n], true)
+	buf := make([]byte, t.maxDepth)
+	n, _ := io.ReadFull(r, buf)
+	return t.root.match(buf[:n], true)
 }
 
 func (t *patriciaTree) match(r io.Reader) bool {
-	n, _ := io.ReadFull(r, t.buf)
-	return t.root.match(t.buf[:n], false)
+	buf := make([]byte, t.maxDepth)
+	n, _ := io.ReadFull(r, buf)
+	return t.root.match(buf[:n], false)
 }
 
 type ptNode struct {
@@ -143,6 +159,10 @@ func (n *ptNode) match(b []byte, prefix bool) bool {
 
 	if n.terminal && (prefix || len(n.prefix) == len(b)) {
 		return true
+	}
+
+	if l >= len(b) {
+		return false
 	}
 
 	nextN, ok := n.next[b[l]]
