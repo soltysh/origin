@@ -164,7 +164,7 @@ func (kl *Kubelet) checkLimitsForResolvConf() {
 	f, err := os.Open(kl.resolverConfig)
 	if err != nil {
 		kl.recorder.Event(kl.nodeRef, v1.EventTypeWarning, "checkLimitsForResolvConf", err.Error())
-		glog.Error("checkLimitsForResolvConf: " + err.Error())
+		glog.V(4).Infof("checkLimitsForResolvConf: " + err.Error())
 		return
 	}
 	defer f.Close()
@@ -172,7 +172,7 @@ func (kl *Kubelet) checkLimitsForResolvConf() {
 	_, hostSearch, err := kl.parseResolvConf(f)
 	if err != nil {
 		kl.recorder.Event(kl.nodeRef, v1.EventTypeWarning, "checkLimitsForResolvConf", err.Error())
-		glog.Error("checkLimitsForResolvConf: " + err.Error())
+		glog.V(4).Infof("checkLimitsForResolvConf: " + err.Error())
 		return
 	}
 
@@ -185,14 +185,14 @@ func (kl *Kubelet) checkLimitsForResolvConf() {
 	if len(hostSearch) > domainCntLimit {
 		log := fmt.Sprintf("Resolv.conf file '%s' contains search line consisting of more than %d domains!", kl.resolverConfig, domainCntLimit)
 		kl.recorder.Event(kl.nodeRef, v1.EventTypeWarning, "checkLimitsForResolvConf", log)
-		glog.Error("checkLimitsForResolvConf: " + log)
+		glog.V(4).Infof("checkLimitsForResolvConf: " + log)
 		return
 	}
 
 	if len(strings.Join(hostSearch, " ")) > resolvSearchLineLenLimit {
 		log := fmt.Sprintf("Resolv.conf file '%s' contains search line which length is more than allowed %d chars!", kl.resolverConfig, resolvSearchLineLenLimit)
 		kl.recorder.Event(kl.nodeRef, v1.EventTypeWarning, "checkLimitsForResolvConf", log)
-		glog.Error("checkLimitsForResolvConf: " + log)
+		glog.V(4).Infof("checkLimitsForResolvConf: " + log)
 		return
 	}
 
