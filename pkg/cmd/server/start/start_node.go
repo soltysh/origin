@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/coreos/go-systemd/daemon"
 	"github.com/golang/glog"
@@ -23,6 +24,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/master/ports"
+	"k8s.io/kubernetes/pkg/util/interrupt"
 
 	"github.com/openshift/library-go/pkg/crypto"
 	"github.com/openshift/origin/pkg/cmd/server/admin"
@@ -68,7 +70,7 @@ var nodeLong = templates.LongDesc(`
 	`)
 
 // NewCommandStartNode provides a CLI handler for 'start node' command
-func NewCommandStartNode(basename string, out, errout io.Writer, stopCh <-chan struct{}) (*cobra.Command, *NodeOptions) {
+func NewCommandStartNode(basename string, out, errout io.Writer) (*cobra.Command, *NodeOptions) {
 	options := &NodeOptions{
 		ExpireDays: crypto.DefaultCertificateLifetimeInDays,
 		Output:     out,
@@ -79,7 +81,7 @@ func NewCommandStartNode(basename string, out, errout io.Writer, stopCh <-chan s
 		Short: "Launch a node",
 		Long:  fmt.Sprintf(nodeLong, basename),
 		Run: func(c *cobra.Command, args []string) {
-			options.Run(c, errout, args, stopCh)
+			options.Run(c, errout, args, wait.NeverStop)
 		},
 	}
 
@@ -115,14 +117,26 @@ var networkLong = templates.LongDesc(`
 
 // NewCommandStartNetwork provides a CLI handler for 'start network' command
 func NewCommandStartNetwork(basename string, out, errout io.Writer) (*cobra.Command, *NodeOptions) {
-	options := &NodeOptions{Output: out}
+	options := &NodeOptions{
+		ExpireDays: crypto.DefaultCertificateLifetimeInDays,
+		Output:     out,
+	}
 
 	cmd := &cobra.Command{
 		Use:   "network",
 		Short: "Launch node network",
 		Long:  fmt.Sprintf(networkLong, basename),
 		Run: func(c *cobra.Command, args []string) {
-			options.Run(c, errout, args, wait.NeverStop)
+			ch := make(chan struct{})
+			interrupt.New(func(s os.Signal) {
+				close(ch)
+				fmt.Fprintf(errout, "interrupt: Gracefully shutting down ...\n")
+				time.Sleep(200 * time.Millisecond)
+				os.Exit(1)
+			}).Run(func() error {
+				options.Run(c, errout, args, ch)
+				return nil
+			})
 		},
 	}
 
@@ -209,7 +223,7 @@ func (o NodeOptions) Complete(cmd *cobra.Command) error {
 
 // StartNode calls RunNode and then waits forever
 func (o NodeOptions) StartNode(stopCh <-chan struct{}) error {
-	if err := o.RunNode(); err != nil {
+	if err := o.RunNode(stopCh); err != nil {
 		return err
 	}
 
@@ -218,8 +232,7 @@ func (o NodeOptions) StartNode(stopCh <-chan struct{}) error {
 	}
 
 	go daemon.SdNotify(false, "READY=1")
-	<-stopCh
-	return nil
+	select {}
 }
 
 // RunNode takes the options and:
@@ -227,7 +240,7 @@ func (o NodeOptions) StartNode(stopCh <-chan struct{}) error {
 // 2.  Reads fully specified node config OR builds a fully specified node config from the args
 // 3.  Writes the fully specified node config and exits if needed
 // 4.  Starts the node based on the fully specified config
-func (o NodeOptions) RunNode() error {
+func (o NodeOptions) RunNode(stopCh <-chan struct{}) error {
 	nodeConfig, configFile, err := o.resolveNodeConfig()
 	if err != nil {
 		return err
@@ -277,7 +290,7 @@ func (o NodeOptions) RunNode() error {
 		return originnode.WriteKubeletFlags(*nodeConfig)
 	}
 
-	return StartNode(*nodeConfig, o.NodeArgs.Components)
+	return StartNode(*nodeConfig, o.NodeArgs.Components, stopCh)
 }
 
 // resolveNodeConfig creates a new configuration on disk by reading from the master, reads
@@ -406,7 +419,7 @@ func execKubelet(kubeletArgs []string) error {
 	for i, s := range os.Args {
 		if s == "--vmodule" {
 			if i+1 < len(os.Args) {
-				args = append(args, fmt.Sprintf("--vmodule=", os.Args[i+1]))
+				args = append(args, fmt.Sprintf("--vmodule=%q", os.Args[i+1]))
 				break
 			}
 		}
@@ -421,7 +434,7 @@ func execKubelet(kubeletArgs []string) error {
 }
 
 // StartNode launches the node processes.
-func StartNode(nodeConfig configapi.NodeConfig, components *utilflags.ComponentFlag) error {
+func StartNode(nodeConfig configapi.NodeConfig, components *utilflags.ComponentFlag, stopCh <-chan struct{}) error {
 	kubeletArgs, err := nodeoptions.ComputeKubeletFlags(nodeConfig.KubeletArguments, nodeConfig)
 	if err != nil {
 		return fmt.Errorf("cannot create kubelet args: %v", err)
@@ -476,12 +489,12 @@ func StartNode(nodeConfig configapi.NodeConfig, components *utilflags.ComponentF
 		networkConfig.RunProxy()
 	}
 	if components.Enabled(ComponentDNS) && networkConfig.DNSServer != nil {
-		networkConfig.RunDNS()
+		networkConfig.RunDNS(stopCh)
 	}
 
-	networkConfig.InternalKubeInformers.Start(wait.NeverStop)
+	networkConfig.InternalKubeInformers.Start(stopCh)
 	if networkConfig.InternalNetworkInformers != nil {
-		networkConfig.InternalNetworkInformers.Start(wait.NeverStop)
+		networkConfig.InternalNetworkInformers.Start(stopCh)
 	}
 
 	return nil
@@ -489,7 +502,7 @@ func StartNode(nodeConfig configapi.NodeConfig, components *utilflags.ComponentF
 
 // runKubeletInProcess runs the kubelet command using the provide args
 func runKubeletInProcess(kubeletArgs []string) error {
-	cmd := kubeletapp.NewKubeletCommand()
+	cmd := kubeletapp.NewKubeletCommand(wait.NeverStop)
 	if err := cmd.ParseFlags(kubeletArgs); err != nil {
 		return err
 	}

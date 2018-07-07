@@ -8,6 +8,7 @@ import (
 
 	"github.com/evanphx/json-patch"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -15,16 +16,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	"k8s.io/kubernetes/pkg/kubectl/categories"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
+	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
 	"k8s.io/kubernetes/pkg/kubectl/scheme"
 	kprinters "k8s.io/kubernetes/pkg/printers"
 
 	configapi "github.com/openshift/origin/pkg/cmd/server/apis/config"
-	configapiinstall "github.com/openshift/origin/pkg/cmd/server/apis/config/install"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 )
 
 const PatchRecommendedName = "patch"
@@ -51,8 +50,8 @@ var (
 		%[1]s openshift.local.config/master/master-config.yaml --patch='{"auditConfig": {"enabled": true}}'`)
 )
 
-func NewCmdPatch(name, fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
-	o := &PatchOptions{Out: out}
+func NewCmdPatch(name, fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	o := &PatchOptions{Out: streams.Out}
 
 	cmd := &cobra.Command{
 		Use:     name + " FILENAME -p PATCH",
@@ -60,55 +59,40 @@ func NewCmdPatch(name, fullName string, f *clientcmd.Factory, out io.Writer) *co
 		Long:    patch_long,
 		Example: patch_example,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdutil.CheckErr(o.Complete(f, cmd, args))
-			cmdutil.CheckErr(o.Validate())
-			cmdutil.CheckErr(o.RunPatch())
+			kcmdutil.CheckErr(o.Complete(f, cmd, args))
+			kcmdutil.CheckErr(o.Validate())
+			kcmdutil.CheckErr(o.RunPatch())
 		},
 	}
 	cmd.Flags().StringVarP(&o.Patch, "patch", "p", "", "The patch to be applied to the resource JSON file.")
 	cmd.MarkFlagRequired("patch")
 	cmd.Flags().String("type", "strategic", fmt.Sprintf("The type of patch being provided; one of %v", sets.StringKeySet(patchTypes).List()))
-	cmdutil.AddPrinterFlags(cmd)
+	kcmdutil.AddPrinterFlags(cmd)
 
 	return cmd
 }
 
-func (o *PatchOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, args []string) error {
+func (o *PatchOptions) Complete(f kcmdutil.Factory, cmd *cobra.Command, args []string) error {
 	if len(args) != 1 {
 		return fmt.Errorf("exactly one FILENAME is allowed: %v", args)
 	}
 	o.Filename = args[0]
 
-	patchTypeString := strings.ToLower(cmdutil.GetFlagString(cmd, "type"))
+	patchTypeString := strings.ToLower(kcmdutil.GetFlagString(cmd, "type"))
 	ok := false
 	o.PatchType, ok = patchTypes[patchTypeString]
 	if !ok {
-		return cmdutil.UsageErrorf(cmd, fmt.Sprintf("--type must be one of %v, not %q", sets.StringKeySet(patchTypes).List(), patchTypeString))
+		return kcmdutil.UsageErrorf(cmd, fmt.Sprintf("--type must be one of %v, not %q", sets.StringKeySet(patchTypes).List(), patchTypeString))
 	}
 
-	o.Builder = resource.NewBuilder(
-		&resource.Mapper{
-			RESTMapper:   configapiinstall.NewRESTMapper(),
-			ObjectTyper:  configapi.Scheme,
-			ClientMapper: resource.DisabledClientForMapping{},
-			Decoder:      configapi.Codecs.LegacyCodec(),
-		},
-		&resource.Mapper{
-			RESTMapper:   configapiinstall.NewRESTMapper(),
-			ObjectTyper:  configapi.Scheme,
-			ClientMapper: resource.DisabledClientForMapping{},
-			Decoder:      unstructured.UnstructuredJSONScheme,
-		},
-		categories.SimpleCategoryExpander{},
-	)
+	o.Builder = f.NewBuilder().Local()
 
 	var err error
-	_, typer := f.Object()
 	decoders := []runtime.Decoder{scheme.Codecs.UniversalDeserializer(), configapi.Codecs.UniversalDeserializer(), unstructured.UnstructuredJSONScheme}
-	printOpts := cmdutil.ExtractCmdPrintOptions(cmd, false)
+	printOpts := kcmdutil.ExtractCmdPrintOptions(cmd, false)
 	printOpts.OutputFormatType = "yaml"
 
-	o.Printer, err = kprinters.GetStandardPrinter(typer, nil, decoders, *printOpts)
+	o.Printer, err = kprinters.GetStandardPrinter(configapi.Scheme, nil, decoders, *printOpts)
 	if err != nil {
 		return err
 	}
@@ -134,7 +118,7 @@ func (o *PatchOptions) RunPatch() error {
 	}
 
 	r := o.Builder.
-		Internal().
+		WithScheme(configapi.Scheme, configapi.Scheme.PrioritizedVersionsAllGroups()...).
 		FilenameParam(false, &resource.FilenameOptions{Recursive: false, Filenames: []string{o.Filename}}).
 		Flatten().
 		Do()
@@ -152,7 +136,7 @@ func (o *PatchOptions) RunPatch() error {
 	}
 	info := infos[0]
 
-	originalObjJS, err := runtime.Encode(configapi.Codecs.LegacyCodec(info.Mapping.GroupVersionKind.GroupVersion()), info.Object.(runtime.Object))
+	originalObjJS, err := runtime.Encode(configapi.Codecs.LegacyCodec(schema.GroupVersion{Version: "v1"}), info.Object.(runtime.Object))
 	if err != nil {
 		return err
 	}

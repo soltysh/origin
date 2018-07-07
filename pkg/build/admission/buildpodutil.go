@@ -4,10 +4,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/openshift/origin/pkg/build/buildscheme"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 
 	buildapi "github.com/openshift/origin/pkg/build/apis/build"
@@ -15,30 +14,30 @@ import (
 
 // GetBuildFromPod returns a build object encoded in a pod's BUILD environment variable along with
 // its encoding version
-func GetBuildFromPod(pod *v1.Pod) (*buildapi.Build, schema.GroupVersion, error) {
+func GetBuildFromPod(pod *v1.Pod) (*buildapi.Build, error) {
 	if len(pod.Spec.Containers) == 0 {
-		return nil, schema.GroupVersion{}, errors.New("unable to get build from pod: pod has no containers")
+		return nil, errors.New("unable to get build from pod: pod has no containers")
 	}
 
 	buildEnvVar := getEnvVar(&pod.Spec.Containers[0], "BUILD")
 	if len(buildEnvVar) == 0 {
-		return nil, schema.GroupVersion{}, errors.New("unable to get build from pod: BUILD environment variable is empty")
+		return nil, errors.New("unable to get build from pod: BUILD environment variable is empty")
 	}
 
-	obj, groupVersionKind, err := legacyscheme.Codecs.UniversalDecoder().Decode([]byte(buildEnvVar), nil, nil)
+	obj, err := runtime.Decode(buildscheme.Decoder, []byte(buildEnvVar))
 	if err != nil {
-		return nil, schema.GroupVersion{}, fmt.Errorf("unable to get build from pod: %v", err)
+		return nil, fmt.Errorf("unable to get build from pod: %v", err)
 	}
 	build, ok := obj.(*buildapi.Build)
 	if !ok {
-		return nil, schema.GroupVersion{}, fmt.Errorf("unable to get build from pod: %v", errors.New("decoded object is not of type Build"))
+		return nil, fmt.Errorf("unable to get build from pod: %v", errors.New("decoded object is not of type Build"))
 	}
-	return build, groupVersionKind.GroupVersion(), nil
+	return build, nil
 }
 
 // SetBuildInPod encodes a build object and sets it in a pod's BUILD environment variable
-func SetBuildInPod(pod *v1.Pod, build *buildapi.Build, groupVersion schema.GroupVersion) error {
-	encodedBuild, err := runtime.Encode(legacyscheme.Codecs.LegacyCodec(groupVersion), build)
+func SetBuildInPod(pod *v1.Pod, build *buildapi.Build) error {
+	encodedBuild, err := runtime.Encode(buildscheme.Encoder, build)
 	if err != nil {
 		return fmt.Errorf("unable to set build in pod: %v", err)
 	}

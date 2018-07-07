@@ -10,9 +10,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	cliconfig "github.com/openshift/origin/pkg/oc/cli/config"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	projectapi "github.com/openshift/origin/pkg/project/apis/project"
 	projectclientinternal "github.com/openshift/origin/pkg/project/generated/internalclientset"
 	projectclient "github.com/openshift/origin/pkg/project/generated/internalclientset/typed/project/internalversion"
@@ -74,9 +74,9 @@ To switch to this project and start adding applications, use:
 )
 
 // NewCmdRequestProject implement the OpenShift cli RequestProject command.
-func NewCmdRequestProject(name, baseName string, f *clientcmd.Factory, out, errout io.Writer) *cobra.Command {
+func NewCmdRequestProject(name, baseName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	o := &NewProjectOptions{}
-	o.Out = out
+	o.Out = streams.Out
 	o.Name = baseName
 
 	cmd := &cobra.Command{
@@ -86,7 +86,7 @@ func NewCmdRequestProject(name, baseName string, f *clientcmd.Factory, out, erro
 		Example: fmt.Sprintf(requestProjectExample, baseName, name),
 		Run: func(cmd *cobra.Command, args []string) {
 			kcmdutil.CheckErr(o.Complete(f, cmd, args))
-			clientConfig, err := f.ClientConfig()
+			clientConfig, err := f.ToRESTConfig()
 			kcmdutil.CheckErr(err)
 			projectClient, err := projectclientinternal.NewForConfig(clientConfig)
 			kcmdutil.CheckErr(err)
@@ -103,7 +103,7 @@ func NewCmdRequestProject(name, baseName string, f *clientcmd.Factory, out, erro
 }
 
 // Complete completes all the required options.
-func (o *NewProjectOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, args []string) error {
+func (o *NewProjectOptions) Complete(f kcmdutil.Factory, cmd *cobra.Command, args []string) error {
 	if len(args) != 1 {
 		cmd.Help()
 		return errors.New("must have exactly one argument")
@@ -118,7 +118,7 @@ func (o *NewProjectOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, a
 			return err
 		}
 	} else {
-		clientConfig, err := f.ClientConfig()
+		clientConfig, err := f.ToRESTConfig()
 		if err != nil {
 			return err
 		}

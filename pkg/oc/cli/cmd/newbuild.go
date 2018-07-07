@@ -11,10 +11,10 @@ import (
 
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	buildapi "github.com/openshift/origin/pkg/build/apis/build"
 	configcmd "github.com/openshift/origin/pkg/bulk"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	newapp "github.com/openshift/origin/pkg/oc/generate/app"
 	newcmd "github.com/openshift/origin/pkg/oc/generate/cmd"
 )
@@ -86,7 +86,7 @@ type NewBuildOptions struct {
 }
 
 // NewCmdNewBuild implements the OpenShift cli new-build command
-func NewCmdNewBuild(name, baseName string, f *clientcmd.Factory, in io.Reader, out, errout io.Writer) *cobra.Command {
+func NewCmdNewBuild(name, baseName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	config := newcmd.NewAppConfig()
 	config.ExpectToBuild = true
 	o := &NewBuildOptions{ObjectGeneratorOptions: &ObjectGeneratorOptions{Config: config}}
@@ -98,7 +98,7 @@ func NewCmdNewBuild(name, baseName string, f *clientcmd.Factory, in io.Reader, o
 		Example:    fmt.Sprintf(newBuildExample, baseName, name),
 		SuggestFor: []string{"build", "builds"},
 		Run: func(c *cobra.Command, args []string) {
-			kcmdutil.CheckErr(o.Complete(baseName, name, f, c, args, in, out, errout))
+			kcmdutil.CheckErr(o.Complete(baseName, name, f, c, args, streams.In, streams.Out, streams.ErrOut))
 			err := o.RunNewBuild()
 			if err == kcmdutil.ErrExit {
 				os.Exit(1)
@@ -145,7 +145,7 @@ func NewCmdNewBuild(name, baseName string, f *clientcmd.Factory, in io.Reader, o
 }
 
 // Complete sets any default behavior for the command
-func (o *NewBuildOptions) Complete(baseName, commandName string, f *clientcmd.Factory, c *cobra.Command, args []string, in io.Reader, out, errout io.Writer) error {
+func (o *NewBuildOptions) Complete(baseName, commandName string, f kcmdutil.Factory, c *cobra.Command, args []string, in io.Reader, out, errout io.Writer) error {
 	bo := o.ObjectGeneratorOptions
 	err := bo.Complete(baseName, commandName, f, c, args, in, out, errout)
 	if err != nil {

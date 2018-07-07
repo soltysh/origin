@@ -15,10 +15,10 @@ import (
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	clientcfg "github.com/openshift/origin/pkg/client/config"
 	cliconfig "github.com/openshift/origin/pkg/oc/cli/config"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	projectapi "github.com/openshift/origin/pkg/project/apis/project"
 	projectapihelpers "github.com/openshift/origin/pkg/project/apis/project/helpers"
 	projectclientinternal "github.com/openshift/origin/pkg/project/generated/internalclientset"
@@ -66,7 +66,7 @@ var (
 )
 
 // NewCmdProject implements the OpenShift cli rollback command
-func NewCmdProject(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
+func NewCmdProject(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	options := &ProjectOptions{}
 
 	cmd := &cobra.Command{
@@ -77,7 +77,7 @@ func NewCmdProject(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.
 		Run: func(cmd *cobra.Command, args []string) {
 			options.PathOptions = cliconfig.NewPathOptions(cmd)
 
-			if err := options.Complete(f, args, out); err != nil {
+			if err := options.Complete(f, args, streams.Out); err != nil {
 				kcmdutil.CheckErr(kcmdutil.UsageErrorf(cmd, err.Error()))
 			}
 
@@ -90,7 +90,7 @@ func NewCmdProject(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.
 	return cmd
 }
 
-func (o *ProjectOptions) Complete(f *clientcmd.Factory, args []string, out io.Writer) error {
+func (o *ProjectOptions) Complete(f genericclioptions.RESTClientGetter, args []string, out io.Writer) error {
 	var err error
 
 	argsLength := len(args)
@@ -101,12 +101,12 @@ func (o *ProjectOptions) Complete(f *clientcmd.Factory, args []string, out io.Wr
 		o.ProjectName = args[0]
 	}
 
-	o.Config, err = f.RawConfig()
+	o.Config, err = f.ToRawKubeConfigLoader().RawConfig()
 	if err != nil {
 		return err
 	}
 
-	o.ClientConfig, err = f.ClientConfig()
+	o.ClientConfig, err = f.ToRESTConfig()
 	if err != nil {
 		contextNameExists := false
 		if _, exists := o.GetContextFromName(o.ProjectName); exists {
@@ -127,7 +127,7 @@ func (o *ProjectOptions) Complete(f *clientcmd.Factory, args []string, out io.Wr
 
 		// since we failed to retrieve ClientConfig for the current server,
 		// fetch local OpenShift client config
-		o.ClientConfig, err = f.ClientConfig()
+		o.ClientConfig, err = f.ToRESTConfig()
 		if err != nil {
 			return err
 		}
@@ -135,7 +135,7 @@ func (o *ProjectOptions) Complete(f *clientcmd.Factory, args []string, out io.Wr
 	}
 
 	o.ClientFn = func() (projectclient.ProjectInterface, kclientset.Interface, error) {
-		kc, err := f.ClientSet()
+		kc, err := kclientset.NewForConfig(o.ClientConfig)
 		if err != nil {
 			return nil, nil, err
 		}

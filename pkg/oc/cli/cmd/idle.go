@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	utilerrors "github.com/openshift/origin/pkg/util/errors"
 	extensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,18 +19,20 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	kextensionsclient "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
+	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
+	kinternalclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
 
 	appsv1client "github.com/openshift/client-go/apps/clientset/versioned/typed/apps/v1"
 	appsmanualclient "github.com/openshift/origin/pkg/apps/client/v1"
 	appsclientinternal "github.com/openshift/origin/pkg/apps/generated/internalclientset"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
+	"github.com/openshift/origin/pkg/oc/util/ocscheme"
 	unidlingapi "github.com/openshift/origin/pkg/unidling/api"
 	utilunidling "github.com/openshift/origin/pkg/unidling/util"
-	utilerrors "github.com/openshift/origin/pkg/util/errors"
 )
 
 var (
@@ -50,10 +53,10 @@ var (
 )
 
 // NewCmdIdle implements the OpenShift cli idle command
-func NewCmdIdle(fullName string, f *clientcmd.Factory, out, errOut io.Writer) *cobra.Command {
+func NewCmdIdle(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	o := &IdleOptions{
-		out:         out,
-		errOut:      errOut,
+		out:         streams.Out,
+		errOut:      streams.ErrOut,
 		cmdFullName: fullName,
 	}
 
@@ -101,8 +104,8 @@ type IdleOptions struct {
 	svcBuilder *resource.Builder
 }
 
-func (o *IdleOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, args []string) error {
-	namespace, _, err := f.DefaultNamespace()
+func (o *IdleOptions) Complete(f kcmdutil.Factory, cmd *cobra.Command, args []string) error {
+	namespace, _, err := f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return err
 	}
@@ -115,7 +118,7 @@ func (o *IdleOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, args []
 	}
 
 	o.svcBuilder = f.NewBuilder().
-		Internal().
+		WithScheme(ocscheme.ReadingInternalScheme).
 		ContinueOnError().
 		NamespaceParam(namespace).DefaultNamespace().AllNamespaces(o.allNamespaces).
 		Flatten().
@@ -199,14 +202,17 @@ type controllerRef struct {
 // Using the list of services, it figures out the associated scalable objects, and returns a map from the endpoints object for the services to
 // the list of scalable resources associated with that endpoints object, as well as a map from CrossGroupObjectReferences to scale to 0 to the
 // name of the associated service.
-func (o *IdleOptions) calculateIdlableAnnotationsByService(f *clientcmd.Factory) (map[types.NamespacedName]idleUpdateInfo, map[namespacedCrossGroupObjectReference]types.NamespacedName, error) {
+func (o *IdleOptions) calculateIdlableAnnotationsByService(f kcmdutil.Factory) (map[types.NamespacedName]idleUpdateInfo, map[namespacedCrossGroupObjectReference]types.NamespacedName, error) {
 	// load our set of services
 	client, err := f.ClientSet()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	mapper, _ := f.Object()
+	mapper, err := f.ToRESTMapper()
+	if err != nil {
+		return nil, nil, err
+	}
 
 	podsLoaded := make(map[kapi.ObjectReference]*kapi.Pod)
 	getPod := func(ref kapi.ObjectReference) (*kapi.Pod, error) {
@@ -500,8 +506,8 @@ func setIdleAnnotations(serviceName types.NamespacedName, annotations map[string
 }
 
 // patchObj patches calculates a patch between the given new object and the existing marshaled object
-func patchObj(obj runtime.Object, metadata metav1.Object, oldData []byte, mapping *meta.RESTMapping, f *clientcmd.Factory) (runtime.Object, error) {
-	versionedObj, err := mapping.ObjectConvertor.ConvertToVersion(obj, schema.GroupVersions{mapping.GroupVersionKind.GroupVersion()})
+func patchObj(obj runtime.Object, metadata metav1.Object, oldData []byte, mapping *meta.RESTMapping, f kcmdutil.Factory) (runtime.Object, error) {
+	versionedObj, err := legacyscheme.Scheme.ConvertToVersion(obj, schema.GroupVersions{mapping.GroupVersionKind.GroupVersion()})
 	if err != nil {
 		return nil, err
 	}
@@ -533,7 +539,7 @@ type scaleInfo struct {
 // RunIdle runs the idling command logic, taking a list of resources or services in a file, scaling the associated
 // scalable resources to zero, and annotating the associated endpoints objects with the scalable resources to unidle
 // when they receive traffic.
-func (o *IdleOptions) RunIdle(f *clientcmd.Factory) error {
+func (o *IdleOptions) RunIdle(f kcmdutil.Factory) error {
 	hadError := false
 	nowTime := time.Now().UTC()
 
@@ -552,11 +558,11 @@ func (o *IdleOptions) RunIdle(f *clientcmd.Factory) error {
 		fmt.Fprintf(o.errOut, "warning: continuing on for valid scalable resources, but an error occurred while finding scalable resources to idle: %v", err)
 	}
 
-	kclient, err := f.ClientSet()
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
-	clientConfig, err := f.ClientConfig()
+	kclient, err := kinternalclientset.NewForConfig(clientConfig)
 	if err != nil {
 		return err
 	}
@@ -579,7 +585,11 @@ func (o *IdleOptions) RunIdle(f *clientcmd.Factory) error {
 	replicas := make(map[namespacedCrossGroupObjectReference]int32, len(byScalable))
 	toScale := make(map[namespacedCrossGroupObjectReference]scaleInfo)
 
-	mapper, typer := f.Object()
+	mapper, err := f.ToRESTMapper()
+	if err != nil {
+		return err
+	}
+	typer := legacyscheme.Scheme
 
 	// first, collect the scale info
 	for scaleRef, svcName := range byScalable {
@@ -635,7 +645,7 @@ func (o *IdleOptions) RunIdle(f *clientcmd.Factory) error {
 				continue
 			}
 
-			versionedObj, err := mapping.ObjectConvertor.ConvertToVersion(info.obj, schema.GroupVersions{gvks[0].GroupVersion()})
+			versionedObj, err := legacyscheme.Scheme.ConvertToVersion(info.obj, schema.GroupVersions{gvks[0].GroupVersion()})
 			if err != nil {
 				fmt.Fprintf(o.errOut, "error: unable to mark service %q as idled: %v", serviceName.String(), err)
 				hadError = true

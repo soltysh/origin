@@ -2,17 +2,17 @@ package cmd
 
 import (
 	"fmt"
-	"io"
 
 	"github.com/spf13/cobra"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	kcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
 
-	"github.com/openshift/origin/pkg/cmd/util/route"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
+	"github.com/openshift/origin/pkg/oc/util/ocscheme"
+	"github.com/openshift/origin/pkg/oc/util/route"
 )
 
 var (
@@ -52,8 +52,8 @@ var (
 )
 
 // NewCmdExpose is a wrapper for the Kubernetes cli expose command
-func NewCmdExpose(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdExposeService(f, out)
+func NewCmdExpose(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdExposeService(f, streams)
 	cmd.Short = "Expose a replicated application as a service or route"
 	cmd.Long = exposeLong
 	cmd.Example = fmt.Sprintf(exposeExample, fullName)
@@ -82,8 +82,8 @@ func NewCmdExpose(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.C
 
 // validate adds one layer of validation prior to calling the upstream
 // expose command.
-func validate(cmd *cobra.Command, f *clientcmd.Factory, args []string) error {
-	namespace, enforceNamespace, err := f.DefaultNamespace()
+func validate(cmd *cobra.Command, f kcmdutil.Factory, args []string) error {
+	namespace, enforceNamespace, err := f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func validate(cmd *cobra.Command, f *clientcmd.Factory, args []string) error {
 	}
 
 	r := f.NewBuilder().
-		Internal().
+		WithScheme(ocscheme.ReadingInternalScheme).
 		ContinueOnError().
 		NamespaceParam(namespace).DefaultNamespace().
 		FilenameParam(enforceNamespace, &resource.FilenameOptions{Recursive: false, Filenames: kcmdutil.GetFlagStringSlice(cmd, "filename")}).

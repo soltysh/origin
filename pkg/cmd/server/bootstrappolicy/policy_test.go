@@ -8,15 +8,13 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	"k8s.io/api/rbac/v1beta1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/apis/rbac"
 	rulevalidation "k8s.io/kubernetes/pkg/registry/rbac/validation"
-	kbootstrappolicy "k8s.io/kubernetes/plugin/pkg/auth/authorizer/rbac/bootstrappolicy"
 
 	"github.com/openshift/origin/pkg/api/v1"
 	"github.com/openshift/origin/pkg/cmd/server/admin"
@@ -106,11 +104,11 @@ func testObjects(t *testing.T, list *api.List, fixtureFilename string) {
 		t.Fatal(err)
 	}
 
-	if err := runtime.EncodeList(legacyscheme.Codecs.LegacyCodec(v1beta1.SchemeGroupVersion, v1.SchemeGroupVersion), list.Items); err != nil {
+	if err := runtime.EncodeList(legacyscheme.Codecs.LegacyCodec(rbacv1.SchemeGroupVersion, v1.SchemeGroupVersion), list.Items); err != nil {
 		t.Fatal(err)
 	}
 
-	jsonData, err := runtime.Encode(legacyscheme.Codecs.LegacyCodec(v1beta1.SchemeGroupVersion, v1.SchemeGroupVersion), list)
+	jsonData, err := runtime.Encode(legacyscheme.Codecs.LegacyCodec(rbacv1.SchemeGroupVersion, v1.SchemeGroupVersion), list)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,18 +137,17 @@ func testObjects(t *testing.T, list *api.List, fixtureFilename string) {
 // Some roles should always cover others
 func TestCovers(t *testing.T) {
 	allRoles := bootstrappolicy.GetBootstrapClusterRoles()
-	var admin []rbac.PolicyRule
-	var editor []rbac.PolicyRule
-	var viewer []rbac.PolicyRule
-	var registryAdmin *rbac.ClusterRole
-	var registryEditor *rbac.ClusterRole
-	var registryViewer *rbac.ClusterRole
-	var systemMaster *rbac.ClusterRole
-	var systemDiscovery *rbac.ClusterRole
-	var clusterAdmin *rbac.ClusterRole
-	var storageAdmin *rbac.ClusterRole
-	var imageBuilder *rbac.ClusterRole
-	var nodeRole *rbac.ClusterRole
+	var admin []rbacv1.PolicyRule
+	var editor []rbacv1.PolicyRule
+	var viewer []rbacv1.PolicyRule
+	var registryAdmin *rbacv1.ClusterRole
+	var registryEditor *rbacv1.ClusterRole
+	var registryViewer *rbacv1.ClusterRole
+	var systemMaster *rbacv1.ClusterRole
+	var systemDiscovery *rbacv1.ClusterRole
+	var clusterAdmin *rbacv1.ClusterRole
+	var storageAdmin *rbacv1.ClusterRole
+	var imageBuilder *rbacv1.ClusterRole
 
 	for i := range allRoles {
 		role := allRoles[i]
@@ -177,8 +174,6 @@ func TestCovers(t *testing.T) {
 			storageAdmin = &role
 		case bootstrappolicy.ImageBuilderRoleName:
 			imageBuilder = &role
-		case bootstrappolicy.NodeRoleName:
-			nodeRole = &role
 		}
 	}
 
@@ -219,20 +214,5 @@ func TestCovers(t *testing.T) {
 	// Make sure the master has full permissions
 	if covers, miss := rulevalidation.Covers(systemMaster.Rules, clusterAdmin.Rules); !covers {
 		t.Errorf("failed to cover: %#v", miss)
-	}
-
-	// Make sure our node role covers upstream node rules
-	if covers, miss := rulevalidation.Covers(nodeRole.Rules, kbootstrappolicy.NodeRules()); !covers {
-		t.Errorf("upstream node role has extra permissions:")
-		for _, r := range miss {
-			t.Logf("\t%s", r.CompactString())
-		}
-	}
-	// Make sure our node role doesn't have any extra permissions
-	if covers, miss := rulevalidation.Covers(kbootstrappolicy.NodeRules(), nodeRole.Rules); !covers {
-		t.Errorf("openshift node role has extra permissions:")
-		for _, r := range miss {
-			t.Logf("\t%s", r.CompactString())
-		}
 	}
 }

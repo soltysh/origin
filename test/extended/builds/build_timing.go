@@ -43,8 +43,11 @@ var _ = g.Describe("[Feature:Builds][timing] capture build stages and durations"
 		})
 
 		g.JustBeforeEach(func() {
+			g.By("waiting for default service account")
+			err := exutil.WaitForServiceAccount(oc.KubeClient().Core().ServiceAccounts(oc.Namespace()), "default")
+			o.Expect(err).NotTo(o.HaveOccurred())
 			g.By("waiting for builder service account")
-			err := exutil.WaitForBuilderAccount(oc.KubeClient().Core().ServiceAccounts(oc.Namespace()))
+			err = exutil.WaitForServiceAccount(oc.KubeClient().Core().ServiceAccounts(oc.Namespace()), "builder")
 			o.Expect(err).NotTo(o.HaveOccurred())
 		})
 
@@ -62,7 +65,7 @@ var _ = g.Describe("[Feature:Builds][timing] capture build stages and durations"
 			expectedBuildStages["CommitContainer"] = []string{"10ms", "1000s"}
 			expectedBuildStages["Assemble"] = []string{"10ms", "1000s"}
 			expectedBuildStages["PostCommit"] = []string{"", "1000s"}
-			expectedBuildStages["PushImage"] = []string{"1s", "1000s"}
+			expectedBuildStages["PushImage"] = []string{"100ms", "1000s"}
 
 			g.By("creating test image stream")
 			err := oc.Run("create").Args("-f", isFixture).Execute()
@@ -87,7 +90,7 @@ var _ = g.Describe("[Feature:Builds][timing] capture build stages and durations"
 			expectedBuildStages["PullImages"] = []string{"", "1000s"}
 			expectedBuildStages["Build"] = []string{"10ms", "1000s"}
 			expectedBuildStages["PostCommit"] = []string{"", "1000s"}
-			expectedBuildStages["PushImage"] = []string{"1s", "1000s"}
+			expectedBuildStages["PushImage"] = []string{"100ms", "1000s"}
 
 			g.By("creating test image stream")
 			err := oc.Run("create").Args("-f", isFixture).Execute()

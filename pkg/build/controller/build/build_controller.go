@@ -23,13 +23,13 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	"github.com/openshift/origin/pkg/api/meta"
 	buildapi "github.com/openshift/origin/pkg/build/apis/build"
 	"github.com/openshift/origin/pkg/build/apis/build/validation"
+	"github.com/openshift/origin/pkg/build/buildscheme"
 	buildclient "github.com/openshift/origin/pkg/build/client"
 	builddefaults "github.com/openshift/origin/pkg/build/controller/build/defaults"
 	buildoverrides "github.com/openshift/origin/pkg/build/controller/build/overrides"
@@ -202,7 +202,7 @@ func NewBuildController(params *BuildControllerParams) *BuildController {
 		imageStreamQueue: newResourceTriggerQueue(),
 		buildConfigQueue: workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
 
-		recorder:    eventBroadcaster.NewRecorder(legacyscheme.Scheme, v1.EventSource{Component: "build-controller"}),
+		recorder:    eventBroadcaster.NewRecorder(buildscheme.EncoderScheme, v1.EventSource{Component: "build-controller"}),
 		runPolicies: policy.GetAllRunPolicies(buildLister, buildClient),
 	}
 
@@ -326,6 +326,16 @@ func parseBuildConfigKey(key string) (string, string, error) {
 // handle function based on the build's current state. Each handler returns a buildUpdate
 // object that includes any updates that need to be made on the build.
 func (bc *BuildController) handleBuild(build *buildapi.Build) error {
+
+	// If pipeline build, handle pruning.
+	if build.Spec.Strategy.JenkinsPipelineStrategy != nil {
+		if buildutil.IsBuildComplete(build) {
+			if err := common.HandleBuildPruning(buildutil.ConfigNameForBuild(build), build.Namespace, bc.buildLister, bc.buildConfigGetter, bc.buildDeleter); err != nil {
+				utilruntime.HandleError(fmt.Errorf("failed to prune builds for %s/%s: %v", build.Namespace, build.Name, err))
+			}
+		}
+	}
+
 	if shouldIgnore(build) {
 		return nil
 	}
@@ -1087,7 +1097,7 @@ func (bc *BuildController) handleBuildCompletion(build *buildapi.Build) {
 	bcName := buildutil.ConfigNameForBuild(build)
 	bc.enqueueBuildConfig(build.Namespace, bcName)
 	if err := common.HandleBuildPruning(bcName, build.Namespace, bc.buildLister, bc.buildConfigGetter, bc.buildDeleter); err != nil {
-		utilruntime.HandleError(fmt.Errorf("failed to prune old builds %s/%s: %v", build.Namespace, build.Name, err))
+		utilruntime.HandleError(fmt.Errorf("failed to prune builds for %s/%s: %v", build.Namespace, build.Name, err))
 	}
 }
 
@@ -1097,7 +1107,7 @@ func (bc *BuildController) enqueueBuildConfig(ns, name string) {
 }
 
 func (bc *BuildController) handleBuildConfig(bcNamespace string, bcName string) error {
-	glog.V(4).Infof("Handing build config %s/%s", bcNamespace, bcName)
+	glog.V(4).Infof("Handling build config %s/%s", bcNamespace, bcName)
 	nextBuilds, hasRunningBuilds, err := policy.GetNextConfigBuild(bc.buildLister, bcNamespace, bcName)
 	if err != nil {
 		glog.V(2).Infof("Error getting next builds for %s/%s: %v", bcNamespace, bcName, err)

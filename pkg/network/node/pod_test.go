@@ -16,7 +16,7 @@ import (
 	"github.com/openshift/origin/pkg/network/node/cniserver"
 
 	utiltesting "k8s.io/client-go/util/testing"
-	khostport "k8s.io/kubernetes/pkg/kubelet/network/hostport"
+	khostport "k8s.io/kubernetes/pkg/kubelet/dockershim/network/hostport"
 
 	cnitypes "github.com/containernetworking/cni/pkg/types"
 	cni020 "github.com/containernetworking/cni/pkg/types/020"
@@ -318,7 +318,7 @@ func TestPodManager(t *testing.T) {
 		podManager := newDefaultPodManager()
 		podManager.podHandler = podTester
 		_, cidr, _ := net.ParseCIDR("1.2.0.0/16")
-		err := podManager.Start(tmpDir, "1.2.3.0/24", []common.ClusterNetwork{{ClusterCIDR: cidr, HostSubnetLength: 8}})
+		err := podManager.Start(tmpDir, "1.2.3.0/24", []common.ClusterNetwork{{ClusterCIDR: cidr, HostSubnetLength: 8}}, "172.30.0.0/16")
 		if err != nil {
 			t.Fatalf("could not start PodManager: %v", err)
 		}
@@ -417,7 +417,7 @@ func TestDirectPodUpdate(t *testing.T) {
 	podManager := newDefaultPodManager()
 	podManager.podHandler = podTester
 	_, cidr, _ := net.ParseCIDR("1.2.0.0/16")
-	err = podManager.Start(tmpDir, "1.2.3.0/24", []common.ClusterNetwork{{ClusterCIDR: cidr, HostSubnetLength: 8}})
+	err = podManager.Start(tmpDir, "1.2.3.0/24", []common.ClusterNetwork{{ClusterCIDR: cidr, HostSubnetLength: 8}}, "172.30.0.0/16")
 	if err != nil {
 		t.Fatalf("could not start PodManager: %v", err)
 	}

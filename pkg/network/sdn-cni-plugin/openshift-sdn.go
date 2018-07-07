@@ -205,17 +205,31 @@ func (p *cniPlugin) CmdAdd(args *skel.CmdArgs) error {
 			if err != nil {
 				return fmt.Errorf("failed to configure macvlan device: %v", err)
 			}
+
+			var dsts []*net.IPNet
 			for _, addr := range addrs {
+				dsts = append(dsts, &net.IPNet{IP: addr.IP, Mask: net.CIDRMask(32, 32)})
+			}
+
+			_, serviceIPNet, err := net.ParseCIDR(config.ServiceNetworkCIDR)
+			if err != nil {
+				return fmt.Errorf("failed to parse ServiceNetworkCIDR: %v", err)
+			}
+			dsts = append(dsts, serviceIPNet)
+
+			dnsIP := net.ParseIP(config.DNSIP)
+			if dnsIP == nil {
+				return fmt.Errorf("failed to parse dns IP: %v", err)
+			}
+			dsts = append(dsts, &net.IPNet{IP: dnsIP, Mask: net.CIDRMask(32, 32)})
+
+			for _, dst := range dsts {
 				route := &netlink.Route{
-					Dst: &net.IPNet{
-						IP:   addr.IP,
-						Mask: net.CIDRMask(32, 32),
-					},
-					Gw: defaultGW,
+					Dst: dst,
+					Gw:  defaultGW,
 				}
-				err = netlink.RouteAdd(route)
-				if err != nil {
-					return fmt.Errorf("failed to configure macvlan device: %v", err)
+				if err := netlink.RouteAdd(route); err != nil {
+					return fmt.Errorf("failed to add route to dst: %v via SDN: %v", dst, err)
 				}
 			}
 		}

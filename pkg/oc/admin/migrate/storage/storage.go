@@ -17,10 +17,9 @@ import (
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
 
 	"github.com/openshift/origin/pkg/oc/admin/migrate"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 )
 
 var (
@@ -84,7 +83,7 @@ type MigrateAPIStorageOptions struct {
 }
 
 // NewCmdMigrateAPIStorage implements a MigrateStorage command
-func NewCmdMigrateAPIStorage(name, fullName string, f *clientcmd.Factory, in io.Reader, out, errout io.Writer) *cobra.Command {
+func NewCmdMigrateAPIStorage(name, fullName string, f kcmdutil.Factory, in io.Reader, out, errout io.Writer) *cobra.Command {
 	options := &MigrateAPIStorageOptions{
 		ResourceOptions: migrate.ResourceOptions{
 			Out:    out,
@@ -211,7 +210,7 @@ func NewCmdMigrateAPIStorage(name, fullName string, f *clientcmd.Factory, in io.
 	return cmd
 }
 
-func (o *MigrateAPIStorageOptions) Complete(f *clientcmd.Factory, c *cobra.Command, args []string) error {
+func (o *MigrateAPIStorageOptions) Complete(f kcmdutil.Factory, c *cobra.Command, args []string) error {
 	// force unset output, it does not make sense for this command
 	if err := c.Flags().Set("output", ""); err != nil {
 		return err
@@ -273,7 +272,7 @@ func (o *MigrateAPIStorageOptions) save(info *resource.Info, reporter migrate.Re
 	default:
 		// load the body and save it back, without transformation to avoid losing fields
 		r := info.Client.Get().
-			Resource(info.Mapping.Resource).
+			Resource(info.Mapping.Resource.Resource).
 			NamespaceIfScoped(info.Namespace, info.Mapping.Scope.Name() == meta.RESTScopeNameNamespace).
 			Name(info.Name)
 		get := r.Do()
@@ -308,7 +307,7 @@ func (o *MigrateAPIStorageOptions) save(info *resource.Info, reporter migrate.Re
 		}
 
 		update := info.Client.Put().
-			Resource(info.Mapping.Resource).
+			Resource(info.Mapping.Resource.Resource).
 			NamespaceIfScoped(info.Namespace, info.Mapping.Scope.Name() == meta.RESTScopeNameNamespace).
 			Name(info.Name).Body(data).
 			Do()
@@ -373,5 +372,5 @@ func (t *tokenLimiter) getDuration(n int) time.Duration {
 // we use a burst value that scales linearly with the number of workers
 func newTokenLimiter(bandwidth, workers int) *tokenLimiter {
 	burst := 100 * kbToBytes * workers // 100 KB of burst per worker
-	return &tokenLimiter{burst: burst, rateLimiter: rate.NewLimiter(rate.Limit(bandwidth*mbToKB*kbToBytes/byteToBits), burst), nowFunc: time.Now}
+	return &tokenLimiter{burst: burst, rateLimiter: rate.NewLimiter(rate.Limit(bandwidth*mbToKB*kbToBytes)/byteToBits, burst), nowFunc: time.Now}
 }

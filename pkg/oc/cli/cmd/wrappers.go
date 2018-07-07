@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"io"
 	"path"
 	"strings"
 
@@ -16,14 +15,16 @@ import (
 	kcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 	kcmdauth "k8s.io/kubernetes/pkg/kubectl/cmd/auth"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/config"
-	"k8s.io/kubernetes/pkg/kubectl/cmd/resource"
+	kcreate "k8s.io/kubernetes/pkg/kubectl/cmd/create"
+	kget "k8s.io/kubernetes/pkg/kubectl/cmd/get"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
+	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	kwait "k8s.io/kubernetes/pkg/kubectl/cmd/wait"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 	"k8s.io/kubernetes/pkg/kubectl/util/i18n"
 
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
 	"github.com/openshift/origin/pkg/oc/cli/cmd/create"
-	"github.com/openshift/origin/pkg/oc/cli/describe"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 )
 
 func adjustCmdExamples(cmd *cobra.Command, parentName string, name string) {
@@ -67,8 +68,8 @@ var (
 )
 
 // NewCmdGet is a wrapper for the Kubernetes cli get command
-func NewCmdGet(fullName string, f *clientcmd.Factory, out, errOut io.Writer) *cobra.Command {
-	cmd := resource.NewCmdGet(f, out, errOut)
+func NewCmdGet(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kget.NewCmdGet(fullName, f, streams)
 	cmd.Long = fmt.Sprintf(getLong, fullName)
 	cmd.Example = fmt.Sprintf(getExample, fullName)
 	cmd.SuggestFor = []string{"list"}
@@ -93,8 +94,8 @@ var (
 )
 
 // NewCmdReplace is a wrapper for the Kubernetes cli replace command
-func NewCmdReplace(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdReplace(f, out)
+func NewCmdReplace(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdReplace(f, streams)
 	cmd.Long = replaceLong
 	cmd.Example = fmt.Sprintf(replaceExample, fullName)
 	return cmd
@@ -112,8 +113,8 @@ var (
 )
 
 // NewCmdPatch is a wrapper for the Kubernetes cli patch command
-func NewCmdPatch(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdPatch(f, out)
+func NewCmdPatch(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdPatch(f, streams)
 	cmd.Long = patchLong
 	cmd.Example = fmt.Sprintf(patchExample, fullName)
 	return cmd
@@ -155,8 +156,8 @@ var (
 )
 
 // NewCmdDelete is a wrapper for the Kubernetes cli delete command
-func NewCmdDelete(fullName string, f *clientcmd.Factory, out, errOut io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdDelete(f, out, errOut)
+func NewCmdDelete(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdDelete(f, streams)
 	cmd.Long = deleteLong
 	cmd.Short = "Delete one or more resources"
 	cmd.Example = fmt.Sprintf(deleteExample, fullName)
@@ -179,8 +180,8 @@ var (
 )
 
 // NewCmdCreate is a wrapper for the Kubernetes cli create command
-func NewCmdCreate(parentName string, f *clientcmd.Factory, out, errOut io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdCreate(f, out, errOut)
+func NewCmdCreate(parentName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcreate.NewCmdCreate(f, streams)
 	cmd.Long = createLong
 	cmd.Example = fmt.Sprintf(createExample, parentName)
 
@@ -189,15 +190,15 @@ func NewCmdCreate(parentName string, f *clientcmd.Factory, out, errOut io.Writer
 	templates.NormalizeAll(cmd)
 
 	// create subcommands
-	cmd.AddCommand(create.NewCmdCreateRoute(parentName, f, out, errOut))
-	cmd.AddCommand(create.NewCmdCreateDeploymentConfig(create.DeploymentConfigRecommendedName, parentName+" create "+create.DeploymentConfigRecommendedName, f, out))
-	cmd.AddCommand(create.NewCmdCreateClusterQuota(create.ClusterQuotaRecommendedName, parentName+" create "+create.ClusterQuotaRecommendedName, f, out))
+	cmd.AddCommand(create.NewCmdCreateRoute(parentName, f, streams))
+	cmd.AddCommand(create.NewCmdCreateDeploymentConfig(create.DeploymentConfigRecommendedName, parentName+" create "+create.DeploymentConfigRecommendedName, f, streams))
+	cmd.AddCommand(create.NewCmdCreateClusterQuota(create.ClusterQuotaRecommendedName, parentName+" create "+create.ClusterQuotaRecommendedName, f, streams))
 
-	cmd.AddCommand(create.NewCmdCreateUser(create.UserRecommendedName, parentName+" create "+create.UserRecommendedName, f, out))
-	cmd.AddCommand(create.NewCmdCreateIdentity(create.IdentityRecommendedName, parentName+" create "+create.IdentityRecommendedName, f, out))
-	cmd.AddCommand(create.NewCmdCreateUserIdentityMapping(create.UserIdentityMappingRecommendedName, parentName+" create "+create.UserIdentityMappingRecommendedName, f, out))
-	cmd.AddCommand(create.NewCmdCreateImageStream(create.ImageStreamRecommendedName, parentName+" create "+create.ImageStreamRecommendedName, f, out))
-	cmd.AddCommand(create.NewCmdCreateImageStreamTag(create.ImageStreamTagRecommendedName, parentName+" create "+create.ImageStreamTagRecommendedName, f, out))
+	cmd.AddCommand(create.NewCmdCreateUser(create.UserRecommendedName, parentName+" create "+create.UserRecommendedName, f, streams))
+	cmd.AddCommand(create.NewCmdCreateIdentity(create.IdentityRecommendedName, parentName+" create "+create.IdentityRecommendedName, f, streams))
+	cmd.AddCommand(create.NewCmdCreateUserIdentityMapping(create.UserIdentityMappingRecommendedName, parentName+" create "+create.UserIdentityMappingRecommendedName, f, streams))
+	cmd.AddCommand(create.NewCmdCreateImageStream(create.ImageStreamRecommendedName, parentName+" create "+create.ImageStreamRecommendedName, f, streams))
+	cmd.AddCommand(create.NewCmdCreateImageStreamTag(create.ImageStreamTagRecommendedName, parentName+" create "+create.ImageStreamTagRecommendedName, f, streams))
 
 	adjustCmdExamples(cmd, parentName, "create")
 
@@ -229,14 +230,14 @@ var (
 	  * zsh completions are only supported in versions of zsh >= 5.2`)
 )
 
-func NewCmdCompletion(fullName string, out io.Writer) *cobra.Command {
+func NewCmdCompletion(fullName string, streams genericclioptions.IOStreams) *cobra.Command {
 	cmdHelpName := fullName
 
 	if strings.HasSuffix(fullName, "completion") {
 		cmdHelpName = "openshift"
 	}
 
-	cmd := kcmd.NewCmdCompletion(out, "\n")
+	cmd := kcmd.NewCmdCompletion(streams.Out, "\n")
 	cmd.Long = fmt.Sprintf(completionLong, cmdHelpName)
 	cmd.Example = fmt.Sprintf(completionExample, cmdHelpName, cmdHelpName, cmdHelpName, cmdHelpName)
 	// mark all statically included flags as hidden to prevent them appearing in completions
@@ -279,8 +280,8 @@ var (
 )
 
 // NewCmdExec is a wrapper for the Kubernetes cli exec command
-func NewCmdExec(fullName string, f *clientcmd.Factory, cmdIn io.Reader, cmdOut, cmdErr io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdExec(f, cmdIn, cmdOut, cmdErr)
+func NewCmdExec(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdExec(f, streams)
 	cmd.Use = "exec [flags] POD [-c CONTAINER] -- COMMAND [args...]"
 	cmd.Long = execLong
 	cmd.Example = fmt.Sprintf(execExample, fullName)
@@ -306,8 +307,8 @@ var (
 )
 
 // NewCmdPortForward is a wrapper for the Kubernetes cli port-forward command
-func NewCmdPortForward(fullName string, f *clientcmd.Factory, out, errout io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdPortForward(f, out, errout)
+func NewCmdPortForward(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdPortForward(f, streams)
 	cmd.Long = portForwardLong
 	cmd.Example = fmt.Sprintf(portForwardExample, fullName)
 	return cmd
@@ -329,11 +330,10 @@ var (
 )
 
 // NewCmdDescribe is a wrapper for the Kubernetes cli describe command
-func NewCmdDescribe(fullName string, f *clientcmd.Factory, out, errOut io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdDescribe(f, out, errOut)
+func NewCmdDescribe(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdDescribe(fullName, f, streams)
 	cmd.Long = describeLong
 	cmd.Example = fmt.Sprintf(describeExample, fullName)
-	cmd.ValidArgs = describe.DescribableResources()
 	return cmd
 }
 
@@ -354,8 +354,8 @@ var (
 )
 
 // NewCmdProxy is a wrapper for the Kubernetes cli proxy command
-func NewCmdProxy(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdProxy(f, out)
+func NewCmdProxy(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdProxy(f, streams)
 	cmd.Long = proxyLong
 	cmd.Example = fmt.Sprintf(proxyExample, fullName)
 	return cmd
@@ -389,8 +389,8 @@ var (
 )
 
 // NewCmdScale is a wrapper for the Kubernetes cli scale command
-func NewCmdScale(fullName string, f *clientcmd.Factory, out, errout io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdScale(f, out, errout)
+func NewCmdScale(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdScale(f, streams)
 	cmd.ValidArgs = append(cmd.ValidArgs, "deploymentconfig")
 	cmd.Short = "Change the number of pods in a deployment"
 	cmd.Long = fmt.Sprintf(scaleLong, cmd.ValidArgs)
@@ -417,8 +417,8 @@ var (
 )
 
 // NewCmdAutoscale is a wrapper for the Kubernetes cli autoscale command
-func NewCmdAutoscale(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdAutoscale(f, out)
+func NewCmdAutoscale(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdAutoscale(f, streams)
 	cmd.Short = "Autoscale a deployment config, deployment, replication controller, or replica set"
 	cmd.Long = autoScaleLong
 	cmd.Example = fmt.Sprintf(autoScaleExample, fullName)
@@ -473,9 +473,8 @@ var (
 )
 
 // NewCmdRun is a wrapper for the Kubernetes cli run command
-func NewCmdRun(fullName string, f *clientcmd.Factory, in io.Reader, out, errout io.Writer) *cobra.Command {
-	opts := &kcmd.RunOptions{DefaultRestartAlwaysGenerator: "deploymentconfig/v1"}
-	cmd := kcmd.NewCmdRunWithOptions(f, opts, in, out, errout)
+func NewCmdRun(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdRun(f, streams)
 	cmd.Long = runLong
 	cmd.Example = fmt.Sprintf(runExample, fullName)
 	cmd.Flags().Set("generator", "")
@@ -505,8 +504,8 @@ var (
 )
 
 // NewCmdAttach is a wrapper for the Kubernetes cli attach command
-func NewCmdAttach(fullName string, f *clientcmd.Factory, in io.Reader, out, errout io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdAttach(f, in, out, errout)
+func NewCmdAttach(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdAttach(f, streams)
 	cmd.Long = attachLong
 	cmd.Example = fmt.Sprintf(attachExample, fullName)
 	return cmd
@@ -547,8 +546,8 @@ var (
 )
 
 // NewCmdAnnotate is a wrapper for the Kubernetes cli annotate command
-func NewCmdAnnotate(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdAnnotate(f, out)
+func NewCmdAnnotate(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdAnnotate(fullName, f, streams)
 	cmd.Long = fmt.Sprintf(annotateLong, fullName)
 	cmd.Example = fmt.Sprintf(annotateExample, fullName)
 	return cmd
@@ -583,8 +582,8 @@ var (
 )
 
 // NewCmdLabel is a wrapper for the Kubernetes cli label command
-func NewCmdLabel(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdLabel(f, out)
+func NewCmdLabel(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdLabel(f, streams)
 	cmd.Long = fmt.Sprintf(labelLong, kvalidation.LabelValueMaxLength)
 	cmd.Example = fmt.Sprintf(labelExample, fullName)
 	return cmd
@@ -605,8 +604,8 @@ var (
 )
 
 // NewCmdApply is a wrapper for the Kubernetes cli apply command
-func NewCmdApply(fullName string, f *clientcmd.Factory, out, errOut io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdApply(fullName, f, out, errOut)
+func NewCmdApply(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdApply(fullName, f, streams)
 	cmd.Long = applyLong
 	cmd.Example = fmt.Sprintf(applyExample, fullName)
 	return cmd
@@ -630,8 +629,8 @@ var (
 )
 
 // NewCmdExplain is a wrapper for the Kubernetes cli explain command
-func NewCmdExplain(fullName string, f *clientcmd.Factory, out, errOut io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdExplain(f, out, errOut)
+func NewCmdExplain(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdExplain(fullName, f, streams)
 	cmd.Long = explainLong
 	cmd.Example = fmt.Sprintf(explainExample, fullName)
 	return cmd
@@ -662,8 +661,8 @@ var (
 )
 
 // NewCmdConvert is a wrapper for the Kubernetes cli convert command
-func NewCmdConvert(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdConvert(f, out)
+func NewCmdConvert(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdConvert(f, streams)
 	cmd.Long = convertLong
 	cmd.Example = fmt.Sprintf(convertExample, fullName)
 	return cmd
@@ -706,8 +705,8 @@ var (
 )
 
 // NewCmdEdit is a wrapper for the Kubernetes cli edit command
-func NewCmdEdit(fullName string, f *clientcmd.Factory, out, errout io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdEdit(f, out, errout)
+func NewCmdEdit(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdEdit(f, streams)
 	cmd.Long = editLong
 	cmd.Example = fmt.Sprintf(editExample, fullName)
 	return cmd
@@ -732,11 +731,11 @@ var (
 )
 
 // NewCmdConfig is a wrapper for the Kubernetes cli config command
-func NewCmdConfig(parentName, name string, f *clientcmd.Factory, out, errOut io.Writer) *cobra.Command {
+func NewCmdConfig(parentName, name string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	pathOptions := &kclientcmd.PathOptions{
 		GlobalFile:       kclientcmd.RecommendedHomeFile,
 		EnvVar:           kclientcmd.RecommendedConfigPathEnvVar,
-		ExplicitFileFlag: kclientcmd.OpenShiftKubeConfigFlagName,
+		ExplicitFileFlag: genericclioptions.OpenShiftKubeConfigFlagName,
 
 		GlobalFileSubpath: path.Join(kclientcmd.RecommendedHomeDir, kclientcmd.RecommendedFileName),
 
@@ -744,7 +743,7 @@ func NewCmdConfig(parentName, name string, f *clientcmd.Factory, out, errOut io.
 	}
 	pathOptions.LoadingRules.DoNotResolvePaths = true
 
-	cmd := config.NewCmdConfig(f, pathOptions, out, errOut)
+	cmd := config.NewCmdConfig(f, pathOptions, streams)
 	cmd.Short = "Change configuration files for the client"
 	cmd.Long = configLong
 	cmd.Example = fmt.Sprintf(configExample, parentName, name)
@@ -775,19 +774,23 @@ var (
 )
 
 // NewCmdCp is a wrapper for the Kubernetes cli cp command
-func NewCmdCp(fullName string, f *clientcmd.Factory, in io.Reader, out, errout io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdCp(f, out, errout)
+func NewCmdCp(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdCp(f, streams)
 	cmd.Example = fmt.Sprintf(cpExample, fullName)
 	return cmd
 }
 
-func NewCmdAuth(fullName string, f *clientcmd.Factory, out, errout io.Writer) *cobra.Command {
-	cmd := cmdutil.ReplaceCommandName("kubectl", fullName, templates.Normalize(kcmdauth.NewCmdAuth(f, out, errout)))
+func NewCmdWait(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	return kwait.NewCmdWait(f, streams)
+}
+
+func NewCmdAuth(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := cmdutil.ReplaceCommandName("kubectl", fullName, templates.Normalize(kcmdauth.NewCmdAuth(f, streams)))
 	return cmd
 }
 
-func NewCmdPlugin(fullName string, f *clientcmd.Factory, in io.Reader, out, errout io.Writer) *cobra.Command {
-	return kcmd.NewCmdPlugin(f, in, out, errout)
+func NewCmdPlugin(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	return kcmd.NewCmdPlugin(f, streams)
 }
 
 var (
@@ -808,8 +811,8 @@ var (
 		%[1]s api-resources --api-group=extensions`)
 )
 
-func NewCmdApiResources(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdApiResources(f, out)
+func NewCmdApiResources(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdApiResources(f, streams)
 	cmd.Example = fmt.Sprintf(apiresourcesExample, fullName)
 	return cmd
 }
@@ -820,8 +823,8 @@ var (
 		%[1]s api-versions`))
 )
 
-func NewCmdApiVersions(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
-	cmd := kcmd.NewCmdApiVersions(f, out)
+func NewCmdApiVersions(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	cmd := kcmd.NewCmdApiVersions(f, streams)
 	cmd.Example = fmt.Sprintf(apiversionsExample, fullName)
 	return cmd
 }

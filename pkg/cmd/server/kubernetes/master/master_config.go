@@ -19,6 +19,7 @@ import (
 	"github.com/golang/glog"
 	"gopkg.in/natefinch/lumberjack.v2"
 
+	extensionsapiserver "k8s.io/apiextensions-apiserver/pkg/apiserver"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -47,8 +48,10 @@ import (
 	auditlog "k8s.io/apiserver/plugin/pkg/audit/log"
 	auditwebhook "k8s.io/apiserver/plugin/pkg/audit/webhook"
 	pluginwebhook "k8s.io/apiserver/plugin/pkg/audit/webhook"
+	"k8s.io/client-go/rest"
 	"k8s.io/kube-aggregator/pkg/apis/apiregistration"
 	apiregistrationv1beta1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1"
+	aggregatorscheme "k8s.io/kube-aggregator/pkg/apiserver/scheme"
 	openapicommon "k8s.io/kube-openapi/pkg/common"
 	kapiserveroptions "k8s.io/kubernetes/cmd/kube-apiserver/app/options"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
@@ -77,7 +80,6 @@ import (
 	"github.com/openshift/origin/pkg/cmd/flagtypes"
 	configapi "github.com/openshift/origin/pkg/cmd/server/apis/config"
 	"github.com/openshift/origin/pkg/cmd/server/election"
-	nodeclient "github.com/openshift/origin/pkg/cmd/server/kubernetes/node/client"
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
 	cmdflags "github.com/openshift/origin/pkg/cmd/util/flags"
 	oauthutil "github.com/openshift/origin/pkg/oauth/util"
@@ -173,6 +175,12 @@ func BuildKubeAPIserverOptions(masterConfig configapi.MasterConfig) (*kapiserver
 	}
 
 	server.KubeletConfig.ReadOnlyPort = 0
+	server.KubeletConfig.Port = masterConfig.KubeletClientInfo.Port
+	server.KubeletConfig.PreferredAddressTypes = []string{"Hostname", "InternalIP", "ExternalIP"}
+	server.KubeletConfig.EnableHttps = true
+	server.KubeletConfig.CAFile = masterConfig.KubeletClientInfo.CA
+	server.KubeletConfig.CertFile = masterConfig.KubeletClientInfo.ClientCert.CertFile
+	server.KubeletConfig.KeyFile = masterConfig.KubeletClientInfo.ClientCert.KeyFile
 
 	server.ProxyClientCertFile = masterConfig.AggregatorConfig.ProxyClientInfo.CertFile
 	server.ProxyClientKeyFile = masterConfig.AggregatorConfig.ProxyClientInfo.KeyFile
@@ -205,7 +213,7 @@ func BuildKubeAPIserverOptions(masterConfig configapi.MasterConfig) (*kapiserver
 // BuildStorageFactory builds a storage factory based on server.Etcd.StorageConfig with overrides from masterConfig.
 // This storage factory is used for kubernetes and origin registries. Compare pkg/util/restoptions/configgetter.go.
 func BuildStorageFactory(server *kapiserveroptions.ServerRunOptions, enforcedStorageVersions map[schema.GroupResource]schema.GroupVersion) (*apiserverstorage.DefaultStorageFactory, error) {
-	resourceEncodingConfig := apiserverstorage.NewDefaultResourceEncodingConfig(legacyscheme.Registry)
+	resourceEncodingConfig := apiserverstorage.NewDefaultResourceEncodingConfig(legacyscheme.Scheme)
 
 	storageGroupsToEncodingVersion, err := server.StorageSerialization.StorageGroupsToEncodingVersion()
 	if err != nil {
@@ -300,7 +308,7 @@ func buildUpstreamGenericConfig(s *kapiserveroptions.ServerRunOptions) (*apiserv
 	if err := s.Authentication.ApplyTo(genericConfig); err != nil {
 		return nil, err
 	}
-	if err := s.APIEnablement.ApplyTo(genericConfig, master.DefaultAPIResourceConfigSource(), legacyscheme.Registry); err != nil {
+	if err := s.APIEnablement.ApplyTo(genericConfig, master.DefaultAPIResourceConfigSource(), legacyscheme.Scheme); err != nil {
 		return nil, err
 	}
 	// Do not wait for etcd because the internal etcd is launched after this and origin has an etcd test already
@@ -370,12 +378,13 @@ func buildPublicAddress(masterConfig configapi.MasterConfig) (net.IP, error) {
 	return publicAddress, nil
 }
 
-func buildKubeApiserverConfig(
-	masterConfig configapi.MasterConfig,
-	admissionControl admission.Interface,
-	originAuthenticator authenticator.Request,
-	kubeAuthorizer authorizer.Authorizer,
-) (*master.Config, error) {
+type incompleteKubeMasterConfig struct {
+	options          *kapiserveroptions.ServerRunOptions
+	incompleteConfig *apiserver.Config
+	masterConfig     configapi.MasterConfig
+}
+
+func BuildKubernetesMasterConfig(masterConfig configapi.MasterConfig) (*incompleteKubeMasterConfig, error) {
 	apiserverOptions, err := BuildKubeAPIserverOptions(masterConfig)
 	if err != nil {
 		return nil, err
@@ -385,6 +394,20 @@ func buildKubeApiserverConfig(
 	if err != nil {
 		return nil, err
 	}
+
+	return &incompleteKubeMasterConfig{apiserverOptions, genericConfig, masterConfig}, nil
+}
+
+func (rc *incompleteKubeMasterConfig) LoopbackConfig() *rest.Config {
+	return rc.incompleteConfig.LoopbackClientConfig
+}
+
+func (rc *incompleteKubeMasterConfig) Complete(
+	admissionControl admission.Interface,
+	originAuthenticator authenticator.Request,
+	kubeAuthorizer authorizer.Authorizer,
+) (*master.Config, error) {
+	genericConfig, apiserverOptions, masterConfig := rc.incompleteConfig, rc.options, rc.masterConfig
 
 	proxyClientCerts, err := buildProxyClientCerts(masterConfig)
 	if err != nil {
@@ -505,10 +528,9 @@ func buildKubeApiserverConfig(
 
 			EventTTL: apiserverOptions.EventTTL,
 
-			KubeletClientConfig: *nodeclient.GetKubeletClientConfig(masterConfig),
+			KubeletClientConfig: apiserverOptions.KubeletConfig,
 
-			EnableLogsSupport:     false, // don't expose server logs
-			EnableCoreControllers: true,
+			EnableLogsSupport: false, // don't expose server logs
 		},
 	}
 
@@ -561,33 +583,13 @@ func buildKubeApiserverConfig(
 		)
 	}
 
-	return kubeApiserverConfig, nil
-}
-
-// TODO this function's parameters need to be refactored
-func BuildKubernetesMasterConfig(
-	masterConfig configapi.MasterConfig,
-	admissionControl admission.Interface,
-	originAuthenticator authenticator.Request,
-	kubeAuthorizer authorizer.Authorizer,
-) (*master.Config, error) {
-	apiserverConfig, err := buildKubeApiserverConfig(
-		masterConfig,
-		admissionControl,
-		originAuthenticator,
-		kubeAuthorizer,
-	)
-	if err != nil {
-		return nil, err
-	}
-
 	// we do this for integration tests to be able to turn it off for better startup speed
 	// TODO remove the entire option once openapi is faster
 	if masterConfig.DisableOpenAPI {
-		apiserverConfig.GenericConfig.OpenAPIConfig = nil
+		kubeApiserverConfig.GenericConfig.OpenAPIConfig = nil
 	}
 
-	return apiserverConfig, nil
+	return kubeApiserverConfig, nil
 }
 
 func defaultOpenAPIConfig(config configapi.MasterConfig) *openapicommon.Config {
@@ -621,7 +623,7 @@ func defaultOpenAPIConfig(config configapi.MasterConfig) *openapicommon.Config {
 			},
 		}
 	}
-	defNamer := apiserverendpointsopenapi.NewDefinitionNamer(legacyscheme.Scheme)
+	defNamer := apiserverendpointsopenapi.NewDefinitionNamer(legacyscheme.Scheme, extensionsapiserver.Scheme, aggregatorscheme.Scheme)
 	return &openapicommon.Config{
 		ProtocolList:      []string{"https"},
 		GetDefinitions:    openapigenerated.GetOpenAPIDefinitions,

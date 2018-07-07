@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	buildapi "github.com/openshift/origin/pkg/build/apis/build"
 	buildclient "github.com/openshift/origin/pkg/build/client"
@@ -24,7 +25,6 @@ import (
 	buildlister "github.com/openshift/origin/pkg/build/generated/listers/build/internalversion"
 	buildutil "github.com/openshift/origin/pkg/build/util"
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 )
 
 // CancelBuildRecommendedCommandName is the recommended command name.
@@ -77,7 +77,7 @@ type CancelBuildOptions struct {
 }
 
 // NewCmdCancelBuild implements the OpenShift cli cancel-build command
-func NewCmdCancelBuild(name, baseName string, f *clientcmd.Factory, in io.Reader, out, errout io.Writer) *cobra.Command {
+func NewCmdCancelBuild(name, baseName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	o := &CancelBuildOptions{}
 
 	cmd := &cobra.Command{
@@ -87,7 +87,7 @@ func NewCmdCancelBuild(name, baseName string, f *clientcmd.Factory, in io.Reader
 		Example:    fmt.Sprintf(cancelBuildExample, baseName, name),
 		SuggestFor: []string{"builds", "stop-build"},
 		Run: func(cmd *cobra.Command, args []string) {
-			kcmdutil.CheckErr(o.Complete(f, cmd, args, in, out, errout))
+			kcmdutil.CheckErr(o.Complete(f, cmd, args, streams.In, streams.Out, streams.ErrOut))
 			kcmdutil.CheckErr(o.RunCancelBuild())
 		},
 	}
@@ -99,7 +99,7 @@ func NewCmdCancelBuild(name, baseName string, f *clientcmd.Factory, in io.Reader
 }
 
 // Complete completes all the required options.
-func (o *CancelBuildOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, args []string, in io.Reader, out, errout io.Writer) error {
+func (o *CancelBuildOptions) Complete(f kcmdutil.Factory, cmd *cobra.Command, args []string, in io.Reader, out, errout io.Writer) error {
 	o.In = in
 	o.Out = out
 	o.ErrOut = errout
@@ -116,7 +116,7 @@ func (o *CancelBuildOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, 
 		return kcmdutil.UsageErrorf(cmd, "Must pass a name of a build or a buildconfig to cancel")
 	}
 
-	namespace, _, err := f.DefaultNamespace()
+	namespace, _, err := f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return err
 	}
@@ -133,7 +133,7 @@ func (o *CancelBuildOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, 
 		}
 	}
 
-	config, err := f.BareClientConfig()
+	config, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
@@ -146,7 +146,10 @@ func (o *CancelBuildOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, 
 	o.Client = client
 	o.BuildLister = buildclient.NewClientBuildLister(client.Build())
 	o.BuildClient = client.Build().Builds(namespace)
-	o.Mapper, _ = f.Object()
+	o.Mapper, err = f.ToRESTMapper()
+	if err != nil {
+		return err
+	}
 
 	for _, item := range args {
 		resource, name, err := cmdutil.ResolveResource(buildapi.Resource("builds"), item, o.Mapper)

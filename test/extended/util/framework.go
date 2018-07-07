@@ -401,7 +401,7 @@ func StartBuild(oc *CLI, args ...string) (stdout, stderr string, err error) {
 	return stdout, stderr, err
 }
 
-var buildPathPattern = regexp.MustCompile(`^build/([\w\-\._]+)$`)
+var buildPathPattern = regexp.MustCompile(`^build\.build\.openshift\.io/([\w\-\._]+)$`)
 
 type LogDumperFunc func(oc *CLI, br *BuildResult) (string, error)
 
@@ -713,15 +713,15 @@ func CheckBuildCancelled(b *buildapi.Build) bool {
 	return b.Status.Phase == buildapi.BuildPhaseCancelled
 }
 
-// WaitForBuilderAccount waits until the builder service account gets fully
+// WaitForServiceAccount waits until the named service account gets fully
 // provisioned
-func WaitForBuilderAccount(c kcoreclient.ServiceAccountInterface) error {
+func WaitForServiceAccount(c kcoreclient.ServiceAccountInterface, name string) error {
 	waitFn := func() (bool, error) {
-		sc, err := c.Get("builder", metav1.GetOptions{})
+		sc, err := c.Get(name, metav1.GetOptions{})
 		if err != nil {
 			// If we can't access the service accounts, let's wait till the controller
 			// create it.
-			if errors.IsForbidden(err) {
+			if errors.IsNotFound(err) || errors.IsForbidden(err) {
 				return false, nil
 			}
 			return false, err
@@ -733,7 +733,7 @@ func WaitForBuilderAccount(c kcoreclient.ServiceAccountInterface) error {
 		}
 		return false, nil
 	}
-	return wait.Poll(time.Duration(100*time.Millisecond), 1*time.Minute, waitFn)
+	return wait.Poll(time.Duration(100*time.Millisecond), 3*time.Minute, waitFn)
 }
 
 // WaitForAnImageStream waits for an ImageStream to fulfill the isOK function
@@ -1327,6 +1327,10 @@ type GitRepo struct {
 
 // AddAndCommit commits a file with its content to local repo
 func (r GitRepo) AddAndCommit(file, content string) error {
+	dir := filepath.Dir(file)
+	if err := os.MkdirAll(filepath.Join(r.RepoPath, dir), 0777); err != nil {
+		return err
+	}
 	if err := ioutil.WriteFile(filepath.Join(r.RepoPath, file), []byte(content), 0666); err != nil {
 		return err
 	}

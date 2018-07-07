@@ -33,6 +33,7 @@ import (
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	buildapiv1 "github.com/openshift/api/build/v1"
 	buildapi "github.com/openshift/origin/pkg/build/apis/build"
@@ -41,7 +42,6 @@ import (
 	buildclient "github.com/openshift/origin/pkg/build/generated/internalclientset/typed/build/internalversion"
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
 	"github.com/openshift/origin/pkg/git"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	ocerrors "github.com/openshift/origin/pkg/oc/errors"
 	utilenv "github.com/openshift/origin/pkg/oc/util/env"
 )
@@ -87,11 +87,11 @@ var (
 )
 
 // NewCmdStartBuild implements the OpenShift cli start-build command
-func NewCmdStartBuild(fullName string, f *clientcmd.Factory, in io.Reader, out, errout io.Writer) *cobra.Command {
+func NewCmdStartBuild(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	o := &StartBuildOptions{
-		In:     in,
-		Out:    out,
-		ErrOut: errout,
+		In:     streams.In,
+		Out:    streams.Out,
+		ErrOut: streams.ErrOut,
 	}
 
 	cmd := &cobra.Command{
@@ -174,14 +174,17 @@ type StartBuildOptions struct {
 	Namespace   string
 }
 
-func (o *StartBuildOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, cmdFullName string, args []string) error {
+func (o *StartBuildOptions) Complete(f kcmdutil.Factory, cmd *cobra.Command, cmdFullName string, args []string) error {
 	var err error
 	o.Git = git.NewRepository()
-	o.ClientConfig, err = f.ClientConfig()
+	o.ClientConfig, err = f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
-	o.Mapper, _ = f.Object()
+	o.Mapper, err = f.ToRESTMapper()
+	if err != nil {
+		return err
+	}
 
 	o.IncrementalOverride = cmd.Flags().Lookup("incremental").Changed
 	o.NoCacheOverride = cmd.Flags().Lookup("no-cache").Changed
@@ -231,12 +234,12 @@ func (o *StartBuildOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, c
 		return kcmdutil.UsageErrorf(cmd, "Must pass a name of a build config or specify build name with '--from-build' flag.\nUse \"%s get bc\" to list all available build configs.", cmdFullName)
 	}
 
-	namespace, _, err := f.DefaultNamespace()
+	namespace, _, err := f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return err
 	}
 
-	clientConfig, err := f.ClientConfig()
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
@@ -252,7 +255,10 @@ func (o *StartBuildOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, c
 	)
 
 	if len(name) == 0 && len(args) > 0 && len(args[0]) > 0 {
-		mapper, _ := f.Object()
+		mapper, err := f.ToRESTMapper()
+		if err != nil {
+			return err
+		}
 		resource, name, err = cmdutil.ResolveResource(buildapi.Resource("buildconfigs"), args[0], mapper)
 		if err != nil {
 			return err
@@ -703,28 +709,43 @@ func streamPathToBuild(repo git.Repository, in io.Reader, out io.Writer, client 
 }
 
 func isArchive(r *bufio.Reader) bool {
-	data, err := r.Peek(280)
-	if err != nil {
+	archivesMagicNumbers := []struct {
+		numbers []byte
+		offset  int
+	}{ //https://en.wikipedia.org/wiki/List_of_file_signatures
+		{ // unified tar
+			numbers: []byte{0x75, 0x73, 0x74, 0x61, 0x72},
+			offset:  0x101,
+		},
+		{ //zip
+			numbers: []byte{0x50, 0x4B, 0x03, 0x04},
+		},
+		{ // tar.z
+			numbers: []byte{0x1F, 0x9D},
+		},
+		{ // tar.z
+			numbers: []byte{0x1F, 0xA0},
+		},
+		{ // bz2
+			numbers: []byte{0x42, 0x5A, 0x68},
+		},
+		{ // gzip
+			numbers: []byte{0x1F, 0x8B},
+		},
+	}
+	maxOffset := archivesMagicNumbers[0].offset //unified tar
+	data, err := r.Peek(maxOffset + len(archivesMagicNumbers[0].numbers))
+	if err != nil && err != io.EOF {
 		return false
 	}
-	for _, b := range [][]byte{
-		{0x50, 0x4B, 0x03, 0x04}, // zip
-		{0x1F, 0x9D},             // tar.z
-		{0x1F, 0xA0},             // tar.z
-		{0x42, 0x5A, 0x68},       // bz2
-		{0x1F, 0x8B, 0x08},       // gzip
-	} {
-		if bytes.HasPrefix(data, b) {
+
+	for _, magic := range archivesMagicNumbers {
+		if len(data) >= magic.offset+len(magic.numbers) &&
+			bytes.Equal(data[magic.offset:magic.offset+len(magic.numbers)], magic.numbers) {
 			return true
 		}
 	}
-	switch {
-	// Unified TAR files have this magic number
-	case len(data) > 257+5 && bytes.Equal(data[257:257+5], []byte{0x75, 0x73, 0x74, 0x61, 0x72}):
-		return true
-	default:
-		return false
-	}
+	return false
 }
 
 // RunStartBuildWebHook tries to trigger the provided webhook. It will attempt to utilize the current client

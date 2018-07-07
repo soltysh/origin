@@ -25,8 +25,7 @@ import (
 	kapiv1 "k8s.io/kubernetes/pkg/apis/core/v1"
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	kcontainer "k8s.io/kubernetes/pkg/kubelet/container"
-	knetwork "k8s.io/kubernetes/pkg/kubelet/network"
-	kubehostport "k8s.io/kubernetes/pkg/kubelet/network/hostport"
+	kubehostport "k8s.io/kubernetes/pkg/kubelet/dockershim/network/hostport"
 	kbandwidth "k8s.io/kubernetes/pkg/util/bandwidth"
 	utildbus "k8s.io/kubernetes/pkg/util/dbus"
 	utiliptables "k8s.io/kubernetes/pkg/util/iptables"
@@ -41,7 +40,7 @@ import (
 )
 
 const (
-	podInterfaceName = knetwork.DefaultInterfaceName
+	podInterfaceName = "eth0"
 )
 
 type podHandler interface {
@@ -83,10 +82,13 @@ type podManager struct {
 	// and thus can be set from Start()
 	ipamConfig     []byte
 	hostportSyncer kubehostport.HostportSyncer
+
+	// IP address that pods will use to access cluster DNS
+	dnsIP string
 }
 
 // Creates a new live podManager; used by node code0
-func newPodManager(kClient kclientset.Interface, policy osdnPolicy, mtu uint32, cniBinPath string, ovs *ovsController, enableHostports bool) *podManager {
+func newPodManager(kClient kclientset.Interface, policy osdnPolicy, mtu uint32, cniBinPath string, ovs *ovsController, enableHostports bool, dnsIP string) *podManager {
 	pm := newDefaultPodManager()
 	pm.kClient = kClient
 	pm.policy = policy
@@ -95,6 +97,7 @@ func newPodManager(kClient kclientset.Interface, policy osdnPolicy, mtu uint32, 
 	pm.podHandler = pm
 	pm.ovs = ovs
 	pm.enableHostports = enableHostports
+	pm.dnsIP = dnsIP
 	return pm
 }
 
@@ -168,7 +171,7 @@ func getIPAMConfig(clusterNetworks []common.ClusterNetwork, localSubnet string) 
 }
 
 // Start the CNI server and start processing requests from it
-func (m *podManager) Start(rundir string, localSubnetCIDR string, clusterNetworks []common.ClusterNetwork) error {
+func (m *podManager) Start(rundir string, localSubnetCIDR string, clusterNetworks []common.ClusterNetwork, serviceNetworkCIDR string) error {
 	if m.enableHostports {
 		iptInterface := utiliptables.New(utilexec.New(), utildbus.New(), utiliptables.ProtocolIpv4)
 		m.hostportSyncer = kubehostport.NewHostportSyncer(iptInterface)
@@ -181,7 +184,7 @@ func (m *podManager) Start(rundir string, localSubnetCIDR string, clusterNetwork
 
 	go m.processCNIRequests()
 
-	m.cniServer = cniserver.NewCNIServer(rundir, &cniserver.Config{MTU: m.mtu})
+	m.cniServer = cniserver.NewCNIServer(rundir, &cniserver.Config{MTU: m.mtu, ServiceNetworkCIDR: serviceNetworkCIDR, DNSIP: m.dnsIP})
 	return m.cniServer.Start(m.handleCNIRequest)
 }
 
@@ -525,7 +528,7 @@ func (m *podManager) setup(req *cniserver.PodRequest) (cnitypes.Result, *running
 	if err := kapiv1.Convert_core_Pod_To_v1_Pod(pod, &v1Pod, nil); err != nil {
 		return nil, nil, err
 	}
-	podPortMapping := kubehostport.ConstructPodPortMapping(&v1Pod, podIP)
+	podPortMapping := constructPodPortMapping(&v1Pod, podIP)
 	if mappings := m.shouldSyncHostports(podPortMapping); mappings != nil {
 		if err := m.hostportSyncer.OpenPodHostportsAndSync(podPortMapping, Tun0, mappings); err != nil {
 			return nil, nil, err
@@ -588,4 +591,29 @@ func (m *podManager) teardown(req *cniserver.PodRequest) error {
 	}
 
 	return kerrors.NewAggregate(errList)
+}
+
+// constructPodPortMapping creates a PodPortMapping from the ports specified in the pod's
+// containers.
+func constructPodPortMapping(pod *v1.Pod, podIP net.IP) *kubehostport.PodPortMapping {
+	portMappings := make([]*kubehostport.PortMapping, 0)
+	for _, c := range pod.Spec.Containers {
+		for _, port := range c.Ports {
+			portMappings = append(portMappings, &kubehostport.PortMapping{
+				Name:          port.Name,
+				HostPort:      port.HostPort,
+				ContainerPort: port.ContainerPort,
+				Protocol:      port.Protocol,
+				HostIP:        port.HostIP,
+			})
+		}
+	}
+
+	return &kubehostport.PodPortMapping{
+		Namespace:    pod.Namespace,
+		Name:         pod.Name,
+		PortMappings: portMappings,
+		HostNetwork:  pod.Spec.HostNetwork,
+		IP:           podIP,
+	}
 }

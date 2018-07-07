@@ -1,6 +1,7 @@
 package rollback
 
 import (
+	"context"
 	"fmt"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -24,18 +25,16 @@ type REST struct {
 	generator RollbackGenerator
 	dn        apps.DeploymentConfigsGetter
 	rn        kcoreclient.ReplicationControllersGetter
-	codec     runtime.Codec
 }
 
 var _ rest.Creater = &REST{}
 
 // NewREST safely creates a new REST.
-func NewREST(appsclient appsclientinternal.Interface, kc kclientset.Interface, codec runtime.Codec) *REST {
+func NewREST(appsclient appsclientinternal.Interface, kc kclientset.Interface) *REST {
 	return &REST{
 		generator: NewRollbackGenerator(),
 		dn:        appsclient.Apps(),
 		rn:        kc.Core(),
-		codec:     codec,
 	}
 }
 
@@ -45,7 +44,7 @@ func (r *REST) New() runtime.Object {
 }
 
 // Create generates a new DeploymentConfig representing a rollback.
-func (r *REST) Create(ctx apirequest.Context, obj runtime.Object, createValidation rest.ValidateObjectFunc, _ bool) (runtime.Object, error) {
+func (r *REST) Create(ctx context.Context, obj runtime.Object, createValidation rest.ValidateObjectFunc, _ bool) (runtime.Object, error) {
 	namespace, ok := apirequest.NamespaceFrom(ctx)
 	if !ok {
 		return nil, kerrors.NewBadRequest("namespace parameter required.")
@@ -88,7 +87,7 @@ func (r *REST) Create(ctx apirequest.Context, obj runtime.Object, createValidati
 		return nil, newInvalidError(rollback, err.Error())
 	}
 
-	to, err := appsutil.DecodeDeploymentConfig(targetDeployment, r.codec)
+	to, err := appsutil.DecodeDeploymentConfig(targetDeployment)
 	if err != nil {
 		return nil, newInvalidError(rollback, fmt.Sprintf("couldn't decode deployment config from deployment: %v", err))
 	}

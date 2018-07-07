@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	"github.com/openshift/origin/pkg/util/fsnotification"
 )
 
@@ -36,7 +36,11 @@ var (
 		https://www.itefix.net/cwrsync.
 
 		If no container is specified, the first container of the pod is used
-		for the copy.`)
+		for the copy.
+
+		The following flags are passed to rsync by default:
+		--archive --no-owner --no-group --omit-dir-times --numeric-ids
+		`)
 
 	rsyncExample = templates.Examples(`
 	  # Synchronize a local directory with a pod directory
@@ -44,6 +48,8 @@ var (
 
 	  # Synchronize a pod directory with a local directory
 	  %[1]s POD:/remote/dir/ ./local/dir`)
+
+	rsyncDefaultFlags = []string{"--archive", "--no-owner", "--no-group", "--omit-dir-times", "--numeric-ids"}
 )
 
 // copyStrategy
@@ -92,10 +98,10 @@ type RsyncOptions struct {
 }
 
 // NewCmdRsync creates a new sync command
-func NewCmdRsync(name, parent string, f *clientcmd.Factory, out, errOut io.Writer) *cobra.Command {
+func NewCmdRsync(name, parent string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	o := RsyncOptions{
-		Out:    out,
-		ErrOut: errOut,
+		Out:    streams.Out,
+		ErrOut: streams.ErrOut,
 	}
 	cmd := &cobra.Command{
 		Use:     fmt.Sprintf("%s SOURCE DESTINATION", name),
@@ -136,7 +142,7 @@ func warnNoRsync(out io.Writer) {
 	fmt.Fprintf(out, noRsyncUnixWarning)
 }
 
-func (o *RsyncOptions) determineStrategy(f *clientcmd.Factory, cmd *cobra.Command, name string) (copyStrategy, error) {
+func (o *RsyncOptions) determineStrategy(f kcmdutil.Factory, cmd *cobra.Command, name string) (copyStrategy, error) {
 	switch name {
 	case "":
 		// Default case, use an rsync strategy first and then fallback to Tar
@@ -179,7 +185,7 @@ func (o *RsyncOptions) determineStrategy(f *clientcmd.Factory, cmd *cobra.Comman
 }
 
 // Complete verifies command line arguments and loads data from the command environment
-func (o *RsyncOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, args []string) error {
+func (o *RsyncOptions) Complete(f kcmdutil.Factory, cmd *cobra.Command, args []string) error {
 	switch n := len(args); {
 	case n == 0:
 		cmd.Help()
@@ -191,7 +197,7 @@ func (o *RsyncOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, args [
 	}
 
 	var err error
-	namespace, _, err := f.DefaultNamespace()
+	namespace, _, err := f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return err
 	}

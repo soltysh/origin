@@ -12,11 +12,11 @@ import (
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	oapi "github.com/openshift/origin/pkg/api"
 	clientcfg "github.com/openshift/origin/pkg/client/config"
 	cliconfig "github.com/openshift/origin/pkg/oc/cli/config"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	projectapi "github.com/openshift/origin/pkg/project/apis/project"
 	projectapihelpers "github.com/openshift/origin/pkg/project/apis/project/helpers"
 	projectclientinternal "github.com/openshift/origin/pkg/project/generated/internalclientset"
@@ -61,7 +61,7 @@ var (
 )
 
 // NewCmdProjects implements the OpenShift cli rollback command
-func NewCmdProjects(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
+func NewCmdProjects(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	options := &ProjectsOptions{}
 
 	cmd := &cobra.Command{
@@ -71,7 +71,7 @@ func NewCmdProjects(fullName string, f *clientcmd.Factory, out io.Writer) *cobra
 		Run: func(cmd *cobra.Command, args []string) {
 			options.PathOptions = cliconfig.NewPathOptions(cmd)
 
-			if err := options.Complete(f, args, fullName, out); err != nil {
+			if err := options.Complete(f, args, fullName, streams.Out); err != nil {
 				kcmdutil.CheckErr(kcmdutil.UsageErrorf(cmd, err.Error()))
 			}
 
@@ -85,7 +85,7 @@ func NewCmdProjects(fullName string, f *clientcmd.Factory, out io.Writer) *cobra
 	return cmd
 }
 
-func (o *ProjectsOptions) Complete(f *clientcmd.Factory, args []string, commandName string, out io.Writer) error {
+func (o *ProjectsOptions) Complete(f kcmdutil.Factory, args []string, commandName string, out io.Writer) error {
 	if len(args) > 0 {
 		return fmt.Errorf("no arguments should be passed")
 	}
@@ -93,12 +93,12 @@ func (o *ProjectsOptions) Complete(f *clientcmd.Factory, args []string, commandN
 	o.CommandName = commandName
 
 	var err error
-	o.Config, err = f.RawConfig()
+	o.Config, err = f.ToRawKubeConfigLoader().RawConfig()
 	if err != nil {
 		return err
 	}
 
-	o.ClientConfig, err = f.ClientConfig()
+	o.ClientConfig, err = f.ToRESTConfig()
 	if err != nil {
 		return err
 	}

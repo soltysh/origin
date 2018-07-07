@@ -7,10 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgotesting "k8s.io/client-go/testing"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	buildapi "github.com/openshift/origin/pkg/build/apis/build"
 	buildfake "github.com/openshift/origin/pkg/build/generated/internalclientset/fake"
@@ -38,7 +40,7 @@ func TestCancelBuildDefaultFlags(t *testing.T) {
 		},
 	}
 
-	cmd := NewCmdCancelBuild("oc", CancelBuildRecommendedCommandName, nil, nil, nil, nil)
+	cmd := NewCmdCancelBuild("oc", CancelBuildRecommendedCommandName, nil, genericclioptions.NewTestIOStreamsDiscard())
 
 	for _, v := range tests {
 		f := cmd.Flag(v.flagName)
@@ -140,10 +142,10 @@ func TestCancelBuildRun(t *testing.T) {
 			},
 		}
 		client := buildfake.NewSimpleClientset(build, stubbedBuildRequest)
+		client.PrependReactor("get", "builds", func(action clientgotesting.Action) (handled bool, ret runtime.Object, err error) {
+			return true, build, nil
+		})
 		client.PrependReactor("update", "builds", func(action clientgotesting.Action) (handled bool, ret runtime.Object, err error) {
-			updateAction := action.(clientgotesting.UpdateActionImpl)
-			obj := updateAction.GetObject()
-			build := obj.(*buildapi.Build)
 			if build.Status.Cancelled == true {
 				build.Status.Phase = buildapi.BuildPhaseCancelled
 			}
@@ -163,7 +165,7 @@ func TestCancelBuildRun(t *testing.T) {
 			test.opts.HasError = true
 			t.Logf("got error: %v", err)
 		}
-		test.opts.Mapper = legacyscheme.Registry.RESTMapper()
+		test.opts.Mapper = testrestmapper.TestOnlyStaticRESTMapper(legacyscheme.Scheme)
 		test.opts.BuildNames = []string{"ruby-ex"}
 		test.opts.States = []string{"new", "pending", "running"}
 

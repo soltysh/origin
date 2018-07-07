@@ -16,17 +16,18 @@ import (
 	"github.com/spf13/cobra"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/util/flag"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/master/ports"
 
 	"github.com/openshift/library-go/pkg/crypto"
+	"github.com/openshift/origin/pkg/cmd/openshift-etcd"
 	"github.com/openshift/origin/pkg/cmd/server/admin"
 	configapi "github.com/openshift/origin/pkg/cmd/server/apis/config"
 	"github.com/openshift/origin/pkg/cmd/server/origin"
 	tsbcmd "github.com/openshift/origin/pkg/templateservicebroker/cmd/server"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 type AllInOneOptions struct {
@@ -63,7 +64,7 @@ var allInOneLong = templates.LongDesc(`
 	You may also pass --etcd=<address> to connect to an external etcd server.`)
 
 // NewCommandStartAllInOne provides a CLI handler for 'start' command
-func NewCommandStartAllInOne(basename string, out, errout io.Writer, stopCh <-chan struct{}) (*cobra.Command, *AllInOneOptions) {
+func NewCommandStartAllInOne(basename string, out, errout io.Writer) (*cobra.Command, *AllInOneOptions) {
 	options := &AllInOneOptions{
 		MasterOptions: &MasterOptions{
 			Output: out,
@@ -120,9 +121,9 @@ func NewCommandStartAllInOne(basename string, out, errout io.Writer, stopCh <-ch
 	BindImageFormatArgs(imageFormatArgs, flags, "")
 
 	startMaster, _ := NewCommandStartMaster(basename, out, errout)
-	startNode, _ := NewCommandStartNode(basename, out, errout, stopCh)
+	startNode, _ := NewCommandStartNode(basename, out, errout)
 	startNodeNetwork, _ := NewCommandStartNetwork(basename, out, errout)
-	startEtcdServer, _ := NewCommandStartEtcdServer(RecommendedStartEtcdServerName, basename, out, errout)
+	startEtcdServer, _ := openshift_etcd.NewCommandStartEtcdServer(openshift_etcd.RecommendedStartEtcdServerName, basename, out, errout)
 	startTSBServer := tsbcmd.NewCommandStartTemplateServiceBrokerServer(out, errout, wait.NeverStop)
 	cmds.AddCommand(startMaster)
 	cmds.AddCommand(startNode)
@@ -310,7 +311,7 @@ func (o AllInOneOptions) StartAllInOne() error {
 		ConfigFile: o.NodeConfigFile,
 		Output:     o.MasterOptions.Output,
 	}
-	if err := nodeOptions.RunNode(); err != nil {
+	if err := nodeOptions.RunNode(wait.NeverStop); err != nil {
 		return err
 	}
 

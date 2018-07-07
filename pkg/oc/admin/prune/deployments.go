@@ -14,11 +14,11 @@ import (
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	appsapi "github.com/openshift/origin/pkg/apps/apis/apps"
 	appsclientinternal "github.com/openshift/origin/pkg/apps/generated/internalclientset/typed/apps/internalversion"
 	"github.com/openshift/origin/pkg/oc/cli/deploymentconfigs/prune"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 )
 
 const PruneDeploymentsRecommendedName = "deployments"
@@ -53,7 +53,7 @@ type PruneDeploymentsOptions struct {
 }
 
 // NewCmdPruneDeployments implements the OpenShift cli prune deployments command.
-func NewCmdPruneDeployments(f *clientcmd.Factory, parentName, name string, out io.Writer) *cobra.Command {
+func NewCmdPruneDeployments(f kcmdutil.Factory, parentName, name string, streams genericclioptions.IOStreams) *cobra.Command {
 	opts := &PruneDeploymentsOptions{
 		Confirm:         false,
 		KeepYoungerThan: 60 * time.Minute,
@@ -67,7 +67,7 @@ func NewCmdPruneDeployments(f *clientcmd.Factory, parentName, name string, out i
 		Long:    deploymentsLongDesc,
 		Example: fmt.Sprintf(deploymentsExample, parentName, name),
 		Run: func(cmd *cobra.Command, args []string) {
-			kcmdutil.CheckErr(opts.Complete(f, cmd, args, out))
+			kcmdutil.CheckErr(opts.Complete(f, cmd, args, streams.Out))
 			kcmdutil.CheckErr(opts.Validate())
 			kcmdutil.CheckErr(opts.Run())
 		},
@@ -84,7 +84,7 @@ func NewCmdPruneDeployments(f *clientcmd.Factory, parentName, name string, out i
 
 // Complete turns a partially defined PruneDeploymentsOptions into a solvent structure
 // which can be validated and used for pruning deployments.
-func (o *PruneDeploymentsOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, args []string, out io.Writer) error {
+func (o *PruneDeploymentsOptions) Complete(f kcmdutil.Factory, cmd *cobra.Command, args []string, out io.Writer) error {
 	if len(args) > 0 {
 		return kcmdutil.UsageErrorf(cmd, "no arguments are allowed to this command")
 	}
@@ -92,18 +92,18 @@ func (o *PruneDeploymentsOptions) Complete(f *clientcmd.Factory, cmd *cobra.Comm
 	o.Namespace = metav1.NamespaceAll
 	if cmd.Flags().Lookup("namespace").Changed {
 		var err error
-		o.Namespace, _, err = f.DefaultNamespace()
+		o.Namespace, _, err = f.ToRawKubeConfigLoader().Namespace()
 		if err != nil {
 			return err
 		}
 	}
 	o.Out = out
 
-	kubeClient, err := f.ClientSet()
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
-	clientConfig, err := f.ClientConfig()
+	kubeClient, err := kclientset.NewForConfig(clientConfig)
 	if err != nil {
 		return err
 	}

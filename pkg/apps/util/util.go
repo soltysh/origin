@@ -1,7 +1,6 @@
 package util
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -12,13 +11,11 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	scaleclient "k8s.io/client-go/scale"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
@@ -27,7 +24,6 @@ import (
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	kapiv1 "k8s.io/kubernetes/pkg/apis/core/v1"
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	kcoreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	kdeplutil "k8s.io/kubernetes/pkg/controller/deployment/util"
 	"k8s.io/kubernetes/pkg/kubectl"
 
@@ -318,8 +314,8 @@ func CopyApiEnvVarToV1EnvVar(in []api.EnvVar) []v1.EnvVar {
 // template and deployment config template encoded in the latest replication
 // controller. If they are different it will return an string diff containing
 // the change.
-func HasLatestPodTemplate(currentConfig *appsapi.DeploymentConfig, rc *v1.ReplicationController, codec runtime.Codec) (bool, string, error) {
-	latestConfig, err := DecodeDeploymentConfig(rc, codec)
+func HasLatestPodTemplate(currentConfig *appsapi.DeploymentConfig, rc *v1.ReplicationController) (bool, string, error) {
+	latestConfig, err := DecodeDeploymentConfig(rc)
 	if err != nil {
 		return true, "", err
 	}
@@ -356,9 +352,9 @@ func HasUpdatedImages(dc *appsapi.DeploymentConfig, rc *v1.ReplicationController
 
 // DecodeDeploymentConfig decodes a DeploymentConfig from controller using codec. An error is returned
 // if the controller doesn't contain an encoded config.
-func DecodeDeploymentConfig(controller runtime.Object, decoder runtime.Decoder) (*appsapi.DeploymentConfig, error) {
-	encodedConfig := []byte(EncodedDeploymentConfigFor(controller))
-	decoded, err := runtime.Decode(decoder, encodedConfig)
+func DecodeDeploymentConfig(controller metav1.ObjectMetaAccessor) (*appsapi.DeploymentConfig, error) {
+	encodedConfig := controller.GetObjectMeta().GetAnnotations()[appsapi.DeploymentEncodedConfigAnnotation]
+	decoded, err := runtime.Decode(annotationDecoder, []byte(encodedConfig))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode DeploymentConfig from controller: %v", err)
 	}
@@ -367,15 +363,6 @@ func DecodeDeploymentConfig(controller runtime.Object, decoder runtime.Decoder) 
 		return nil, fmt.Errorf("decoded object from controller is not a DeploymentConfig")
 	}
 	return config, nil
-}
-
-// EncodeDeploymentConfig encodes config as a string using codec.
-func EncodeDeploymentConfig(config *appsapi.DeploymentConfig, codec runtime.Codec) (string, error) {
-	bytes, err := runtime.Encode(codec, config)
-	if err != nil {
-		return "", err
-	}
-	return string(bytes[:]), nil
 }
 
 func NewControllerRef(config *appsapi.DeploymentConfig) *metav1.OwnerReference {
@@ -394,8 +381,8 @@ func NewControllerRef(config *appsapi.DeploymentConfig) *metav1.OwnerReference {
 // MakeDeployment creates a deployment represented as an internal ReplicationController and based on the given
 // DeploymentConfig. The controller replica count will be zero.
 // DEPRECATED: Will be replaced with external version eventually.
-func MakeDeployment(config *appsapi.DeploymentConfig, codec runtime.Codec) (*api.ReplicationController, error) {
-	obj, err := MakeDeploymentV1(config, codec)
+func MakeTestOnlyInternalDeployment(config *appsapi.DeploymentConfig) (*api.ReplicationController, error) {
+	obj, err := MakeDeploymentV1(config)
 	if err != nil {
 		return nil, err
 	}
@@ -410,11 +397,10 @@ func MakeDeployment(config *appsapi.DeploymentConfig, codec runtime.Codec) (*api
 
 // MakeDeploymentV1 creates a deployment represented as a ReplicationController and based on the given
 // DeploymentConfig. The controller replica count will be zero.
-func MakeDeploymentV1(config *appsapi.DeploymentConfig, codec runtime.Codec) (*v1.ReplicationController, error) {
-	var err error
-	var encodedConfig string
-
-	if encodedConfig, err = EncodeDeploymentConfig(config, codec); err != nil {
+func MakeDeploymentV1(config *appsapi.DeploymentConfig) (*v1.ReplicationController, error) {
+	// EncodeDeploymentConfig encodes config as a string using codec.
+	encodedConfig, err := runtime.Encode(annotationEncoder, config)
+	if err != nil {
 		return nil, err
 	}
 
@@ -475,7 +461,7 @@ func MakeDeploymentV1(config *appsapi.DeploymentConfig, codec runtime.Codec) (*v
 			Annotations: map[string]string{
 				appsapi.DeploymentConfigAnnotation:        config.Name,
 				appsapi.DeploymentStatusAnnotation:        string(appsapi.DeploymentStatusNew),
-				appsapi.DeploymentEncodedConfigAnnotation: encodedConfig,
+				appsapi.DeploymentEncodedConfigAnnotation: string(encodedConfig),
 				appsapi.DeploymentVersionAnnotation:       strconv.FormatInt(config.Status.LatestVersion, 10),
 				// This is the target replica count for the new deployment.
 				appsapi.DesiredReplicasAnnotation:    strconv.Itoa(int(config.Spec.Replicas)),
@@ -578,10 +564,6 @@ func DeploymentStatusReasonFor(obj runtime.Object) string {
 
 func DeploymentDesiredReplicas(obj runtime.Object) (int32, bool) {
 	return int32AnnotationFor(obj, appsapi.DesiredReplicasAnnotation)
-}
-
-func EncodedDeploymentConfigFor(obj runtime.Object) string {
-	return annotationFor(obj, appsapi.DeploymentEncodedConfigAnnotation)
 }
 
 func DeploymentVersionFor(obj runtime.Object) int64 {
@@ -781,40 +763,6 @@ func RolloutExceededTimeoutSeconds(config *appsapi.DeploymentConfig, latestRC *v
 		return false
 	}
 	return int64(time.Since(latestRC.CreationTimestamp.Time).Seconds()) > timeoutSeconds
-}
-
-// WaitForRunningDeployerPod waits a given period of time until the deployer pod
-// for given replication controller is not running.
-func WaitForRunningDeployerPod(podClient kcoreclient.PodsGetter, rc *api.ReplicationController, timeout time.Duration) error {
-	podName := DeployerPodNameForDeployment(rc.Name)
-	canGetLogs := func(p *api.Pod) bool {
-		return api.PodSucceeded == p.Status.Phase || api.PodFailed == p.Status.Phase || api.PodRunning == p.Status.Phase
-	}
-	pod, err := podClient.Pods(rc.Namespace).Get(podName, metav1.GetOptions{})
-	if err == nil && canGetLogs(pod) {
-		return nil
-	}
-	watcher, err := podClient.Pods(rc.Namespace).Watch(
-		metav1.ListOptions{
-			FieldSelector: fields.OneTermEqualSelector("metadata.name", podName).String(),
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	defer watcher.Stop()
-	_, err = watch.Until(timeout, watcher, func(e watch.Event) (bool, error) {
-		if e.Type == watch.Error {
-			return false, fmt.Errorf("encountered error while watching for pod: %v", e.Object)
-		}
-		obj, isPod := e.Object.(*api.Pod)
-		if !isPod {
-			return false, errors.New("received unknown object while watching for pods")
-		}
-		return canGetLogs(obj), nil
-	})
-	return err
 }
 
 // ByLatestVersionAsc sorts deployments by LatestVersion ascending.

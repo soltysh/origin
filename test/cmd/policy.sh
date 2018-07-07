@@ -129,7 +129,7 @@ $testpod
 __EOF__' 'allowedServiceAccounts: null'
 
 os::cmd::expect_success_and_text 'oc adm policy add-role-to-group view testgroup -o yaml' 'name: view'
-os::cmd::expect_success_and_text 'oc adm policy add-cluster-role-to-group cluster-reader testgroup -o yaml' '\- testgroup'
+os::cmd::expect_success_and_text 'oc adm policy add-cluster-role-to-group cluster-reader testgroup -o yaml' 'name: testgroup'
 os::cmd::expect_success_and_text 'oc adm policy add-cluster-role-to-user cluster-reader namespaced-user -o yaml' 'name: namespaced\-user'
 
 os::cmd::expect_success_and_text 'oc adm policy add-role-to-group view testgroup --dry-run' 'role "view" added: "testgroup" \(dry run\)'
@@ -144,7 +144,7 @@ os::cmd::expect_success 'oc adm policy add-cluster-role-to-user cluster-reader n
 os::cmd::expect_failure_and_text 'oc adm policy remove-cluster-role-from-user admin ghost' 'error: unable to find target \[ghost\]'
 os::cmd::expect_failure_and_text 'oc adm policy remove-cluster-role-from-user admin -z ghost' 'error: unable to find target \[ghost\]'
 
-os::cmd::expect_success_and_text 'oc adm policy remove-role-from-group view testgroup -o yaml' 'subjects: \[\]'
+os::cmd::expect_success_and_not_text 'oc adm policy remove-role-from-group view testgroup -o yaml' 'subjects: '
 os::cmd::expect_success_and_text 'oc adm policy remove-cluster-role-from-group cluster-reader testgroup -o yaml' 'name: cluster\-readers'
 os::cmd::expect_success_and_text 'oc adm policy remove-cluster-role-from-user cluster-reader namespaced-user -o yaml' 'name: cluster\-reader'
 

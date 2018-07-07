@@ -10,12 +10,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	scalefake "k8s.io/client-go/scale/fake"
 	clientgotesting "k8s.io/client-go/testing"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 	kcoreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 
-	appsv1 "github.com/openshift/api/apps/v1"
 	appsapi "github.com/openshift/origin/pkg/apps/apis/apps"
 	appstest "github.com/openshift/origin/pkg/apps/apis/apps/test"
 	"github.com/openshift/origin/pkg/apps/strategy"
@@ -136,14 +134,13 @@ func TestRecreate_initialDeployment(t *testing.T) {
 	strategy := &RecreateDeploymentStrategy{
 		out:               &bytes.Buffer{},
 		errOut:            &bytes.Buffer{},
-		decoder:           legacyscheme.Codecs.UniversalDecoder(),
 		getUpdateAcceptor: getUpdateAcceptor,
 		eventClient:       fake.NewSimpleClientset().Core(),
 	}
 
 	config := appstest.OkDeploymentConfig(1)
 	config.Spec.Strategy = recreateParams(30, "", "", "")
-	deployment, _ = appsutil.MakeDeployment(config, legacyscheme.Codecs.LegacyCodec(legacyscheme.Registry.GroupOrDie(kapi.GroupName).GroupVersions[0]))
+	deployment, _ = appsutil.MakeTestOnlyInternalDeployment(config)
 
 	controllerClient := newFakeControllerClient(deployment)
 	strategy.rcClient = controllerClient
@@ -163,14 +160,13 @@ func TestRecreate_initialDeployment(t *testing.T) {
 func TestRecreate_deploymentPreHookSuccess(t *testing.T) {
 	config := appstest.OkDeploymentConfig(1)
 	config.Spec.Strategy = recreateParams(30, appsapi.LifecycleHookFailurePolicyAbort, "", "")
-	deployment, _ := appsutil.MakeDeployment(config, legacyscheme.Codecs.LegacyCodec(legacyscheme.Registry.GroupOrDie(kapi.GroupName).GroupVersions[0]))
+	deployment, _ := appsutil.MakeTestOnlyInternalDeployment(config)
 	controllerClient := newFakeControllerClient(deployment)
 
 	hookExecuted := false
 	strategy := &RecreateDeploymentStrategy{
 		out:               &bytes.Buffer{},
 		errOut:            &bytes.Buffer{},
-		decoder:           legacyscheme.Codecs.UniversalDecoder(),
 		getUpdateAcceptor: getUpdateAcceptor,
 		eventClient:       fake.NewSimpleClientset().Core(),
 		rcClient:          controllerClient,
@@ -196,13 +192,12 @@ func TestRecreate_deploymentPreHookSuccess(t *testing.T) {
 func TestRecreate_deploymentPreHookFail(t *testing.T) {
 	config := appstest.OkDeploymentConfig(1)
 	config.Spec.Strategy = recreateParams(30, appsapi.LifecycleHookFailurePolicyAbort, "", "")
-	deployment, _ := appsutil.MakeDeployment(config, legacyscheme.Codecs.LegacyCodec(legacyscheme.Registry.GroupOrDie(kapi.GroupName).GroupVersions[0]))
+	deployment, _ := appsutil.MakeTestOnlyInternalDeployment(config)
 	controllerClient := newFakeControllerClient(deployment)
 
 	strategy := &RecreateDeploymentStrategy{
 		out:               &bytes.Buffer{},
 		errOut:            &bytes.Buffer{},
-		decoder:           legacyscheme.Codecs.UniversalDecoder(),
 		getUpdateAcceptor: getUpdateAcceptor,
 		eventClient:       fake.NewSimpleClientset().Core(),
 		rcClient:          controllerClient,
@@ -221,20 +216,19 @@ func TestRecreate_deploymentPreHookFail(t *testing.T) {
 	}
 
 	if len(controllerClient.scaleEvents) > 0 {
-		t.Fatalf("unexpected scaling events: %d", controllerClient.scaleEvents)
+		t.Fatalf("unexpected scaling events: %v", controllerClient.scaleEvents)
 	}
 }
 
 func TestRecreate_deploymentMidHookSuccess(t *testing.T) {
 	config := appstest.OkDeploymentConfig(1)
 	config.Spec.Strategy = recreateParams(30, "", appsapi.LifecycleHookFailurePolicyAbort, "")
-	deployment, _ := appsutil.MakeDeployment(config, legacyscheme.Codecs.LegacyCodec(appsv1.SchemeGroupVersion))
+	deployment, _ := appsutil.MakeTestOnlyInternalDeployment(config)
 	controllerClient := newFakeControllerClient(deployment)
 
 	strategy := &RecreateDeploymentStrategy{
 		out:               &bytes.Buffer{},
 		errOut:            &bytes.Buffer{},
-		decoder:           legacyscheme.Codecs.UniversalDecoder(),
 		rcClient:          controllerClient,
 		scaleClient:       controllerClient.fakeScaleClient(),
 		eventClient:       fake.NewSimpleClientset().Core(),
@@ -253,21 +247,20 @@ func TestRecreate_deploymentMidHookSuccess(t *testing.T) {
 	}
 
 	if len(controllerClient.scaleEvents) > 0 {
-		t.Fatalf("unexpected scaling events: %d", controllerClient.scaleEvents)
+		t.Fatalf("unexpected scaling events: %v", controllerClient.scaleEvents)
 	}
 }
 
 func TestRecreate_deploymentPostHookSuccess(t *testing.T) {
 	config := appstest.OkDeploymentConfig(1)
 	config.Spec.Strategy = recreateParams(30, "", "", appsapi.LifecycleHookFailurePolicyAbort)
-	deployment, _ := appsutil.MakeDeployment(config, legacyscheme.Codecs.LegacyCodec(legacyscheme.Registry.GroupOrDie(kapi.GroupName).GroupVersions[0]))
+	deployment, _ := appsutil.MakeTestOnlyInternalDeployment(config)
 	controllerClient := newFakeControllerClient(deployment)
 
 	hookExecuted := false
 	strategy := &RecreateDeploymentStrategy{
 		out:               &bytes.Buffer{},
 		errOut:            &bytes.Buffer{},
-		decoder:           legacyscheme.Codecs.UniversalDecoder(),
 		rcClient:          controllerClient,
 		scaleClient:       controllerClient.fakeScaleClient(),
 		eventClient:       fake.NewSimpleClientset().Core(),
@@ -293,14 +286,13 @@ func TestRecreate_deploymentPostHookSuccess(t *testing.T) {
 func TestRecreate_deploymentPostHookFail(t *testing.T) {
 	config := appstest.OkDeploymentConfig(1)
 	config.Spec.Strategy = recreateParams(30, "", "", appsapi.LifecycleHookFailurePolicyAbort)
-	deployment, _ := appsutil.MakeDeployment(config, legacyscheme.Codecs.LegacyCodec(legacyscheme.Registry.GroupOrDie(kapi.GroupName).GroupVersions[0]))
+	deployment, _ := appsutil.MakeTestOnlyInternalDeployment(config)
 	controllerClient := newFakeControllerClient(deployment)
 
 	hookExecuted := false
 	strategy := &RecreateDeploymentStrategy{
 		out:               &bytes.Buffer{},
 		errOut:            &bytes.Buffer{},
-		decoder:           legacyscheme.Codecs.UniversalDecoder(),
 		rcClient:          controllerClient,
 		scaleClient:       controllerClient.fakeScaleClient(),
 		eventClient:       fake.NewSimpleClientset().Core(),
@@ -329,7 +321,6 @@ func TestRecreate_acceptorSuccess(t *testing.T) {
 		out:         &bytes.Buffer{},
 		errOut:      &bytes.Buffer{},
 		eventClient: fake.NewSimpleClientset().Core(),
-		decoder:     legacyscheme.Codecs.UniversalDecoder(),
 	}
 
 	acceptorCalled := false
@@ -340,8 +331,8 @@ func TestRecreate_acceptorSuccess(t *testing.T) {
 		},
 	}
 
-	oldDeployment, _ := appsutil.MakeDeployment(appstest.OkDeploymentConfig(1), legacyscheme.Codecs.LegacyCodec(legacyscheme.Registry.GroupOrDie(kapi.GroupName).GroupVersions[0]))
-	deployment, _ = appsutil.MakeDeployment(appstest.OkDeploymentConfig(2), legacyscheme.Codecs.LegacyCodec(legacyscheme.Registry.GroupOrDie(kapi.GroupName).GroupVersions[0]))
+	oldDeployment, _ := appsutil.MakeTestOnlyInternalDeployment(appstest.OkDeploymentConfig(1))
+	deployment, _ = appsutil.MakeTestOnlyInternalDeployment(appstest.OkDeploymentConfig(2))
 	controllerClient := newFakeControllerClient(deployment)
 	strategy.rcClient = controllerClient
 	strategy.scaleClient = controllerClient.fakeScaleClient()
@@ -374,7 +365,6 @@ func TestRecreate_acceptorSuccessWithColdCaches(t *testing.T) {
 		out:         &bytes.Buffer{},
 		errOut:      &bytes.Buffer{},
 		eventClient: fake.NewSimpleClientset().Core(),
-		decoder:     legacyscheme.Codecs.UniversalDecoder(),
 	}
 
 	acceptorCalled := false
@@ -385,8 +375,8 @@ func TestRecreate_acceptorSuccessWithColdCaches(t *testing.T) {
 		},
 	}
 
-	oldDeployment, _ := appsutil.MakeDeployment(appstest.OkDeploymentConfig(1), legacyscheme.Codecs.LegacyCodec(legacyscheme.Registry.GroupOrDie(kapi.GroupName).GroupVersions[0]))
-	deployment, _ = appsutil.MakeDeployment(appstest.OkDeploymentConfig(2), legacyscheme.Codecs.LegacyCodec(legacyscheme.Registry.GroupOrDie(kapi.GroupName).GroupVersions[0]))
+	oldDeployment, _ := appsutil.MakeTestOnlyInternalDeployment(appstest.OkDeploymentConfig(1))
+	deployment, _ = appsutil.MakeTestOnlyInternalDeployment(appstest.OkDeploymentConfig(2))
 	controllerClient := newFakeControllerClient(deployment)
 
 	strategy.rcClient = controllerClient
@@ -406,10 +396,10 @@ func TestRecreate_acceptorSuccessWithColdCaches(t *testing.T) {
 		t.Fatalf("expected 2 scale calls, got %d", len(controllerClient.scaleEvents))
 	}
 	if r := controllerClient.scaleEvents[0]; r.Spec.Replicas != 1 {
-		t.Errorf("expected first scale event to be 1 replica, got %d", r)
+		t.Errorf("expected first scale event to be 1 replica, got %v", r)
 	}
 	if r := controllerClient.scaleEvents[1]; r.Spec.Replicas != 2 {
-		t.Errorf("expected second scale event to be 2 replica, got %d", r)
+		t.Errorf("expected second scale event to be 2 replica, got %v", r)
 	}
 }
 
@@ -419,7 +409,6 @@ func TestRecreate_acceptorFail(t *testing.T) {
 	strategy := &RecreateDeploymentStrategy{
 		out:         &bytes.Buffer{},
 		errOut:      &bytes.Buffer{},
-		decoder:     legacyscheme.Codecs.UniversalDecoder(),
 		eventClient: fake.NewSimpleClientset().Core(),
 	}
 
@@ -429,8 +418,8 @@ func TestRecreate_acceptorFail(t *testing.T) {
 		},
 	}
 
-	oldDeployment, _ := appsutil.MakeDeployment(appstest.OkDeploymentConfig(1), legacyscheme.Codecs.LegacyCodec(legacyscheme.Registry.GroupOrDie(kapi.GroupName).GroupVersions[0]))
-	deployment, _ = appsutil.MakeDeployment(appstest.OkDeploymentConfig(2), legacyscheme.Codecs.LegacyCodec(legacyscheme.Registry.GroupOrDie(kapi.GroupName).GroupVersions[0]))
+	oldDeployment, _ := appsutil.MakeTestOnlyInternalDeployment(appstest.OkDeploymentConfig(1))
+	deployment, _ = appsutil.MakeTestOnlyInternalDeployment(appstest.OkDeploymentConfig(2))
 	rcClient := newFakeControllerClient(deployment)
 	strategy.rcClient = rcClient
 	strategy.scaleClient = rcClient.fakeScaleClient()
@@ -445,6 +434,6 @@ func TestRecreate_acceptorFail(t *testing.T) {
 		t.Fatalf("expected 1 scale calls, got %d", len(rcClient.scaleEvents))
 	}
 	if r := rcClient.scaleEvents[0]; r.Spec.Replicas != 1 {
-		t.Errorf("expected first scale event to be 1 replica, got %d", r)
+		t.Errorf("expected first scale event to be 1 replica, got %v", r)
 	}
 }

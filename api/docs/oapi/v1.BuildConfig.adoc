@@ -137,6 +137,10 @@ Populated by the system. Read-only. More info: http://kubernetes.io/docs/user-gu
 </div><details><summary>  <span title="(v1.BuildSource) source describes the SCM in use.">source</span>:
 </summary><details><summary>    <span title="(v1.BinaryBuildSource) binary builds accept a binary as their input. The binary is generally assumed to be a tar, gzipped tar, or zip file depending on the strategy. For Docker builds, this is the build context and an optional Dockerfile may be specified to override any Dockerfile in the build context. For Source builds, this is assumed to be an archive as described above. For Source and Docker builds, if binary.asFile is set the build will receive a directory with a single file. contextDir may be used when an archive is provided. Custom builds will receive this binary as input on STDIN.">binary</span>:
 </summary><div style="margin-left:13px;">      <span title="(string) asFile indicates that the provided binary input should be considered a single file within the build input. For example, specifying &#34;webapp.war&#34; would place the provided binary as `/webapp.war` for the builder. If left empty, the Docker and Source build strategies assume this file is a zip, tar, or tar.gz file and extract it as the source. The custom strategy receives this binary as standard input. This filename may not contain slashes or be &#39;..&#39; or &#39;.&#39;.">asFile</span>:
+</div></details><details><summary>    <span title="(array) configMaps represents a list of configMaps and their destinations that will be used for the build.">configMaps</span>:
+</summary><details><summary>    - <span title="(v1.LocalObjectReference) configMap is a reference to an existing configmap that you want to use in your build.">configMap</span>:
+</summary><div style="margin-left:13px;">    -   <span title="(string) Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names">name</span>:
+</div></details><div style="margin-left:13px;">      <span title="(string) destinationDir is the directory where the files from the configmap should be available for the build time. For the Source build strategy, these will be injected into a container where the assemble script runs. For the Docker build strategy, these will be copied into the build directory, where the Dockerfile is located, so users can ADD or COPY them during docker build.">destinationDir</span>:
 </div></details><div style="margin-left:13px;">    <span title="(string) contextDir specifies the sub-directory where the source code for the application exists. This allows to have buildable sources in directory other than root of repository.">contextDir</span>:
 </div><div style="margin-left:13px;">    <span title="(string) dockerfile is the raw contents of a Dockerfile which should be built. When this option is specified, the FROM may be modified based on your strategy base image and additional ENV stanzas from your strategy environment will be added after the FROM, but before the rest of your Dockerfile stanzas. The Dockerfile source type may be used with other options like git - in those cases the Git repo will have any innate Dockerfile replaced in the context dir.">dockerfile</span>:
 </div><details><summary>    <span title="(v1.GitBuildSource) git contains optional information about git build source">git</span>:
@@ -347,6 +351,7 @@ Populated by the system. Read-only. More info: http://kubernetes.io/docs/user-gu
 </div><div style="margin-left:13px;">        <span title="(string) Specific resourceVersion to which this reference is made, if any. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#concurrency-control-and-consistency">resourceVersion</span>:
 </div><div style="margin-left:13px;">        <span title="(string) UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids">uid</span>:
 </div></details><div style="margin-left:13px;">      <span title="(string) lastTriggeredImageID is used internally by the ImageChangeController to save last used image ID for build">lastTriggeredImageID</span>:
+</div><div style="margin-left:13px;">      <span title="(boolean) paused is true if this trigger is temporarily disabled. Optional.">paused</span>:
 </div></details><div style="margin-left:13px;">    <span title="(string) type is the type of build trigger">type</span>:
 </div></details></details><details><summary><span title="(v1.BuildConfigStatus) status holds any relevant information about a build config">status</span>:
 </summary><div style="margin-left:13px;">  <span title="(integer) lastVersion is used to inform about number of last triggered build.">lastVersion</span>:
@@ -355,78 +360,6 @@ Populated by the system. Read-only. More info: http://kubernetes.io/docs/user-gu
 ++++
 
 == Operations
-
-[[Post-oapi-v1-buildconfigs]]
-=== Create a BuildConfig
-Create a BuildConfig
-
-==== HTTP request
-----
-POST /oapi/v1/buildconfigs HTTP/1.1
-Authorization: Bearer $TOKEN
-Accept: application/json
-Connection: close
-Content-Type: application/json'
-
-{
-  "kind": "BuildConfig",
-  "apiVersion": "v1",
-  ...
-}
-
-----
-
-==== Curl request
-----
-$ curl -k \
-    -X POST \
-    -d @- \
-    -H "Authorization: Bearer $TOKEN" \
-    -H 'Accept: application/json' \
-    -H 'Content-Type: application/json' \
-    https://$ENDPOINT/oapi/v1/buildconfigs <<'EOF'
-{
-  "kind": "BuildConfig",
-  "apiVersion": "v1",
-  ...
-}
-EOF
-----
-
-==== HTTP body
-[cols="1,5", options="header"]
-|===
-|Parameter|Schema
-|body|v1.BuildConfig
-|===
-
-==== Query parameters
-[cols="1,5", options="header"]
-|===
-|Parameter|Description
-|pretty|If 'true', then the output is pretty printed.
-|===
-
-==== Responses
-[cols="1,5", options="header"]
-|===
-|HTTP Code|Schema
-|200 OK|v1.BuildConfig
-|201 Created|v1.BuildConfig
-|202 Accepted|v1.BuildConfig
-|401 Unauthorized|
-|===
-
-==== Consumes
-
-* \*/*
-
-==== Produces
-
-* application/json
-* application/yaml
-* application/vnd.kubernetes.protobuf
-
 
 [[Post-oapi-v1-namespaces-namespace-buildconfigs]]
 === Create a BuildConfig in a namespace
@@ -587,7 +520,6 @@ $ curl -k \
 [cols="1,5", options="header"]
 |===
 |Parameter|Description
-|pretty|If 'true', then the output is pretty printed.
 |continue|The continue option should be set when retrieving more results from the server. Since this value is server defined, clients may only use the continue value from a previous query result with identical query parameters (except for the value of continue) and the server may reject a continue value it does not recognize. If the specified continue value is no longer valid whether due to expiration (generally five to fifteen minutes) or a configuration change on the server the server will respond with a 410 ResourceExpired error indicating the client must restart their list without the continue field. This field is not supported when watch is true. Clients may start a watch from the last resourceVersion value returned by the server and not miss any modifications.
 |fieldSelector|A selector to restrict the list of returned objects by their fields. Defaults to everything.
 |includeUninitialized|If true, partially initialized resources are included in the response.
@@ -595,6 +527,7 @@ $ curl -k \
 |limit|limit is a maximum number of responses to return for a list call. If more items exist, the server will set the `continue` field on the list metadata to a value that can be used with the same initial query to retrieve the next set of results. Setting a limit may return fewer than the requested amount of items (up to zero items) in the event all requested objects are filtered out and clients should only use the presence of the continue field to determine whether more results are available. Servers may choose not to support the limit argument and will return all of the available results. If limit is specified and the continue field is empty, clients may assume that no more results are available. This field is not supported if watch is true.
 
 The server guarantees that the objects returned when using continue will be identical to issuing a single list call without a limit - that is, no objects created, modified, or deleted after the first request is issued will be included in any subsequent continued requests. This is sometimes referred to as a consistent snapshot, and ensures that a client that is using limit to receive smaller chunks of a very large result can ensure they see all possible objects. If objects are updated during a chunked list the version of the object that was present at the time the first list result was calculated is returned.
+|pretty|If 'true', then the output is pretty printed.
 |resourceVersion|When specified with a watch call, shows changes that occur after that particular version of a resource. Defaults to changes from the beginning of history. When specified for list: - if unset, then the result is returned from remote storage based on quorum-read flag; - if it's 0, then we simply return what we currently have in cache, no guarantee; - if set to non zero, then the result is at least as fresh as given rv.
 |timeoutSeconds|Timeout for the list/watch call. This limits the duration of the call, regardless of any activity or inactivity.
 |watch|Watch for changes to the described resources and return them as a stream of add, update, and remove notifications. Specify resourceVersion.

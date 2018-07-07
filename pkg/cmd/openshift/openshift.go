@@ -16,10 +16,6 @@ import (
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 
 	"github.com/openshift/origin/pkg/cmd/flagtypes"
-	"github.com/openshift/origin/pkg/cmd/infra/builder"
-	"github.com/openshift/origin/pkg/cmd/infra/deployer"
-	irouter "github.com/openshift/origin/pkg/cmd/infra/router"
-	"github.com/openshift/origin/pkg/cmd/recycle"
 	"github.com/openshift/origin/pkg/cmd/server/start"
 	"github.com/openshift/origin/pkg/cmd/templates"
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
@@ -39,10 +35,8 @@ var (
 
 // CommandFor returns the appropriate command for this base name,
 // or the global OpenShift command
-func CommandFor(basename string, stopCh <-chan struct{}) *cobra.Command {
+func CommandFor(basename string) *cobra.Command {
 	var cmd *cobra.Command
-
-	out := os.Stdout
 
 	// Make case-insensitive and strip executable suffix if present
 	if runtime.GOOS == "windows" {
@@ -51,28 +45,8 @@ func CommandFor(basename string, stopCh <-chan struct{}) *cobra.Command {
 	}
 
 	switch basename {
-	case "openshift-router":
-		cmd = irouter.NewCommandTemplateRouter(basename)
-	case "openshift-f5-router":
-		cmd = irouter.NewCommandF5Router(basename)
-	case "openshift-deploy":
-		cmd = deployer.NewCommandDeployer(basename)
-	case "openshift-recycle":
-		cmd = recycle.NewCommandRecycle(basename, out)
-	case "openshift-sti-build":
-		cmd = builder.NewCommandS2IBuilder(basename)
-	case "openshift-docker-build":
-		cmd = builder.NewCommandDockerBuilder(basename)
-	case "openshift-git-clone":
-		cmd = builder.NewCommandGitClone(basename)
-	case "openshift-manage-dockerfile":
-		cmd = builder.NewCommandManageDockerfile(basename)
-	case "openshift-extract-image-content":
-		cmd = builder.NewCommandExtractImageContent(basename)
-	case "origin":
-		cmd = NewCommandOpenShift(basename, stopCh)
 	default:
-		cmd = NewCommandOpenShift("openshift", stopCh)
+		cmd = NewCommandOpenShift("openshift")
 	}
 
 	if cmd.UsageFunc() == nil {
@@ -84,7 +58,7 @@ func CommandFor(basename string, stopCh <-chan struct{}) *cobra.Command {
 }
 
 // NewCommandOpenShift creates the standard OpenShift command
-func NewCommandOpenShift(name string, stopCh <-chan struct{}) *cobra.Command {
+func NewCommandOpenShift(name string) *cobra.Command {
 	out, errout := os.Stdout, os.Stderr
 
 	root := &cobra.Command{
@@ -94,7 +68,7 @@ func NewCommandOpenShift(name string, stopCh <-chan struct{}) *cobra.Command {
 		Run:   kcmdutil.DefaultSubCommandRun(out),
 	}
 
-	startAllInOne, _ := start.NewCommandStartAllInOne(name, out, errout, stopCh)
+	startAllInOne, _ := start.NewCommandStartAllInOne(name, out, errout)
 	root.AddCommand(startAllInOne)
 	root.AddCommand(newCompletionCommand("completion", name+" completion"))
 	root.AddCommand(cmdversion.NewCmdVersion(name, osversion.Get(), os.Stdout))

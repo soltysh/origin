@@ -2,7 +2,6 @@ package ipfailover
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -11,15 +10,16 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/dynamic"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	configcmd "github.com/openshift/origin/pkg/bulk"
 	"github.com/openshift/origin/pkg/cmd/server/bootstrappolicy"
 	"github.com/openshift/origin/pkg/cmd/util/print"
 	"github.com/openshift/origin/pkg/cmd/util/variable"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	"github.com/openshift/origin/pkg/oc/experimental/ipfailover/ipfailover"
 	"github.com/openshift/origin/pkg/oc/experimental/ipfailover/keepalived"
 	securityclientinternal "github.com/openshift/origin/pkg/security/generated/internalclientset"
@@ -60,11 +60,11 @@ var (
 	  %[1]s %[2]s ipf-alt --selector="hagroup=us-west-ha" --virtual-ips="1.2.3.4" -o yaml --images=myrepo/myipfailover:mytag`)
 )
 
-func NewCmdIPFailoverConfig(f *clientcmd.Factory, parentName, name string, out, errout io.Writer) *cobra.Command {
+func NewCmdIPFailoverConfig(f kcmdutil.Factory, parentName, name string, streams genericclioptions.IOStreams) *cobra.Command {
 	options := &ipfailover.IPFailoverConfigCmdOptions{
 		Action: configcmd.BulkAction{
-			Out:    out,
-			ErrOut: errout,
+			Out:    streams.Out,
+			ErrOut: streams.ErrOut,
 		},
 		ImageTemplate:    variable.NewDefaultImageTemplate(),
 		ServiceAccount:   "ipfailover",
@@ -134,7 +134,7 @@ func getConfigurationName(args []string) (string, error) {
 }
 
 //  Get the configurator based on the ipfailover type.
-func getPlugin(name string, f *clientcmd.Factory, options *ipfailover.IPFailoverConfigCmdOptions) (ipfailover.IPFailoverConfiguratorPlugin, error) {
+func getPlugin(name string, f kcmdutil.Factory, options *ipfailover.IPFailoverConfigCmdOptions) (ipfailover.IPFailoverConfiguratorPlugin, error) {
 	if options.Type == ipfailover.DefaultType {
 		plugin, err := keepalived.NewIPFailoverConfiguratorPlugin(name, f, options)
 		if err != nil {
@@ -148,7 +148,7 @@ func getPlugin(name string, f *clientcmd.Factory, options *ipfailover.IPFailover
 }
 
 // Run runs the ipfailover command.
-func Run(f *clientcmd.Factory, options *ipfailover.IPFailoverConfigCmdOptions, cmd *cobra.Command, args []string) error {
+func Run(f kcmdutil.Factory, options *ipfailover.IPFailoverConfigCmdOptions, cmd *cobra.Command, args []string) error {
 	name, err := getConfigurationName(args)
 	if err != nil {
 		return err
@@ -166,8 +166,24 @@ func Run(f *clientcmd.Factory, options *ipfailover.IPFailoverConfigCmdOptions, c
 	// In the future, this may be changed to pod anti-affinity.
 	options.ServicePort = options.ServicePort + options.VRRPIDOffset
 
-	options.Action.Bulk.Mapper = clientcmd.ResourceMapper(f)
-	options.Action.Bulk.Op = configcmd.Create
+	restMapper, err := f.ToRESTMapper()
+	if err != nil {
+		return err
+	}
+	clientConfig, err := f.ToRESTConfig()
+	if err != nil {
+		return err
+	}
+	dynamicClient, err := dynamic.NewForConfig(clientConfig)
+	if err != nil {
+		return err
+	}
+
+	options.Action.Bulk.Scheme = legacyscheme.Scheme
+	options.Action.Bulk.Op = configcmd.Creator{
+		Client:     dynamicClient,
+		RESTMapper: restMapper,
+	}.Create
 
 	if err := ipfailover.ValidateCmdOptions(options); err != nil {
 		return err
@@ -183,11 +199,7 @@ func Run(f *clientcmd.Factory, options *ipfailover.IPFailoverConfigCmdOptions, c
 		return err
 	}
 
-	namespace, _, err := f.DefaultNamespace()
-	if err != nil {
-		return err
-	}
-	clientConfig, err := f.ClientConfig()
+	namespace, _, err := f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return err
 	}
@@ -206,7 +218,7 @@ func Run(f *clientcmd.Factory, options *ipfailover.IPFailoverConfigCmdOptions, c
 	list.Items = append(configList, list.Items...)
 
 	if options.Action.ShouldPrint() {
-		return print.VersionedPrintObject(legacyscheme.Scheme, legacyscheme.Registry, kcmdutil.PrintObject, cmd, options.Action.Out)(list)
+		return print.VersionedPrintObject(kcmdutil.PrintObject, cmd, options.Action.Out)(list)
 	}
 
 	if errs := options.Action.WithMessage(fmt.Sprintf("Creating IP failover %s", name), "created").Run(list, namespace); len(errs) > 0 {

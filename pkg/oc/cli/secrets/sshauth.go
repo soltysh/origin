@@ -10,6 +10,7 @@ import (
 	kcoreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	"github.com/spf13/cobra"
 )
@@ -53,9 +54,9 @@ type CreateSSHAuthSecretOptions struct {
 }
 
 // NewCmdCreateSSHAuthSecret implements the OpenShift cli secrets new-sshauth subcommand
-func NewCmdCreateSSHAuthSecret(name, fullName string, f kcmdutil.Factory, out io.Writer, newSecretFullName, ocEditFullName string) *cobra.Command {
+func NewCmdCreateSSHAuthSecret(name, fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams, newSecretFullName, ocEditFullName string) *cobra.Command {
 	o := &CreateSSHAuthSecretOptions{
-		Out: out,
+		Out: streams.Out,
 	}
 
 	cmd := &cobra.Command{
@@ -78,7 +79,7 @@ func NewCmdCreateSSHAuthSecret(name, fullName string, f kcmdutil.Factory, out io
 				secret, err := o.NewSSHAuthSecret()
 				kcmdutil.CheckErr(err)
 
-				kcmdutil.CheckErr(kcmdutil.PrintObject(c, secret, out))
+				kcmdutil.CheckErr(kcmdutil.PrintObject(c, secret, streams.Out))
 				return
 			}
 
@@ -159,15 +160,19 @@ func (o *CreateSSHAuthSecretOptions) Complete(f kcmdutil.Factory, args []string)
 	o.SecretName = args[0]
 
 	if f != nil {
-		client, err := f.ClientSet()
+		clientConfig, err := f.ToRESTConfig()
 		if err != nil {
 			return err
 		}
-		namespace, _, err := f.DefaultNamespace()
+		client, err := kcoreclient.NewForConfig(clientConfig)
 		if err != nil {
 			return err
 		}
-		o.SecretsInterface = client.Core().Secrets(namespace)
+		namespace, _, err := f.ToRawKubeConfigLoader().Namespace()
+		if err != nil {
+			return err
+		}
+		o.SecretsInterface = client.Secrets(namespace)
 	}
 
 	return nil

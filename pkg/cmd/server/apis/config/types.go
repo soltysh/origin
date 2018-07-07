@@ -96,8 +96,8 @@ var (
 		APIGroupNetworking:            {"v1"},
 		APIGroupPolicy:                {"v1beta1"},
 		APIGroupStorage:               {"v1", "v1beta1"},
-		APIGroupSettings:              {}, // list the group, but don't enable any versions.  alpha disabled by default, but enablable via arg
-		APIGroupScheduling:            {}, // alpha disabled by default
+		APIGroupSettings:              {},          // list the group, but don't enable any versions.  alpha disabled by default, but enablable via arg
+		APIGroupScheduling:            {"v1beta1"}, // alpha disabled by default
 		// TODO: enable as part of a separate binary
 		//APIGroupFederation:  {"v1beta1"},
 	}
@@ -995,6 +995,8 @@ type KeystonePasswordIdentityProvider struct {
 	RemoteConnectionInfo RemoteConnectionInfo
 	// Domain Name is required for keystone v3
 	DomainName string
+	// UseKeystoneIdentity flag indicates that user should be authenticated by keystone ID, not by username
+	UseKeystoneIdentity bool
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -1046,6 +1048,12 @@ type GitHubIdentityProvider struct {
 	Organizations []string
 	// Teams optionally restricts which teams are allowed to log in. Format is <org>/<team>.
 	Teams []string
+	// Hostname is the optional domain (e.g. "mycompany.com") for use with a hosted instance of GitHub Enterprise.
+	// It must match the GitHub Enterprise settings value that is configured at /setup/settings#hostname.
+	Hostname string
+	// CA is the optional trusted certificate authority bundle to use when making requests to the server.
+	// If empty, the default system roots are used.  This can only be configured when hostname is set to a non-empty value.
+	CA string
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -1062,6 +1070,14 @@ type GitLabIdentityProvider struct {
 	ClientID string
 	// ClientSecret is the oauth client secret
 	ClientSecret StringSource
+	// Legacy determines if OAuth2 or OIDC should be used
+	// If true, OAuth2 is used
+	// If false, OIDC is used
+	// If nil and the URL's host is gitlab.com, OIDC is used
+	// Otherwise, OAuth2 is used
+	// In a future release, nil will default to using OIDC
+	// Eventually this flag will be removed and only OIDC will be used
+	Legacy *bool
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

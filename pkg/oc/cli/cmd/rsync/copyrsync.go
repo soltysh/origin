@@ -12,9 +12,9 @@ import (
 	"github.com/spf13/pflag"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
+	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 )
 
 // rsyncStrategy implements the rsync copy strategy
@@ -32,7 +32,7 @@ type rsyncStrategy struct {
 // rshExcludeFlags are flags that are passed to oc rsync, and should not be passed on to the underlying command being invoked via oc rsh.
 var rshExcludeFlags = sets.NewString("delete", "strategy", "quiet", "include", "exclude", "progress", "no-perms", "watch", "compress")
 
-func newRsyncStrategy(f *clientcmd.Factory, c *cobra.Command, o *RsyncOptions) (copyStrategy, error) {
+func newRsyncStrategy(f kcmdutil.Factory, c *cobra.Command, o *RsyncOptions) (copyStrategy, error) {
 	// Determine the rsh command to pass to the local rsync command
 	rshCmd := cmdutil.SiblingCommand(c, "rsh")
 	// Append all original flags to rsh command
@@ -51,7 +51,8 @@ func newRsyncStrategy(f *clientcmd.Factory, c *cobra.Command, o *RsyncOptions) (
 	}
 	// The blocking-io flag is used to resolve a sync issue when
 	// copying from the pod to the local machine
-	flags := []string{"-a", "--blocking-io", "--omit-dir-times", "--numeric-ids"}
+	flags := []string{"--blocking-io"}
+	flags = append(flags, rsyncDefaultFlags...)
 	flags = append(flags, rsyncFlagsFromOptions(o)...)
 
 	podName := o.Source.PodName

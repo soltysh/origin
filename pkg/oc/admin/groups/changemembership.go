@@ -9,10 +9,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	"github.com/spf13/cobra"
 
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	userclientinternal "github.com/openshift/origin/pkg/user/generated/internalclientset"
 	usertypedclient "github.com/openshift/origin/pkg/user/generated/internalclientset/typed/user/internalversion"
 )
@@ -49,7 +49,7 @@ type GroupModificationOptions struct {
 	Users []string
 }
 
-func NewCmdAddUsers(name, fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
+func NewCmdAddUsers(name, fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	options := &GroupModificationOptions{}
 
 	cmd := &cobra.Command{
@@ -65,14 +65,14 @@ func NewCmdAddUsers(name, fullName string, f *clientcmd.Factory, out io.Writer) 
 				kcmdutil.CheckErr(err)
 			}
 
-			printSuccessForCommand(options.Group, true, options.Users, out)
+			printSuccessForCommand(options.Group, true, options.Users, streams.Out)
 		},
 	}
 
 	return cmd
 }
 
-func NewCmdRemoveUsers(name, fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
+func NewCmdRemoveUsers(name, fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	options := &GroupModificationOptions{}
 
 	cmd := &cobra.Command{
@@ -88,14 +88,14 @@ func NewCmdRemoveUsers(name, fullName string, f *clientcmd.Factory, out io.Write
 				kcmdutil.CheckErr(err)
 			}
 
-			printSuccessForCommand(options.Group, false, options.Users, out)
+			printSuccessForCommand(options.Group, false, options.Users, streams.Out)
 		},
 	}
 
 	return cmd
 }
 
-func (o *GroupModificationOptions) Complete(f *clientcmd.Factory, args []string) error {
+func (o *GroupModificationOptions) Complete(f kcmdutil.Factory, args []string) error {
 	if len(args) < 2 {
 		return errors.New("you must specify at least two arguments: GROUP USER [USER ...]")
 	}
@@ -103,7 +103,7 @@ func (o *GroupModificationOptions) Complete(f *clientcmd.Factory, args []string)
 	o.Group = args[0]
 	o.Users = append(o.Users, args[1:]...)
 
-	clientConfig, err := f.ClientConfig()
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}

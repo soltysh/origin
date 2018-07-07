@@ -11,18 +11,18 @@ import (
 	kvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/apiserver/pkg/storage/names"
+	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
 	"k8s.io/kubernetes/pkg/apis/authorization"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	authorizationtypedclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/authorization/internalversion"
+	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 
 	appsclient "github.com/openshift/origin/pkg/apps/generated/internalclientset"
-	oauthorizationtypedclient "github.com/openshift/origin/pkg/authorization/generated/internalclientset/typed/authorization/internalversion"
 	"github.com/openshift/origin/pkg/cmd/util/variable"
 	"github.com/openshift/origin/pkg/oc/admin/diagnostics/diagnostics/log"
 	"github.com/openshift/origin/pkg/oc/admin/diagnostics/diagnostics/types"
 	"github.com/openshift/origin/pkg/oc/admin/diagnostics/diagnostics/util"
-	osclientcmd "github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	projectclient "github.com/openshift/origin/pkg/project/generated/internalclientset/typed/project/internalversion"
 	routeclient "github.com/openshift/origin/pkg/route/generated/internalclientset"
 )
@@ -33,10 +33,10 @@ type AppCreate struct {
 	KubeClient          kclientset.Interface
 	ProjectClient       projectclient.ProjectInterface
 	RouteClient         *routeclient.Clientset
-	RoleBindingClient   oauthorizationtypedclient.RoleBindingsGetter
+	RbacClient          rbacv1client.RbacV1Interface
 	AppsClient          *appsclient.Clientset
 	SARClient           authorizationtypedclient.SelfSubjectAccessReviewsGetter
-	Factory             *osclientcmd.Factory
+	Factory             kcmdutil.Factory
 
 	// from parameters specific to this diagnostic:
 	// specs for the project where the diagnostic will put all test items
@@ -233,7 +233,7 @@ func (d *AppCreate) Complete(logger *log.Logger) error {
 }
 
 func (d *AppCreate) CanRun() (bool, error) {
-	if d.SARClient == nil || d.AppsClient == nil || d.KubeClient == nil || d.ProjectClient == nil || d.RoleBindingClient == nil {
+	if d.SARClient == nil || d.AppsClient == nil || d.KubeClient == nil || d.ProjectClient == nil || d.RbacClient == nil {
 		return false, fmt.Errorf("missing at least one client")
 	}
 	if d.PreventModification {

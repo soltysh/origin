@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorsutil "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
+	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 
@@ -20,10 +21,8 @@ import (
 	authorizationapi "github.com/openshift/origin/pkg/authorization/apis/authorization"
 	authorizationclientinternal "github.com/openshift/origin/pkg/authorization/generated/internalclientset"
 	authorizationtypedclient "github.com/openshift/origin/pkg/authorization/generated/internalclientset/typed/authorization/internalversion"
-	authorizationregistryutil "github.com/openshift/origin/pkg/authorization/registry/util"
 	"github.com/openshift/origin/pkg/cmd/server/bootstrappolicy"
 	"github.com/openshift/origin/pkg/oc/admin/policy"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	projectapi "github.com/openshift/origin/pkg/project/apis/project"
 	projectclientinternal "github.com/openshift/origin/pkg/project/generated/internalclientset"
 	projectclient "github.com/openshift/origin/pkg/project/generated/internalclientset/typed/project/internalversion"
@@ -37,9 +36,9 @@ type NewProjectOptions struct {
 	Description  string
 	NodeSelector string
 
-	ProjectClient     projectclient.ProjectInterface
-	RoleBindingClient authorizationtypedclient.RoleBindingsGetter
-	SARClient         authorizationtypedclient.SubjectAccessReviewInterface
+	ProjectClient projectclient.ProjectInterface
+	RbacClient    rbacv1client.RbacV1Interface
+	SARClient     authorizationtypedclient.SubjectAccessReviewInterface
 
 	AdminRole string
 	AdminUser string
@@ -55,7 +54,7 @@ var newProjectLong = templates.LongDesc(`
 	to restrict which nodes pods in this project can be scheduled to.`)
 
 // NewCmdNewProject implements the OpenShift cli new-project command
-func NewCmdNewProject(name, fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
+func NewCmdNewProject(name, fullName string, f kcmdutil.Factory, out io.Writer) *cobra.Command {
 	options := &NewProjectOptions{}
 
 	cmd := &cobra.Command{
@@ -86,14 +85,14 @@ func NewCmdNewProject(name, fullName string, f *clientcmd.Factory, out io.Writer
 	return cmd
 }
 
-func (o *NewProjectOptions) complete(f *clientcmd.Factory, args []string) error {
+func (o *NewProjectOptions) complete(f kcmdutil.Factory, args []string) error {
 	if len(args) != 1 {
 		return errors.New("you must specify one argument: project name")
 	}
 
 	o.ProjectName = args[0]
 
-	clientConfig, err := f.ClientConfig()
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
@@ -102,12 +101,15 @@ func (o *NewProjectOptions) complete(f *clientcmd.Factory, args []string) error 
 		return err
 	}
 	o.ProjectClient = projectClient.Project()
+	o.RbacClient, err = rbacv1client.NewForConfig(clientConfig)
+	if err != nil {
+		return err
+	}
 	authorizationClient, err := authorizationclientinternal.NewForConfig(clientConfig)
 	if err != nil {
 		return err
 	}
 	authorizationInterface := authorizationClient.Authorization()
-	o.RoleBindingClient = authorizationInterface
 	o.SARClient = authorizationInterface.SubjectAccessReviews()
 
 	return nil
@@ -145,9 +147,11 @@ func (o *NewProjectOptions) Run(useNodeSelector bool) error {
 	errs := []error{}
 	if len(o.AdminUser) != 0 {
 		adduser := &policy.RoleModificationOptions{
-			RoleName:            o.AdminRole,
-			RoleBindingAccessor: policy.NewLocalRoleBindingAccessor(project.Name, o.RoleBindingClient),
-			Users:               []string{o.AdminUser},
+			RoleName:             o.AdminRole,
+			RoleKind:             "ClusterRole",
+			RoleBindingNamespace: project.Name,
+			RbacClient:           o.RbacClient,
+			Users:                []string{o.AdminUser},
 		}
 
 		if err := adduser.AddRole(); err != nil {
@@ -177,18 +181,13 @@ func (o *NewProjectOptions) Run(useNodeSelector bool) error {
 		}
 	}
 
-	for _, rbacBinding := range bootstrappolicy.GetBootstrapServiceAccountProjectRoleBindings(o.ProjectName) {
-		binding, err := authorizationregistryutil.RoleBindingFromRBAC(&rbacBinding)
-		if err != nil {
-			fmt.Fprintf(output, "Could not convert Role Binding %s in the %q namespace: %v\n", rbacBinding.Name, o.ProjectName, err)
-			errs = append(errs, err)
-			continue
-		}
+	for _, binding := range bootstrappolicy.GetBootstrapServiceAccountProjectRoleBindings(o.ProjectName) {
 		addRole := &policy.RoleModificationOptions{
-			RoleName:            binding.RoleRef.Name,
-			RoleNamespace:       binding.RoleRef.Namespace,
-			RoleBindingAccessor: policy.NewLocalRoleBindingAccessor(o.ProjectName, o.RoleBindingClient),
-			Subjects:            binding.Subjects,
+			RoleName:             binding.RoleRef.Name,
+			RoleKind:             binding.RoleRef.Kind,
+			RoleBindingNamespace: o.ProjectName,
+			RbacClient:           o.RbacClient,
+			Subjects:             binding.Subjects,
 		}
 		if err := addRole.AddRole(); err != nil {
 			fmt.Fprintf(output, "Could not add service accounts to the %v role: %v\n", binding.RoleRef.Name, err)

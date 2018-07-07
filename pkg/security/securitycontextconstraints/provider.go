@@ -2,6 +2,7 @@ package securitycontextconstraints
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/openshift/origin/pkg/security/securitycontextconstraints/capabilities"
 	"github.com/openshift/origin/pkg/security/securitycontextconstraints/group"
@@ -11,7 +12,6 @@ import (
 	sccutil "github.com/openshift/origin/pkg/security/securitycontextconstraints/util"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	api "k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/security/podsecuritypolicy/sysctl"
 	"k8s.io/kubernetes/pkg/securitycontext"
 	"k8s.io/kubernetes/pkg/util/maps"
@@ -78,14 +78,14 @@ func NewSimpleProvider(scc *securityapi.SecurityContextConstraints) (SecurityCon
 	}
 
 	var unsafeSysctls []string
-	if ann, found := scc.Annotations[extensions.SysctlsPodSecurityPolicyAnnotationKey]; found {
+	if ann, found := scc.Annotations[SysctlsPodSecurityPolicyAnnotationKey]; found {
 		var err error
-		unsafeSysctls, err = extensions.SysctlsFromPodSecurityPolicyAnnotation(ann)
+		unsafeSysctls, err = SysctlsFromPodSecurityPolicyAnnotation(ann)
 		if err != nil {
 			return nil, err
 		}
 	}
-	sysctlsStrat, err := createSysctlsStrategy(unsafeSysctls)
+	sysctlsStrat, err := createSysctlsStrategy(sysctl.SafeSysctlWhitelist(), unsafeSysctls, []string{})
 	if err != nil {
 		return nil, err
 	}
@@ -198,6 +198,17 @@ func (s *simpleProvider) CreateContainerSecurityContext(pod *api.Pod, container 
 	if s.scc.ReadOnlyRootFilesystem && sc.ReadOnlyRootFilesystem() == nil {
 		readOnlyRootFS := true
 		sc.SetReadOnlyRootFilesystem(&readOnlyRootFS)
+	}
+
+	// if the SCC sets DefaultAllowPrivilegeEscalation and the container security context
+	// allowPrivilegeEscalation is not set, then default to that set by the SCC.
+	if s.scc.DefaultAllowPrivilegeEscalation != nil && sc.AllowPrivilegeEscalation() == nil {
+		sc.SetAllowPrivilegeEscalation(s.scc.DefaultAllowPrivilegeEscalation)
+	}
+
+	// if the SCC sets AllowPrivilegeEscalation to false set that as the default
+	if s.scc.AllowPrivilegeEscalation != nil && !*s.scc.AllowPrivilegeEscalation && sc.AllowPrivilegeEscalation() == nil {
+		sc.SetAllowPrivilegeEscalation(s.scc.AllowPrivilegeEscalation)
 	}
 
 	return sc.ContainerSecurityContext(), nil
@@ -328,6 +339,17 @@ func (s *simpleProvider) ValidateContainerSecurityContext(pod *api.Pod, containe
 		}
 	}
 
+	allowEscalation := sc.AllowPrivilegeEscalation()
+	if s.scc.AllowPrivilegeEscalation != nil && !*s.scc.AllowPrivilegeEscalation {
+		if allowEscalation == nil {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("allowPrivilegeEscalation"), allowEscalation, "Allowing privilege escalation for containers is not allowed"))
+		}
+
+		if allowEscalation != nil && *allowEscalation {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("allowPrivilegeEscalation"), *allowEscalation, "Allowing privilege escalation for containers is not allowed"))
+		}
+	}
+
 	return allErrs
 }
 
@@ -410,6 +432,18 @@ func createSeccompStrategy(allowedProfiles []string) (seccomp.SeccompStrategy, e
 }
 
 // createSysctlsStrategy creates a new unsafe sysctls strategy.
-func createSysctlsStrategy(sysctlsPatterns []string) (sysctl.SysctlsStrategy, error) {
-	return sysctl.NewMustMatchPatterns(sysctlsPatterns), nil
+func createSysctlsStrategy(safeWhitelist, allowedUnsafeSysctls, forbiddenSysctls []string) (sysctl.SysctlsStrategy, error) {
+	return sysctl.NewMustMatchPatterns(safeWhitelist, allowedUnsafeSysctls, forbiddenSysctls), nil
+}
+
+// TODO promote like kube did
+const SysctlsPodSecurityPolicyAnnotationKey string = "security.alpha.kubernetes.io/sysctls"
+
+// TODO promote like kube did
+func SysctlsFromPodSecurityPolicyAnnotation(annotation string) ([]string, error) {
+	if len(annotation) == 0 {
+		return []string{}, nil
+	}
+
+	return strings.Split(annotation, ","), nil
 }

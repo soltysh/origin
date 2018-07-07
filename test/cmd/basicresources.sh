@@ -59,7 +59,7 @@ os::test::junit::declare_suite_end
 
 os::test::junit::declare_suite_start "cmd/basicresources/explain"
 os::cmd::expect_failure_and_text 'oc types' 'Deployment Configuration'
-os::cmd::expect_failure_and_text 'oc get' 'deploymentconfig'
+os::cmd::expect_failure_and_text 'oc get' 'oc api-resources'
 os::cmd::expect_success_and_text 'oc get all --loglevel=6' 'buildconfigs'
 os::cmd::expect_success_and_text 'oc explain pods' 'Pod is a collection of containers that can run on a host'
 os::cmd::expect_success_and_text 'oc explain pods.spec' 'SecurityContext holds pod-level security attributes'
@@ -83,7 +83,7 @@ os::test::junit::declare_suite_end
 
 os::test::junit::declare_suite_start "cmd/basicresources/pods"
 os::cmd::expect_success 'oc get pods --match-server-version'
-os::cmd::expect_success_and_text 'oc create -f examples/hello-openshift/hello-pod.json' 'pod "hello-openshift" created'
+os::cmd::expect_success_and_text 'oc create -f examples/hello-openshift/hello-pod.json' 'pod/hello-openshift created'
 os::cmd::expect_success 'oc describe pod hello-openshift'
 os::cmd::expect_success 'oc delete pods hello-openshift --grace-period=0 --force'
 echo "pods: ok"
@@ -162,30 +162,30 @@ os::test::junit::declare_suite_start "cmd/basicresources/setprobe"
 # Validate the probe command
 arg="-f examples/hello-openshift/hello-pod.json"
 os::cmd::expect_failure_and_text "oc set probe" "error: one or more resources"
-os::cmd::expect_failure_and_text "oc set probe ${arg}" "error: you must specify one of --readiness or --liveness"
-os::cmd::expect_success_and_text "oc set probe ${arg} --liveness -o yaml" 'livenessProbe: \{\}'
-os::cmd::expect_success_and_text "oc set probe ${arg} -o yaml --liveness --initial-delay-seconds=10 -o yaml" "livenessProbe:"
-os::cmd::expect_success_and_text "oc set probe ${arg} -o yaml --liveness --initial-delay-seconds=10 -o yaml" "initialDelaySeconds: 10"
-os::cmd::expect_success_and_text "oc set probe ${arg} -o yaml --liveness -- echo test" "livenessProbe:"
-os::cmd::expect_success_and_text "oc set probe ${arg} -o yaml --readiness -- echo test" "readinessProbe:"
-os::cmd::expect_success_and_text "oc set probe ${arg} -o yaml --liveness -- echo test" "exec:"
-os::cmd::expect_success_and_text "oc set probe ${arg} -o yaml --liveness -- echo test" "\- echo"
-os::cmd::expect_success_and_text "oc set probe ${arg} -o yaml --liveness -- echo test" "\- test"
-os::cmd::expect_success_and_text "oc set probe ${arg} -o yaml --liveness --open-tcp=3306" "tcpSocket:"
-os::cmd::expect_success_and_text "oc set probe ${arg} -o yaml --liveness --open-tcp=3306" "port: 3306"
-os::cmd::expect_success_and_text "oc set probe ${arg} -o yaml --liveness --open-tcp=port" "port: port"
-os::cmd::expect_success_and_text "oc set probe ${arg} -o yaml --liveness --get-url=https://127.0.0.1:port/path" "port: port"
-os::cmd::expect_success_and_text "oc set probe ${arg} -o yaml --liveness --get-url=https://127.0.0.1:8080/path" "port: 8080"
-os::cmd::expect_success_and_text "oc set probe ${arg} -o yaml --liveness --get-url=https://127.0.0.1/path" 'port: ""'
-os::cmd::expect_success_and_text "oc set probe ${arg} -o yaml --liveness --get-url=https://127.0.0.1:port/path" "path: /path"
-os::cmd::expect_success_and_text "oc set probe ${arg} -o yaml --liveness --get-url=https://127.0.0.1:port/path" "scheme: HTTPS"
-os::cmd::expect_success_and_text "oc set probe ${arg} -o yaml --liveness --get-url=http://127.0.0.1:port/path" "scheme: HTTP"
-os::cmd::expect_success_and_text "oc set probe ${arg} -o yaml --liveness --get-url=https://127.0.0.1:port/path" "host: 127.0.0.1"
-os::cmd::expect_success_and_text "oc set probe ${arg} -o yaml --liveness --get-url=https://127.0.0.1:port/path" "port: port"
+os::cmd::expect_failure_and_text "oc set probe ${arg}" "error: you must specify one of --readiness, --liveness or both"
+os::cmd::expect_failure_and_text "oc set probe ${arg} --local -o yaml --liveness --get-url=https://127.0.0.1/path" "port must be specified as part of a url"
+os::cmd::expect_success_and_text "oc set probe ${arg} --local -o yaml --liveness" 'livenessProbe: \{\}'
+os::cmd::expect_success_and_text "oc set probe ${arg} --local -o yaml --liveness --initial-delay-seconds=10" "livenessProbe:"
+os::cmd::expect_success_and_text "oc set probe ${arg} --local -o yaml --liveness --initial-delay-seconds=10" "initialDelaySeconds: 10"
+os::cmd::expect_success_and_text "oc set probe ${arg} --local -o yaml --liveness -- echo test" "livenessProbe:"
+os::cmd::expect_success_and_text "oc set probe ${arg} --local -o yaml --readiness -- echo test" "readinessProbe:"
+os::cmd::expect_success_and_text "oc set probe ${arg} --local -o yaml --liveness -- echo test" "exec:"
+os::cmd::expect_success_and_text "oc set probe ${arg} --local -o yaml --liveness -- echo test" "\- echo"
+os::cmd::expect_success_and_text "oc set probe ${arg} --local -o yaml --liveness -- echo test" "\- test"
+os::cmd::expect_success_and_text "oc set probe ${arg} --local -o yaml --liveness --open-tcp=3306" "tcpSocket:"
+os::cmd::expect_success_and_text "oc set probe ${arg} --local -o yaml --liveness --open-tcp=3306" "port: 3306"
+os::cmd::expect_success_and_text "oc set probe ${arg} --local -o yaml --liveness --open-tcp=port" "port: port"
+os::cmd::expect_success_and_text "oc set probe ${arg} --local -o yaml --liveness --get-url=https://127.0.0.1:port/path" "port: port"
+os::cmd::expect_success_and_text "oc set probe ${arg} --local -o yaml --liveness --get-url=https://127.0.0.1:8080/path" "port: 8080"
+os::cmd::expect_success_and_text "oc set probe ${arg} --local -o yaml --liveness --get-url=https://127.0.0.1:port/path" "path: /path"
+os::cmd::expect_success_and_text "oc set probe ${arg} --local -o yaml --liveness --get-url=https://127.0.0.1:port/path" "scheme: HTTPS"
+os::cmd::expect_success_and_text "oc set probe ${arg} --local -o yaml --liveness --get-url=http://127.0.0.1:port/path" "scheme: HTTP"
+os::cmd::expect_success_and_text "oc set probe ${arg} --local -o yaml --liveness --get-url=https://127.0.0.1:port/path" "host: 127.0.0.1"
+os::cmd::expect_success_and_text "oc set probe ${arg} --local -o yaml --liveness --get-url=https://127.0.0.1:port/path" "port: port"
 os::cmd::expect_success "oc create -f test/integration/testdata/test-deployment-config.yaml"
 os::cmd::expect_failure_and_text "oc set probe dc/test-deployment-config --liveness" "Required value: must specify a handler type"
 os::cmd::expect_success_and_text "oc set probe dc test-deployment-config --liveness --open-tcp=8080" "updated"
-os::cmd::expect_success_and_text "oc set probe dc/test-deployment-config --liveness --open-tcp=8080" "was not changed"
+os::cmd::expect_success_and_text "oc set probe dc/test-deployment-config --liveness --open-tcp=8080 --v=1" "was not changed"
 os::cmd::expect_success_and_text "oc get dc/test-deployment-config -o yaml" "livenessProbe:"
 os::cmd::expect_success_and_text "oc set probe dc/test-deployment-config --liveness --initial-delay-seconds=10" "updated"
 os::cmd::expect_success_and_text "oc get dc/test-deployment-config -o yaml" "initialDelaySeconds: 10"
@@ -249,9 +249,9 @@ os::cmd::expect_success 'oc create -f test/integration/testdata/test-service.jso
 os::cmd::expect_failure 'oc expose service frontend --create-external-load-balancer'
 os::cmd::expect_failure 'oc expose service frontend --port=40 --type=NodePort'
 os::cmd::expect_success 'oc expose service frontend --path=/test'
-os::cmd::expect_success_and_text "oc get route frontend --output-version=v1 --template='{{.spec.path}}'" "/test"
-os::cmd::expect_success_and_text "oc get route frontend --output-version=v1 --template='{{.spec.to.name}}'" "frontend"           # routes to correct service
-os::cmd::expect_success_and_text "oc get route frontend --output-version=v1 --template='{{.spec.port.targetPort}}'" ""
+os::cmd::expect_success_and_text "oc get route.v1.route.openshift.io frontend --template='{{.spec.path}}'" "/test"
+os::cmd::expect_success_and_text "oc get route.v1.route.openshift.io frontend --template='{{.spec.to.name}}'" "frontend"           # routes to correct service
+os::cmd::expect_success_and_text "oc get route.v1.route.openshift.io frontend --template='{{.spec.port.targetPort}}'" ""
 os::cmd::expect_success 'oc delete svc,route -l name=frontend'
 # Test that external services are exposable
 os::cmd::expect_success 'oc create -f test/testdata/external-service.yaml'
@@ -289,16 +289,15 @@ os::cmd::expect_success 'oc run --image=openshift/hello-openshift --restart=Neve
 os::cmd::expect_success 'oc run --image=openshift/hello-openshift --generator=job/v1 --restart=Never test4'
 os::cmd::expect_success 'oc delete dc/test rc/test2 pod/test3 job/test4'
 
-os::cmd::expect_success_and_text 'oc run --dry-run foo --image=bar -o "go-template={{.kind}} {{.apiVersion}}"'                                'DeploymentConfig v1'
-os::cmd::expect_success_and_text 'oc run --dry-run foo --image=bar -o "go-template={{.kind}} {{.apiVersion}}" --restart=Always'               'DeploymentConfig v1'
-os::cmd::expect_success_and_text 'oc run --dry-run foo --image=bar -o "go-template={{.kind}} {{.apiVersion}}" --restart=Never'                'Pod v1'
-# TODO: version ordering is unstable between Go 1.4 and Go 1.6 because of import order
-os::cmd::expect_success_and_text 'oc run --dry-run foo --image=bar -o "go-template={{.kind}} {{.apiVersion}}" --generator=job/v1'              'Job batch/v1'
-os::cmd::expect_success_and_text 'oc run --dry-run foo --image=bar -o "go-template={{.kind}} {{.apiVersion}}" --generator=deploymentconfig/v1' 'DeploymentConfig v1'
-os::cmd::expect_success_and_text 'oc run --dry-run foo --image=bar -o "go-template={{.kind}} {{.apiVersion}}" --generator=run-controller/v1'   'ReplicationController v1'
-os::cmd::expect_success_and_text 'oc run --dry-run foo --image=bar -o "go-template={{.kind}} {{.apiVersion}}" --generator=run/v1'              'ReplicationController v1'
-os::cmd::expect_success_and_text 'oc run --dry-run foo --image=bar -o "go-template={{.kind}} {{.apiVersion}}" --generator=run-pod/v1'          'Pod v1'
-os::cmd::expect_success_and_text 'oc run --dry-run foo --image=bar -o "go-template={{.kind}} {{.apiVersion}}" --generator=deployment/v1beta1'  'Deployment extensions/v1beta1'
+os::cmd::expect_success_and_text 'oc run --dry-run foo --image=bar -o name'                                'deploymentconfig.apps.openshift.io/foo'
+os::cmd::expect_success_and_text 'oc run --dry-run foo --image=bar -o name --restart=Always'               'deploymentconfig.apps.openshift.io/foo'
+os::cmd::expect_success_and_text 'oc run --dry-run foo --image=bar -o name --restart=Never'                'pod/foo'
+os::cmd::expect_success_and_text 'oc run --dry-run foo --image=bar -o name --generator=job/v1'              'job.batch/foo'
+os::cmd::expect_success_and_text 'oc run --dry-run foo --image=bar -o name --generator=deploymentconfig/v1' 'deploymentconfig.apps.openshift.io/foo'
+os::cmd::expect_success_and_text 'oc run --dry-run foo --image=bar -o name --generator=run-controller/v1'   'replicationcontroller/foo'
+os::cmd::expect_success_and_text 'oc run --dry-run foo --image=bar -o name --generator=run/v1'              'replicationcontroller/foo'
+os::cmd::expect_success_and_text 'oc run --dry-run foo --image=bar -o name --generator=run-pod/v1'          'pod/foo'
+os::cmd::expect_success_and_text 'oc run --dry-run foo --image=bar -o name --generator=deployment/v1beta1'  'deployment.extensions/foo'
 
 os::cmd::expect_success 'oc process -f examples/sample-app/application-template-stibuild.json -l name=mytemplate | oc create -f -'
 os::cmd::expect_success 'oc delete all -l name=mytemplate'

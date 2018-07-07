@@ -7,64 +7,56 @@ excludeDirs:
 import:
 # kube first
 - package: k8s.io/kube-openapi
-  version: 0f2f0396e266ad24afbd02375ba74c0dda1e3611
+  version: 8a9b82f00b3a86eac24681da3f9fe6c34c01cea2
 - package: k8s.io/code-generator
   repo:    https://github.com/openshift/kubernetes-code-generator.git
-  version: origin-3.10-kubernetes-1.10.2
+  version: origin-3.11-kubernetes-1.11.0
 - package: k8s.io/apimachinery
   repo:    https://github.com/openshift/kubernetes-apimachinery.git
-  version: origin-3.10-kubernetes-1.10.2
+  version: origin-3.11-kubernetes-1.11.0
 - package: k8s.io/api
   repo:    https://github.com/openshift/kubernetes-api.git
-  version: origin-3.10-kubernetes-1.10.2
+  version: origin-3.11-kubernetes-1.11.0
 - package: k8s.io/client-go
   repo:    https://github.com/openshift/kubernetes-client-go.git
-  version: origin-3.10-kubernetes-1.10.2
+  version: origin-3.11-kubernetes-1.11.0
 - package: k8s.io/metrics
   repo:    https://github.com/openshift/kubernetes-metrics.git
-  version: origin-3.10-kubernetes-1.10.2
+  version: origin-3.11-kubernetes-1.11.0
 - package: k8s.io/apiserver
   repo:    https://github.com/openshift/kubernetes-apiserver.git
-  version: origin-3.10-kubernetes-1.10.2
+  version: origin-3.11-kubernetes-1.11.0
 - package: k8s.io/kube-aggregator
   repo:    https://github.com/openshift/kube-aggregator.git
-  version: origin-3.10-kubernetes-1.10.2
+  version: origin-3.11-kubernetes-1.11.0
 - package: k8s.io/apiextensions-apiserver
   repo:    https://github.com/openshift/kubernetes-apiextensions-apiserver.git
-  version: origin-3.10-kubernetes-1.10.2
+  version: origin-3.11-kubernetes-1.11.0
 - package: k8s.io/kubernetes
   repo:    https://github.com/openshift/kubernetes.git
-  version: origin-3.10-kubernetes-1.10.2
+  version: origin-3.11-kubernetes-1.11.0
 
 # openshift second
 - package: github.com/openshift/api
-  version: release-3.10
+  version: master
 - package: github.com/openshift/client-go
-  version: release-3.10
+  version: master
 - package: github.com/openshift/imagebuilder
   version: master
 - package: github.com/openshift/library-go
-  version: release-3.10
+  version: master
 # master already branched for 3.11
 - package: github.com/openshift/service-serving-cert-signer
-  version: release-3.10
+  version: master
 # master already branched for 3.11
 - package: github.com/openshift/source-to-image
   version: release-3.10
 
 # forks third
 # master
-- package: github.com/google/certificate-transparency
-  repo:    https://github.com/openshift/google-certificate-transparency.git
-  version: master
-# master
 - package: github.com/emicklei/go-restful-swagger12
   repo:    https://github.com/openshift/emicklei-go-restful-swagger12
   version: release-1.0.1
-# master
-- package: github.com/cloudflare/cfssl
-  repo:    https://github.com/openshift/cloudflare-cfssl
-  version: stable-20160905
 # master
 - package: github.com/skynetservices/skydns
   repo:    https://github.com/openshift/skynetservices-skydns
@@ -76,14 +68,16 @@ import:
 - package: github.com/containers/image
   repo:    https://github.com/openshift/containers-image.git
   version: openshift-3.8
-# pod - sjenning - from branch openshift-3.10-runc-595bea0
+# pod - sjenning
+# origin-3.11-runc-871ba2e
 - package: github.com/opencontainers/runc
   repo:    https://github.com/openshift/opencontainers-runc.git
-  version: da78c1f1ff59f174e7307e9ff76e06308aefac4e
+  version: 7c7775178c25e952571573f44a8df281824cf8e1
 # pod - sjenning
+# origin-3.11-cadvisor-v0.30.1
 - package: github.com/google/cadvisor
   repo:    https://github.com/openshift/google-cadvisor.git
-  version: openshift-3.10-cadvisor-v0.29.1
+  version: c38aa7d9fa62f6b32862471d35a8944f3718cbda
 # cli
 - package: github.com/docker/distribution
   repo:    https://github.com/openshift/docker-distribution.git
@@ -118,7 +112,7 @@ import:
   version: f74b330d45c56584a6ea7a27f5c64ea2900631e9
 # cli
 - package: github.com/gonum/graph
-  version: bde6d0fbd9dec5a997e906611fe0364001364c41
+  version: 50b27dea7ebbfb052dfaf91681afc6fde28d8796
 # cli
 - package: github.com/gonum/internal
   version: e57e4534cf9b3b00ef6c0175f59d8d2d34f60914
@@ -139,9 +133,6 @@ import:
   version: v1.4.7
 
 # mine: specific to openshift
-# master
-- package: github.com/ugorji/go
-  version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
 # networking
 - package: github.com/containernetworking/plugins
   version: ~0.6.0
@@ -164,6 +155,9 @@ import:
 # auth (for sally)
 - package: github.com/gorilla/sessions
   version: a3acf13e802c358d65f249324d14ed24aac11370
+# auth (for oc kerberos on linux + mac)
+- package: github.com/apcera/gssapi
+  version: release-2.6.3
 # new-app
 - package: github.com/joho/godotenv
   version: 6d367c18edf6ca7fd004efd6863e4c5728fa858e

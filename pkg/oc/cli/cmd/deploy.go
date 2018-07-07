@@ -7,10 +7,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-
 	"time"
 
-	units "github.com/docker/go-units"
+	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -19,7 +18,8 @@ import (
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
 
 	appsapi "github.com/openshift/origin/pkg/apps/apis/apps"
 	appsinternalclient "github.com/openshift/origin/pkg/apps/client/internalversion"
@@ -27,7 +27,7 @@ import (
 	appsclient "github.com/openshift/origin/pkg/apps/generated/internalclientset/typed/apps/internalversion"
 	appsutil "github.com/openshift/origin/pkg/apps/util"
 	"github.com/openshift/origin/pkg/oc/cli/describe"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
+	"github.com/openshift/origin/pkg/oc/util/ocscheme"
 )
 
 // DeployOptions holds all the options for the `deploy` command
@@ -97,7 +97,7 @@ var (
 )
 
 // NewCmdDeploy creates a new `deploy` command.
-func NewCmdDeploy(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
+func NewCmdDeploy(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	options := &DeployOptions{
 		baseCommandName: fullName,
 	}
@@ -111,7 +111,7 @@ func NewCmdDeploy(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.C
 		Deprecated: "use the oc rollout latest and oc rollout status",
 		Hidden:     true,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := options.Complete(f, args, out); err != nil {
+			if err := options.Complete(f, args, streams.Out); err != nil {
 				kcmdutil.CheckErr(err)
 			}
 
@@ -137,17 +137,17 @@ func NewCmdDeploy(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.C
 	return cmd
 }
 
-func (o *DeployOptions) Complete(f *clientcmd.Factory, args []string, out io.Writer) error {
+func (o *DeployOptions) Complete(f kcmdutil.Factory, args []string, out io.Writer) error {
 	if len(args) > 1 {
 		return errors.New("only one deployment config name is supported as argument.")
 	}
 	var err error
 
-	o.kubeClient, err = f.ClientSet()
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
-	clientConfig, err := f.ClientConfig()
+	o.kubeClient, err = kclientset.NewForConfig(clientConfig)
 	if err != nil {
 		return err
 	}
@@ -156,7 +156,7 @@ func (o *DeployOptions) Complete(f *clientcmd.Factory, args []string, out io.Wri
 		return err
 	}
 	o.appsClient = client.Apps()
-	o.namespace, _, err = f.DefaultNamespace()
+	o.namespace, _, err = f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return err
 	}
@@ -203,7 +203,7 @@ func (o DeployOptions) Validate() error {
 
 func (o DeployOptions) RunDeploy() error {
 	r := o.builder.
-		Internal().
+		WithScheme(ocscheme.ReadingInternalScheme).
 		NamespaceParam(o.namespace).
 		ResourceNames("deploymentconfigs", o.deploymentConfigName).
 		SingleResourceType().

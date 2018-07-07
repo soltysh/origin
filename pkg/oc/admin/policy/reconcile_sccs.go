@@ -12,7 +12,6 @@ import (
 	kapierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	kapihelper "k8s.io/kubernetes/pkg/apis/core/helper"
 	kcoreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
@@ -21,7 +20,6 @@ import (
 
 	"github.com/openshift/origin/pkg/cmd/server/bootstrappolicy"
 	"github.com/openshift/origin/pkg/cmd/util/print"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	securityapi "github.com/openshift/origin/pkg/security/apis/security"
 	securityclientinternal "github.com/openshift/origin/pkg/security/generated/internalclientset"
 	securitytypedclient "github.com/openshift/origin/pkg/security/generated/internalclientset/typed/security/internalversion"
@@ -82,7 +80,7 @@ func NewDefaultReconcileSCCOptions() *ReconcileSCCOptions {
 }
 
 // NewCmdReconcileSCC implements the OpenShift cli reconcile-sccs command.
-func NewCmdReconcileSCC(name, fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
+func NewCmdReconcileSCC(name, fullName string, f kcmdutil.Factory, out io.Writer) *cobra.Command {
 	o := NewDefaultReconcileSCCOptions()
 	o.Out = out
 
@@ -113,16 +111,16 @@ func NewCmdReconcileSCC(name, fullName string, f *clientcmd.Factory, out io.Writ
 	return cmd
 }
 
-func (o *ReconcileSCCOptions) Complete(cmd *cobra.Command, f *clientcmd.Factory, args []string) error {
+func (o *ReconcileSCCOptions) Complete(cmd *cobra.Command, f kcmdutil.Factory, args []string) error {
 	if len(args) != 0 {
 		return kcmdutil.UsageErrorf(cmd, "no arguments are allowed")
 	}
 
-	kClient, err := f.ClientSet()
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
-	clientConfig, err := f.ClientConfig()
+	kClient, err := kcoreclient.NewForConfig(clientConfig)
 	if err != nil {
 		return err
 	}
@@ -131,7 +129,7 @@ func (o *ReconcileSCCOptions) Complete(cmd *cobra.Command, f *clientcmd.Factory,
 		return err
 	}
 	o.SCCClient = securityClient.Security().SecurityContextConstraints()
-	o.NSClient = kClient.Core().Namespaces()
+	o.NSClient = kClient.Namespaces()
 	o.Output = kcmdutil.GetFlagString(cmd, "output")
 
 	return nil
@@ -149,7 +147,7 @@ func (o *ReconcileSCCOptions) Validate() error {
 
 // RunReconcileSCCs contains the functionality for the reconcile-sccs command for making or
 // previewing changes.
-func (o *ReconcileSCCOptions) RunReconcileSCCs(cmd *cobra.Command, f *clientcmd.Factory) error {
+func (o *ReconcileSCCOptions) RunReconcileSCCs(cmd *cobra.Command, f kcmdutil.Factory) error {
 	// get sccs that need updated
 	changedSCCs, err := o.ChangedSCCs()
 	if err != nil {
@@ -165,7 +163,7 @@ func (o *ReconcileSCCOptions) RunReconcileSCCs(cmd *cobra.Command, f *clientcmd.
 		for _, item := range changedSCCs {
 			list.Items = append(list.Items, item)
 		}
-		fn := print.VersionedPrintObject(legacyscheme.Scheme, legacyscheme.Registry, kcmdutil.PrintObject, cmd, o.Out)
+		fn := print.VersionedPrintObject(kcmdutil.PrintObject, cmd, o.Out)
 		if err := fn(list); err != nil {
 			return err
 		}

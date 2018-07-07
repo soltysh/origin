@@ -9,10 +9,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
+	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 
 	appsapi "github.com/openshift/origin/pkg/apps/apis/apps"
 	appsclientinternal "github.com/openshift/origin/pkg/apps/generated/internalclientset"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	"github.com/openshift/origin/pkg/oc/experimental/ipfailover/ipfailover"
 	"github.com/openshift/origin/pkg/oc/generate/app"
 )
@@ -20,12 +20,12 @@ import (
 // KeepalivedPlugin is an IP Failover configurator plugin for keepalived sidecar.
 type KeepalivedPlugin struct {
 	Name    string
-	Factory *clientcmd.Factory
+	Factory kcmdutil.Factory
 	Options *ipfailover.IPFailoverConfigCmdOptions
 }
 
 // NewIPFailoverConfiguratorPlugin creates a new IPFailoverConfigurator (keepalived) plugin instance.
-func NewIPFailoverConfiguratorPlugin(name string, f *clientcmd.Factory, options *ipfailover.IPFailoverConfigCmdOptions) (*KeepalivedPlugin, error) {
+func NewIPFailoverConfiguratorPlugin(name string, f kcmdutil.Factory, options *ipfailover.IPFailoverConfigCmdOptions) (*KeepalivedPlugin, error) {
 	glog.V(4).Infof("Creating new KeepAlived plugin: %q", name)
 
 	p := &KeepalivedPlugin{
@@ -74,7 +74,7 @@ func (p *KeepalivedPlugin) GetSelector() (map[string]string, error) {
 
 // GetNamespace gets the namespace associated with this IP Failover configurator plugin.
 func (p *KeepalivedPlugin) GetNamespace() (string, error) {
-	namespace, _, err := p.Factory.DefaultNamespace()
+	namespace, _, err := p.Factory.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return "", err
 	}
@@ -87,7 +87,7 @@ func (p *KeepalivedPlugin) GetNamespace() (string, error) {
 // GetDeploymentConfig gets the deployment config associated with this IP Failover configurator plugin.
 
 func (p *KeepalivedPlugin) GetDeploymentConfig() (*appsapi.DeploymentConfig, error) {
-	clientConfig, err := p.Factory.ClientConfig()
+	clientConfig, err := p.Factory.ToRESTConfig()
 	if err != nil {
 		return nil, err
 	}

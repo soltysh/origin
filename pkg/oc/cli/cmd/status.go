@@ -9,15 +9,16 @@ import (
 	"github.com/spf13/cobra"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	appsclientinternal "github.com/openshift/origin/pkg/apps/generated/internalclientset"
 	buildclientinternal "github.com/openshift/origin/pkg/build/generated/internalclientset"
 	imageclientinternal "github.com/openshift/origin/pkg/image/generated/internalclientset"
 	loginutil "github.com/openshift/origin/pkg/oc/cli/cmd/login/util"
 	"github.com/openshift/origin/pkg/oc/cli/describe"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	projectclientinternal "github.com/openshift/origin/pkg/project/generated/internalclientset"
 	routeclientinternal "github.com/openshift/origin/pkg/route/generated/internalclientset"
 	dotutil "github.com/openshift/origin/pkg/util/dot"
@@ -69,7 +70,7 @@ type StatusOptions struct {
 
 // NewCmdStatus implements the OpenShift cli status command.
 // baseCLIName is the path from root cmd to the parent of this cmd.
-func NewCmdStatus(name, baseCLIName, fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
+func NewCmdStatus(name, baseCLIName, fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	opts := &StatusOptions{}
 
 	cmd := &cobra.Command{
@@ -78,7 +79,7 @@ func NewCmdStatus(name, baseCLIName, fullName string, f *clientcmd.Factory, out 
 		Long:    fmt.Sprintf(statusLong, baseCLIName),
 		Example: fmt.Sprintf(statusExample, fullName),
 		Run: func(cmd *cobra.Command, args []string) {
-			err := opts.Complete(f, cmd, baseCLIName, args, out)
+			err := opts.Complete(f, cmd, baseCLIName, args, streams.Out)
 			kcmdutil.CheckErr(err)
 
 			if err := opts.Validate(); err != nil {
@@ -91,8 +92,7 @@ func NewCmdStatus(name, baseCLIName, fullName string, f *clientcmd.Factory, out 
 	}
 
 	cmd.Flags().StringVarP(&opts.outputFormat, "output", "o", opts.outputFormat, "Output format. One of: dot.")
-	cmd.Flags().BoolVarP(&opts.suggest, "verbose", "v", opts.suggest, "See details for resolving issues.")
-	cmd.Flags().MarkDeprecated("verbose", "Use --suggest instead.")
+	cmd.Flags().BoolVar(&opts.suggest, "verbose", opts.suggest, "See details for resolving issues.")
 	cmd.Flags().MarkHidden("verbose")
 	cmd.Flags().BoolVar(&opts.suggest, "suggest", opts.suggest, "See details for resolving issues.")
 	cmd.Flags().BoolVar(&opts.allNamespaces, "all-namespaces", false, "If true, display status for all namespaces (must have cluster admin)")
@@ -101,7 +101,7 @@ func NewCmdStatus(name, baseCLIName, fullName string, f *clientcmd.Factory, out 
 }
 
 // Complete completes the options for the Openshift cli status command.
-func (o *StatusOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, baseCLIName string, args []string, out io.Writer) error {
+func (o *StatusOptions) Complete(f kcmdutil.Factory, cmd *cobra.Command, baseCLIName string, args []string, out io.Writer) error {
 	if len(args) > 0 {
 		return kcmdutil.UsageErrorf(cmd, "no arguments should be provided")
 	}
@@ -110,11 +110,11 @@ func (o *StatusOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, baseC
 	o.securityPolicyCommandFormat = "oc adm policy add-scc-to-user anyuid -n %s -z %s"
 	o.setProbeCommandName = fmt.Sprintf("%s set probe", cmd.Parent().CommandPath())
 
-	clientConfig, err := f.ClientConfig()
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
-	kclientset, err := f.ClientSet()
+	kclientset, err := kclientset.NewForConfig(clientConfig)
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,11 @@ func (o *StatusOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, baseC
 		return err
 	}
 
-	rawConfig, err := f.RawConfig()
+	rawConfig, err := f.ToRawKubeConfigLoader().RawConfig()
+	if err != nil {
+		return err
+	}
+	restMapper, err := f.ToRESTMapper()
 	if err != nil {
 		return err
 	}
@@ -147,7 +151,7 @@ func (o *StatusOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, baseC
 	if o.allNamespaces {
 		o.namespace = metav1.NamespaceAll
 	} else {
-		namespace, _, err := f.DefaultNamespace()
+		namespace, _, err := f.ToRawKubeConfigLoader().Namespace()
 		if err != nil {
 			return err
 		}
@@ -168,6 +172,7 @@ func (o *StatusOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, baseC
 
 	o.describer = &describe.ProjectStatusDescriber{
 		KubeClient:    kclientset,
+		RESTMapper:    restMapper,
 		ProjectClient: projectClient.Project(),
 		BuildClient:   buildClient.Build(),
 		ImageClient:   imageClient.Image(),

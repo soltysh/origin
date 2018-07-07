@@ -11,8 +11,10 @@
 // test/extended/testdata/builds/build-pruning/default-legacy-build-config.yaml
 // test/extended/testdata/builds/build-pruning/errored-build-config.yaml
 // test/extended/testdata/builds/build-pruning/failed-build-config.yaml
+// test/extended/testdata/builds/build-pruning/failed-pipeline.yaml
 // test/extended/testdata/builds/build-pruning/imagestream.yaml
 // test/extended/testdata/builds/build-pruning/successful-build-config.yaml
+// test/extended/testdata/builds/build-pruning/successful-pipeline.yaml
 // test/extended/testdata/builds/build-quota/.s2i/bin/assemble
 // test/extended/testdata/builds/build-quota/Dockerfile
 // test/extended/testdata/builds/build-secrets/Dockerfile
@@ -20,6 +22,8 @@
 // test/extended/testdata/builds/build-secrets/s2i-binary-dir/.s2i/bin/run
 // test/extended/testdata/builds/build-secrets/s2i-binary-dir/Gemfile
 // test/extended/testdata/builds/build-secrets/s2i-binary-dir/config.ru
+// test/extended/testdata/builds/build-secrets/test-configmap-2.json
+// test/extended/testdata/builds/build-secrets/test-configmap.json
 // test/extended/testdata/builds/build-secrets/test-docker-build.json
 // test/extended/testdata/builds/build-secrets/test-is.json
 // test/extended/testdata/builds/build-secrets/test-s2i-build.json
@@ -682,6 +686,36 @@ func testExtendedTestdataBuildsBuildPruningFailedBuildConfigYaml() (*asset, erro
 	return a, nil
 }
 
+var _testExtendedTestdataBuildsBuildPruningFailedPipelineYaml = []byte(`kind: "BuildConfig"
+apiVersion: "v1"
+metadata:
+  name: "failed-pipeline"
+spec:
+  failedBuildsHistoryLimit: 2
+  strategy:
+    jenkinsPipelineStrategy:
+      jenkinsfile: |-
+              node() {
+                sh 'exit 1'
+              }
+      type: JenkinsPipeline
+`)
+
+func testExtendedTestdataBuildsBuildPruningFailedPipelineYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataBuildsBuildPruningFailedPipelineYaml, nil
+}
+
+func testExtendedTestdataBuildsBuildPruningFailedPipelineYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataBuildsBuildPruningFailedPipelineYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/builds/build-pruning/failed-pipeline.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataBuildsBuildPruningImagestreamYaml = []byte(`apiVersion: v1
 kind: ImageStream
 metadata:
@@ -737,6 +771,36 @@ func testExtendedTestdataBuildsBuildPruningSuccessfulBuildConfigYaml() (*asset, 
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/builds/build-pruning/successful-build-config.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataBuildsBuildPruningSuccessfulPipelineYaml = []byte(`kind: "BuildConfig"
+apiVersion: "v1"
+metadata:
+  name: "successful-pipeline"
+spec:
+  successfulBuildsHistoryLimit: 2
+  strategy:
+    jenkinsPipelineStrategy:
+      jenkinsfile: |-
+        node() {
+          sh 'exit 0' 
+        }
+      type: JenkinsPipeline
+`)
+
+func testExtendedTestdataBuildsBuildPruningSuccessfulPipelineYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataBuildsBuildPruningSuccessfulPipelineYaml, nil
+}
+
+func testExtendedTestdataBuildsBuildPruningSuccessfulPipelineYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataBuildsBuildPruningSuccessfulPipelineYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/builds/build-pruning/successful-pipeline.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -812,11 +876,15 @@ var _testExtendedTestdataBuildsBuildSecretsDockerfile = []byte(`FROM centos/ruby
 USER root
 ADD ./secret-dir /secrets
 COPY ./secret2 /
+ADD ./config-dir /configs
+COPY ./this /
 
-# Create a shell script that will output secrets when the image is run
+# Create a shell script that will output secrets and configMaps when the image is run
 RUN echo '#!/bin/sh' > /secret_report.sh
 RUN echo '(test -f /secrets/secret1 && echo -n "secret1=" && cat /secrets/secret1)' >> /secret_report.sh
 RUN echo '(test -f /secret2 && echo -n "relative-secret2=" && cat /secret2)' >> /secret_report.sh
+RUN echo '(test -f /configs/foo && echo -n "foo=" && cat /configs/foo)' >> /secret_report.sh
+RUN echo '(test -f /this && echo -n "relative-this=" && cat /this)' >> /secret_report.sh
 RUN chmod 755 /secret_report.sh
 
 CMD ["/bin/sh", "-c", "/secret_report.sh"]
@@ -857,7 +925,26 @@ if [[ -f secret1  ]]; then
 else
     echo "Unable to locate testsecret2 fixture files"
     exit 2
-fi `)
+fi 
+
+mkdir -p "${HOME}/testconfig"
+if [[ -f /tmp/configmap/foo ]]; then
+    # Copy three configMap entries defined in configmap1 fixture to directory
+    cp /tmp/configmap/* "${HOME}/testconfig"
+else
+    echo "Unable to locate test-configmap fixture files"
+    exit 3
+fi
+
+mkdir -p "${HOME}/testconfig2"
+if [[ -f configmap2/foo  ]]; then
+    # Copy three configMap entries defined in configmap2 fixture to directory
+    cp configmap2/* "${HOME}/testconfig2"
+else
+    echo "Unable to locate test-configmap-2 fixture files"
+    exit 4
+fi
+`)
 
 func testExtendedTestdataBuildsBuildSecretsS2iBinaryDirS2iBinAssembleBytes() ([]byte, error) {
 	return _testExtendedTestdataBuildsBuildSecretsS2iBinaryDirS2iBinAssemble, nil
@@ -877,16 +964,51 @@ func testExtendedTestdataBuildsBuildSecretsS2iBinaryDirS2iBinAssemble() (*asset,
 var _testExtendedTestdataBuildsBuildSecretsS2iBinaryDirS2iBinRun = []byte(`#!/bin/bash
 
 # Ensure none of the build config inject secrets still exist in the file system
-for s in /tmp/secret? secret?; do
-    if [[ -s "${s}" ]]; then
-        echo "Found secret file which should have been removed: ${s}"
+
+secrets=(secret1 secret2 secret3)
+configMaps=(foo this red)
+
+function checkSecret() {
+    dir=$1
+    file=$2
+    if [[ -a "${dir}/${file}" ]]; then
+        if [[ -s "${dir}/${file}" ]]; then
+            echo "Found secret file which should have been truncated: ${dir}/${file}"
+            exit 1
+        fi
+    else
+        echo "Secret file ${file} is missing from ${dir}."
         exit 1
     fi
+}
+
+function checkConfigMap() {
+    dir=$1
+    file=$2
+    if [[ -a "${dir}/${file}" ]]; then
+        if [[ ! -s "${dir}/${file}" ]]; then
+            echo "Found empty configMap file which should not have been truncated: ${dir}/${file}"
+            exit 1
+        fi
+    else
+        echo "ConfigMap file ${file} is missing from ${dir}."
+        exit 1
+    fi
+}
+
+for s in ${secrets[@]}; do
+    checkSecret "/tmp" $s
+    checkSecret "." $s
+done
+
+for c in ${configMaps[@]}; do
+    checkConfigMap "/tmp/configmap" $c
+    checkConfigMap "configmap2" $c
 done
 
 # Print out the secrets copied into the image during assemble
 cd "${HOME}"
-for s in testsecret/* testsecret2/*; do
+for s in testsecret/* testsecret2/* testconfig/* testconfig2/*; do
     echo -n "${s}=" && cat "${s}"
 done`)
 
@@ -943,6 +1065,65 @@ func testExtendedTestdataBuildsBuildSecretsS2iBinaryDirConfigRu() (*asset, error
 	return a, nil
 }
 
+var _testExtendedTestdataBuildsBuildSecretsTestConfigmap2Json = []byte(`{
+    "kind": "ConfigMap",
+    "apiVersion": "v1",
+    "metadata": {
+        "name": "test-configmap-2",
+        "creationTimestamp": null
+    },
+    "data": {
+        "foo": "bar\n",
+        "this": "that\n",
+        "red": "hat\n"
+    }
+}
+`)
+
+func testExtendedTestdataBuildsBuildSecretsTestConfigmap2JsonBytes() ([]byte, error) {
+	return _testExtendedTestdataBuildsBuildSecretsTestConfigmap2Json, nil
+}
+
+func testExtendedTestdataBuildsBuildSecretsTestConfigmap2Json() (*asset, error) {
+	bytes, err := testExtendedTestdataBuildsBuildSecretsTestConfigmap2JsonBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/builds/build-secrets/test-configmap-2.json", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataBuildsBuildSecretsTestConfigmapJson = []byte(`{
+    "kind": "ConfigMap",
+    "apiVersion": "v1",
+    "metadata": {
+        "name": "test-configmap"
+    },
+    "data": {
+        "foo": "bar\n",
+        "this": "that\n",
+        "red": "hat\n"
+    }
+}
+`)
+
+func testExtendedTestdataBuildsBuildSecretsTestConfigmapJsonBytes() ([]byte, error) {
+	return _testExtendedTestdataBuildsBuildSecretsTestConfigmapJson, nil
+}
+
+func testExtendedTestdataBuildsBuildSecretsTestConfigmapJson() (*asset, error) {
+	bytes, err := testExtendedTestdataBuildsBuildSecretsTestConfigmapJsonBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/builds/build-secrets/test-configmap.json", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataBuildsBuildSecretsTestDockerBuildJson = []byte(`{
   "kind": "BuildConfig",
   "apiVersion": "v1",
@@ -967,6 +1148,19 @@ var _testExtendedTestdataBuildsBuildSecretsTestDockerBuildJson = []byte(`{
         {
           "secret": {
             "name": "testsecret2"
+          }
+        }
+      ],
+      "configMaps": [
+        {
+          "configMap": {
+            "name": "test-configmap"
+          },
+          "destinationDir": "config-dir"
+        },
+        {
+          "configMap": {
+            "name": "test-configmap-2"
           }
         }
       ]
@@ -1059,6 +1253,20 @@ var _testExtendedTestdataBuildsBuildSecretsTestS2iBuildJson = []byte(`{
           "secret": {
             "name": "testsecret2"
           }
+        }
+      ],
+      "configMaps": [
+        {
+          "configMap": {
+            "name": "test-configmap"
+          },
+          "destinationDir": "/tmp/configmap"
+        },
+        {
+          "configMap": {
+            "name": "test-configmap-2"
+          },
+          "destinationDir": "configmap2"
         }
       ]
     },
@@ -2863,10 +3071,8 @@ var _testExtendedTestdataBuildsTestContextBuildJson = []byte(`{
       "spec": {
         "triggers": [],
         "source": {
-          "type": "Git",
-          "git": {
-            "uri":"https://github.com/sclorg/s2i-ruby-container"
-          },
+          "type": "binary",
+          "binary": {},
           "contextDir": "2.3"
         },
         "strategy": {
@@ -3003,7 +3209,8 @@ var _testExtendedTestdataBuildsTestContextBuildJson = []byte(`{
       }
     }
   ]
-}`)
+}
+`)
 
 func testExtendedTestdataBuildsTestContextBuildJsonBytes() ([]byte, error) {
 	return _testExtendedTestdataBuildsTestContextBuildJson, nil
@@ -8910,12 +9117,7 @@ var _testExtendedTestdataLdapLdapserverBuildconfigJson = []byte(`{
   },
   "spec": {
     "source": {
-      "type": "Git",
-      "git": {
-        "uri": "git://github.com/openshift/origin.git",
-        "ref": "master"
-      },
-      "contextDir": "images/openldap"
+      "type": "Binary"
     },
     "strategy": {
       "type": "Docker",
@@ -8937,7 +9139,8 @@ var _testExtendedTestdataLdapLdapserverBuildconfigJson = []byte(`{
   "status": {
     "lastVersion": 0
   }
-}`)
+}
+`)
 
 func testExtendedTestdataLdapLdapserverBuildconfigJsonBytes() ([]byte, error) {
 	return _testExtendedTestdataLdapLdapserverBuildconfigJson, nil
@@ -13992,7 +14195,7 @@ var _examplesDbTemplatesMysqlEphemeralTemplateJson = []byte(`{
             "value": "sampledb"
         },
         {
-            "description": "Version of MySQL image to be used (5.5, 5.6, 5.7, or latest).",
+            "description": "Version of MySQL image to be used (5.7, or latest).",
             "displayName": "Version of MySQL Image",
             "name": "MYSQL_VERSION",
             "required": true,
@@ -14290,7 +14493,7 @@ var _examplesDbTemplatesMysqlPersistentTemplateJson = []byte(`{
             "value": "1Gi"
         },
         {
-            "description": "Version of MySQL image to be used (5.5, 5.6, 5.7, or latest).",
+            "description": "Version of MySQL image to be used (5.7, or latest).",
             "displayName": "Version of MySQL Image",
             "name": "MYSQL_VERSION",
             "required": true,
@@ -15547,7 +15750,7 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "docker.io/openshift/jenkins-2-centos7:v3.10"
+              "name": "docker.io/openshift/jenkins-2-centos7:v3.11"
             },
             "name": "2",
             "referencePolicy": {
@@ -15645,7 +15848,7 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
             },
             "from": {
               "kind": "ImageStreamTag",
-              "name": "3.4"
+              "name": "3.6"
             },
             "name": "latest",
             "referencePolicy": {
@@ -15720,6 +15923,24 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
               "name": "docker.io/centos/mongodb-34-centos7:latest"
             },
             "name": "3.4",
+            "referencePolicy": {
+              "type": "Local"
+            }
+          },
+          {
+            "annotations": {
+              "description": "Provides a MongoDB 3.6 database on CentOS 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/mongodb-container/tree/master/3.6/README.md.",
+              "iconClass": "icon-mongodb",
+              "openshift.io/display-name": "MongoDB 3.6",
+              "openshift.io/provider-display-name": "Red Hat, Inc.",
+              "tags": "database,mongodb",
+              "version": "3.6"
+            },
+            "from": {
+              "kind": "DockerImage",
+              "name": "docker.io/centos/mongodb-36-centos7:latest"
+            },
+            "name": "3.6",
             "referencePolicy": {
               "type": "Local"
             }
@@ -15918,7 +16139,7 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
         "tags": [
           {
             "annotations": {
-              "description": "Build and run Node.js applications on CentOS 7. For more information about using this builder image, including OpenShift considerations, see https://github.com/sclorg/s2i-nodejs-container/blob/master/8/README.md.\n\nWARNING: By selecting this tag, your application will automatically update to use the latest version of Node.js available on OpenShift, including major versions updates.",
+              "description": "Build and run Node.js applications on CentOS 7. For more information about using this builder image, including OpenShift considerations, see https://github.com/bucharest-gold/centos7-s2i-nodejs.\n\nWARNING: By selecting this tag, your application will automatically update to use the latest version of Node.js available on OpenShift, including major versions updates.",
               "iconClass": "icon-nodejs",
               "openshift.io/display-name": "Node.js (Latest)",
               "openshift.io/provider-display-name": "Red Hat, Inc.",
@@ -15928,7 +16149,7 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
             },
             "from": {
               "kind": "ImageStreamTag",
-              "name": "8"
+              "name": "10"
             },
             "name": "latest",
             "referencePolicy": {
@@ -16013,6 +16234,44 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
             "referencePolicy": {
               "type": "Local"
             }
+          },
+          {
+            "annotations": {
+              "description": "Build and run Node.js 8 applications on CentOS 7. For more information about using this builder image, including OpenShift considerations, see https://github.com/bucharest-gold/centos7-s2i-nodejs.",
+              "iconClass": "icon-nodejs",
+              "openshift.io/display-name": "Node.js 8 (RHOAR)",
+              "openshift.io/provider-display-name": "Red Hat, Inc.",
+              "sampleRepo": "https://github.com/openshift/nodejs-ex.git",
+              "tags": "builder,nodejs",
+              "version": "8"
+            },
+            "from": {
+              "kind": "DockerImage",
+              "name": "docker.io/bucharestgold/centos7-s2i-nodejs:8.x"
+            },
+            "name": "8-RHOAR",
+            "referencePolicy": {
+              "type": "Local"
+            }
+          },
+          {
+            "annotations": {
+              "description": "Build and run Node.js 10 applications on CentOS 7. For more information about using this builder image, including OpenShift considerations, see https://github.com/bucharest-gold/centos7-s2i-nodejs.",
+              "iconClass": "icon-nodejs",
+              "openshift.io/display-name": "Node.js 10",
+              "openshift.io/provider-display-name": "Red Hat, Inc.",
+              "sampleRepo": "https://github.com/openshift/nodejs-ex.git",
+              "tags": "builder,nodejs",
+              "version": "10"
+            },
+            "from": {
+              "kind": "DockerImage",
+              "name": "docker.io/bucharestgold/centos7-s2i-nodejs:10.x"
+            },
+            "name": "10",
+            "referencePolicy": {
+              "type": "Local"
+            }
           }
         ]
       }
@@ -16040,7 +16299,7 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
             },
             "from": {
               "kind": "ImageStreamTag",
-              "name": "5.24"
+              "name": "5.26"
             },
             "name": "latest",
             "referencePolicy": {
@@ -16103,6 +16362,26 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
               "name": "docker.io/centos/perl-524-centos7:latest"
             },
             "name": "5.24",
+            "referencePolicy": {
+              "type": "Local"
+            }
+          },
+          {
+            "annotations": {
+              "description": "Build and run Perl 5.26 applications on CentOS 7. For more information about using this builder image, including OpenShift considerations, see https://github.com/sclorg/s2i-perl-container/blob/master/5.26/README.md.",
+              "iconClass": "icon-perl",
+              "openshift.io/display-name": "Perl 5.26",
+              "openshift.io/provider-display-name": "Red Hat, Inc.",
+              "sampleRepo": "https://github.com/openshift/dancer-ex.git",
+              "supports": "perl:5.26,perl",
+              "tags": "builder,perl",
+              "version": "5.26"
+            },
+            "from": {
+              "kind": "DockerImage",
+              "name": "docker.io/centos/perl-526-centos7:latest"
+            },
+            "name": "5.26",
             "referencePolicy": {
               "type": "Local"
             }
@@ -16236,7 +16515,7 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
         "tags": [
           {
             "annotations": {
-              "description": "Provides a PostgreSQL database on CentOS 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/postgresql-container/tree/master/9.6/README.md.\n\nWARNING: By selecting this tag, your application will automatically update to use the latest version of PostgreSQL available on OpenShift, including major versions updates.",
+              "description": "Provides a PostgreSQL database on CentOS 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/postgresql-container/blob/generated/10/root/usr/share/container-scripts/postgresql/README.md.\n\nWARNING: By selecting this tag, your application will automatically update to use the latest version of PostgreSQL available on OpenShift, including major versions updates.",
               "iconClass": "icon-postgresql",
               "openshift.io/display-name": "PostgreSQL (Latest)",
               "openshift.io/provider-display-name": "Red Hat, Inc.",
@@ -16244,7 +16523,7 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
             },
             "from": {
               "kind": "ImageStreamTag",
-              "name": "9.6"
+              "name": "10"
             },
             "name": "latest",
             "referencePolicy": {
@@ -16289,7 +16568,7 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
           },
           {
             "annotations": {
-              "description": "Provides a PostgreSQL 9.5 database on CentOS 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/postgresql-container/tree/master/9.5/README.md.",
+              "description": "Provides a PostgreSQL 9.5 database on CentOS 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/postgresql-container/blob/generated/9.5/root/usr/share/container-scripts/postgresql/README.md.",
               "iconClass": "icon-postgresql",
               "openshift.io/display-name": "PostgreSQL 9.5",
               "openshift.io/provider-display-name": "Red Hat, Inc.",
@@ -16307,7 +16586,7 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
           },
           {
             "annotations": {
-              "description": "Provides a PostgreSQL 9.6 database on CentOS 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/postgresql-container/tree/master/9.6/README.md.",
+              "description": "Provides a PostgreSQL 9.6 database on CentOS 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/postgresql-container/blob/generated/9.6/root/usr/share/container-scripts/postgresql/README.md.",
               "iconClass": "icon-postgresql",
               "openshift.io/display-name": "PostgreSQL 9.6",
               "openshift.io/provider-display-name": "Red Hat, Inc.",
@@ -16319,6 +16598,24 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
               "name": "docker.io/centos/postgresql-96-centos7:latest"
             },
             "name": "9.6",
+            "referencePolicy": {
+              "type": "Local"
+            }
+          },
+          {
+            "annotations": {
+              "description": "Provides a PostgreSQL 10 database on CentOS 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/postgresql-container/blob/generated/10/root/usr/share/container-scripts/postgresql/README.md.",
+              "iconClass": "icon-postgresql",
+              "openshift.io/display-name": "PostgreSQL 10",
+              "openshift.io/provider-display-name": "Red Hat, Inc.",
+              "tags": "database,postgresql",
+              "version": "10"
+            },
+            "from": {
+              "kind": "DockerImage",
+              "name": "docker.io/centos/postgresql-10-centos7:latest"
+            },
+            "name": "10",
             "referencePolicy": {
               "type": "Local"
             }
@@ -16633,7 +16930,10 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
               "kind": "DockerImage",
               "name": "docker.io/centos/ruby-25-centos7:latest"
             },
-            "name": "2.5"
+            "name": "2.5",
+            "referencePolicy": {
+              "type": "Local"
+            }
           }
         ]
       }
@@ -16661,7 +16961,7 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
             },
             "from": {
               "kind": "ImageStreamTag",
-              "name": "12.0"
+              "name": "13.0"
             },
             "name": "latest",
             "referencePolicy": {
@@ -16784,6 +17084,26 @@ var _examplesImageStreamsImageStreamsCentos7Json = []byte(`{
               "name": "docker.io/openshift/wildfly-120-centos7:latest"
             },
             "name": "12.0",
+            "referencePolicy": {
+              "type": "Local"
+            }
+          },
+          {
+            "annotations": {
+              "description": "Build and run WildFly 13 applications on CentOS 7. For more information about using this builder image, including OpenShift considerations, see https://github.com/openshift-s2i/s2i-wildfly/blob/master/README.md.",
+              "iconClass": "icon-wildfly",
+              "openshift.io/display-name": "WildFly 13",
+              "openshift.io/provider-display-name": "Red Hat, Inc.",
+              "sampleRepo": "https://github.com/openshift/openshift-jee-sample.git",
+              "supports": "wildfly:13,jee,java",
+              "tags": "builder,wildfly,java",
+              "version": "13.0"
+            },
+            "from": {
+              "kind": "DockerImage",
+              "name": "docker.io/openshift/wildfly-130-centos7:latest"
+            },
+            "name": "13.0",
             "referencePolicy": {
               "type": "Local"
             }
@@ -16924,7 +17244,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/openshift3/jenkins-2-rhel7:v3.10"
+              "name": "registry.access.redhat.com/openshift3/jenkins-2-rhel7:v3.11"
             },
             "name": "2",
             "referencePolicy": {
@@ -17022,7 +17342,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "ImageStreamTag",
-              "name": "3.4"
+              "name": "3.6"
             },
             "name": "latest",
             "referencePolicy": {
@@ -17097,6 +17417,24 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
               "name": "registry.access.redhat.com/rhscl/mongodb-34-rhel7:latest"
             },
             "name": "3.4",
+            "referencePolicy": {
+              "type": "Local"
+            }
+          },
+          {
+            "annotations": {
+              "description": "Provides a MongoDB 3.6 database on RHEL 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/mongodb-container/tree/master/3.6/README.md.",
+              "iconClass": "icon-mongodb",
+              "openshift.io/display-name": "MongoDB 3.6",
+              "openshift.io/provider-display-name": "Red Hat, Inc.",
+              "tags": "database,mongodb",
+              "version": "3.6"
+            },
+            "from": {
+              "kind": "DockerImage",
+              "name": "registry.access.redhat.com/rhscl/mongodb-36-rhel7:latest"
+            },
+            "name": "3.6",
             "referencePolicy": {
               "type": "Local"
             }
@@ -17295,7 +17633,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
         "tags": [
           {
             "annotations": {
-              "description": "Build and run Node.js applications on RHEL 7. For more information about using this builder image, including OpenShift considerations, see https://github.com/sclorg/s2i-nodejs-container/blob/master/8/README.md.\n\nWARNING: By selecting this tag, your application will automatically update to use the latest version of Node.js available on OpenShift, including major versions updates.",
+              "description": "Build and run Node.js 10 applications on RHEL 7. For more information about using this builder image, including OpenShift considerations, see https://github.com/bucharest-gold/centos7-s2i-nodejs.\n\nWARNING: By selecting this tag, your application will automatically update to use the latest version of Node.js available on OpenShift, including major versions updates.",
               "iconClass": "icon-nodejs",
               "openshift.io/display-name": "Node.js (Latest)",
               "openshift.io/provider-display-name": "Red Hat, Inc.",
@@ -17305,7 +17643,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "ImageStreamTag",
-              "name": "8"
+              "name": "10"
             },
             "name": "latest",
             "referencePolicy": {
@@ -17409,6 +17747,25 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             "referencePolicy": {
               "type": "Local"
             }
+          },
+          {
+            "annotations": {
+              "description": "Build and run Node.js 10 applications on RHEL 7. For more information about using this builder image, including OpenShift considerations, see https://github.com/bucharest-gold/centos7-s2i-nodejs.",
+              "iconClass": "icon-nodejs",
+              "openshift.io/display-name": "OpenShift Application Runtimes Node.js 10",
+              "openshift.io/provider-display-name": "Red Hat, Inc.",
+              "sampleRepo": "https://github.com/openshift/nodejs-ex.git",
+              "tags": "builder,nodejs",
+              "version": "10"
+            },
+            "from": {
+              "kind": "DockerImage",
+              "name": "registry.access.redhat.com/rhoar-nodejs/nodejs-10"
+            },
+            "name": "10",
+            "referencePolicy": {
+              "type": "Local"
+            }
           }
         ]
       }
@@ -17436,7 +17793,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "ImageStreamTag",
-              "name": "5.24"
+              "name": "5.26"
             },
             "name": "latest",
             "referencePolicy": {
@@ -17499,6 +17856,26 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
               "name": "registry.access.redhat.com/rhscl/perl-524-rhel7:latest"
             },
             "name": "5.24",
+            "referencePolicy": {
+              "type": "Local"
+            }
+          },
+          {
+            "annotations": {
+              "description": "Build and run Perl 5.26 applications on RHEL 7. For more information about using this builder image, including OpenShift considerations, see https://github.com/sclorg/s2i-perl-container/blob/master/5.26/README.md.",
+              "iconClass": "icon-perl",
+              "openshift.io/display-name": "Perl 5.26",
+              "openshift.io/provider-display-name": "Red Hat, Inc.",
+              "sampleRepo": "https://github.com/openshift/dancer-ex.git",
+              "supports": "perl:5.26,perl",
+              "tags": "builder,perl",
+              "version": "5.26"
+            },
+            "from": {
+              "kind": "DockerImage",
+              "name": "registry.access.redhat.com/rhscl/perl-526-rhel7:latest"
+            },
+            "name": "5.26",
             "referencePolicy": {
               "type": "Local"
             }
@@ -17632,7 +18009,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
         "tags": [
           {
             "annotations": {
-              "description": "Provides a PostgreSQL database on RHEL 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/postgresql-container/tree/master/9.6/README.md.\n\nWARNING: By selecting this tag, your application will automatically update to use the latest version of PostgreSQL available on OpenShift, including major versions updates.",
+              "description": "Provides a PostgreSQL database on RHEL 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/postgresql-container/blob/generated/10/root/usr/share/container-scripts/postgresql/README.md.\n\nWARNING: By selecting this tag, your application will automatically update to use the latest version of PostgreSQL available on OpenShift, including major versions updates.",
               "iconClass": "icon-postgresql",
               "openshift.io/display-name": "PostgreSQL (Latest)",
               "openshift.io/provider-display-name": "Red Hat, Inc.",
@@ -17640,7 +18017,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "ImageStreamTag",
-              "name": "9.6"
+              "name": "10"
             },
             "name": "latest",
             "referencePolicy": {
@@ -17685,7 +18062,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
           },
           {
             "annotations": {
-              "description": "Provides a PostgreSQL 9.5 database on RHEL 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/postgresql-container/tree/master/9.5/README.md.",
+              "description": "Provides a PostgreSQL 9.5 database on RHEL 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/postgresql-container/blob/generated/9.5/root/usr/share/container-scripts/postgresql/README.md.",
               "iconClass": "icon-postgresql",
               "openshift.io/display-name": "PostgreSQL 9.5",
               "openshift.io/provider-display-name": "Red Hat, Inc.",
@@ -17703,7 +18080,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
           },
           {
             "annotations": {
-              "description": "Provides a PostgreSQL 9.6 database on RHEL 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/postgresql-container/tree/master/9.6/README.md.",
+              "description": "Provides a PostgreSQL 9.6 database on RHEL 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/postgresql-container/blob/generated/9.6/root/usr/share/container-scripts/postgresql/README.md.",
               "iconClass": "icon-postgresql",
               "openshift.io/display-name": "PostgreSQL (Ephemeral) 9.6",
               "openshift.io/provider-display-name": "Red Hat, Inc.",
@@ -17715,6 +18092,24 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
               "name": "registry.access.redhat.com/rhscl/postgresql-96-rhel7:latest"
             },
             "name": "9.6",
+            "referencePolicy": {
+              "type": "Local"
+            }
+          },
+          {
+            "annotations": {
+              "description": "Provides a PostgreSQL 10 database on RHEL 7. For more information about using this database image, including OpenShift considerations, see https://github.com/sclorg/postgresql-container/blob/generated/10/root/usr/share/container-scripts/postgresql/README.md.",
+              "iconClass": "icon-postgresql",
+              "openshift.io/display-name": "PostgreSQL (Ephemeral) 10",
+              "openshift.io/provider-display-name": "Red Hat, Inc.",
+              "tags": "database,postgresql",
+              "version": "10"
+            },
+            "from": {
+              "kind": "DockerImage",
+              "name": "registry.access.redhat.com/rhscl/postgresql-10-rhel7:latest"
+            },
+            "name": "10",
             "referencePolicy": {
               "type": "Local"
             }
@@ -18029,7 +18424,10 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
               "kind": "DockerImage",
               "name": "registry.access.redhat.com/rhscl/ruby-25-rhel7:latest"
             },
-            "name": "2.5"
+            "name": "2.5",
+            "referencePolicy": {
+              "type": "Local"
+            }
           }
         ]
       }
@@ -23731,12 +24129,12 @@ var _examplesQuickstartsDotnetPgsqlPersistentJson = []byte(`{
                                 "value": "${DOTNET_CONFIGURATION}"
                             },
                             {
-                                "name": "DOTNET_PUBLISH",
-                                "value": "true"
-                            },
-                            {
                                 "name": "DOTNET_RESTORE_SOURCES",
                                 "value": "${DOTNET_RESTORE_SOURCES}"
+                            },
+                            {
+                                "name": "DOTNET_TOOLS",
+                                "value": "${DOTNET_TOOLS}"
                             }
                         ],
                         "from": {
@@ -24040,28 +24438,28 @@ var _examplesQuickstartsDotnetPgsqlPersistentJson = []byte(`{
             "displayName": "Memory Limit",
             "name": "MEMORY_LIMIT",
             "required": true,
-            "value": "512Mi"
+            "value": "128Mi"
         },
         {
             "description": "Maximum amount of memory the PostgreSQL container can use.",
             "displayName": "Memory Limit (PostgreSQL)",
             "name": "MEMORY_POSTGRESQL_LIMIT",
             "required": true,
-            "value": "512Mi"
+            "value": "128Mi"
         },
         {
             "description": "Volume space available for data, e.g. 512Mi, 2Gi",
             "displayName": "Volume Capacity",
             "name": "VOLUME_CAPACITY",
             "required": true,
-            "value": "1Gi"
+            "value": "256Mi"
         },
         {
             "description": "The image stream tag which is used to build the code.",
             "displayName": ".NET builder",
             "name": "DOTNET_IMAGE_STREAM_TAG",
             "required": true,
-            "value": "dotnet:2.0"
+            "value": "dotnet:2.1"
         },
         {
             "description": "The OpenShift Namespace where the .NET builder ImageStream resides.",
@@ -24081,7 +24479,7 @@ var _examplesQuickstartsDotnetPgsqlPersistentJson = []byte(`{
             "description": "Set this to a branch name, tag or other ref of your repository if you are not using the default branch.",
             "displayName": "Git Reference",
             "name": "SOURCE_REPOSITORY_REF",
-            "value": "rel/2.0-example"
+            "value": "rel/2.1-example"
         },
         {
             "description": "Set this to the relative path to your project if it is not in the root of your repository.",
@@ -24104,6 +24502,11 @@ var _examplesQuickstartsDotnetPgsqlPersistentJson = []byte(`{
             "description": "Set this when the assembly name is overridden in the project file.",
             "displayName": "Startup Assembly",
             "name": "DOTNET_ASSEMBLY_NAME"
+        },
+        {
+            "description": "Set this to a space separated list of .NET tools needed to publish.",
+            "displayName": ".NET Tools",
+            "name": "DOTNET_TOOLS"
         },
         {
             "description": "Set this to a space separated list of npm tools needed to publish.",
@@ -24305,12 +24708,12 @@ var _examplesQuickstartsDotnetJson = []byte(`{
                                 "value": "${DOTNET_CONFIGURATION}"
                             },
                             {
-                                "name": "DOTNET_PUBLISH",
-                                "value": "true"
-                            },
-                            {
                                 "name": "DOTNET_RESTORE_SOURCES",
                                 "value": "${DOTNET_RESTORE_SOURCES}"
+                            },
+                            {
+                                "name": "DOTNET_TOOLS",
+                                "value": "${DOTNET_TOOLS}"
                             }
                         ],
                         "from": {
@@ -24439,14 +24842,14 @@ var _examplesQuickstartsDotnetJson = []byte(`{
             "displayName": "Memory Limit",
             "name": "MEMORY_LIMIT",
             "required": true,
-            "value": "512Mi"
+            "value": "128Mi"
         },
         {
             "description": "The image stream tag which is used to build the code.",
             "displayName": ".NET builder",
             "name": "DOTNET_IMAGE_STREAM_TAG",
             "required": true,
-            "value": "dotnet:2.0"
+            "value": "dotnet:2.1"
         },
         {
             "description": "The OpenShift Namespace where the ImageStream resides.",
@@ -24466,7 +24869,7 @@ var _examplesQuickstartsDotnetJson = []byte(`{
             "description": "Set this to a branch name, tag or other ref of your repository if you are not using the default branch.",
             "displayName": "Git Reference",
             "name": "SOURCE_REPOSITORY_REF",
-            "value": "dotnetcore-2.0"
+            "value": "dotnetcore-2.1"
         },
         {
             "description": "Set this to use a subdirectory of the source code repository",
@@ -24511,10 +24914,14 @@ var _examplesQuickstartsDotnetJson = []byte(`{
             "name": "DOTNET_ASSEMBLY_NAME"
         },
         {
+            "description": "Set this to a space separated list of .NET tools needed to publish.",
+            "displayName": ".NET Tools",
+            "name": "DOTNET_TOOLS"
+        },
+        {
             "description": "Set this to a space separated list of npm tools needed to publish.",
             "displayName": "Npm Tools",
-            "name": "DOTNET_NPM_TOOLS",
-            "value": "bower gulp"
+            "name": "DOTNET_NPM_TOOLS"
         },
         {
             "description": "Set this to a space separated list of test projects to run before publishing.",
@@ -27512,7 +27919,7 @@ parameters:
   value: openshift/oauth-proxy:v1.0.0
 - description: The location of the prometheus image
   name: IMAGE_PROMETHEUS
-  value: openshift/prometheus:v2.2.1
+  value: openshift/prometheus:v2.3.1
 - description: The location of the alertmanager image
   name: IMAGE_ALERTMANAGER
   value: openshift/prometheus-alertmanager:v0.14.0
@@ -28076,7 +28483,7 @@ objects:
         metric_relabel_configs:
         - source_labels: [__name__]
           action: drop
-          regex: 'container_(cpu_user_seconds_total|cpu_cfs_periods_total|memory_usage_bytes|memory_swap|memory_working_set_bytes|memory_cache|last_seen|fs_(read_seconds_total|write_seconds_total|sector_(.*)|io_(.*)|reads_merged_total|writes_merged_total)|tasks_state|memory_failcnt|memory_failures_total|spec_memory_swap_limit_bytes|fs_(.*)_bytes_total|spec_(.*))'
+          regex: 'container_(cpu_user_seconds_total|cpu_cfs_periods_total|memory_usage_bytes|memory_swap|memory_cache|last_seen|fs_(read_seconds_total|write_seconds_total|sector_(.*)|io_(.*)|reads_merged_total|writes_merged_total)|tasks_state|memory_failcnt|memory_failures_total|spec_memory_swap_limit_bytes|fs_(.*)_bytes_total|spec_(.*))'
 
         relabel_configs:
         - action: labelmap
@@ -29173,6 +29580,10 @@ var _examplesJenkinsJenkinsPersistentTemplateJson = []byte(`{
                                     {
                                         "name": "JNLP_SERVICE_NAME",
                                         "value": "${JNLP_SERVICE_NAME}"
+                                    },
+                                    {
+                                        "name": "ENABLE_FATAL_ERROR_LOG_FILE",
+                                        "value": "${ENABLE_FATAL_ERROR_LOG_FILE}"
                                     }
                                 ],
                                 "image": " ",
@@ -29376,6 +29787,12 @@ var _examplesJenkinsJenkinsPersistentTemplateJson = []byte(`{
             "displayName": "Jenkins ImageStreamTag",
             "name": "JENKINS_IMAGE_STREAM_TAG",
             "value": "jenkins:2"
+        },
+        {
+            "description": "When a fatal error occurs, an error log is created with information and the state obtained at the time of the fatal error.",
+            "displayName": "Fatal Error Log File",
+            "name": "ENABLE_FATAL_ERROR_LOG_FILE",
+            "value": "false"
         }
     ]
 }`)
@@ -31779,7 +32196,7 @@ objects:
     namespace: ${NAMESPACE}
 
 - kind: ClusterRoleBinding
-  apiVersion: rbac.authorization.k8s.io/v1beta1
+  apiVersion: rbac.authorization.k8s.io/v1
   metadata:
     name: system:kube-proxy
   subjects:
@@ -32197,7 +32614,7 @@ parameters:
   value: openshift-infra
 objects:
 
-- apiVersion: rbac.authorization.k8s.io/v1beta1
+- apiVersion: rbac.authorization.k8s.io/v1
   kind: ClusterRole
   metadata:
     name: system:openshift:openshift-controller-manager
@@ -32995,7 +33412,7 @@ parameters:
 objects:
 
 # Grant the service account permission to call the TSB
-- apiVersion: rbac.authorization.k8s.io/v1beta1
+- apiVersion: rbac.authorization.k8s.io/v1
   kind: ClusterRoleBinding
   metadata:
     name: templateservicebroker-client
@@ -33008,7 +33425,7 @@ objects:
     name: templateservicebroker-client
 
 # to delegate authentication and authorization
-- apiVersion: rbac.authorization.k8s.io/v1beta1
+- apiVersion: rbac.authorization.k8s.io/v1
   kind: ClusterRoleBinding
   metadata:
     name: auth-delegator-${NAMESPACE}
@@ -33021,7 +33438,7 @@ objects:
     name: apiserver
 
 # to have the template service broker powers
-- apiVersion: rbac.authorization.k8s.io/v1beta1
+- apiVersion: rbac.authorization.k8s.io/v1
   kind: ClusterRoleBinding
   metadata:
     name: tsb-${NAMESPACE}
@@ -33034,7 +33451,7 @@ objects:
     name: apiserver
 
 # to read the config for terminating authentication
-- apiVersion: rbac.authorization.k8s.io/v1beta1
+- apiVersion: rbac.authorization.k8s.io/v1
   kind: RoleBinding
   metadata:
     namespace: ${KUBE_SYSTEM}
@@ -33049,7 +33466,7 @@ objects:
 
 # allow the kube service catalog's SA to read the static secret defined
 # above, which will contain the token for the SA that can call the TSB.
-- apiVersion: rbac.authorization.k8s.io/v1beta1
+- apiVersion: rbac.authorization.k8s.io/v1
   kind: Role
   metadata:
     name: templateservicebroker-auth-reader
@@ -33063,7 +33480,7 @@ objects:
     - secrets
     verbs:
     - get
-- apiVersion: rbac.authorization.k8s.io/v1beta1
+- apiVersion: rbac.authorization.k8s.io/v1
   kind: RoleBinding
   metadata:
     namespace: ${NAMESPACE}
@@ -33155,8 +33572,10 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/builds/build-pruning/default-legacy-build-config.yaml": testExtendedTestdataBuildsBuildPruningDefaultLegacyBuildConfigYaml,
 	"test/extended/testdata/builds/build-pruning/errored-build-config.yaml": testExtendedTestdataBuildsBuildPruningErroredBuildConfigYaml,
 	"test/extended/testdata/builds/build-pruning/failed-build-config.yaml": testExtendedTestdataBuildsBuildPruningFailedBuildConfigYaml,
+	"test/extended/testdata/builds/build-pruning/failed-pipeline.yaml": testExtendedTestdataBuildsBuildPruningFailedPipelineYaml,
 	"test/extended/testdata/builds/build-pruning/imagestream.yaml": testExtendedTestdataBuildsBuildPruningImagestreamYaml,
 	"test/extended/testdata/builds/build-pruning/successful-build-config.yaml": testExtendedTestdataBuildsBuildPruningSuccessfulBuildConfigYaml,
+	"test/extended/testdata/builds/build-pruning/successful-pipeline.yaml": testExtendedTestdataBuildsBuildPruningSuccessfulPipelineYaml,
 	"test/extended/testdata/builds/build-quota/.s2i/bin/assemble": testExtendedTestdataBuildsBuildQuotaS2iBinAssemble,
 	"test/extended/testdata/builds/build-quota/Dockerfile": testExtendedTestdataBuildsBuildQuotaDockerfile,
 	"test/extended/testdata/builds/build-secrets/Dockerfile": testExtendedTestdataBuildsBuildSecretsDockerfile,
@@ -33164,6 +33583,8 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/builds/build-secrets/s2i-binary-dir/.s2i/bin/run": testExtendedTestdataBuildsBuildSecretsS2iBinaryDirS2iBinRun,
 	"test/extended/testdata/builds/build-secrets/s2i-binary-dir/Gemfile": testExtendedTestdataBuildsBuildSecretsS2iBinaryDirGemfile,
 	"test/extended/testdata/builds/build-secrets/s2i-binary-dir/config.ru": testExtendedTestdataBuildsBuildSecretsS2iBinaryDirConfigRu,
+	"test/extended/testdata/builds/build-secrets/test-configmap-2.json": testExtendedTestdataBuildsBuildSecretsTestConfigmap2Json,
+	"test/extended/testdata/builds/build-secrets/test-configmap.json": testExtendedTestdataBuildsBuildSecretsTestConfigmapJson,
 	"test/extended/testdata/builds/build-secrets/test-docker-build.json": testExtendedTestdataBuildsBuildSecretsTestDockerBuildJson,
 	"test/extended/testdata/builds/build-secrets/test-is.json": testExtendedTestdataBuildsBuildSecretsTestIsJson,
 	"test/extended/testdata/builds/build-secrets/test-s2i-build.json": testExtendedTestdataBuildsBuildSecretsTestS2iBuildJson,
@@ -33591,8 +34012,10 @@ var _bintree = &bintree{nil, map[string]*bintree{
 						"default-legacy-build-config.yaml": &bintree{testExtendedTestdataBuildsBuildPruningDefaultLegacyBuildConfigYaml, map[string]*bintree{}},
 						"errored-build-config.yaml": &bintree{testExtendedTestdataBuildsBuildPruningErroredBuildConfigYaml, map[string]*bintree{}},
 						"failed-build-config.yaml": &bintree{testExtendedTestdataBuildsBuildPruningFailedBuildConfigYaml, map[string]*bintree{}},
+						"failed-pipeline.yaml": &bintree{testExtendedTestdataBuildsBuildPruningFailedPipelineYaml, map[string]*bintree{}},
 						"imagestream.yaml": &bintree{testExtendedTestdataBuildsBuildPruningImagestreamYaml, map[string]*bintree{}},
 						"successful-build-config.yaml": &bintree{testExtendedTestdataBuildsBuildPruningSuccessfulBuildConfigYaml, map[string]*bintree{}},
+						"successful-pipeline.yaml": &bintree{testExtendedTestdataBuildsBuildPruningSuccessfulPipelineYaml, map[string]*bintree{}},
 					}},
 					"build-quota": &bintree{nil, map[string]*bintree{
 						".s2i": &bintree{nil, map[string]*bintree{
@@ -33614,6 +34037,8 @@ var _bintree = &bintree{nil, map[string]*bintree{
 							"Gemfile": &bintree{testExtendedTestdataBuildsBuildSecretsS2iBinaryDirGemfile, map[string]*bintree{}},
 							"config.ru": &bintree{testExtendedTestdataBuildsBuildSecretsS2iBinaryDirConfigRu, map[string]*bintree{}},
 						}},
+						"test-configmap-2.json": &bintree{testExtendedTestdataBuildsBuildSecretsTestConfigmap2Json, map[string]*bintree{}},
+						"test-configmap.json": &bintree{testExtendedTestdataBuildsBuildSecretsTestConfigmapJson, map[string]*bintree{}},
 						"test-docker-build.json": &bintree{testExtendedTestdataBuildsBuildSecretsTestDockerBuildJson, map[string]*bintree{}},
 						"test-is.json": &bintree{testExtendedTestdataBuildsBuildSecretsTestIsJson, map[string]*bintree{}},
 						"test-s2i-build.json": &bintree{testExtendedTestdataBuildsBuildSecretsTestS2iBuildJson, map[string]*bintree{}},

@@ -17,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/extensions"
@@ -28,7 +29,6 @@ import (
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
 	"github.com/openshift/origin/pkg/cmd/util/print"
 	"github.com/openshift/origin/pkg/cmd/util/variable"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 
 	appsapi "github.com/openshift/origin/pkg/apps/apis/apps"
 	configcmd "github.com/openshift/origin/pkg/bulk"
@@ -82,7 +82,7 @@ type RegistryOptions struct {
 	Config *RegistryConfig
 
 	// helpers required for Run.
-	factory       *clientcmd.Factory
+	factory       kcmdutil.Factory
 	cmd           *cobra.Command
 	out           io.Writer
 	label         map[string]string
@@ -147,7 +147,7 @@ const (
 )
 
 // NewCmdRegistry implements the OpenShift cli registry command
-func NewCmdRegistry(f *clientcmd.Factory, parentName, name string, out, errout io.Writer) *cobra.Command {
+func NewCmdRegistry(f kcmdutil.Factory, parentName, name string, out, errout io.Writer) *cobra.Command {
 	cfg := &RegistryConfig{
 		ImageTemplate:  variable.NewDefaultImageTemplate(),
 		Name:           "registry",
@@ -204,7 +204,7 @@ func NewCmdRegistry(f *clientcmd.Factory, parentName, name string, out, errout i
 }
 
 // Complete completes any options that are required by validate or run steps.
-func (opts *RegistryOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, out, errout io.Writer, args []string) error {
+func (opts *RegistryOptions) Complete(f kcmdutil.Factory, cmd *cobra.Command, out, errout io.Writer, args []string) error {
 	if len(args) > 0 {
 		return kcmdutil.UsageErrorf(cmd, "No arguments are allowed to this command")
 	}
@@ -260,7 +260,7 @@ func (opts *RegistryOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, 
 	}
 
 	var nsErr error
-	if opts.namespace, _, nsErr = f.DefaultNamespace(); nsErr != nil {
+	if opts.namespace, _, nsErr = f.ToRawKubeConfigLoader().Namespace(); nsErr != nil {
 		return fmt.Errorf("error getting namespace: %v", nsErr)
 	}
 
@@ -276,9 +276,25 @@ func (opts *RegistryOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, 
 		return fmt.Errorf("--local cannot be specified without --dry-run")
 	}
 
-	opts.Config.Action.Bulk.Mapper = clientcmd.ResourceMapper(f)
+	restMapper, err := f.ToRESTMapper()
+	if err != nil {
+		return err
+	}
+	clientConfig, err := f.ToRESTConfig()
+	if err != nil {
+		return err
+	}
+	dynamicClient, err := dynamic.NewForConfig(clientConfig)
+	if err != nil {
+		return err
+	}
+
+	opts.Config.Action.Bulk.Scheme = legacyscheme.Scheme
 	opts.Config.Action.Out, opts.Config.Action.ErrOut = out, errout
-	opts.Config.Action.Bulk.Op = configcmd.Create
+	opts.Config.Action.Bulk.Op = configcmd.Creator{
+		Client:     dynamicClient,
+		RESTMapper: restMapper,
+	}.Create
 	opts.out = out
 	opts.cmd = cmd
 	opts.factory = f
@@ -476,7 +492,7 @@ func (opts *RegistryOptions) RunCmdRegistry() error {
 
 	if opts.Config.Action.ShouldPrint() {
 		opts.cmd.Flag("output-version").Value.Set("extensions/v1beta1,v1")
-		fn := print.VersionedPrintObject(legacyscheme.Scheme, legacyscheme.Registry, kcmdutil.PrintObject, opts.cmd, opts.out)
+		fn := print.VersionedPrintObject(kcmdutil.PrintObject, opts.cmd, opts.out)
 		if err := fn(list); err != nil {
 			return fmt.Errorf("unable to print object: %v", err)
 		}

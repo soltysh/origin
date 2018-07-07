@@ -11,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation"
 	clienttesting "k8s.io/client-go/testing"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	kapihelper "k8s.io/kubernetes/pkg/apis/core/helper"
 
@@ -54,7 +53,6 @@ var nodeSelector = map[string]string{"node": "mynode"}
 func testSTICreateBuildPod(t *testing.T, rootAllowed bool) {
 	strategy := &SourceBuildStrategy{
 		Image:          "sti-test-image",
-		Codec:          legacyscheme.Codecs.LegacyCodec(buildapi.LegacySchemeGroupVersion),
 		SecurityClient: newFakeSecurityClient(rootAllowed),
 	}
 
@@ -103,17 +101,17 @@ func testSTICreateBuildPod(t *testing.T, rootAllowed bool) {
 		t.Errorf("Expected environment keys:\n%v\ngot keys\n%v", expectedKeys, gotKeys)
 	}
 
-	// the pod has 6 volumes but the git source secret is not mounted into the main container.
-	if len(container.VolumeMounts) != 5 {
-		t.Fatalf("Expected 5 volumes in container, got %d", len(container.VolumeMounts))
+	// the pod has 8 volumes but the git source secret is not mounted into the main container.
+	if len(container.VolumeMounts) != 7 {
+		t.Fatalf("Expected 7 volumes in container, got %d", len(container.VolumeMounts))
 	}
 	for i, expected := range []string{buildutil.BuildWorkDirMount, dockerSocketPath, "/var/run/crio/crio.sock", DockerPushSecretMountPath, DockerPullSecretMountPath} {
 		if container.VolumeMounts[i].MountPath != expected {
 			t.Fatalf("Expected %s in VolumeMount[%d], got %s", expected, i, container.VolumeMounts[i].MountPath)
 		}
 	}
-	if len(actual.Spec.Volumes) != 6 {
-		t.Fatalf("Expected 6 volumes in Build pod, got %d", len(actual.Spec.Volumes))
+	if len(actual.Spec.Volumes) != 8 {
+		t.Fatalf("Expected 8 volumes in Build pod, got %d", len(actual.Spec.Volumes))
 	}
 	if *actual.Spec.ActiveDeadlineSeconds != 60 {
 		t.Errorf("Expected ActiveDeadlineSeconds 60, got %d", *actual.Spec.ActiveDeadlineSeconds)
@@ -157,7 +155,7 @@ func testSTICreateBuildPod(t *testing.T, rootAllowed bool) {
 	if !foundDropCaps && !rootAllowed {
 		t.Fatalf("Expected %s when root is not allowed", buildapi.DropCapabilities)
 	}
-	buildJSON, _ := runtime.Encode(legacyscheme.Codecs.LegacyCodec(buildapi.LegacySchemeGroupVersion), build)
+	buildJSON, _ := runtime.Encode(buildJSONCodec, build)
 	errorCases := map[int][]string{
 		0: {"BUILD", string(buildJSON)},
 	}
@@ -173,7 +171,6 @@ func testSTICreateBuildPod(t *testing.T, rootAllowed bool) {
 func TestS2IBuildLongName(t *testing.T) {
 	strategy := &SourceBuildStrategy{
 		Image:          "sti-test-image",
-		Codec:          legacyscheme.Codecs.LegacyCodec(buildapi.LegacySchemeGroupVersion),
 		SecurityClient: newFakeSecurityClient(true),
 	}
 	build := mockSTIBuild()
@@ -208,6 +205,22 @@ func mockSTIBuild() *buildapi.Build {
 					},
 					ContextDir:   "foo",
 					SourceSecret: &kapi.LocalObjectReference{Name: "fooSecret"},
+					Secrets: []buildapi.SecretBuildSource{
+						{
+							Secret: kapi.LocalObjectReference{
+								Name: "secret",
+							},
+							DestinationDir: "/tmp",
+						},
+					},
+					ConfigMaps: []buildapi.ConfigMapBuildSource{
+						{
+							ConfigMap: kapi.LocalObjectReference{
+								Name: "configmap",
+							},
+							DestinationDir: "relpath",
+						},
+					},
 				},
 				Strategy: buildapi.BuildStrategy{
 					SourceStrategy: &buildapi.SourceBuildStrategy{

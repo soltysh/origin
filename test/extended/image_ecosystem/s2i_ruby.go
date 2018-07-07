@@ -33,6 +33,12 @@ var _ = g.Describe("[image_ecosystem][ruby][Slow] hot deploy for openshift ruby 
 	g.Context("", func() {
 		g.BeforeEach(func() {
 			exutil.DumpDockerInfo()
+			g.By("waiting for default service account")
+			err := exutil.WaitForServiceAccount(oc.KubeClient().Core().ServiceAccounts(oc.Namespace()), "default")
+			o.Expect(err).NotTo(o.HaveOccurred())
+			g.By("waiting for builder service account")
+			err = exutil.WaitForServiceAccount(oc.KubeClient().Core().ServiceAccounts(oc.Namespace()), "builder")
+			o.Expect(err).NotTo(o.HaveOccurred())
 		})
 
 		g.AfterEach(func() {
@@ -90,7 +96,7 @@ var _ = g.Describe("[image_ecosystem][ruby][Slow] hot deploy for openshift ruby 
 				o.Expect(len(pods.Items)).To(o.Equal(1))
 
 				g.By("turning on hot-deploy")
-				err = oc.Run("env").Args("dc", dcName, "RAILS_ENV=development").Execute()
+				err = oc.Run("set", "env").Args("dc", dcName, "RAILS_ENV=development").Execute()
 				o.Expect(err).NotTo(o.HaveOccurred())
 				err = exutil.WaitForDeploymentConfig(oc.KubeClient(), oc.AppsClient().Apps(), oc.Namespace(), dcName, 2, true, oc)
 				o.Expect(err).NotTo(o.HaveOccurred())

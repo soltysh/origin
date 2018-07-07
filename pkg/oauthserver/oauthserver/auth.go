@@ -22,7 +22,6 @@ import (
 	"k8s.io/apiserver/pkg/authentication/request/union"
 	x509request "k8s.io/apiserver/pkg/authentication/request/x509"
 	kuser "k8s.io/apiserver/pkg/authentication/user"
-	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/retry"
 
@@ -73,7 +72,7 @@ const (
 
 // WithOAuth decorates the given handler by serving the OAuth2 endpoints while
 // passing through all other requests to the given handler.
-func (c *OAuthServerConfig) WithOAuth(handler http.Handler, requestContextMapper request.RequestContextMapper) (http.Handler, error) {
+func (c *OAuthServerConfig) WithOAuth(handler http.Handler) (http.Handler, error) {
 	baseMux := http.NewServeMux()
 	mux := c.possiblyWrapMux(baseMux)
 
@@ -94,7 +93,7 @@ func (c *OAuthServerConfig) WithOAuth(handler http.Handler, requestContextMapper
 		glog.Fatal(err)
 	}
 
-	authRequestHandler, authHandler, authFinalizer, err := c.getAuthorizeAuthenticationHandlers(mux, errorPageHandler, requestContextMapper)
+	authRequestHandler, authHandler, authFinalizer, err := c.getAuthorizeAuthenticationHandlers(mux, errorPageHandler)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -269,12 +268,12 @@ func (c *OAuthServerConfig) getCSRF() csrf.CSRF {
 	return csrf.NewCookieCSRF("csrf", "/", "", secure, true)
 }
 
-func (c *OAuthServerConfig) getAuthorizeAuthenticationHandlers(mux mux, errorHandler handlers.AuthenticationErrorHandler, requestContextMapper request.RequestContextMapper) (authenticator.Request, handlers.AuthenticationHandler, osinserver.AuthorizeHandler, error) {
+func (c *OAuthServerConfig) getAuthorizeAuthenticationHandlers(mux mux, errorHandler handlers.AuthenticationErrorHandler) (authenticator.Request, handlers.AuthenticationHandler, osinserver.AuthorizeHandler, error) {
 	authRequestHandler, err := c.getAuthenticationRequestHandler()
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	authHandler, err := c.getAuthenticationHandler(mux, errorHandler, requestContextMapper)
+	authHandler, err := c.getAuthenticationHandler(mux, errorHandler)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -318,7 +317,7 @@ func (c *OAuthServerConfig) getAuthenticationFinalizer() osinserver.AuthorizeHan
 	})
 }
 
-func (c *OAuthServerConfig) getAuthenticationHandler(mux mux, errorHandler handlers.AuthenticationErrorHandler, requestContextMapper request.RequestContextMapper) (handlers.AuthenticationHandler, error) {
+func (c *OAuthServerConfig) getAuthenticationHandler(mux mux, errorHandler handlers.AuthenticationErrorHandler) (handlers.AuthenticationHandler, error) {
 	// TODO: make this ordered once we can have more than one
 	challengers := map[string]handlers.AuthenticationChallenger{}
 
@@ -459,18 +458,22 @@ func (c *OAuthServerConfig) getAuthenticationHandler(mux mux, errorHandler handl
 
 	selectProvider := selectprovider.NewSelectProvider(selectProviderRenderer, c.ExtraOAuthConfig.Options.AlwaysShowProviderSelection)
 
-	authHandler := handlers.NewUnionAuthenticationHandler(challengers, redirectors, errorHandler, selectProvider, requestContextMapper)
+	authHandler := handlers.NewUnionAuthenticationHandler(challengers, redirectors, errorHandler, selectProvider)
 	return authHandler, nil
 }
 
 func (c *OAuthServerConfig) getOAuthProvider(identityProvider configapi.IdentityProvider) (external.Provider, error) {
 	switch provider := identityProvider.Provider.(type) {
 	case (*configapi.GitHubIdentityProvider):
+		transport, err := transportFor(provider.CA, "", "")
+		if err != nil {
+			return nil, err
+		}
 		clientSecret, err := configapi.ResolveStringValue(provider.ClientSecret)
 		if err != nil {
 			return nil, err
 		}
-		return github.NewProvider(identityProvider.Name, provider.ClientID, clientSecret, provider.Organizations, provider.Teams), nil
+		return github.NewProvider(identityProvider.Name, provider.ClientID, clientSecret, provider.Hostname, transport, provider.Organizations, provider.Teams), nil
 
 	case (*configapi.GitLabIdentityProvider):
 		transport, err := transportFor(provider.CA, "", "")
@@ -481,7 +484,7 @@ func (c *OAuthServerConfig) getOAuthProvider(identityProvider configapi.Identity
 		if err != nil {
 			return nil, err
 		}
-		return gitlab.NewProvider(identityProvider.Name, transport, provider.URL, provider.ClientID, clientSecret)
+		return gitlab.NewProvider(identityProvider.Name, provider.URL, provider.ClientID, clientSecret, transport, provider.Legacy)
 
 	case (*configapi.GoogleIdentityProvider):
 		clientSecret, err := configapi.ResolveStringValue(provider.ClientSecret)
@@ -602,7 +605,7 @@ func (c *OAuthServerConfig) getPasswordAuthenticator(identityProvider configapi.
 			return nil, fmt.Errorf("Error building KeystonePasswordIdentityProvider client: %v", err)
 		}
 
-		return keystonepassword.New(identityProvider.Name, connectionInfo.URL, transport, provider.DomainName, identityMapper), nil
+		return keystonepassword.New(identityProvider.Name, connectionInfo.URL, transport, provider.DomainName, identityMapper, provider.UseKeystoneIdentity), nil
 
 	default:
 		return nil, fmt.Errorf("No password auth found that matches %v.  The OAuth server cannot start!", identityProvider)

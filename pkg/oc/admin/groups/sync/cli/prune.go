@@ -11,14 +11,14 @@ import (
 	kerrs "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	"github.com/openshift/origin/pkg/cmd/server/apis/config"
 	"github.com/openshift/origin/pkg/cmd/server/apis/config/validation/ldap"
 	"github.com/openshift/origin/pkg/oauthserver/ldaputil"
 	"github.com/openshift/origin/pkg/oauthserver/ldaputil/ldapclient"
 	"github.com/openshift/origin/pkg/oc/admin/groups/sync"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	userclientinternal "github.com/openshift/origin/pkg/user/generated/internalclientset"
 	usertypedclient "github.com/openshift/origin/pkg/user/generated/internalclientset/typed/user/internalversion"
 )
@@ -81,9 +81,9 @@ func NewPruneOptions() *PruneOptions {
 	}
 }
 
-func NewCmdPrune(name, fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
+func NewCmdPrune(name, fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	options := NewPruneOptions()
-	options.Out = out
+	options.Out = streams.Out
 
 	whitelistFile := ""
 	blacklistFile := ""
@@ -95,8 +95,8 @@ func NewCmdPrune(name, fullName string, f *clientcmd.Factory, out io.Writer) *co
 		Long:    pruneLong,
 		Example: fmt.Sprintf(pruneExamples, fullName),
 		Run: func(c *cobra.Command, args []string) {
-			cmdutil.CheckErr(options.Complete(whitelistFile, blacklistFile, configFile, args, f))
-			cmdutil.CheckErr(options.Validate())
+			kcmdutil.CheckErr(options.Complete(whitelistFile, blacklistFile, configFile, args, f))
+			kcmdutil.CheckErr(options.Validate())
 			err := options.Run(c, f)
 			if err != nil {
 				if aggregate, ok := err.(kerrs.Aggregate); ok {
@@ -106,7 +106,7 @@ func NewCmdPrune(name, fullName string, f *clientcmd.Factory, out io.Writer) *co
 					os.Exit(1)
 				}
 			}
-			cmdutil.CheckErr(err)
+			kcmdutil.CheckErr(err)
 		},
 	}
 
@@ -125,7 +125,7 @@ func NewCmdPrune(name, fullName string, f *clientcmd.Factory, out io.Writer) *co
 	return cmd
 }
 
-func (o *PruneOptions) Complete(whitelistFile, blacklistFile, configFile string, args []string, f *clientcmd.Factory) error {
+func (o *PruneOptions) Complete(whitelistFile, blacklistFile, configFile string, args []string, f kcmdutil.Factory) error {
 	var err error
 
 	o.Config, err = decodeSyncConfigFromFile(configFile)
@@ -143,7 +143,7 @@ func (o *PruneOptions) Complete(whitelistFile, blacklistFile, configFile string,
 		return err
 	}
 
-	clientConfig, err := f.ClientConfig()
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
@@ -170,7 +170,7 @@ func (o *PruneOptions) Validate() error {
 
 // Run creates the GroupSyncer specified and runs it to sync groups
 // the arguments are only here because its the only way to get the printer we need
-func (o *PruneOptions) Run(cmd *cobra.Command, f *clientcmd.Factory) error {
+func (o *PruneOptions) Run(cmd *cobra.Command, f kcmdutil.Factory) error {
 	bindPassword, err := config.ResolveStringValue(o.Config.BindPassword)
 	if err != nil {
 		return err

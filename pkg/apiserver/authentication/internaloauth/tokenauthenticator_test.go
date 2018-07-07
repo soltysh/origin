@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -45,7 +44,7 @@ func TestAuthenticateTokenInvalidUID(t *testing.T) {
 	}
 }
 
-func TestAuthenticateTokenNotFound(t *testing.T) {
+func TestAuthenticateTokenNotFoundSuppressed(t *testing.T) {
 	fakeOAuthClient := oauthfake.NewSimpleClientset()
 	fakeUserClient := userfake.NewSimpleClientset()
 	tokenAuthenticator := NewTokenAuthenticator(fakeOAuthClient.Oauth().OAuthAccessTokens(), fakeUserClient.UserV1().Users(), NoopGroupMapper{})
@@ -54,18 +53,15 @@ func TestAuthenticateTokenNotFound(t *testing.T) {
 	if found {
 		t.Error("Found token, but it should be missing!")
 	}
-	if err == nil {
-		t.Error("Expected not found error")
-	}
-	if !apierrs.IsNotFound(err) {
-		t.Error("Expected not found error")
+	if err != errLookup {
+		t.Error("Expected not found error to be suppressed with lookup error")
 	}
 	if userInfo != nil {
 		t.Errorf("Unexpected user: %v", userInfo)
 	}
 }
 
-func TestAuthenticateTokenOtherGetError(t *testing.T) {
+func TestAuthenticateTokenOtherGetErrorSuppressed(t *testing.T) {
 	fakeOAuthClient := oauthfake.NewSimpleClientset()
 	fakeOAuthClient.PrependReactor("get", "oauthaccesstokens", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
 		return true, nil, errors.New("get error")
@@ -77,11 +73,8 @@ func TestAuthenticateTokenOtherGetError(t *testing.T) {
 	if found {
 		t.Error("Found token, but it should be missing!")
 	}
-	if err == nil {
-		t.Error("Expected error is missing!")
-	}
-	if err.Error() != "get error" {
-		t.Errorf("Expected error %v, but got error %v", "get error", err)
+	if err != errLookup {
+		t.Error("Expected custom get error to be suppressed with lookup error")
 	}
 	if userInfo != nil {
 		t.Errorf("Unexpected user: %v", userInfo)
@@ -92,7 +85,7 @@ func TestAuthenticateTokenTimeout(t *testing.T) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 
-	testClock := &fakeTicker{clock: clock.NewFakeClock(time.Time{})}
+	testClock := clock.NewFakeClock(time.Time{})
 
 	defaultTimeout := int32(30) // 30 seconds
 	clientTimeout := int32(15)  // 15 seconds
@@ -154,7 +147,7 @@ func TestAuthenticateTokenTimeout(t *testing.T) {
 	// inject fake clock, which has some interesting properties
 	// 1. A sleep will cause at most one ticker event, regardless of how long the sleep was
 	// 2. The clock will hold one tick event and will drop the next one if something does not consume it first
-	timeouts.ticker = testClock
+	timeouts.clock = testClock
 
 	// decorate flush
 	// The fake clock 1. and 2. require that we issue a wait(t, timeoutsSync) after each testClock.Sleep that causes a tick
@@ -319,30 +312,7 @@ func (f fakeOAuthClientLister) List(selector labels.Selector) ([]*oapi.OAuthClie
 	panic("not used")
 }
 
-type fakeTicker struct {
-	clock *clock.FakeClock
-	ch    <-chan time.Time
-}
-
-func (t *fakeTicker) Now() time.Time {
-	return t.clock.Now()
-}
-
-func (t *fakeTicker) C() <-chan time.Time {
-	return t.ch
-}
-
-func (t *fakeTicker) Stop() {}
-
-func (t *fakeTicker) NewTicker(d time.Duration) {
-	t.ch = t.clock.Tick(d)
-}
-
-func (t *fakeTicker) Sleep(d time.Duration) {
-	t.clock.Sleep(d)
-}
-
-func checkToken(t *testing.T, name string, authf authenticator.Token, tokens oauthclient.OAuthAccessTokenInterface, current *fakeTicker, present bool) {
+func checkToken(t *testing.T, name string, authf authenticator.Token, tokens oauthclient.OAuthAccessTokenInterface, current clock.Clock, present bool) {
 	t.Helper()
 	userInfo, found, err := authf.AuthenticateToken(name)
 	if present {

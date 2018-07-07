@@ -318,6 +318,11 @@ func originFuzzer(t *testing.T, seed int64) *fuzz.Fuzzer {
 		},
 		func(j *apps.DeploymentConfig, c fuzz.Continue) {
 			c.FuzzNoCustom(j)
+
+			if len(j.Spec.Selector) == 0 && j.Spec.Template != nil {
+				j.Spec.Selector = j.Spec.Template.Labels
+			}
+
 			j.Spec.Triggers = []apps.DeploymentTriggerPolicy{{Type: apps.DeploymentTriggerOnConfigChange}}
 			if j.Spec.Template != nil && len(j.Spec.Template.Spec.Containers) == 1 {
 				containerName := j.Spec.Template.Spec.Containers[0].Name
@@ -474,6 +479,9 @@ func originFuzzer(t *testing.T, seed int64) *fuzz.Fuzzer {
 			scc.SupplementalGroups.Type = supGroupTypes[c.Rand.Intn(len(supGroupTypes))]
 			fsGroupTypes := []securityapi.FSGroupStrategyType{securityapi.FSGroupStrategyMustRunAs, securityapi.FSGroupStrategyRunAsAny}
 			scc.FSGroup.Type = fsGroupTypes[c.Rand.Intn(len(fsGroupTypes))]
+			// avoid the defaulting logic for this field by making it never nil
+			allowPrivilegeEscalation := c.RandBool()
+			scc.AllowPrivilegeEscalation = &allowPrivilegeEscalation
 
 			// when fuzzing the volume types ensure it is set to avoid the defaulter's expansion.
 			// Do not use FSTypeAll or host dir setting to steer clear of defaulting mechanics
@@ -536,8 +544,7 @@ func TestSpecificKind(t *testing.T) {
 }
 
 var dockerImageTypes = map[schema.GroupVersionKind]bool{
-	image.SchemeGroupVersion.WithKind("DockerImage"):       true,
-	image.LegacySchemeGroupVersion.WithKind("DockerImage"): true,
+	image.SchemeGroupVersion.WithKind("DockerImage"): true,
 }
 
 // TestRoundTripTypes applies the round-trip test to all round-trippable Kinds

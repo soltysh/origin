@@ -150,18 +150,6 @@ func describerMap(clientConfig *rest.Config, kclient kclientset.Interface, host 
 	return m
 }
 
-// DescribableResources lists all of the resource types we can describe
-func DescribableResources() []string {
-	// Include describable resources in kubernetes
-	keys := kinternalprinters.DescribableResources()
-
-	for k := range describerMap(&rest.Config{}, nil, "", false) {
-		resource := strings.ToLower(k.Kind)
-		keys = append(keys, resource)
-	}
-	return keys
-}
-
 // DescriberFor returns a describer for a given kind of resource
 func DescriberFor(kind schema.GroupKind, clientConfig *rest.Config, kclient kclientset.Interface, host string) (kprinters.Describer, bool) {
 	f, ok := describerMap(clientConfig, kclient, host, true)[kind]
@@ -1885,6 +1873,7 @@ func describeSecurityContextConstraints(scc *securityapi.SecurityContextConstrai
 
 		fmt.Fprintf(out, "Settings:\t\n")
 		fmt.Fprintf(out, "  Allow Privileged:\t%t\n", scc.AllowPrivilegedContainer)
+		fmt.Fprintf(out, "  Allow Privilege Escalation:\t%v\n", scc.AllowPrivilegeEscalation)
 		fmt.Fprintf(out, "  Default Add Capabilities:\t%s\n", capsToString(scc.DefaultAddCapabilities))
 		fmt.Fprintf(out, "  Required Drop Capabilities:\t%s\n", capsToString(scc.RequiredDropCapabilities))
 		fmt.Fprintf(out, "  Allowed Capabilities:\t%s\n", capsToString(scc.AllowedCapabilities))

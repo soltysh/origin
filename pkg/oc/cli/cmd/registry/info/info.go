@@ -16,7 +16,6 @@ import (
 	imageclient "github.com/openshift/client-go/image/clientset/versioned"
 	imageapi "github.com/openshift/origin/pkg/image/apis/image"
 	"github.com/openshift/origin/pkg/image/registryclient"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 )
 
 var (
@@ -50,7 +49,7 @@ type Options struct {
 }
 
 // New creates a command that displays info about the registry.
-func New(name string, f *clientcmd.Factory, out, errOut io.Writer) *cobra.Command {
+func New(name string, f kcmdutil.Factory, out, errOut io.Writer) *cobra.Command {
 	o := &Options{
 		Out:    out,
 		ErrOut: errOut,
@@ -77,8 +76,8 @@ func New(name string, f *clientcmd.Factory, out, errOut io.Writer) *cobra.Comman
 	return cmd
 }
 
-func (o *Options) Complete(f *clientcmd.Factory, args []string) error {
-	cfg, err := f.ClientConfig()
+func (o *Options) Complete(f kcmdutil.Factory, args []string) error {
+	cfg, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
@@ -88,7 +87,7 @@ func (o *Options) Complete(f *clientcmd.Factory, args []string) error {
 	}
 	o.Client = client
 
-	ns, _, err := f.DefaultNamespace()
+	ns, _, err := f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return err
 	}

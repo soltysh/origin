@@ -26,7 +26,6 @@ import (
 	imageclient "github.com/openshift/client-go/image/clientset/versioned"
 	imageapi "github.com/openshift/origin/pkg/image/apis/image"
 	"github.com/openshift/origin/pkg/image/registryclient"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 )
 
 var (
@@ -92,7 +91,7 @@ type LoginOptions struct {
 }
 
 // New logs you in to a docker registry locally.
-func New(name string, f *clientcmd.Factory, out, errOut io.Writer) *cobra.Command {
+func New(name string, f kcmdutil.Factory, out, errOut io.Writer) *cobra.Command {
 	o := &LoginOptions{
 		Out:    out,
 		ErrOut: errOut,
@@ -119,15 +118,15 @@ func New(name string, f *clientcmd.Factory, out, errOut io.Writer) *cobra.Comman
 	return cmd
 }
 
-func (o *LoginOptions) Complete(f *clientcmd.Factory, args []string) error {
-	cfg, err := f.ClientConfig()
+func (o *LoginOptions) Complete(f kcmdutil.Factory, args []string) error {
+	cfg, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
 
 	switch {
 	case len(o.ServiceAccount) > 0:
-		ns, _, err := f.DefaultNamespace()
+		ns, _, err := f.ToRawKubeConfigLoader().Namespace()
 		if err != nil {
 			return err
 		}
@@ -180,7 +179,7 @@ func (o *LoginOptions) Complete(f *clientcmd.Factory, args []string) error {
 		if err != nil {
 			return err
 		}
-		ns, _, err := f.DefaultNamespace()
+		ns, _, err := f.ToRawKubeConfigLoader().Namespace()
 		if err != nil {
 			return err
 		}

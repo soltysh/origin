@@ -31,7 +31,7 @@ func RunOpenShiftKubeAPIServerServer(masterConfig *configapi.MasterConfig) error
 	// install aggregator types into the scheme so that "normal" RESTOptionsGetters can work for us.
 	// done in Start() prior to doing any other initialization so we don't mutate the scheme after it is being used by clients in other goroutines.
 	// TODO: make scheme threadsafe and do this as part of aggregator config building
-	aggregatorinstall.Install(legacyscheme.GroupFactoryRegistry, legacyscheme.Registry, legacyscheme.Scheme)
+	aggregatorinstall.Install(legacyscheme.Scheme)
 
 	validationResults := validation.ValidateMasterConfig(masterConfig, nil)
 	if len(validationResults.Warnings) != 0 {
@@ -43,20 +43,7 @@ func RunOpenShiftKubeAPIServerServer(masterConfig *configapi.MasterConfig) error
 		return kerrors.NewInvalid(configapi.Kind("MasterConfig"), "master-config.yaml", validationResults.Errors)
 	}
 
-	// informers are shared amongst all the various api components we build
-	// TODO the needs of the apiserver and the controllers are drifting. We should consider two different skins here
-	clientConfig, err := configapi.GetClientConfig(masterConfig.MasterClients.OpenShiftLoopbackKubeConfig, masterConfig.MasterClients.OpenShiftLoopbackClientConnectionOverrides)
-	if err != nil {
-		return err
-	}
-	informers, err := origin.NewInformers(clientConfig)
-	if err != nil {
-		return err
-	}
-	if err := informers.AddUserIndexes(); err != nil {
-		return err
-	}
-
+	informers := origin.InformerAccess(nil) // use real kube-apiserver loopback client with secret token instead of that from masterConfig.MasterClients.OpenShiftLoopbackKubeConfig
 	openshiftConfig, err := origin.BuildMasterConfig(*masterConfig, informers)
 	if err != nil {
 		return err

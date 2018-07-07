@@ -31,7 +31,6 @@ import (
 	kinternalinformers "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion"
 	kubeletapi "k8s.io/kubernetes/pkg/kubelet/apis/cri"
 	kruntimeapi "k8s.io/kubernetes/pkg/kubelet/apis/cri/runtime/v1alpha2"
-	knetwork "k8s.io/kubernetes/pkg/kubelet/network"
 	ktypes "k8s.io/kubernetes/pkg/kubelet/types"
 	"k8s.io/kubernetes/pkg/proxy/apis/kubeproxyconfig"
 	kexec "k8s.io/utils/exec"
@@ -72,6 +71,7 @@ type OsdnNodeConfig struct {
 	PluginName      string
 	Hostname        string
 	SelfIP          string
+	DNSIP           string
 	RuntimeEndpoint string
 	MTU             uint32
 	EnableHostports bool
@@ -110,9 +110,6 @@ type OsdnNode struct {
 	egressPoliciesLock sync.Mutex
 	egressPolicies     map[uint32][]networkapi.EgressNetworkPolicy
 	egressDNS          *common.EgressDNS
-
-	host             knetwork.Host
-	kubeletCniPlugin knetwork.NetworkPlugin
 
 	kubeInformers    kinternalinformers.SharedInformerFactory
 	networkInformers networkinformers.SharedInformerFactory
@@ -173,7 +170,7 @@ func New(c *OsdnNodeConfig) (*OsdnNode, error) {
 		networkClient:      c.NetworkClient,
 		recorder:           c.Recorder,
 		oc:                 oc,
-		podManager:         newPodManager(c.KClient, policy, c.MTU, c.CNIBinDir, oc, c.EnableHostports),
+		podManager:         newPodManager(c.KClient, policy, c.MTU, c.CNIBinDir, oc, c.EnableHostports, c.DNSIP),
 		localIP:            c.SelfIP,
 		hostName:           c.Hostname,
 		useConnTrack:       useConnTrack,
@@ -349,7 +346,8 @@ func (node *OsdnNode) Start() error {
 	}
 
 	glog.V(2).Infof("Starting openshift-sdn pod manager")
-	if err := node.podManager.Start(cniserver.CNIServerRunDir, node.localSubnetCIDR, node.networkInfo.ClusterNetworks); err != nil {
+	if err := node.podManager.Start(cniserver.CNIServerRunDir, node.localSubnetCIDR,
+		node.networkInfo.ClusterNetworks, node.networkInfo.ServiceNetwork.String()); err != nil {
 		return err
 	}
 

@@ -1,6 +1,7 @@
 package buildconfig
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -11,18 +12,36 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	kcoreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 
+	buildv1 "github.com/openshift/api/build/v1"
 	buildapi "github.com/openshift/origin/pkg/build/apis/build"
+	buildv1helpers "github.com/openshift/origin/pkg/build/apis/build/v1"
 	"github.com/openshift/origin/pkg/build/client"
 	buildclient "github.com/openshift/origin/pkg/build/generated/internalclientset/typed/build/internalversion"
 	"github.com/openshift/origin/pkg/build/webhook"
 )
+
+var (
+	webhookEncodingScheme       = runtime.NewScheme()
+	webhookEncodingCodecFactory = serializer.NewCodecFactory(webhookEncodingScheme)
+)
+
+func init() {
+	// webhooks need to return legacy build serialization when hit via oapi
+	utilruntime.Must(buildv1.AddToScheme(webhookEncodingScheme))
+	utilruntime.Must(buildv1helpers.AddToScheme(webhookEncodingScheme))
+	utilruntime.Must(buildv1.AddToSchemeInCoreGroup(webhookEncodingScheme))
+	utilruntime.Must(buildv1helpers.AddToSchemeInCoreGroup(webhookEncodingScheme))
+	utilruntime.Must(buildapi.AddToScheme(webhookEncodingScheme))
+	utilruntime.Must(buildapi.AddToSchemeInCoreGroup(webhookEncodingScheme))
+	webhookEncodingCodecFactory = serializer.NewCodecFactory(webhookEncodingScheme)
+}
 
 type WebHook struct {
 	groupVersion      schema.GroupVersion
@@ -54,7 +73,7 @@ func (h *WebHook) New() runtime.Object {
 }
 
 // Connect responds to connections with a ConnectHandler
-func (h *WebHook) Connect(ctx apirequest.Context, name string, options runtime.Object, responder rest.Responder) (http.Handler, error) {
+func (h *WebHook) Connect(ctx context.Context, name string, options runtime.Object, responder rest.Responder) (http.Handler, error) {
 	return &WebHookHandler{
 		ctx:               ctx,
 		name:              name,
@@ -80,7 +99,7 @@ func (h *WebHook) ConnectMethods() []string {
 
 // WebHookHandler responds to web hook requests from the master.
 type WebHookHandler struct {
-	ctx               apirequest.Context
+	ctx               context.Context
 	name              string
 	options           *kapi.PodProxyOptions
 	responder         rest.Responder
@@ -101,7 +120,7 @@ func (h *WebHookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // ProcessWebHook does the actual work of processing the webhook request
-func (w *WebHookHandler) ProcessWebHook(writer http.ResponseWriter, req *http.Request, ctx apirequest.Context, name, subpath string) error {
+func (w *WebHookHandler) ProcessWebHook(writer http.ResponseWriter, req *http.Request, ctx context.Context, name, subpath string) error {
 	parts := strings.Split(strings.TrimPrefix(subpath, "/"), "/")
 	if len(parts) != 2 {
 		return errors.NewBadRequest(fmt.Sprintf("unexpected hook subpath %s", subpath))
@@ -161,7 +180,7 @@ func (w *WebHookHandler) ProcessWebHook(writer http.ResponseWriter, req *http.Re
 	}
 
 	// Send back the build name so that the client can alert the user.
-	if newBuildEncoded, err := runtime.Encode(legacyscheme.Codecs.LegacyCodec(w.groupVersion), newBuild); err != nil {
+	if newBuildEncoded, err := runtime.Encode(webhookEncodingCodecFactory.LegacyCodec(w.groupVersion), newBuild); err != nil {
 		utilruntime.HandleError(err)
 	} else {
 		writer.Write(newBuildEncoded)

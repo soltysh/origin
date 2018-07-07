@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
 
 	kpath "k8s.io/apimachinery/pkg/api/validation/path"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -21,6 +20,7 @@ import (
 
 	buildapiv1 "github.com/openshift/api/build/v1"
 	buildapi "github.com/openshift/origin/pkg/build/apis/build"
+	"github.com/openshift/origin/pkg/build/buildscheme"
 	buildutil "github.com/openshift/origin/pkg/build/util"
 	imageapi "github.com/openshift/origin/pkg/image/apis/image"
 	imageapivalidation "github.com/openshift/origin/pkg/image/apis/image/validation"
@@ -218,6 +218,7 @@ func validateSource(input *buildapi.BuildSource, isCustomStrategy, isDockerStrat
 	}
 
 	allErrs = append(allErrs, validateSecrets(input.Secrets, isDockerStrategy, fldPath.Child("secrets"))...)
+	allErrs = append(allErrs, validateConfigMaps(input.ConfigMaps, isDockerStrategy, fldPath.Child("configMaps"))...)
 
 	allErrs = append(allErrs, validateSecretRef(input.SourceSecret, fldPath.Child("sourceSecret"))...)
 
@@ -270,6 +271,25 @@ func validateGitSource(git *buildapi.GitBuildSource, fldPath *field.Path) field.
 	if git.HTTPSProxy != nil && len(*git.HTTPSProxy) != 0 {
 		if _, err := buildutil.ParseProxyURL(*git.HTTPSProxy); err != nil {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("httpsproxy"), *git.HTTPSProxy, err.Error()))
+		}
+	}
+	return allErrs
+}
+
+func validateConfigMaps(configs []buildapi.ConfigMapBuildSource, isDockerStrategy bool, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	for i, c := range configs {
+		if len(c.ConfigMap.Name) == 0 {
+			allErrs = append(allErrs, field.Required(fldPath.Index(i).Child("configMap"), ""))
+		}
+		if reasons := validation.ValidateConfigMapName(c.ConfigMap.Name, false); len(reasons) != 0 {
+			allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("configMap"), c, "must be valid configMap name"))
+		}
+		if strings.HasPrefix(path.Clean(c.DestinationDir), "..") {
+			allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("destinationDir"), c.DestinationDir, "destination dir cannot start with '..'"))
+		}
+		if isDockerStrategy && filepath.IsAbs(c.DestinationDir) {
+			allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("destinationDir"), c.DestinationDir, "for the docker strategy the destinationDir has to be relative path"))
 		}
 	}
 	return allErrs
@@ -734,13 +754,11 @@ func diffBuildSpec(newer, older buildapi.BuildSpec) (string, error) {
 }
 
 func CreateBuildPatch(older, newer *buildapi.Build) ([]byte, error) {
-	codec := legacyscheme.Codecs.LegacyCodec(buildapiv1.LegacySchemeGroupVersion)
-
-	newerJSON, err := runtime.Encode(codec, newer)
+	newerJSON, err := runtime.Encode(buildscheme.Encoder, newer)
 	if err != nil {
 		return nil, fmt.Errorf("error encoding newer: %v", err)
 	}
-	olderJSON, err := runtime.Encode(codec, older)
+	olderJSON, err := runtime.Encode(buildscheme.Encoder, older)
 	if err != nil {
 		return nil, fmt.Errorf("error encoding older: %v", err)
 	}
@@ -752,12 +770,11 @@ func CreateBuildPatch(older, newer *buildapi.Build) ([]byte, error) {
 }
 
 func ApplyBuildPatch(build *buildapi.Build, patch []byte) (*buildapi.Build, error) {
-	codec := legacyscheme.Codecs.LegacyCodec(buildapiv1.LegacySchemeGroupVersion)
-	versionedBuild, err := legacyscheme.Scheme.ConvertToVersion(build, buildapiv1.SchemeGroupVersion)
+	versionedBuild, err := buildscheme.InternalExternalScheme.ConvertToVersion(build, buildapiv1.SchemeGroupVersion)
 	if err != nil {
 		return nil, err
 	}
-	buildJSON, err := runtime.Encode(codec, versionedBuild)
+	buildJSON, err := runtime.Encode(buildscheme.Encoder, versionedBuild)
 	if err != nil {
 		return nil, err
 	}
@@ -765,11 +782,11 @@ func ApplyBuildPatch(build *buildapi.Build, patch []byte) (*buildapi.Build, erro
 	if err != nil {
 		return nil, err
 	}
-	patchedVersionedBuild, err := runtime.Decode(codec, patchedJSON)
+	patchedVersionedBuild, err := runtime.Decode(buildscheme.Decoder, patchedJSON)
 	if err != nil {
 		return nil, err
 	}
-	patchedBuild, err := legacyscheme.Scheme.ConvertToVersion(patchedVersionedBuild, buildapi.SchemeGroupVersion)
+	patchedBuild, err := buildscheme.InternalExternalScheme.ConvertToVersion(patchedVersionedBuild, buildapi.SchemeGroupVersion)
 	if err != nil {
 		return nil, err
 	}

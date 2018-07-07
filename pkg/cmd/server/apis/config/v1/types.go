@@ -383,7 +383,7 @@ type JenkinsPipelineConfig struct {
 // ImagePolicyConfig holds the necessary configuration options for limits and behavior for importing images
 type ImagePolicyConfig struct {
 	// MaxImagesBulkImportedPerRepository controls the number of images that are imported when a user
-	// does a bulk import of a Docker repository. This number defaults to 5 to prevent users from
+	// does a bulk import of a Docker repository. This number defaults to 50 to prevent users from
 	// importing large numbers of images accidentally. Set -1 for no limit.
 	MaxImagesBulkImportedPerRepository int `json:"maxImagesBulkImportedPerRepository"`
 	// DisableScheduledImport allows scheduled background import of images to be disabled.
@@ -506,7 +506,7 @@ type UserAgentMatchRule struct {
 
 // UserAgentDenyRule adds a rejection message that can be used to help a user figure out how to get an approved client
 type UserAgentDenyRule struct {
-	UserAgentMatchRule `json:", inline"`
+	UserAgentMatchRule `json:",inline"`
 
 	// RejectionMessage is the message shown when rejecting a client.  If it is not a set, the default message is used.
 	RejectionMessage string `json:"rejectionMessage"`
@@ -928,6 +928,8 @@ type KeystonePasswordIdentityProvider struct {
 	RemoteConnectionInfo `json:",inline"`
 	// Domain Name is required for keystone v3
 	DomainName string `json:"domainName"`
+	// UseKeystoneIdentity flag indicates that user should be authenticated by keystone ID, not by username
+	UseKeystoneIdentity bool `json:"useKeystoneIdentity"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -981,6 +983,12 @@ type GitHubIdentityProvider struct {
 	Organizations []string `json:"organizations"`
 	// Teams optionally restricts which teams are allowed to log in. Format is <org>/<team>.
 	Teams []string `json:"teams"`
+	// Hostname is the optional domain (e.g. "mycompany.com") for use with a hosted instance of GitHub Enterprise.
+	// It must match the GitHub Enterprise settings value that is configured at /setup/settings#hostname.
+	Hostname string `json:"hostname"`
+	// CA is the optional trusted certificate authority bundle to use when making requests to the server.
+	// If empty, the default system roots are used.  This can only be configured when hostname is set to a non-empty value.
+	CA string `json:"ca"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -998,6 +1006,14 @@ type GitLabIdentityProvider struct {
 	ClientID string `json:"clientID"`
 	// ClientSecret is the oauth client secret
 	ClientSecret StringSource `json:"clientSecret"`
+	// Legacy determines if OAuth2 or OIDC should be used
+	// If true, OAuth2 is used
+	// If false, OIDC is used
+	// If nil and the URL's host is gitlab.com, OIDC is used
+	// Otherwise, OAuth2 is used
+	// In a future release, nil will default to using OIDC
+	// Eventually this flag will be removed and only OIDC will be used
+	Legacy *bool `json:"legacy,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

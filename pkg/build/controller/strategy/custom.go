@@ -5,22 +5,38 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
+
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
+	buildv1 "github.com/openshift/api/build/v1"
 	buildapi "github.com/openshift/origin/pkg/build/apis/build"
+	buildv1helpers "github.com/openshift/origin/pkg/build/apis/build/v1"
 	buildutil "github.com/openshift/origin/pkg/build/util"
 )
 
+var (
+	customBuildEncodingScheme       = runtime.NewScheme()
+	customBuildEncodingCodecFactory = serializer.NewCodecFactory(customBuildEncodingScheme)
+)
+
+func init() {
+	utilruntime.Must(buildv1.AddToScheme(customBuildEncodingScheme))
+	utilruntime.Must(buildv1helpers.AddToScheme(customBuildEncodingScheme))
+	utilruntime.Must(buildv1.AddToSchemeInCoreGroup(customBuildEncodingScheme))
+	utilruntime.Must(buildv1helpers.AddToSchemeInCoreGroup(customBuildEncodingScheme))
+	// TODO eventually we shouldn't deal in internal versions, but for now decode into one.
+	utilruntime.Must(buildapi.AddToScheme(customBuildEncodingScheme))
+	utilruntime.Must(buildapi.AddToSchemeInCoreGroup(customBuildEncodingScheme))
+	customBuildEncodingCodecFactory = serializer.NewCodecFactory(customBuildEncodingScheme)
+}
+
 // CustomBuildStrategy creates a build using a custom builder image.
 type CustomBuildStrategy struct {
-	// Codec is the codec to use for encoding the output pod.
-	// IMPORTANT: This may break backwards compatibility when
-	// it changes.
-	Codec runtime.Codec
 }
 
 // CreateBuildPod creates the pod to be used for the Custom build
@@ -30,13 +46,13 @@ func (bs *CustomBuildStrategy) CreateBuildPod(build *buildapi.Build) (*v1.Pod, e
 		return nil, errors.New("CustomBuildStrategy cannot be executed without CustomStrategy parameters")
 	}
 
-	codec := bs.Codec
+	codec := customBuildEncodingCodecFactory.LegacyCodec(buildv1.SchemeGroupVersion)
 	if len(strategy.BuildAPIVersion) != 0 {
 		gv, err := schema.ParseGroupVersion(strategy.BuildAPIVersion)
 		if err != nil {
 			return nil, &FatalError{fmt.Sprintf("failed to parse buildAPIVersion specified in custom build strategy (%q): %v", strategy.BuildAPIVersion, err)}
 		}
-		codec = legacyscheme.Codecs.LegacyCodec(gv)
+		codec = customBuildEncodingCodecFactory.LegacyCodec(gv)
 	}
 
 	data, err := runtime.Encode(codec, build)

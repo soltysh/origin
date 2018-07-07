@@ -27,7 +27,7 @@ const (
 	externalImageReference = "docker.io/openshift/origin-release:golang-1.4"
 )
 
-var _ = g.Describe("[Feature:ImagePrune][registry][Serial] Image prune", func() {
+var _ = g.Describe("[Feature:ImagePrune][registry][Serial][Suite:openshift/registry/serial][local] Image prune", func() {
 	defer g.GinkgoRecover()
 	var oc = exutil.NewCLI("prune-images", exutil.KubeConfigPath())
 
@@ -40,7 +40,11 @@ var _ = g.Describe("[Feature:ImagePrune][registry][Serial] Image prune", func() 
 			originalAcceptSchema2 = &accepts
 		}
 
-		err := exutil.WaitForBuilderAccount(oc.KubeClient().Core().ServiceAccounts(oc.Namespace()))
+		g.By("waiting for default service account")
+		err := exutil.WaitForServiceAccount(oc.KubeClient().Core().ServiceAccounts(oc.Namespace()), "default")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("waiting for builder service account")
+		err = exutil.WaitForServiceAccount(oc.KubeClient().Core().ServiceAccounts(oc.Namespace()), "builder")
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By(fmt.Sprintf("give a user %s a right to prune images with %s role", oc.Username(), "system:image-pruner"))

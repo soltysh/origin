@@ -16,7 +16,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	"github.com/openshift/origin/pkg/serviceaccounts"
 )
 
@@ -56,7 +55,7 @@ type CreateKubeconfigOptions struct {
 	Err io.Writer
 }
 
-func NewCommandCreateKubeconfig(name, fullname string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
+func NewCommandCreateKubeconfig(name, fullname string, f cmdutil.Factory, out io.Writer) *cobra.Command {
 	options := &CreateKubeconfigOptions{
 		Out: out,
 		Err: os.Stderr,
@@ -77,24 +76,28 @@ func NewCommandCreateKubeconfig(name, fullname string, f *clientcmd.Factory, out
 	return cmd
 }
 
-func (o *CreateKubeconfigOptions) Complete(args []string, f *clientcmd.Factory, cmd *cobra.Command) error {
+func (o *CreateKubeconfigOptions) Complete(args []string, f cmdutil.Factory, cmd *cobra.Command) error {
 	if len(args) != 1 {
 		return cmdutil.UsageErrorf(cmd, fmt.Sprintf("expected one service account name as an argument, got %q", args))
 	}
 
 	o.SAName = args[0]
 
-	client, err := f.ClientSet()
+	clientConfig, err := f.ToRESTConfig()
+	if err != nil {
+		return err
+	}
+	client, err := kcoreclient.NewForConfig(clientConfig)
 	if err != nil {
 		return err
 	}
 
-	namespace, _, err := f.DefaultNamespace()
+	namespace, _, err := f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return err
 	}
 
-	o.RawConfig, err = f.RawConfig()
+	o.RawConfig, err = f.ToRawKubeConfigLoader().RawConfig()
 	if err != nil {
 		return err
 	}
@@ -103,8 +106,8 @@ func (o *CreateKubeconfigOptions) Complete(args []string, f *clientcmd.Factory, 
 		o.ContextNamespace = namespace
 	}
 
-	o.SAClient = client.Core().ServiceAccounts(namespace)
-	o.SecretsClient = client.Core().Secrets(namespace)
+	o.SAClient = client.ServiceAccounts(namespace)
+	o.SecretsClient = client.Secrets(namespace)
 	return nil
 }
 

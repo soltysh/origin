@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"io/ioutil"
 	"reflect"
 	"strings"
 	"testing"
@@ -11,18 +10,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	kcmd "k8s.io/kubernetes/pkg/kubectl/cmd"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	appsapi "github.com/openshift/origin/pkg/apps/apis/apps"
 	buildapi "github.com/openshift/origin/pkg/build/apis/build"
 	buildfake "github.com/openshift/origin/pkg/build/generated/internalclientset/fake"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 )
 
 // TestLogsFlagParity makes sure that our copied flags don't slip during rebases
 func TestLogsFlagParity(t *testing.T) {
-	kubeCmd := kcmd.NewCmdLogs(nil, ioutil.Discard, ioutil.Discard)
-	f := clientcmd.NewFactory(nil)
-	originCmd := NewCmdLogs("oc", "logs", f, ioutil.Discard, ioutil.Discard)
+	streams := genericclioptions.NewTestIOStreamsDiscard()
+	kubeCmd := kcmd.NewCmdLogs(nil, streams)
+	originCmd := NewCmdLogs("oc", "logs", nil, streams)
 
 	kubeCmd.LocalFlags().VisitAll(func(kubeFlag *pflag.Flag) {
 		originFlag := originCmd.LocalFlags().Lookup(kubeFlag.Name)
@@ -63,7 +62,7 @@ func TestRunLogForPipelineStrategy(t *testing.T) {
 	}
 
 	fakebc := buildfake.NewSimpleClientset(&bld)
-	fakewriter := fakeWriter{}
+	streams, _, out, _ := genericclioptions.NewTestIOStreams()
 
 	testCases := []struct {
 		o runtime.Object
@@ -93,7 +92,7 @@ func TestRunLogForPipelineStrategy(t *testing.T) {
 			KubeLogOptions: &kcmd.LogsOptions{
 				Object:    tc.o,
 				Namespace: "foo",
-				Out:       &fakewriter,
+				IOStreams: streams,
 			},
 			Client: fakebc.Build(),
 		}
@@ -101,9 +100,8 @@ func TestRunLogForPipelineStrategy(t *testing.T) {
 		if err != nil {
 			t.Errorf("%#v: RunLog error %v", tc.o, err)
 		}
-		output := string(fakewriter.data[:])
-		if !strings.Contains(output, "https://foo") {
-			t.Errorf("%#v: RunLog did not have https://foo, but rather had: %s", tc.o, output)
+		if !strings.Contains(out.String(), "https://foo") {
+			t.Errorf("%#v: RunLog did not have https://foo, but rather had: %s", tc.o, out.String())
 		}
 	}
 

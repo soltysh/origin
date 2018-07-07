@@ -4,27 +4,22 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	kprinters "k8s.io/kubernetes/pkg/printers"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	imageapiv1 "github.com/openshift/api/image/v1"
 	imageapi "github.com/openshift/origin/pkg/image/apis/image"
 	imageclientinternal "github.com/openshift/origin/pkg/image/generated/internalclientset"
 	imageclient "github.com/openshift/origin/pkg/image/generated/internalclientset/typed/image/internalversion"
 	"github.com/openshift/origin/pkg/oc/cli/describe"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
-	quotautil "github.com/openshift/origin/pkg/quota/util"
 )
 
 var (
@@ -47,7 +42,7 @@ var (
 )
 
 // NewCmdImportImage implements the OpenShift cli import-image command.
-func NewCmdImportImage(fullName string, f *clientcmd.Factory, out, errout io.Writer) *cobra.Command {
+func NewCmdImportImage(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	opts := &ImportImageOptions{}
 	cmd := &cobra.Command{
 		Use:     "import-image IMAGESTREAM[:TAG]",
@@ -55,7 +50,7 @@ func NewCmdImportImage(fullName string, f *clientcmd.Factory, out, errout io.Wri
 		Long:    importImageLong,
 		Example: fmt.Sprintf(importImageExample, fullName),
 		Run: func(cmd *cobra.Command, args []string) {
-			kcmdutil.CheckErr(opts.Complete(f, cmd, args, fullName, out, errout))
+			kcmdutil.CheckErr(opts.Complete(f, cmd, args, fullName, streams.Out, streams.ErrOut))
 			kcmdutil.CheckErr(opts.Validate(cmd))
 			kcmdutil.CheckErr(opts.Run())
 		},
@@ -100,7 +95,7 @@ type ImportImageOptions struct {
 
 // Complete turns a partially defined ImportImageOptions into a solvent structure
 // which can be validated and used for aa import.
-func (o *ImportImageOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, args []string, commandName string, out, errout io.Writer) error {
+func (o *ImportImageOptions) Complete(f kcmdutil.Factory, cmd *cobra.Command, args []string, commandName string, out, errout io.Writer) error {
 	o.CommandName = commandName
 
 	if len(args) > 0 {
@@ -114,13 +109,13 @@ func (o *ImportImageOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, 
 		o.ReferencePolicy = ""
 	}
 
-	namespace, _, err := f.DefaultNamespace()
+	namespace, _, err := f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return err
 	}
 	o.Namespace = namespace
 
-	clientConfig, err := f.ClientConfig()
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
@@ -171,53 +166,36 @@ func (o *ImportImageOptions) Run() error {
 		return err
 	}
 
-	// Attempt the new, direct import path
 	result, err := o.imageClient.ImageStreamImports(isi.Namespace).Create(isi)
-	err = TransformUnsupportedError(err)
-	switch {
-	case err == imageapi.ErrImageStreamImportUnsupported:
-	case err != nil:
+	if err != nil {
 		return err
-	default:
-		if o.DryRun {
-			if wasError(result) {
-				fmt.Fprintf(o.errout, "The dry-run import completed with errors.\n\n")
-			} else {
-				fmt.Fprint(o.out, "The dry-run import completed successfully.\n\n")
-			}
+	}
+
+	if o.DryRun {
+		if wasError(result) {
+			fmt.Fprintf(o.errout, "The dry-run import completed with errors.\n\n")
 		} else {
-			if wasError(result) {
-				fmt.Fprintf(o.errout, "The import completed with errors.\n\n")
-			} else {
-				fmt.Fprint(o.out, "The import completed successfully.\n\n")
-			}
+			fmt.Fprint(o.out, "The dry-run import completed successfully.\n\n")
 		}
-
-		if result.Status.Import != nil {
-			// TODO: dry-run doesn't return an image stream, so we have to display partial results
-			info, err := describe.DescribeImageStream(result.Status.Import)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintln(o.out, info)
+	} else {
+		if wasError(result) {
+			fmt.Fprintf(o.errout, "The import completed with errors.\n\n")
+		} else {
+			fmt.Fprint(o.out, "The import completed successfully.\n\n")
 		}
+	}
 
-		if repo := result.Status.Repository; repo != nil {
-			for _, image := range repo.Images {
-				if image.Image != nil {
-					info, err := describe.DescribeImage(image.Image, imageapi.JoinImageStreamTag(stream.Name, image.Tag))
-					if err != nil {
-						fmt.Fprintf(o.errout, "error: tag %s failed: %v\n", image.Tag, err)
-					} else {
-						fmt.Fprintln(o.out, info)
-					}
-				} else {
-					fmt.Fprintf(o.errout, "error: repository tag %s failed: %v\n", image.Tag, image.Status.Message)
-				}
-			}
+	if result.Status.Import != nil {
+		// TODO: dry-run doesn't return an image stream, so we have to display partial results
+		info, err := describe.DescribeImageStream(result.Status.Import)
+		if err != nil {
+			return err
 		}
+		fmt.Fprintln(o.out, info)
+	}
 
-		for _, image := range result.Status.Images {
+	if repo := result.Status.Repository; repo != nil {
+		for _, image := range repo.Images {
 			if image.Image != nil {
 				info, err := describe.DescribeImage(image.Image, imageapi.JoinImageStreamTag(stream.Name, image.Tag))
 				if err != nil {
@@ -226,54 +204,27 @@ func (o *ImportImageOptions) Run() error {
 					fmt.Fprintln(o.out, info)
 				}
 			} else {
-				fmt.Fprintf(o.errout, "error: tag %s failed: %v\n", image.Tag, image.Status.Message)
+				fmt.Fprintf(o.errout, "error: repository tag %s failed: %v\n", image.Tag, image.Status.Message)
 			}
 		}
+	}
 
-		if r := result.Status.Repository; r != nil && len(r.AdditionalTags) > 0 {
-			fmt.Fprintf(o.out, "\ninfo: The remote repository contained %d additional tags which were not imported: %s\n", len(r.AdditionalTags), strings.Join(r.AdditionalTags, ", "))
+	for _, image := range result.Status.Images {
+		if image.Image != nil {
+			info, err := describe.DescribeImage(image.Image, imageapi.JoinImageStreamTag(stream.Name, image.Tag))
+			if err != nil {
+				fmt.Fprintf(o.errout, "error: tag %s failed: %v\n", image.Tag, err)
+			} else {
+				fmt.Fprintln(o.out, info)
+			}
+		} else {
+			fmt.Fprintf(o.errout, "error: tag %s failed: %v\n", image.Tag, image.Status.Message)
 		}
-		return nil
 	}
 
-	// Legacy path, remove when support for older importers is removed
-	delete(stream.Annotations, imageapi.DockerImageRepositoryCheckAnnotation)
-	if o.Insecure != nil && *o.Insecure {
-		if stream.Annotations == nil {
-			stream.Annotations = make(map[string]string)
-		}
-		stream.Annotations[imageapi.InsecureRepositoryAnnotation] = "true"
+	if r := result.Status.Repository; r != nil && len(r.AdditionalTags) > 0 {
+		fmt.Fprintf(o.out, "\ninfo: The remote repository contained %d additional tags which were not imported: %s\n", len(r.AdditionalTags), strings.Join(r.AdditionalTags, ", "))
 	}
-
-	if stream.CreationTimestamp.IsZero() {
-		stream, err = o.isClient.Create(stream)
-	} else {
-		stream, err = o.isClient.Update(stream)
-	}
-	if err != nil {
-		return err
-	}
-
-	fmt.Fprintln(o.out, "Importing (ctrl+c to stop waiting) ...")
-
-	resourceVersion := stream.ResourceVersion
-	updatedStream, err := o.waitForImport(resourceVersion)
-	if err != nil {
-		if _, ok := err.(importError); ok {
-			return err
-		}
-		return fmt.Errorf("unable to determine if the import completed successfully - please run '%s describe -n %s imagestream/%s' to see if the tags were updated as expected: %v", o.CommandName, stream.Namespace, stream.Name, err)
-	}
-
-	fmt.Fprint(o.out, "The import completed successfully.\n\n")
-
-	d := describe.ImageStreamDescriber{ImageClient: o.imageClient}
-	info, err := d.Describe(updatedStream.Namespace, updatedStream.Name, kprinters.DescriberSettings{})
-	if err != nil {
-		return err
-	}
-
-	fmt.Fprintln(o.out, info)
 	return nil
 }
 
@@ -296,45 +247,6 @@ type importError struct {
 
 func (e importError) Error() string {
 	return fmt.Sprintf("unable to import image: %s", e.annotation)
-}
-
-func (o *ImportImageOptions) waitForImport(resourceVersion string) (*imageapi.ImageStream, error) {
-	streamWatch, err := o.isClient.Watch(metav1.ListOptions{FieldSelector: fields.OneTermEqualSelector("metadata.name", o.Name).String(), ResourceVersion: resourceVersion})
-	if err != nil {
-		return nil, err
-	}
-	defer streamWatch.Stop()
-
-	for {
-		select {
-		case event, ok := <-streamWatch.ResultChan():
-			if !ok {
-				return nil, fmt.Errorf("image stream watch ended prematurely")
-			}
-
-			switch event.Type {
-			case watch.Modified:
-				s, ok := event.Object.(*imageapi.ImageStream)
-				if !ok {
-					continue
-				}
-				annotation, ok := s.Annotations[imageapi.DockerImageRepositoryCheckAnnotation]
-				if !ok {
-					continue
-				}
-
-				if _, err := time.Parse(time.RFC3339, annotation); err == nil {
-					return s, nil
-				}
-				return nil, importError{annotation}
-
-			case watch.Deleted:
-				return nil, fmt.Errorf("the image stream was deleted")
-			case watch.Error:
-				return nil, fmt.Errorf("error watching image stream")
-			}
-		}
-	}
 }
 
 func (o *ImportImageOptions) createImageImport() (*imageapi.ImageStream, *imageapi.ImageStreamImport, error) {
@@ -593,28 +505,4 @@ func (o *ImportImageOptions) newImageStreamImportTags(stream *imageapi.ImageStre
 		})
 	}
 	return isi
-}
-
-// TransformUnsupportedError converts specific error conditions to unsupported
-func TransformUnsupportedError(err error) error {
-	if err == nil {
-		return nil
-	}
-	if errors.IsNotFound(err) {
-		status, ok := err.(errors.APIStatus)
-		if !ok {
-			return imageapi.ErrImageStreamImportUnsupported
-		}
-		if status.Status().Details == nil || status.Status().Details.Kind == "" {
-			return imageapi.ErrImageStreamImportUnsupported
-		}
-	}
-	// The ImageStreamImport resource exists in v1.1.1 of origin but is not yet
-	// enabled by policy. A create request will return a Forbidden(403) error.
-	// We want to return ErrImageStreamImportUnsupported to allow fallback behavior
-	// in clients.
-	if errors.IsForbidden(err) && !quotautil.IsErrorQuotaExceeded(err) {
-		return imageapi.ErrImageStreamImportUnsupported
-	}
-	return err
 }

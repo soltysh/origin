@@ -17,11 +17,11 @@ import (
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	imageapi "github.com/openshift/origin/pkg/image/apis/image"
 	imageclientinternal "github.com/openshift/origin/pkg/image/generated/internalclientset"
 	imageclient "github.com/openshift/origin/pkg/image/generated/internalclientset/typed/image/internalversion"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 )
 
 // TagOptions contains all the necessary options for the cli tag command.
@@ -84,7 +84,7 @@ const (
 )
 
 // NewCmdTag implements the OpenShift cli tag command.
-func NewCmdTag(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
+func NewCmdTag(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	opts := &TagOptions{}
 
 	cmd := &cobra.Command{
@@ -93,7 +93,7 @@ func NewCmdTag(fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Comm
 		Long:    tagLong,
 		Example: fmt.Sprintf(tagExample, fullName),
 		Run: func(cmd *cobra.Command, args []string) {
-			kcmdutil.CheckErr(opts.Complete(f, cmd, args, out))
+			kcmdutil.CheckErr(opts.Complete(f, cmd, args, streams.Out))
 			kcmdutil.CheckErr(opts.Validate())
 			kcmdutil.CheckErr(opts.Run())
 		},
@@ -133,24 +133,27 @@ func parseStreamName(defaultNamespace, name string) (string, string, error) {
 	return namespace, streamName, nil
 }
 
-func determineSourceKind(f *clientcmd.Factory, input string) string {
-	mapper, _ := f.Object()
+func determineSourceKind(f kcmdutil.Factory, input string) (string, error) {
+	mapper, err := f.ToRESTMapper()
+	if err != nil {
+		return "", err
+	}
 	gvks, err := mapper.KindsFor(schema.GroupVersionResource{Group: imageapi.GroupName, Resource: input})
 	if err == nil {
-		return gvks[0].Kind
+		return gvks[0].Kind, nil
 	}
 
 	// DockerImage isn't in RESTMapper
 	switch strings.ToLower(input) {
 	case "docker", "dockerimage":
-		return "DockerImage"
+		return "DockerImage", nil
 	}
 
-	return input
+	return input, nil
 }
 
 // Complete completes all the required options for the tag command.
-func (o *TagOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, args []string, out io.Writer) error {
+func (o *TagOptions) Complete(f kcmdutil.Factory, cmd *cobra.Command, args []string, out io.Writer) error {
 	if len(args) < 2 && (len(args) < 1 && !o.deleteTag) {
 		return kcmdutil.UsageErrorf(cmd, "you must specify a source and at least one destination or one or more tags to delete")
 	}
@@ -159,7 +162,7 @@ func (o *TagOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, args []s
 	o.out = out
 
 	// Setup clients.
-	clientConfig, err := f.ClientConfig()
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
@@ -172,7 +175,7 @@ func (o *TagOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, args []s
 
 	// Setup namespace.
 	if len(o.namespace) == 0 {
-		o.namespace, _, err = f.DefaultNamespace()
+		o.namespace, _, err = f.ToRawKubeConfigLoader().Namespace()
 		if err != nil {
 			return err
 		}
@@ -185,7 +188,10 @@ func (o *TagOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, args []s
 
 		sourceKind := o.sourceKind
 		if len(sourceKind) > 0 {
-			sourceKind = determineSourceKind(f, sourceKind)
+			sourceKind, err = determineSourceKind(f, sourceKind)
+			if err != nil {
+				return err
+			}
 		}
 		if len(sourceKind) > 0 {
 			validSources := sets.NewString("imagestreamtag", "istag", "imagestreamimage", "isimage", "docker", "dockerimage")

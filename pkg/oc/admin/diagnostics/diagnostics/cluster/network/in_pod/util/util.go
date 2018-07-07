@@ -10,13 +10,14 @@ import (
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	kubecmd "k8s.io/kubernetes/pkg/kubectl/cmd"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	"github.com/openshift/origin/pkg/cmd/util/variable"
 	"github.com/openshift/origin/pkg/network"
 	networkapi "github.com/openshift/origin/pkg/network/apis/network"
 	networktypedclient "github.com/openshift/origin/pkg/network/generated/internalclientset/typed/network/internalversion"
-	osclientcmd "github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	"github.com/openshift/origin/pkg/util/netutils"
+	"github.com/openshift/origin/pkg/version"
 )
 
 const (
@@ -37,15 +38,23 @@ const (
 	NetworkDiagDefaultTestPodPort     = 8080
 )
 
-func GetNetworkDiagDefaultPodImage() string {
+func getImageFromTemplate(name string) string {
 	imageTemplate := variable.NewDefaultImageTemplate()
-	imageTemplate.Format = variable.DefaultImagePrefix + ":${version}"
-	return imageTemplate.ExpandOrDie("")
+	imageTemplate.Format = variable.Expand(imageTemplate.Format, func(s string) (string, bool) {
+		if s == "version" {
+			return strings.TrimRight("v"+version.Get().Major+"."+version.Get().Minor, "+"), true
+		}
+		return "", false
+	}, variable.Identity)
+	return imageTemplate.ExpandOrDie(name)
+}
+
+func GetNetworkDiagDefaultPodImage() string {
+	return getImageFromTemplate("control-plane")
 }
 
 func GetNetworkDiagDefaultTestPodImage() string {
-	imageTemplate := variable.NewDefaultImageTemplate()
-	return imageTemplate.ExpandOrDie("deployer")
+	return getImageFromTemplate("deployer")
 }
 
 func GetOpenShiftNetworkPlugin(clusterNetworkClient networktypedclient.ClusterNetworksGetter) (string, bool, error) {
@@ -193,12 +202,12 @@ func ExpectedConnectionStatus(ns1, ns2 string, vnidMap map[string]uint32) bool {
 }
 
 // Execute() will run a command in a pod and streams the out/err
-func Execute(factory *osclientcmd.Factory, command []string, pod *kapi.Pod, in io.Reader, out, errOut io.Writer) error {
-	config, err := factory.ClientConfig()
+func Execute(restClientGetter genericclioptions.RESTClientGetter, command []string, pod *kapi.Pod, in io.Reader, out, errOut io.Writer) error {
+	config, err := restClientGetter.ToRESTConfig()
 	if err != nil {
 		return err
 	}
-	client, err := factory.ClientSet()
+	client, err := kclientset.NewForConfig(config)
 	if err != nil {
 		return err
 	}
@@ -208,10 +217,12 @@ func Execute(factory *osclientcmd.Factory, command []string, pod *kapi.Pod, in i
 			Namespace:     pod.Namespace,
 			PodName:       pod.Name,
 			ContainerName: pod.Name,
-			In:            in,
-			Out:           out,
-			Err:           errOut,
-			Stdin:         in != nil,
+			IOStreams: genericclioptions.IOStreams{
+				In:     in,
+				Out:    out,
+				ErrOut: errOut,
+			},
+			Stdin: in != nil,
 		},
 		Executor:  &kubecmd.DefaultRemoteExecutor{},
 		PodClient: client.Core(),

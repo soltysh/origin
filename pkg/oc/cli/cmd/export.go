@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/openshift/origin/pkg/oc/util/ocscheme"
 	"github.com/spf13/cobra"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -12,12 +13,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
+	kapi "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
 	kprinters "k8s.io/kubernetes/pkg/printers"
 
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	templateapi "github.com/openshift/origin/pkg/template/apis/template"
 )
 
@@ -50,7 +52,7 @@ var (
 	  %[1]s export service -o json`)
 )
 
-func NewCmdExport(fullName string, f *clientcmd.Factory, in io.Reader, out io.Writer) *cobra.Command {
+func NewCmdExport(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	exporter := &DefaultExporter{}
 	var filenames []string
 	cmd := &cobra.Command{
@@ -61,7 +63,7 @@ func NewCmdExport(fullName string, f *clientcmd.Factory, in io.Reader, out io.Wr
 		Deprecated: "use the oc get --export",
 		Hidden:     true,
 		Run: func(cmd *cobra.Command, args []string) {
-			err := RunExport(f, exporter, in, out, cmd, args, filenames)
+			err := RunExport(f, exporter, streams.In, streams.Out, cmd, args, filenames)
 			if err == kcmdutil.ErrExit {
 				os.Exit(1)
 			}
@@ -82,7 +84,7 @@ func NewCmdExport(fullName string, f *clientcmd.Factory, in io.Reader, out io.Wr
 	return cmd
 }
 
-func RunExport(f *clientcmd.Factory, exporter Exporter, in io.Reader, out io.Writer, cmd *cobra.Command, args []string, filenames []string) error {
+func RunExport(f kcmdutil.Factory, exporter Exporter, in io.Reader, out io.Writer, cmd *cobra.Command, args []string, filenames []string) error {
 	selector := kcmdutil.GetFlagString(cmd, "selector")
 	allNamespaces := kcmdutil.GetFlagBool(cmd, "all-namespaces")
 	exact := kcmdutil.GetFlagBool(cmd, "exact")
@@ -92,7 +94,7 @@ func RunExport(f *clientcmd.Factory, exporter Exporter, in io.Reader, out io.Wri
 		return kcmdutil.UsageErrorf(cmd, "--exact and --raw may not both be specified")
 	}
 
-	clientConfig, err := f.ClientConfig()
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
@@ -108,7 +110,7 @@ func RunExport(f *clientcmd.Factory, exporter Exporter, in io.Reader, out io.Wri
 		}
 	}
 
-	cmdNamespace, explicit, err := f.DefaultNamespace()
+	cmdNamespace, explicit, err := f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return err
 	}
@@ -138,7 +140,7 @@ func RunExport(f *clientcmd.Factory, exporter Exporter, in io.Reader, out io.Wri
 			converted := false
 
 			// convert unstructured object to runtime.Object
-			data, err := runtime.Encode(legacyscheme.Codecs.LegacyCodec(), info.Object)
+			data, err := runtime.Encode(legacyscheme.Codecs.LegacyCodec(ocscheme.PrintingInternalScheme.PrioritizedVersionsAllGroups()...), info.Object)
 			if err != nil {
 				errs = append(errs, err)
 				continue
@@ -163,7 +165,10 @@ func RunExport(f *clientcmd.Factory, exporter Exporter, in io.Reader, out io.Wri
 			// If object cannot be converted to an external version, ignore error and proceed with
 			// internal version.
 			if converted {
-				if data, err = runtime.Encode(legacyscheme.Codecs.LegacyCodec(outputVersion), info.Object); err == nil {
+				if data, err = runtime.Encode(
+					legacyscheme.Codecs.LegacyCodec(
+						append([]schema.GroupVersion{outputVersion}, ocscheme.PrintingInternalScheme.PrioritizedVersionsAllGroups()...)...,
+					), info.Object); err == nil {
 					external, err := runtime.Decode(legacyscheme.Codecs.UniversalDeserializer(), data)
 					if err != nil {
 						errs = append(errs, fmt.Errorf("error: failed to convert resource to external version: %v", err))
@@ -181,27 +186,24 @@ func RunExport(f *clientcmd.Factory, exporter Exporter, in io.Reader, out io.Wri
 		infos = newInfos
 	}
 
-	var result runtime.Object
+	objects := []runtime.Object{}
+	for i := range infos {
+		objects = append(objects, infos[i].Object)
+	}
+	var result runtime.Object = &kapi.List{
+		Items: objects,
+	}
+	if len(objects) == 1 {
+		result = objects[0]
+	}
 	if len(asTemplate) > 0 {
-		objects, err := clientcmd.AsVersionedObjects(infos, outputVersion, legacyscheme.Codecs.LegacyCodec(outputVersion))
-		if err != nil {
-			return err
-		}
 		template := &templateapi.Template{
 			Objects: objects,
 		}
 		template.Name = asTemplate
-		result, err = legacyscheme.Scheme.ConvertToVersion(template, outputVersion)
-		if err != nil {
-			return err
-		}
-	} else {
-		object, err := clientcmd.AsVersionedObject(infos, !one, outputVersion, legacyscheme.Codecs.LegacyCodec(outputVersion))
-		if err != nil {
-			return err
-		}
-		result = object
+		result = template
 	}
+	result = kcmdutil.AsDefaultVersionedOrOriginal(result, nil)
 
 	// use YAML as the default format
 	outputFormat := kcmdutil.GetFlagString(cmd, "output")
@@ -218,9 +220,8 @@ func RunExport(f *clientcmd.Factory, exporter Exporter, in io.Reader, out io.Wri
 	printOpts.OutputFormatArgument = templateFile
 	printOpts.AllowMissingKeys = kcmdutil.GetFlagBool(cmd, "allow-missing-template-keys")
 
-	_, typer := f.Object()
 	p, err := kprinters.GetStandardPrinter(
-		typer, legacyscheme.Codecs.LegacyCodec(outputVersion), decoders, *printOpts)
+		legacyscheme.Scheme, legacyscheme.Codecs.LegacyCodec(append([]schema.GroupVersion{outputVersion}, ocscheme.PrintingInternalScheme.PrioritizedVersionsAllGroups()...)...), decoders, *printOpts)
 
 	if err != nil {
 		return err

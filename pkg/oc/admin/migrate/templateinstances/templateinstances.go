@@ -12,10 +12,9 @@ import (
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
 
 	"github.com/openshift/origin/pkg/oc/admin/migrate"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	templateapi "github.com/openshift/origin/pkg/template/apis/template"
 	templateclientset "github.com/openshift/origin/pkg/template/generated/internalclientset"
 	templateinternalclient "github.com/openshift/origin/pkg/template/generated/internalclientset/typed/template/internalversion"
@@ -78,7 +77,7 @@ type MigrateTemplateInstancesOptions struct {
 }
 
 // NewCmdMigrateTemplateInstancesAPI implements a MigrateTemplateInstances command
-func NewCmdMigrateTemplateInstances(name, fullName string, f *clientcmd.Factory, in io.Reader, out, errout io.Writer) *cobra.Command {
+func NewCmdMigrateTemplateInstances(name, fullName string, f kcmdutil.Factory, in io.Reader, out, errout io.Writer) *cobra.Command {
 	options := &MigrateTemplateInstancesOptions{
 		ResourceOptions: migrate.ResourceOptions{
 			Out:    out,
@@ -105,7 +104,7 @@ func NewCmdMigrateTemplateInstances(name, fullName string, f *clientcmd.Factory,
 	return cmd
 }
 
-func (o *MigrateTemplateInstancesOptions) Complete(name string, f *clientcmd.Factory, c *cobra.Command, args []string) error {
+func (o *MigrateTemplateInstancesOptions) Complete(name string, f kcmdutil.Factory, c *cobra.Command, args []string) error {
 	if len(args) != 0 {
 		return fmt.Errorf("%s takes no positional arguments", name)
 	}
@@ -115,7 +114,7 @@ func (o *MigrateTemplateInstancesOptions) Complete(name string, f *clientcmd.Fac
 		return err
 	}
 
-	clientConfig, err := f.ClientConfig()
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}

@@ -6,14 +6,12 @@ import (
 	"strings"
 	"testing"
 
+	securityapi "github.com/openshift/origin/pkg/security/apis/security"
+	sccutil "github.com/openshift/origin/pkg/security/securitycontextconstraints/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	api "k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/apis/extensions"
-
-	securityapi "github.com/openshift/origin/pkg/security/apis/security"
-	sccutil "github.com/openshift/origin/pkg/security/securitycontextconstraints/util"
 )
 
 func TestCreatePodSecurityContextNonmutating(t *testing.T) {
@@ -179,18 +177,6 @@ func TestValidatePodSecurityContextFailures(t *testing.T) {
 	failInvalidSeccompProfileSCC := defaultSCC()
 	failInvalidSeccompProfileSCC.SeccompProfiles = []string{"foo"}
 
-	failOtherSysctlsAllowedSCC := defaultSCC()
-	failOtherSysctlsAllowedSCC.Annotations[extensions.SysctlsPodSecurityPolicyAnnotationKey] = "bar,abc"
-
-	failNoSysctlAllowedSCC := defaultSCC()
-	failNoSysctlAllowedSCC.Annotations[extensions.SysctlsPodSecurityPolicyAnnotationKey] = ""
-
-	failSafeSysctlFooPod := defaultPod()
-	failSafeSysctlFooPod.Annotations[api.SysctlsPodAnnotationKey] = "foo=1"
-
-	failUnsafeSysctlFooPod := defaultPod()
-	failUnsafeSysctlFooPod.Annotations[api.UnsafeSysctlsPodAnnotationKey] = "foo=1"
-
 	failHostDirPod := defaultPod()
 	failHostDirPod.Spec.Volumes = []api.Volume{
 		{
@@ -272,26 +258,6 @@ func TestValidatePodSecurityContextFailures(t *testing.T) {
 			pod:           failInvalidSeccompProfile,
 			scc:           failInvalidSeccompProfileSCC,
 			expectedError: "bar is not a valid seccomp profile",
-		},
-		"failSafeSysctlFooPod with failNoSysctlAllowedSCC": {
-			pod:           failSafeSysctlFooPod,
-			scc:           failNoSysctlAllowedSCC,
-			expectedError: "sysctls are not allowed",
-		},
-		"failUnsafeSysctlFooPod with failNoSysctlAllowedSCC": {
-			pod:           failUnsafeSysctlFooPod,
-			scc:           failNoSysctlAllowedSCC,
-			expectedError: "sysctls are not allowed",
-		},
-		"failSafeSysctlFooPod with failOtherSysctlsAllowedSCC": {
-			pod:           failSafeSysctlFooPod,
-			scc:           failOtherSysctlsAllowedSCC,
-			expectedError: "sysctl \"foo\" is not allowed",
-		},
-		"failUnsafeSysctlFooPod with failOtherSysctlsAllowedSCC": {
-			pod:           failUnsafeSysctlFooPod,
-			scc:           failOtherSysctlsAllowedSCC,
-			expectedError: "sysctl \"foo\" is not allowed",
 		},
 		"failHostDirSCC": {
 			pod:           failHostDirPod,
@@ -516,15 +482,6 @@ func TestValidatePodSecurityContextSuccess(t *testing.T) {
 	seccompFooPod := defaultPod()
 	seccompFooPod.Annotations[api.SeccompPodAnnotationKey] = "foo"
 
-	sysctlAllowFooSCC := defaultSCC()
-	sysctlAllowFooSCC.Annotations[extensions.SysctlsPodSecurityPolicyAnnotationKey] = "foo"
-
-	safeSysctlFooPod := defaultPod()
-	safeSysctlFooPod.Annotations[api.SysctlsPodAnnotationKey] = "foo=1"
-
-	unsafeSysctlFooPod := defaultPod()
-	unsafeSysctlFooPod.Annotations[api.UnsafeSysctlsPodAnnotationKey] = "foo=1"
-
 	flexVolumePod := defaultPod()
 	flexVolumePod.Spec.Volumes = []api.Volume{
 		{
@@ -580,22 +537,6 @@ func TestValidatePodSecurityContextSuccess(t *testing.T) {
 		"pass seccomp specific profile": {
 			pod: seccompFooPod,
 			scc: seccompAllowFooSCC,
-		},
-		"pass sysctl specific profile with safe sysctl": {
-			pod: safeSysctlFooPod,
-			scc: sysctlAllowFooSCC,
-		},
-		"pass sysctl specific profile with unsafe sysctl": {
-			pod: unsafeSysctlFooPod,
-			scc: sysctlAllowFooSCC,
-		},
-		"pass empty profile with safe sysctl": {
-			pod: safeSysctlFooPod,
-			scc: defaultSCC(),
-		},
-		"pass empty profile with unsafe sysctl": {
-			pod: unsafeSysctlFooPod,
-			scc: defaultSCC(),
 		},
 		"flex volume driver in a whitelist (all volumes are allowed)": {
 			pod: flexVolumePod,
@@ -895,7 +836,7 @@ func defaultPod() *api.Pod {
 		ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{}},
 		Spec: api.PodSpec{
 			SecurityContext: &api.PodSecurityContext{
-			// fill in for test cases
+				// fill in for test cases
 			},
 			Containers: []api.Container{
 				{
@@ -991,5 +932,62 @@ func TestValidateAllowedVolumes(t *testing.T) {
 		if len(errs) != 0 {
 			t.Errorf("wildcard volume expected no errors for %s but got %v", fieldVal.Name, errs)
 		}
+	}
+}
+
+// TestValidateAllowPrivilegeEscalation will test that when the SecurityContextConstraints
+// AllowPrivilegeEscalation is false we cannot set a container's securityContext
+// to allowPrivilegeEscalation, but when it is true we can.
+func TestValidateAllowPrivilegeEscalation(t *testing.T) {
+	yes := true
+	no := false
+
+	pod := defaultPod()
+	pod.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation = &yes
+
+	// create a SCC that does not allow privilege escalation
+	scc := defaultSCC()
+	scc.AllowPrivilegeEscalation = &no
+
+	provider, err := NewSimpleProvider(scc)
+	if err != nil {
+		t.Errorf("error creating provider: %v", err.Error())
+	}
+
+	// expect a denial for this SCC and test the error message to ensure it's related to allowPrivilegeEscalation
+	errs := provider.ValidateContainerSecurityContext(pod, &pod.Spec.Containers[0], field.NewPath(""))
+	if len(errs) != 1 {
+		t.Errorf("expected exactly 1 error but got %v", errs)
+	} else {
+		if !strings.Contains(errs.ToAggregate().Error(), "Allowing privilege escalation for containers is not allowed") {
+			t.Errorf("did not find the expected error, received: %v", errs)
+		}
+	}
+
+	// Now set AllowPrivilegeEscalation
+	scc.AllowPrivilegeEscalation = &yes
+	errs = provider.ValidateContainerSecurityContext(pod, &pod.Spec.Containers[0], field.NewPath(""))
+	if len(errs) != 0 {
+		t.Errorf("directly allowing privilege escalation expected no errors but got %v", errs)
+	}
+
+	// Now set the scc spec to false and reset AllowPrivilegeEscalation
+	scc.AllowPrivilegeEscalation = &no
+	pod.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation = nil
+	errs = provider.ValidateContainerSecurityContext(pod, &pod.Spec.Containers[0], field.NewPath(""))
+	if len(errs) != 1 {
+		t.Errorf("expected exactly 1 error but got %v", errs)
+	} else {
+		if !strings.Contains(errs.ToAggregate().Error(), "Allowing privilege escalation for containers is not allowed") {
+			t.Errorf("did not find the expected error, received: %v", errs)
+		}
+	}
+
+	// Now unset both AllowPrivilegeEscalation
+	scc.AllowPrivilegeEscalation = &yes
+	pod.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation = nil
+	errs = provider.ValidateContainerSecurityContext(pod, &pod.Spec.Containers[0], field.NewPath(""))
+	if len(errs) != 0 {
+		t.Errorf("resetting allowing privilege escalation expected no errors but got %v", errs)
 	}
 }

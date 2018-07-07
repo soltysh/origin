@@ -20,7 +20,6 @@ import (
 	authorizationapi "github.com/openshift/origin/pkg/authorization/apis/authorization"
 	authorizationclientinternal "github.com/openshift/origin/pkg/authorization/generated/internalclientset"
 	oauthorizationtypedclient "github.com/openshift/origin/pkg/authorization/generated/internalclientset/typed/authorization/internalversion"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 )
 
 const CanIRecommendedName = "can-i"
@@ -47,7 +46,7 @@ type canIOptions struct {
 	Out io.Writer
 }
 
-func NewCmdCanI(name, fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
+func NewCmdCanI(name, fullName string, f kcmdutil.Factory, out io.Writer) *cobra.Command {
 	o := &canIOptions{
 		Out: out,
 	}
@@ -95,7 +94,7 @@ const (
 	tabwriterFlags    = 0
 )
 
-func (o *canIOptions) Complete(cmd *cobra.Command, f *clientcmd.Factory, args []string) error {
+func (o *canIOptions) Complete(cmd *cobra.Command, f kcmdutil.Factory, args []string) error {
 	if o.ListAll && o.AllNamespaces {
 		return errors.New("--list and --all-namespaces are mutually exclusive")
 	}
@@ -112,7 +111,10 @@ func (o *canIOptions) Complete(cmd *cobra.Command, f *clientcmd.Factory, args []
 		if o.ListAll {
 			return errors.New("VERB RESOURCE and --list are mutually exclusive")
 		}
-		restMapper, _ := f.Object()
+		restMapper, err := f.ToRESTMapper()
+		if err != nil {
+			return err
+		}
 		o.Verb = args[0]
 		o.Resource = resourceFor(restMapper, args[1])
 	default:
@@ -121,7 +123,7 @@ func (o *canIOptions) Complete(cmd *cobra.Command, f *clientcmd.Factory, args []
 		}
 	}
 
-	clientConfig, err := f.ClientConfig()
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
@@ -142,7 +144,7 @@ func (o *canIOptions) Complete(cmd *cobra.Command, f *clientcmd.Factory, args []
 
 	o.Namespace = metav1.NamespaceAll
 	if !o.AllNamespaces {
-		o.Namespace, _, err = f.DefaultNamespace()
+		o.Namespace, _, err = f.ToRawKubeConfigLoader().Namespace()
 		if err != nil {
 			return err
 		}

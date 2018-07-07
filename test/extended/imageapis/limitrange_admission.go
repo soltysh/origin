@@ -21,13 +21,16 @@ import (
 
 const limitRangeName = "limits"
 
-var _ = g.Describe("[Feature:ImageQuota][registry][Serial] Image limit range", func() {
+var _ = g.Describe("[Feature:ImageQuota][registry][Serial][Suite:openshift/registry/serial][local] Image limit range", func() {
 	defer g.GinkgoRecover()
 	var oc = exutil.NewCLI("limitrange-admission", exutil.KubeConfigPath())
 
 	g.JustBeforeEach(func() {
-		g.By("Waiting for builder service account")
-		err := exutil.WaitForBuilderAccount(oc.KubeClient().Core().ServiceAccounts(oc.Namespace()))
+		g.By("waiting for default service account")
+		err := exutil.WaitForServiceAccount(oc.KubeClient().Core().ServiceAccounts(oc.Namespace()), "default")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("waiting for builder service account")
+		err = exutil.WaitForServiceAccount(oc.KubeClient().Core().ServiceAccounts(oc.Namespace()), "builder")
 		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 

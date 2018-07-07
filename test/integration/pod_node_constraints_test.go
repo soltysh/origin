@@ -5,6 +5,7 @@ import (
 
 	kapierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
 	"k8s.io/kubernetes/pkg/apis/batch"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/extensions"
@@ -12,7 +13,6 @@ import (
 
 	appsapi "github.com/openshift/origin/pkg/apps/apis/apps"
 	appsclient "github.com/openshift/origin/pkg/apps/generated/internalclientset"
-	authorizationclient "github.com/openshift/origin/pkg/authorization/generated/internalclientset"
 	configapi "github.com/openshift/origin/pkg/cmd/server/apis/config"
 	"github.com/openshift/origin/pkg/cmd/server/bootstrappolicy"
 	policy "github.com/openshift/origin/pkg/oc/admin/policy"
@@ -127,10 +127,10 @@ func setupUserPodNodeConstraintsTest(t *testing.T, pluginConfig *pluginapi.PodNo
 		t.Fatalf("unexpected error: %v", err)
 	}
 	addUser := &policy.RoleModificationOptions{
-		RoleNamespace:       ns.Name,
-		RoleName:            bootstrappolicy.AdminRoleName,
-		RoleBindingAccessor: policy.NewClusterRoleBindingAccessor(authorizationclient.NewForConfigOrDie(clusterAdminClientConfig).Authorization()),
-		Users:               []string{user},
+		RoleName:   bootstrappolicy.AdminRoleName,
+		RoleKind:   "ClusterRole",
+		RbacClient: rbacv1client.NewForConfigOrDie(clusterAdminClientConfig),
+		Users:      []string{user},
 	}
 	if err := addUser.AddRole(); err != nil {
 		t.Fatalf("unexpected error: %v", err)

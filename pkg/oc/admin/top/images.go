@@ -6,12 +6,13 @@ import (
 	"sort"
 	"strings"
 
-	units "github.com/docker/go-units"
+	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
+	kinternalclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 
@@ -19,7 +20,6 @@ import (
 	buildapi "github.com/openshift/origin/pkg/build/apis/build"
 	imageapi "github.com/openshift/origin/pkg/image/apis/image"
 	imageclientinternal "github.com/openshift/origin/pkg/image/generated/internalclientset"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	"github.com/openshift/origin/pkg/oc/graph/genericgraph"
 	imagegraph "github.com/openshift/origin/pkg/oc/graph/imagegraph/nodes"
 	kubegraph "github.com/openshift/origin/pkg/oc/graph/kubegraph/nodes"
@@ -43,7 +43,7 @@ var (
 )
 
 // NewCmdTopImages implements the OpenShift cli top images command.
-func NewCmdTopImages(f *clientcmd.Factory, parentName, name string, out io.Writer) *cobra.Command {
+func NewCmdTopImages(f kcmdutil.Factory, parentName, name string, out io.Writer) *cobra.Command {
 	opts := &TopImagesOptions{}
 	cmd := &cobra.Command{
 		Use:     name,
@@ -72,13 +72,12 @@ type TopImagesOptions struct {
 
 // Complete turns a partially defined TopImagesOptions into a solvent structure
 // which can be validated and used for showing limits usage.
-func (o *TopImagesOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, args []string, out io.Writer) error {
-	kClient, err := f.ClientSet()
+func (o *TopImagesOptions) Complete(f kcmdutil.Factory, cmd *cobra.Command, args []string, out io.Writer) error {
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
-
-	clientConfig, err := f.ClientConfig()
+	kClient, err := kinternalclientset.NewForConfig(clientConfig)
 	if err != nil {
 		return err
 	}

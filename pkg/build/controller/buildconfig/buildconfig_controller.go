@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/openshift/origin/pkg/build/buildscheme"
 	clientv1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,7 +17,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	kcontroller "k8s.io/kubernetes/pkg/controller"
 
@@ -84,7 +84,7 @@ func NewBuildConfigController(buildInternalClient buildinternalclient.Interface,
 		buildConfigInformer: buildConfigInformer.Informer(),
 
 		queue:    workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
-		recorder: eventBroadcaster.NewRecorder(legacyscheme.Scheme, clientv1.EventSource{Component: "buildconfig-controller"}),
+		recorder: eventBroadcaster.NewRecorder(buildscheme.EncoderScheme, clientv1.EventSource{Component: "buildconfig-controller"}),
 	}
 
 	c.buildConfigInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -100,7 +100,7 @@ func (c *BuildConfigController) handleBuildConfig(bc *buildapi.BuildConfig) erro
 	glog.V(4).Infof("Handling BuildConfig %s", bcDesc(bc))
 
 	if err := buildutil.HandleBuildPruning(bc.Name, bc.Namespace, c.buildLister, c.buildConfigGetter, c.buildDeleter); err != nil {
-		utilruntime.HandleError(err)
+		utilruntime.HandleError(fmt.Errorf("failed to prune builds for %s/%s: %v", bc.Namespace, bc.Name, err))
 	}
 
 	hasChangeTrigger := buildapi.HasTriggerType(buildapi.ConfigChangeBuildTriggerType, bc)

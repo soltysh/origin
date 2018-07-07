@@ -158,6 +158,7 @@
     "allowedImportPackageRoots": [
       "vendor/k8s.io/apimachinery",
       "github.com/openshift/origin/pkg/image/apis/image/internal",
+      "github.com/openshift/origin/pkg/image/apis/image/reference",
       "vendor/k8s.io/api",
       "vendor/github.com/openshift/api",
       "github.com/openshift/origin/pkg/api/apihelpers"
@@ -315,9 +316,7 @@
       "vendor/golang.org",
       "vendor/github.com/openshift/api",
       "vendor/github.com/openshift/client-go",
-      "github.com/openshift/origin/pkg/bulk",
-      "github.com/openshift/origin/pkg/template/servicebroker",
-      "github.com/openshift/origin/pkg/util/rest"
+      "github.com/openshift/origin/pkg/template/servicebroker"
     ],
     "allowedImportPackages": [
       "vendor/github.com/golang/glog",
@@ -325,7 +324,6 @@
       "vendor/k8s.io/api/authorization/v1",
       "vendor/k8s.io/kubernetes/pkg/apis/core",
       "vendor/k8s.io/kubernetes/pkg/apis/core/install",
-      "vendor/k8s.io/kubernetes/pkg/api/legacyscheme",
       "vendor/github.com/emicklei/go-restful",
       "vendor/github.com/lestrrat/go-jsschema",
       "vendor/k8s.io/kubernetes/pkg/controller",
@@ -441,6 +439,7 @@
       "github.com/openshift/origin/pkg/template/generated"
     ],
     "allowedImportPackages": [
+      "github.com/openshift/origin/pkg/api/legacy",
       "github.com/openshift/origin/pkg/api",
       "github.com/openshift/origin/pkg/api/apihelpers",
       "github.com/openshift/origin/pkg/api/install",
@@ -455,7 +454,6 @@
       "github.com/openshift/origin/pkg/apps/util",
       "github.com/openshift/origin/pkg/authorization/apis/authorization",
       "github.com/openshift/origin/pkg/authorization/apis/authorization/install",
-      "github.com/openshift/origin/pkg/authorization/registry/util",
       "github.com/openshift/origin/pkg/authorization/util",
       "github.com/openshift/origin/pkg/build/apis/build",
       "github.com/openshift/origin/pkg/build/apis/build/install",
@@ -465,7 +463,11 @@
       "github.com/openshift/origin/pkg/bulk",
       "github.com/openshift/origin/pkg/client/config",
       "github.com/openshift/origin/pkg/cmd/flagtypes",
+      "github.com/openshift/origin/pkg/cmd/infra/builder",
+      "github.com/openshift/origin/pkg/cmd/infra/deployer",
+      "github.com/openshift/origin/pkg/cmd/infra/router",
       "github.com/openshift/origin/pkg/cmd/openshift-operators/generated/clientset/versioned",
+      "github.com/openshift/origin/pkg/cmd/recycle",
       "github.com/openshift/origin/pkg/cmd/server/admin",
       "github.com/openshift/origin/pkg/cmd/server/apis/config",
       "github.com/openshift/origin/pkg/cmd/server/apis/config/install",
@@ -476,7 +478,6 @@
       "github.com/openshift/origin/pkg/cmd/templates",
       "github.com/openshift/origin/pkg/cmd/util",
       "github.com/openshift/origin/pkg/cmd/util/print",
-      "github.com/openshift/origin/pkg/cmd/util/route",
       "github.com/openshift/origin/pkg/cmd/util/term",
       "github.com/openshift/origin/pkg/cmd/util/variable",
       "github.com/openshift/origin/pkg/git",
@@ -505,7 +506,6 @@
       "github.com/openshift/origin/pkg/project/registry/projectrequest/delegated",
       "github.com/openshift/origin/pkg/project/util",
       "github.com/openshift/origin/pkg/quota/apis/quota",
-      "github.com/openshift/origin/pkg/quota/util",
       "github.com/openshift/origin/pkg/route/apis/route",
       "github.com/openshift/origin/pkg/route/apis/route/validation",
       "github.com/openshift/origin/pkg/route/generator",
@@ -551,5 +551,15 @@
       "vendor/k8s.io/kubernetes/pkg/registry/rbac/reconciliation",
       "vendor/k8s.io/kubernetes/pkg/registry/rbac/validation"
     ]
+  },
+
+  {
+  "checkedPackageRoots": [
+    "github.com/openshift/origin"
+  ],
+  "forbiddenImportPackageRoots": [
+    "k8s.io/kubernetes/staging"
+  ]
   }
+
 ]

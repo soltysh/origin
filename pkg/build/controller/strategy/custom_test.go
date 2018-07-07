@@ -10,20 +10,19 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	kapihelper "k8s.io/kubernetes/pkg/apis/core/helper"
 
+	buildapiv1 "github.com/openshift/api/build/v1"
 	buildapi "github.com/openshift/origin/pkg/build/apis/build"
 	_ "github.com/openshift/origin/pkg/build/apis/build/install"
 	"github.com/openshift/origin/pkg/build/util"
 )
 
 func TestCustomCreateBuildPod(t *testing.T) {
-	strategy := CustomBuildStrategy{
-		Codec: legacyscheme.Codecs.LegacyCodec(buildapi.LegacySchemeGroupVersion),
-	}
+	strategy := CustomBuildStrategy{}
 
 	expectedBad := mockCustomBuild(false, false)
 	expectedBad.Spec.Strategy.CustomStrategy.From = kapi.ObjectReference{
@@ -60,8 +59,8 @@ func TestCustomCreateBuildPod(t *testing.T) {
 	if actual.Spec.RestartPolicy != v1.RestartPolicyNever {
 		t.Errorf("Expected never, got %#v", actual.Spec.RestartPolicy)
 	}
-	if len(container.VolumeMounts) != 3 {
-		t.Fatalf("Expected 3 volumes in container, got %d", len(container.VolumeMounts))
+	if len(container.VolumeMounts) != 4 {
+		t.Fatalf("Expected 4 volumes in container, got %d", len(container.VolumeMounts))
 	}
 	if *actual.Spec.ActiveDeadlineSeconds != 60 {
 		t.Errorf("Expected ActiveDeadlineSeconds 60, got %d", *actual.Spec.ActiveDeadlineSeconds)
@@ -74,10 +73,10 @@ func TestCustomCreateBuildPod(t *testing.T) {
 	if !kapihelper.Semantic.DeepEqual(container.Resources, util.CopyApiResourcesToV1Resources(&build.Spec.Resources)) {
 		t.Fatalf("Expected actual=expected, %v != %v", container.Resources, build.Spec.Resources)
 	}
-	if len(actual.Spec.Volumes) != 3 {
-		t.Fatalf("Expected 3 volumes in Build pod, got %d", len(actual.Spec.Volumes))
+	if len(actual.Spec.Volumes) != 4 {
+		t.Fatalf("Expected 4 volumes in Build pod, got %d", len(actual.Spec.Volumes))
 	}
-	buildJSON, _ := runtime.Encode(legacyscheme.Codecs.LegacyCodec(buildapi.LegacySchemeGroupVersion), build)
+	buildJSON, _ := runtime.Encode(customBuildEncodingCodecFactory.LegacyCodec(buildapiv1.SchemeGroupVersion), build)
 	errorCases := map[int][]string{
 		0: {"BUILD", string(buildJSON)},
 	}
@@ -103,9 +102,7 @@ func TestCustomCreateBuildPod(t *testing.T) {
 }
 
 func TestCustomCreateBuildPodExpectedForcePull(t *testing.T) {
-	strategy := CustomBuildStrategy{
-		Codec: legacyscheme.Codecs.LegacyCodec(buildapi.LegacySchemeGroupVersion),
-	}
+	strategy := CustomBuildStrategy{}
 
 	expected := mockCustomBuild(true, false)
 	actual, fperr := strategy.CreateBuildPod(expected)
@@ -119,9 +116,7 @@ func TestCustomCreateBuildPodExpectedForcePull(t *testing.T) {
 }
 
 func TestEmptySource(t *testing.T) {
-	strategy := CustomBuildStrategy{
-		Codec: legacyscheme.Codecs.LegacyCodec(buildapi.LegacySchemeGroupVersion),
-	}
+	strategy := CustomBuildStrategy{}
 
 	expected := mockCustomBuild(false, true)
 	_, fperr := strategy.CreateBuildPod(expected)
@@ -131,11 +126,9 @@ func TestEmptySource(t *testing.T) {
 }
 
 func TestCustomCreateBuildPodWithCustomCodec(t *testing.T) {
-	strategy := CustomBuildStrategy{
-		Codec: legacyscheme.Codecs.LegacyCodec(buildapi.LegacySchemeGroupVersion),
-	}
+	strategy := CustomBuildStrategy{}
 
-	for _, version := range legacyscheme.Registry.GroupOrDie(buildapi.LegacyGroupName).GroupVersions {
+	for _, version := range []schema.GroupVersion{{Group: "", Version: "v1"}, {Group: "build.openshift.io", Version: "v1"}} {
 		// Create new Build specification and modify Spec API version
 		build := mockCustomBuild(false, false)
 		build.Spec.Strategy.CustomStrategy.BuildAPIVersion = fmt.Sprintf("%s/%s", version.Group, version.Version)
@@ -161,9 +154,7 @@ func TestCustomCreateBuildPodWithCustomCodec(t *testing.T) {
 }
 
 func TestCustomBuildLongName(t *testing.T) {
-	strategy := CustomBuildStrategy{
-		Codec: legacyscheme.Codecs.LegacyCodec(buildapi.LegacySchemeGroupVersion),
-	}
+	strategy := CustomBuildStrategy{}
 	build := mockCustomBuild(false, false)
 	build.Name = strings.Repeat("a", validation.DNS1123LabelMaxLength*2)
 	pod, err := strategy.CreateBuildPod(build)
@@ -212,6 +203,14 @@ func mockCustomBuild(forcePull, emptySource bool) *buildapi.Build {
 						},
 						ExposeDockerSocket: true,
 						ForcePull:          forcePull,
+						Secrets: []buildapi.SecretSpec{
+							{
+								SecretSource: kapi.LocalObjectReference{
+									Name: "secret",
+								},
+								MountPath: "secret",
+							},
+						},
 					},
 				},
 				Output: buildapi.BuildOutput{

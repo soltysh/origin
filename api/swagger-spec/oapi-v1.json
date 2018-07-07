@@ -1141,55 +1141,6 @@
       "consumes": [
        "*/*"
       ]
-     },
-     {
-      "type": "v1.BuildConfig",
-      "method": "POST",
-      "summary": "create a BuildConfig",
-      "nickname": "createBuildConfigForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.BuildConfig",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.BuildConfig"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.BuildConfig"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.BuildConfig"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
      }
     ]
    },
@@ -2417,55 +2368,6 @@
        "application/vnd.kubernetes.protobuf",
        "application/json;stream=watch",
        "application/vnd.kubernetes.protobuf;stream=watch"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     },
-     {
-      "type": "v1.Build",
-      "method": "POST",
-      "summary": "create a Build",
-      "nickname": "createBuildForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.Build",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.Build"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.Build"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.Build"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
       ],
       "consumes": [
        "*/*"
@@ -5976,55 +5878,6 @@
       "consumes": [
        "*/*"
       ]
-     },
-     {
-      "type": "v1.DeploymentConfig",
-      "method": "POST",
-      "summary": "create a DeploymentConfig",
-      "nickname": "createDeploymentConfigForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.DeploymentConfig",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.DeploymentConfig"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.DeploymentConfig"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.DeploymentConfig"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
      }
     ]
    },
@@ -7600,55 +7453,6 @@
        "application/vnd.kubernetes.protobuf",
        "application/json;stream=watch",
        "application/vnd.kubernetes.protobuf;stream=watch"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     },
-     {
-      "type": "v1.EgressNetworkPolicy",
-      "method": "POST",
-      "summary": "create an EgressNetworkPolicy",
-      "nickname": "createEgressNetworkPolicyForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.EgressNetworkPolicy",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.EgressNetworkPolicy"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.EgressNetworkPolicy"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.EgressNetworkPolicy"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
       ],
       "consumes": [
        "*/*"
@@ -10784,61 +10588,6 @@
     ]
    },
    {
-    "path": "/oapi/v1/imagestreamimports",
-    "description": "OpenShift REST API, version v1",
-    "operations": [
-     {
-      "type": "v1.ImageStreamImport",
-      "method": "POST",
-      "summary": "create an ImageStreamImport",
-      "nickname": "createImageStreamImportForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.ImageStreamImport",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.ImageStreamImport"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.ImageStreamImport"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.ImageStreamImport"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     }
-    ]
-   },
-   {
     "path": "/oapi/v1/namespaces/{namespace}/imagestreammappings",
     "description": "OpenShift REST API, version v1",
     "operations": [
@@ -10869,61 +10618,6 @@
         "paramType": "path",
         "name": "namespace",
         "description": "object name and auth scope, such as for teams and projects",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.ImageStreamMapping"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.ImageStreamMapping"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.ImageStreamMapping"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     }
-    ]
-   },
-   {
-    "path": "/oapi/v1/imagestreammappings",
-    "description": "OpenShift REST API, version v1",
-    "operations": [
-     {
-      "type": "v1.ImageStreamMapping",
-      "method": "POST",
-      "summary": "create an ImageStreamMapping",
-      "nickname": "createImageStreamMappingForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.ImageStreamMapping",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
         "required": true,
         "allowMultiple": false
        }
@@ -11818,55 +11512,6 @@
        "application/vnd.kubernetes.protobuf",
        "application/json;stream=watch",
        "application/vnd.kubernetes.protobuf;stream=watch"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     },
-     {
-      "type": "v1.ImageStream",
-      "method": "POST",
-      "summary": "create an ImageStream",
-      "nickname": "createImageStreamForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.ImageStream",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.ImageStream"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.ImageStream"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.ImageStream"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
       ],
       "consumes": [
        "*/*"
@@ -12781,55 +12426,6 @@
       "consumes": [
        "*/*"
       ]
-     },
-     {
-      "type": "v1.ImageStreamTag",
-      "method": "POST",
-      "summary": "create an ImageStreamTag",
-      "nickname": "createImageStreamTagForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.ImageStreamTag",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.ImageStreamTag"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.ImageStreamTag"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.ImageStreamTag"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
      }
     ]
    },
@@ -12897,61 +12493,6 @@
     ]
    },
    {
-    "path": "/oapi/v1/localresourceaccessreviews",
-    "description": "OpenShift REST API, version v1",
-    "operations": [
-     {
-      "type": "v1.LocalResourceAccessReview",
-      "method": "POST",
-      "summary": "create a LocalResourceAccessReview",
-      "nickname": "createLocalResourceAccessReviewForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.LocalResourceAccessReview",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.LocalResourceAccessReview"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.LocalResourceAccessReview"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.LocalResourceAccessReview"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     }
-    ]
-   },
-   {
     "path": "/oapi/v1/namespaces/{namespace}/localsubjectaccessreviews",
     "description": "OpenShift REST API, version v1",
     "operations": [
@@ -12982,61 +12523,6 @@
         "paramType": "path",
         "name": "namespace",
         "description": "object name and auth scope, such as for teams and projects",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.LocalSubjectAccessReview"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.LocalSubjectAccessReview"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.LocalSubjectAccessReview"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     }
-    ]
-   },
-   {
-    "path": "/oapi/v1/localsubjectaccessreviews",
-    "description": "OpenShift REST API, version v1",
-    "operations": [
-     {
-      "type": "v1.LocalSubjectAccessReview",
-      "method": "POST",
-      "summary": "create a LocalSubjectAccessReview",
-      "nickname": "createLocalSubjectAccessReviewForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.LocalSubjectAccessReview",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
         "required": true,
         "allowMultiple": false
        }
@@ -16603,61 +16089,6 @@
     ]
    },
    {
-    "path": "/oapi/v1/podsecuritypolicyreviews",
-    "description": "OpenShift REST API, version v1",
-    "operations": [
-     {
-      "type": "v1.PodSecurityPolicyReview",
-      "method": "POST",
-      "summary": "create a PodSecurityPolicyReview",
-      "nickname": "createPodSecurityPolicyReviewForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.PodSecurityPolicyReview",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.PodSecurityPolicyReview"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.PodSecurityPolicyReview"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.PodSecurityPolicyReview"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     }
-    ]
-   },
-   {
     "path": "/oapi/v1/namespaces/{namespace}/podsecuritypolicyselfsubjectreviews",
     "description": "OpenShift REST API, version v1",
     "operations": [
@@ -16688,61 +16119,6 @@
         "paramType": "path",
         "name": "namespace",
         "description": "object name and auth scope, such as for teams and projects",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.PodSecurityPolicySelfSubjectReview"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.PodSecurityPolicySelfSubjectReview"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.PodSecurityPolicySelfSubjectReview"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     }
-    ]
-   },
-   {
-    "path": "/oapi/v1/podsecuritypolicyselfsubjectreviews",
-    "description": "OpenShift REST API, version v1",
-    "operations": [
-     {
-      "type": "v1.PodSecurityPolicySelfSubjectReview",
-      "method": "POST",
-      "summary": "create a PodSecurityPolicySelfSubjectReview",
-      "nickname": "createPodSecurityPolicySelfSubjectReviewForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.PodSecurityPolicySelfSubjectReview",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
         "required": true,
         "allowMultiple": false
        }
@@ -16839,61 +16215,6 @@
     ]
    },
    {
-    "path": "/oapi/v1/podsecuritypolicysubjectreviews",
-    "description": "OpenShift REST API, version v1",
-    "operations": [
-     {
-      "type": "v1.PodSecurityPolicySubjectReview",
-      "method": "POST",
-      "summary": "create a PodSecurityPolicySubjectReview",
-      "nickname": "createPodSecurityPolicySubjectReviewForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.PodSecurityPolicySubjectReview",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.PodSecurityPolicySubjectReview"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.PodSecurityPolicySubjectReview"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.PodSecurityPolicySubjectReview"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     }
-    ]
-   },
-   {
     "path": "/oapi/v1/namespaces/{namespace}/processedtemplates",
     "description": "OpenShift REST API, version v1",
     "operations": [
@@ -16924,61 +16245,6 @@
         "paramType": "path",
         "name": "namespace",
         "description": "object name and auth scope, such as for teams and projects",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.Template"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.Template"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.Template"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     }
-    ]
-   },
-   {
-    "path": "/oapi/v1/processedtemplates",
-    "description": "OpenShift REST API, version v1",
-    "operations": [
-     {
-      "type": "v1.Template",
-      "method": "POST",
-      "summary": "create a Template",
-      "nickname": "createTemplateForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.Template",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
         "required": true,
         "allowMultiple": false
        }
@@ -17747,69 +17013,6 @@
     ]
    },
    {
-    "path": "/oapi/v1/namespaces/{namespace}/resourceaccessreviews",
-    "description": "OpenShift REST API, version v1",
-    "operations": [
-     {
-      "type": "v1.ResourceAccessReview",
-      "method": "POST",
-      "summary": "create a ResourceAccessReview",
-      "nickname": "createNamespacedResourceAccessReview",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.ResourceAccessReview",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       },
-       {
-        "type": "string",
-        "paramType": "path",
-        "name": "namespace",
-        "description": "object name and auth scope, such as for teams and projects",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.ResourceAccessReview"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.ResourceAccessReview"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.ResourceAccessReview"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     }
-    ]
-   },
-   {
     "path": "/oapi/v1/resourceaccessreviews",
     "description": "OpenShift REST API, version v1",
     "operations": [
@@ -17817,7 +17020,7 @@
       "type": "v1.ResourceAccessReview",
       "method": "POST",
       "summary": "create a ResourceAccessReview",
-      "nickname": "createResourceAccessReviewForAllNamespaces",
+      "nickname": "createResourceAccessReview",
       "parameters": [
        {
         "type": "string",
@@ -18730,55 +17933,6 @@
       "consumes": [
        "*/*"
       ]
-     },
-     {
-      "type": "v1.RoleBindingRestriction",
-      "method": "POST",
-      "summary": "create a RoleBindingRestriction",
-      "nickname": "createRoleBindingRestrictionForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.RoleBindingRestriction",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.RoleBindingRestriction"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.RoleBindingRestriction"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.RoleBindingRestriction"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
      }
     ]
    },
@@ -19402,55 +18556,6 @@
       "consumes": [
        "*/*"
       ]
-     },
-     {
-      "type": "v1.RoleBinding",
-      "method": "POST",
-      "summary": "create a RoleBinding",
-      "nickname": "createRoleBindingForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.RoleBinding",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.RoleBinding"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.RoleBinding"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.RoleBinding"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
      }
     ]
    },
@@ -19967,55 +19072,6 @@
        "application/vnd.kubernetes.protobuf",
        "application/json;stream=watch",
        "application/vnd.kubernetes.protobuf;stream=watch"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     },
-     {
-      "type": "v1.Role",
-      "method": "POST",
-      "summary": "create a Role",
-      "nickname": "createRoleForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.Role",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.Role"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.Role"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.Role"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
       ],
       "consumes": [
        "*/*"
@@ -20889,55 +19945,6 @@
       "consumes": [
        "*/*"
       ]
-     },
-     {
-      "type": "v1.Route",
-      "method": "POST",
-      "summary": "create a Route",
-      "nickname": "createRouteForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.Route",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.Route"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.Route"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.Route"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
      }
     ]
    },
@@ -21278,124 +20285,6 @@
     ]
    },
    {
-    "path": "/oapi/v1/selfsubjectrulesreviews",
-    "description": "OpenShift REST API, version v1",
-    "operations": [
-     {
-      "type": "v1.SelfSubjectRulesReview",
-      "method": "POST",
-      "summary": "create a SelfSubjectRulesReview",
-      "nickname": "createSelfSubjectRulesReviewForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.SelfSubjectRulesReview",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.SelfSubjectRulesReview"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.SelfSubjectRulesReview"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.SelfSubjectRulesReview"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     }
-    ]
-   },
-   {
-    "path": "/oapi/v1/namespaces/{namespace}/subjectaccessreviews",
-    "description": "OpenShift REST API, version v1",
-    "operations": [
-     {
-      "type": "v1.SubjectAccessReview",
-      "method": "POST",
-      "summary": "create a SubjectAccessReview",
-      "nickname": "createNamespacedSubjectAccessReview",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.SubjectAccessReview",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       },
-       {
-        "type": "string",
-        "paramType": "path",
-        "name": "namespace",
-        "description": "object name and auth scope, such as for teams and projects",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.SubjectAccessReview"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.SubjectAccessReview"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.SubjectAccessReview"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     }
-    ]
-   },
-   {
     "path": "/oapi/v1/subjectaccessreviews",
     "description": "OpenShift REST API, version v1",
     "operations": [
@@ -21403,7 +20292,7 @@
       "type": "v1.SubjectAccessReview",
       "method": "POST",
       "summary": "create a SubjectAccessReview",
-      "nickname": "createSubjectAccessReviewForAllNamespaces",
+      "nickname": "createSubjectAccessReview",
       "parameters": [
        {
         "type": "string",
@@ -21481,61 +20370,6 @@
         "paramType": "path",
         "name": "namespace",
         "description": "object name and auth scope, such as for teams and projects",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.SubjectRulesReview"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.SubjectRulesReview"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.SubjectRulesReview"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     }
-    ]
-   },
-   {
-    "path": "/oapi/v1/subjectrulesreviews",
-    "description": "OpenShift REST API, version v1",
-    "operations": [
-     {
-      "type": "v1.SubjectRulesReview",
-      "method": "POST",
-      "summary": "create a SubjectRulesReview",
-      "nickname": "createSubjectRulesReviewForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.SubjectRulesReview",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
         "required": true,
         "allowMultiple": false
        }
@@ -22430,55 +21264,6 @@
        "application/vnd.kubernetes.protobuf",
        "application/json;stream=watch",
        "application/vnd.kubernetes.protobuf;stream=watch"
-      ],
-      "consumes": [
-       "*/*"
-      ]
-     },
-     {
-      "type": "v1.Template",
-      "method": "POST",
-      "summary": "create a Template",
-      "nickname": "createTemplateForAllNamespaces",
-      "parameters": [
-       {
-        "type": "string",
-        "paramType": "query",
-        "name": "pretty",
-        "description": "If 'true', then the output is pretty printed.",
-        "required": false,
-        "allowMultiple": false
-       },
-       {
-        "type": "v1.Template",
-        "paramType": "body",
-        "name": "body",
-        "description": "",
-        "required": true,
-        "allowMultiple": false
-       }
-      ],
-      "responseMessages": [
-       {
-        "code": 200,
-        "message": "OK",
-        "responseModel": "v1.Template"
-       },
-       {
-        "code": 201,
-        "message": "Created",
-        "responseModel": "v1.Template"
-       },
-       {
-        "code": 202,
-        "message": "Accepted",
-        "responseModel": "v1.Template"
-       }
-      ],
-      "produces": [
-       "application/json",
-       "application/yaml",
-       "application/vnd.kubernetes.protobuf"
       ],
       "consumes": [
        "*/*"
@@ -23978,7 +22763,7 @@
     "properties": {
      "hard": {
       "type": "object",
-      "description": "Hard is the set of desired hard limits for each named resource. More info: https://kubernetes.io/docs/concepts/policy/resource-quotas/"
+      "description": "hard is the set of desired hard limits for each named resource. More info: https://kubernetes.io/docs/concepts/policy/resource-quotas/"
      },
      "scopes": {
       "type": "array",
@@ -23986,12 +22771,54 @@
        "$ref": "v1.ResourceQuotaScope"
       },
       "description": "A collection of filters that must match each object tracked by a quota. If not specified, the quota matches all objects."
+     },
+     "scopeSelector": {
+      "$ref": "v1.ScopeSelector",
+      "description": "scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota but expressed using ScopeSelectorOperator in combination with possible values. For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched."
      }
     }
    },
    "v1.ResourceQuotaScope": {
     "id": "v1.ResourceQuotaScope",
     "properties": {}
+   },
+   "v1.ScopeSelector": {
+    "id": "v1.ScopeSelector",
+    "description": "A scope selector represents the AND of the selectors represented by the scoped-resource selector requirements.",
+    "properties": {
+     "matchExpressions": {
+      "type": "array",
+      "items": {
+       "$ref": "v1.ScopedResourceSelectorRequirement"
+      },
+      "description": "A list of scope selector requirements by scope of the resources."
+     }
+    }
+   },
+   "v1.ScopedResourceSelectorRequirement": {
+    "id": "v1.ScopedResourceSelectorRequirement",
+    "description": "A scoped-resource selector requirement is a selector that contains values, a scope name, and an operator that relates the scope name and values.",
+    "required": [
+     "scopeName",
+     "operator"
+    ],
+    "properties": {
+     "scopeName": {
+      "type": "string",
+      "description": "The name of the scope that the selector applies to."
+     },
+     "operator": {
+      "type": "string",
+      "description": "Represents a scope's relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist."
+     },
+     "values": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "description": "An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch."
+     }
+    }
    },
    "v1.ClusterResourceQuotaStatus": {
     "id": "v1.ClusterResourceQuotaStatus",
@@ -24248,6 +23075,10 @@
      "from": {
       "$ref": "v1.ObjectReference",
       "description": "from is a reference to an ImageStreamTag that will trigger a build when updated It is optional. If no From is specified, the From image from the build strategy will be used. Only one ImageChangeTrigger with an empty From reference is allowed in a build configuration."
+     },
+     "paused": {
+      "type": "boolean",
+      "description": "paused is true if this trigger is temporarily disabled. Optional."
      }
     }
    },
@@ -24329,6 +23160,13 @@
        "$ref": "v1.SecretBuildSource"
       },
       "description": "secrets represents a list of secrets and their destinations that will be used only for the build."
+     },
+     "configMaps": {
+      "type": "array",
+      "items": {
+       "$ref": "v1.ConfigMapBuildSource"
+      },
+      "description": "configMaps represents a list of configMaps and their destinations that will be used for the build."
      }
     }
    },
@@ -24446,6 +23284,23 @@
      "destinationDir": {
       "type": "string",
       "description": "destinationDir is the directory where the files from the secret should be available for the build time. For the Source build strategy, these will be injected into a container where the assemble script runs. Later, when the script finishes, all files injected will be truncated to zero length. For the Docker build strategy, these will be copied into the build directory, where the Dockerfile is located, so users can ADD or COPY them during docker build."
+     }
+    }
+   },
+   "v1.ConfigMapBuildSource": {
+    "id": "v1.ConfigMapBuildSource",
+    "description": "ConfigMapBuildSource describes a configmap and its destination directory that will be used only at the build time. The content of the configmap referenced here will be copied into the destination directory instead of mounting.",
+    "required": [
+     "configMap"
+    ],
+    "properties": {
+     "configMap": {
+      "$ref": "v1.LocalObjectReference",
+      "description": "configMap is a reference to an existing configmap that you want to use in your build."
+     },
+     "destinationDir": {
+      "type": "string",
+      "description": "destinationDir is the directory where the files from the configmap should be available for the build time. For the Source build strategy, these will be injected into a container where the assemble script runs. For the Docker build strategy, these will be copied into the build directory, where the Dockerfile is located, so users can ADD or COPY them during docker build."
      }
     }
    },
@@ -26269,6 +25124,13 @@
      "dnsConfig": {
       "$ref": "v1.PodDNSConfig",
       "description": "Specifies the DNS parameters of a pod. Parameters specified here will be merged to the generated DNS configuration based on DNSPolicy."
+     },
+     "readinessGates": {
+      "type": "array",
+      "items": {
+       "$ref": "v1.PodReadinessGate"
+      },
+      "description": "If specified, all readiness gates will be evaluated for pod readiness. A pod is ready when all its containers are ready AND all conditions specified in the readiness gates have status equal to \"True\" More info: https://github.com/kubernetes/community/blob/master/keps/sig-network/0007-pod-ready%2B%2B.md"
      }
     }
    },
@@ -26301,7 +25163,7 @@
      },
      "gitRepo": {
       "$ref": "v1.GitRepoVolumeSource",
-      "description": "GitRepo represents a git repository at a particular revision."
+      "description": "GitRepo represents a git repository at a particular revision. DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container."
      },
      "secret": {
       "$ref": "v1.SecretVolumeSource",
@@ -26482,7 +25344,7 @@
    },
    "v1.GitRepoVolumeSource": {
     "id": "v1.GitRepoVolumeSource",
-    "description": "Represents a volume that is populated with the contents of a git repository. Git repo volumes do not support ownership management. Git repo volumes support SELinux relabeling.",
+    "description": "Represents a volume that is populated with the contents of a git repository. Git repo volumes do not support ownership management. Git repo volumes support SELinux relabeling.\n\nDEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.",
     "required": [
      "repository"
     ],
@@ -26762,6 +25624,10 @@
      "readOnly": {
       "type": "boolean",
       "description": "Optional: Defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts. More info: https://releases.k8s.io/HEAD/examples/mysql-cinder-pd/README.md"
+     },
+     "secretRef": {
+      "$ref": "v1.LocalObjectReference",
+      "description": "Optional: points to a secret object containing parameters used to connect to OpenStack."
      }
     }
    },
@@ -27090,6 +25956,10 @@
      "configMap": {
       "$ref": "v1.ConfigMapProjection",
       "description": "information about the configMap data to project"
+     },
+     "serviceAccountToken": {
+      "$ref": "v1.ServiceAccountTokenProjection",
+      "description": "information about the serviceAccountToken data to project"
      }
     }
    },
@@ -27145,6 +26015,28 @@
      "optional": {
       "type": "boolean",
       "description": "Specify whether the ConfigMap or it's keys must be defined"
+     }
+    }
+   },
+   "v1.ServiceAccountTokenProjection": {
+    "id": "v1.ServiceAccountTokenProjection",
+    "description": "ServiceAccountTokenProjection represents a projected service account token volume. This projection can be used to insert a service account token into the pods runtime filesystem for use against APIs (Kubernetes API Server or otherwise).",
+    "required": [
+     "path"
+    ],
+    "properties": {
+     "audience": {
+      "type": "string",
+      "description": "Audience is the intended audience of the token. A recipient of a token must identify itself with an identifier specified in the audience of the token, and otherwise should reject the token. The audience defaults to the identifier of the apiserver."
+     },
+     "expirationSeconds": {
+      "type": "integer",
+      "format": "int64",
+      "description": "ExpirationSeconds is the requested duration of validity of the service account token. As the token approaches expiration, the kubelet volume plugin will proactively rotate the service account token. The kubelet will start trying to rotate the token if the token is older than 80 percent of its time to live or if the token is older than 24 hours.Defaults to 1 hour and must be at least 10 minutes."
+     },
+     "path": {
+      "type": "string",
+      "description": "Path is the path relative to the mount point of the file to project the token into."
      }
     }
    },
@@ -27763,6 +26655,31 @@
       "type": "integer",
       "format": "int64",
       "description": "A special supplemental group that applies to all containers in a pod. Some volume types allow the Kubelet to change the ownership of that volume to be owned by the pod:\n\n1. The owning GID will be the FSGroup 2. The setgid bit is set (new files created in the volume will be owned by FSGroup) 3. The permission bits are OR'd with rw-rw "
+     },
+     "sysctls": {
+      "type": "array",
+      "items": {
+       "$ref": "v1.Sysctl"
+      },
+      "description": "Sysctls hold a list of namespaced sysctls used for the pod. Pods with unsupported sysctls (by the container runtime) might fail to launch."
+     }
+    }
+   },
+   "v1.Sysctl": {
+    "id": "v1.Sysctl",
+    "description": "Sysctl defines a kernel parameter to be set",
+    "required": [
+     "name",
+     "value"
+    ],
+    "properties": {
+     "name": {
+      "type": "string",
+      "description": "Name of a property to set"
+     },
+     "value": {
+      "type": "string",
+      "description": "Value of a property to set"
      }
     }
    },
@@ -27819,17 +26736,21 @@
    },
    "v1.NodeSelectorTerm": {
     "id": "v1.NodeSelectorTerm",
-    "description": "A null or empty node selector term matches no objects.",
-    "required": [
-     "matchExpressions"
-    ],
+    "description": "A null or empty node selector term matches no objects. The requirements of them are ANDed. The TopologySelectorTerm type implements a subset of the NodeSelectorTerm.",
     "properties": {
      "matchExpressions": {
       "type": "array",
       "items": {
        "$ref": "v1.NodeSelectorRequirement"
       },
-      "description": "Required. A list of node selector requirements. The requirements are ANDed."
+      "description": "A list of node selector requirements by node's labels."
+     },
+     "matchFields": {
+      "type": "array",
+      "items": {
+       "$ref": "v1.NodeSelectorRequirement"
+      },
+      "description": "A list of node selector requirements by node's fields."
      }
     }
    },
@@ -28041,6 +26962,19 @@
      },
      "value": {
       "type": "string"
+     }
+    }
+   },
+   "v1.PodReadinessGate": {
+    "id": "v1.PodReadinessGate",
+    "description": "PodReadinessGate contains the reference to a pod condition",
+    "required": [
+     "conditionType"
+    ],
+    "properties": {
+     "conditionType": {
+      "type": "string",
+      "description": "ConditionType refers to a condition in the pod's condition list with matching type."
      }
     }
    },

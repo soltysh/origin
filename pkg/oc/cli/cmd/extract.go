@@ -12,11 +12,13 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
+	kapi "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
 
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
+	"github.com/openshift/origin/pkg/oc/util/ocscheme"
 )
 
 var (
@@ -58,10 +60,10 @@ type ExtractOptions struct {
 	ExtractFileContentsFn func(runtime.Object) (map[string][]byte, bool, error)
 }
 
-func NewCmdExtract(fullName string, f *clientcmd.Factory, in io.Reader, out, errOut io.Writer) *cobra.Command {
+func NewCmdExtract(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	options := &ExtractOptions{
-		Out: out,
-		Err: errOut,
+		Out: streams.Out,
+		Err: streams.ErrOut,
 
 		TargetDirectory: ".",
 	}
@@ -71,7 +73,7 @@ func NewCmdExtract(fullName string, f *clientcmd.Factory, in io.Reader, out, err
 		Long:    extractLong,
 		Example: fmt.Sprintf(extractExample, fullName),
 		Run: func(cmd *cobra.Command, args []string) {
-			kcmdutil.CheckErr(options.Complete(f, in, out, cmd, args))
+			kcmdutil.CheckErr(options.Complete(f, streams.In, streams.Out, cmd, args))
 			kcmdutil.CheckErr(options.Validate())
 			// TODO: move me to kcmdutil
 			err := options.Run()
@@ -90,16 +92,16 @@ func NewCmdExtract(fullName string, f *clientcmd.Factory, in io.Reader, out, err
 	return cmd
 }
 
-func (o *ExtractOptions) Complete(f *clientcmd.Factory, in io.Reader, out io.Writer, cmd *cobra.Command, args []string) error {
-	o.ExtractFileContentsFn = f.ExtractFileContents
+func (o *ExtractOptions) Complete(f kcmdutil.Factory, in io.Reader, out io.Writer, cmd *cobra.Command, args []string) error {
+	o.ExtractFileContentsFn = extractFileContents
 
-	cmdNamespace, explicit, err := f.DefaultNamespace()
+	cmdNamespace, explicit, err := f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return err
 	}
 
 	b := f.NewBuilder().
-		Internal().
+		WithScheme(ocscheme.ReadingInternalScheme).
 		NamespaceParam(cmdNamespace).DefaultNamespace().
 		FilenameParam(explicit, &resource.FilenameOptions{Recursive: false, Filenames: o.Filenames}).
 		ResourceNames("", args...).
@@ -195,4 +197,21 @@ func writeToDisk(path string, data []byte, overwrite bool, out io.Writer) error 
 	}
 	fmt.Fprintf(out, "%s\n", path)
 	return nil
+}
+
+// ExtractFileContents returns a map of keys to contents, false if the object cannot support such an
+// operation, or an error.
+func extractFileContents(obj runtime.Object) (map[string][]byte, bool, error) {
+	switch t := obj.(type) {
+	case *kapi.Secret:
+		return t.Data, true, nil
+	case *kapi.ConfigMap:
+		out := make(map[string][]byte)
+		for k, v := range t.Data {
+			out[k] = []byte(v)
+		}
+		return out, true, nil
+	default:
+		return nil, false, nil
+	}
 }

@@ -14,10 +14,10 @@ import (
 	kclientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	oauthclient "github.com/openshift/origin/pkg/oauth/generated/internalclientset"
 	"github.com/openshift/origin/pkg/oc/cli/config"
-	osclientcmd "github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 )
 
 type LogoutOptions struct {
@@ -48,9 +48,9 @@ var (
 )
 
 // NewCmdLogout implements the OpenShift cli logout command
-func NewCmdLogout(name, fullName, ocLoginFullCommand string, f *osclientcmd.Factory, reader io.Reader, out io.Writer) *cobra.Command {
+func NewCmdLogout(name, fullName, ocLoginFullCommand string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	options := &LogoutOptions{
-		Out: out,
+		Out: streams.Out,
 	}
 
 	cmds := &cobra.Command{
@@ -79,14 +79,14 @@ func NewCmdLogout(name, fullName, ocLoginFullCommand string, f *osclientcmd.Fact
 	return cmds
 }
 
-func (o *LogoutOptions) Complete(f *osclientcmd.Factory, cmd *cobra.Command, args []string) error {
-	kubeconfig, err := f.RawConfig()
-	o.StartingKubeConfig = &kubeconfig
+func (o *LogoutOptions) Complete(f kcmdutil.Factory, cmd *cobra.Command, args []string) error {
+	kubeconfig, err := f.ToRawKubeConfigLoader().RawConfig()
 	if err != nil {
 		return err
 	}
+	o.StartingKubeConfig = &kubeconfig
 
-	o.Config, err = f.ClientConfig()
+	o.Config, err = f.ToRESTConfig()
 	if err != nil {
 		return err
 	}

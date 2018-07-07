@@ -15,13 +15,17 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/golang/glog"
+	gonum "github.com/gonum/graph"
 	"github.com/spf13/cobra"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	knet "k8s.io/apimachinery/pkg/util/net"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	apimachineryversion "k8s.io/apimachinery/pkg/version"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
 	restclient "k8s.io/client-go/rest"
 	kclientcmd "k8s.io/client-go/tools/clientcmd"
@@ -29,6 +33,7 @@ import (
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	appsclient "github.com/openshift/origin/pkg/apps/generated/internalclientset/typed/apps/internalversion"
 	buildclient "github.com/openshift/origin/pkg/build/generated/internalclientset/typed/build/internalversion"
@@ -36,7 +41,7 @@ import (
 	imageapi "github.com/openshift/origin/pkg/image/apis/image"
 	imageclient "github.com/openshift/origin/pkg/image/generated/internalclientset/typed/image/internalversion"
 	"github.com/openshift/origin/pkg/oc/admin/prune/imageprune"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
+	imagegraph "github.com/openshift/origin/pkg/oc/graph/imagegraph/nodes"
 	oserrors "github.com/openshift/origin/pkg/util/errors"
 	"github.com/openshift/origin/pkg/util/netutils"
 	"github.com/openshift/origin/pkg/version"
@@ -73,9 +78,9 @@ var (
 		Insecure connection is allowed in the following cases unless certificate-authority is
 		specified:
 
-		 1. --force-insecure is given  
-		 2. provided registry-url is prefixed with http://  
-		 3. registry url is a private or link-local address  
+		 1. --force-insecure is given
+		 2. provided registry-url is prefixed with http://
+		 3. registry url is a private or link-local address
 		 4. user's config allows for insecure connection (the user logged in to the cluster with
 			--insecure-skip-tls-verify or allowed for insecure connection)`)
 
@@ -122,19 +127,20 @@ type PruneImagesOptions struct {
 	PruneRegistry       *bool
 	IgnoreInvalidRefs   bool
 
-	ClientConfig    *restclient.Config
-	AppsClient      appsclient.AppsInterface
-	BuildClient     buildclient.BuildInterface
-	ImageClient     imageclient.ImageInterface
-	DiscoveryClient discovery.DiscoveryInterface
-	KubeClient      kclientset.Interface
-	Timeout         time.Duration
-	Out             io.Writer
-	ErrOut          io.Writer
+	ClientConfig       *restclient.Config
+	AppsClient         appsclient.AppsInterface
+	BuildClient        buildclient.BuildInterface
+	ImageClient        imageclient.ImageInterface
+	ImageClientFactory func() (imageclient.ImageInterface, error)
+	DiscoveryClient    discovery.DiscoveryInterface
+	KubeClient         kclientset.Interface
+	Timeout            time.Duration
+	Out                io.Writer
+	ErrOut             io.Writer
 }
 
 // NewCmdPruneImages implements the OpenShift cli prune images command.
-func NewCmdPruneImages(f *clientcmd.Factory, parentName, name string, out io.Writer) *cobra.Command {
+func NewCmdPruneImages(f kcmdutil.Factory, parentName, name string, streams genericclioptions.IOStreams) *cobra.Command {
 	allImages := true
 	opts := &PruneImagesOptions{
 		Confirm:            false,
@@ -153,7 +159,7 @@ func NewCmdPruneImages(f *clientcmd.Factory, parentName, name string, out io.Wri
 		Example: fmt.Sprintf(imagesExample, parentName, name),
 
 		Run: func(cmd *cobra.Command, args []string) {
-			kcmdutil.CheckErr(opts.Complete(f, cmd, args, out))
+			kcmdutil.CheckErr(opts.Complete(f, cmd, args, streams.Out))
 			kcmdutil.CheckErr(opts.Validate())
 			kcmdutil.CheckErr(opts.Run())
 		},
@@ -175,7 +181,7 @@ func NewCmdPruneImages(f *clientcmd.Factory, parentName, name string, out io.Wri
 
 // Complete turns a partially defined PruneImagesOptions into a solvent structure
 // which can be validated and used for pruning images.
-func (o *PruneImagesOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, args []string, out io.Writer) error {
+func (o *PruneImagesOptions) Complete(f kcmdutil.Factory, cmd *cobra.Command, args []string, out io.Writer) error {
 	if len(args) > 0 {
 		return kcmdutil.UsageErrorf(cmd, "no arguments are allowed to this command")
 	}
@@ -194,7 +200,7 @@ func (o *PruneImagesOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, 
 	o.Namespace = metav1.NamespaceAll
 	if cmd.Flags().Lookup("namespace").Changed {
 		var err error
-		o.Namespace, _, err = f.DefaultNamespace()
+		o.Namespace, _, err = f.ToRawKubeConfigLoader().Namespace()
 		if err != nil {
 			return err
 		}
@@ -202,7 +208,7 @@ func (o *PruneImagesOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, 
 	o.Out = out
 	o.ErrOut = os.Stderr
 
-	clientConfig, err := f.ClientConfig()
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
@@ -214,6 +220,7 @@ func (o *PruneImagesOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, 
 	o.AppsClient = appsClient
 	o.BuildClient = buildClient
 	o.ImageClient = imageClient
+	o.ImageClientFactory = getImageClientFactory(f)
 	o.KubeClient = kubeClient
 	o.DiscoveryClient = kubeClient.Discovery()
 
@@ -250,16 +257,6 @@ func (o PruneImagesOptions) Validate() error {
 
 // Run contains all the necessary functionality for the OpenShift cli prune images command.
 func (o PruneImagesOptions) Run() error {
-	allImages, err := o.ImageClient.Images().List(metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-
-	allStreams, err := o.ImageClient.ImageStreams(o.Namespace).List(metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-
 	allPods, err := o.KubeClient.Core().Pods(o.Namespace).List(metav1.ListOptions{})
 	if err != nil {
 		return err
@@ -331,10 +328,35 @@ func (o PruneImagesOptions) Run() error {
 		limitRangesMap[limit.Namespace] = limits
 	}
 
+	allImages, err := o.ImageClient.Images().List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	imageWatcher, err := o.ImageClient.Images().Watch(metav1.ListOptions{})
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("internal error: failed to watch for images: %v"+
+			"\n - image changes will not be detected", err))
+		imageWatcher = watch.NewFake()
+	}
+
+	imageStreamWatcher, err := o.ImageClient.ImageStreams(o.Namespace).Watch(metav1.ListOptions{})
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("internal error: failed to watch for image streams: %v"+
+			"\n - image stream changes will not be detected", err))
+		imageStreamWatcher = watch.NewFake()
+	}
+	defer imageStreamWatcher.Stop()
+
+	allStreams, err := o.ImageClient.ImageStreams(o.Namespace).List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
 	var (
-		registryHost   = o.RegistryUrlOverride
-		registryClient *http.Client
-		registryPinger imageprune.RegistryPinger
+		registryHost          = o.RegistryUrlOverride
+		registryClientFactory imageprune.RegistryClientFactoryFunc
+		registryClient        *http.Client
+		registryPinger        imageprune.RegistryPinger
 	)
 
 	if o.Confirm {
@@ -351,18 +373,24 @@ func (o PruneImagesOptions) Run() error {
 				strings.HasPrefix(registryHost, "http://")
 		}
 
-		registryClient, err = getRegistryClient(o.ClientConfig, o.CABundle, insecure)
+		registryClientFactory = func() (*http.Client, error) {
+			return getRegistryClient(o.ClientConfig, o.CABundle, insecure)
+		}
+		registryClient, err = registryClientFactory()
 		if err != nil {
 			return err
 		}
+
 		registryPinger = &imageprune.DefaultRegistryPinger{
 			Client:   registryClient,
 			Insecure: insecure,
 		}
 	} else {
 		registryPinger = &imageprune.DryRunRegistryPinger{}
+		registryClientFactory = imageprune.FakeRegistryClientFactory
 	}
 
+	// verify the registy connection now to avoid future surprises
 	registryURL, err := registryPinger.Ping(registryHost)
 	if err != nil {
 		if len(o.RegistryUrlOverride) == 0 && regexp.MustCompile(registryURLNotReachable).MatchString(err.Error()) {
@@ -372,26 +400,28 @@ func (o PruneImagesOptions) Run() error {
 	}
 
 	options := imageprune.PrunerOptions{
-		KeepYoungerThan:    o.KeepYoungerThan,
-		KeepTagRevisions:   o.KeepTagRevisions,
-		PruneOverSizeLimit: o.PruneOverSizeLimit,
-		AllImages:          o.AllImages,
-		Images:             allImages,
-		Streams:            allStreams,
-		Pods:               allPods,
-		RCs:                allRCs,
-		BCs:                allBCs,
-		Builds:             allBuilds,
-		DSs:                allDSs,
-		Deployments:        allDeployments,
-		DCs:                allDCs,
-		RSs:                allRSs,
-		LimitRanges:        limitRangesMap,
-		DryRun:             o.Confirm == false,
-		RegistryClient:     registryClient,
-		RegistryURL:        registryURL,
-		PruneRegistry:      o.PruneRegistry,
-		IgnoreInvalidRefs:  o.IgnoreInvalidRefs,
+		KeepYoungerThan:       o.KeepYoungerThan,
+		KeepTagRevisions:      o.KeepTagRevisions,
+		PruneOverSizeLimit:    o.PruneOverSizeLimit,
+		AllImages:             o.AllImages,
+		Images:                allImages,
+		ImageWatcher:          imageWatcher,
+		Streams:               allStreams,
+		StreamWatcher:         imageStreamWatcher,
+		Pods:                  allPods,
+		RCs:                   allRCs,
+		BCs:                   allBCs,
+		Builds:                allBuilds,
+		DSs:                   allDSs,
+		Deployments:           allDeployments,
+		DCs:                   allDCs,
+		RSs:                   allRSs,
+		LimitRanges:           limitRangesMap,
+		DryRun:                o.Confirm == false,
+		RegistryClientFactory: registryClientFactory,
+		RegistryURL:           registryURL,
+		PruneRegistry:         o.PruneRegistry,
+		IgnoreInvalidRefs:     o.IgnoreInvalidRefs,
 	}
 	if o.Namespace != metav1.NamespaceAll {
 		options.Namespace = o.Namespace
@@ -402,21 +432,27 @@ func (o PruneImagesOptions) Run() error {
 		return fmt.Errorf("failed to build graph - no changes made")
 	}
 
-	w := tabwriter.NewWriter(o.Out, 10, 4, 3, ' ', 0)
-	defer w.Flush()
-
-	imageDeleter := &describingImageDeleter{w: w, errOut: o.ErrOut}
-	imageStreamDeleter := &describingImageStreamDeleter{w: w, errOut: o.ErrOut}
-	layerLinkDeleter := &describingLayerLinkDeleter{w: w, errOut: o.ErrOut}
-	blobDeleter := &describingBlobDeleter{w: w, errOut: o.ErrOut}
-	manifestDeleter := &describingManifestDeleter{w: w, errOut: o.ErrOut}
+	imagePrunerFactory := func() (imageprune.ImageDeleter, error) {
+		return &describingImageDeleter{w: o.Out, errOut: o.ErrOut}, nil
+	}
+	imageStreamDeleter := &describingImageStreamDeleter{w: o.Out, errOut: o.ErrOut}
+	layerLinkDeleter := &describingLayerLinkDeleter{w: o.Out, errOut: o.ErrOut}
+	blobDeleter := &describingBlobDeleter{w: o.Out, errOut: o.ErrOut}
+	manifestDeleter := &describingManifestDeleter{w: o.Out, errOut: o.ErrOut}
 
 	if o.Confirm {
-		imageDeleter.delegate = imageprune.NewImageDeleter(o.ImageClient)
 		imageStreamDeleter.delegate = imageprune.NewImageStreamDeleter(o.ImageClient)
 		layerLinkDeleter.delegate = imageprune.NewLayerLinkDeleter()
 		blobDeleter.delegate = imageprune.NewBlobDeleter()
 		manifestDeleter.delegate = imageprune.NewManifestDeleter()
+
+		imagePrunerFactory = func() (imageprune.ImageDeleter, error) {
+			imageClient, err := o.ImageClientFactory()
+			if err != nil {
+				return nil, err
+			}
+			return imageprune.NewImageDeleter(imageClient), nil
+		}
 	} else {
 		fmt.Fprintln(o.ErrOut, "Dry run enabled - no modifications will be made. Add --confirm to remove images")
 	}
@@ -425,7 +461,99 @@ func (o PruneImagesOptions) Run() error {
 		fmt.Fprintln(o.Out, "Only API objects will be removed.  No modifications to the image registry will be made.")
 	}
 
-	return pruner.Prune(imageDeleter, imageStreamDeleter, layerLinkDeleter, blobDeleter, manifestDeleter)
+	deletions, failures := pruner.Prune(
+		imagePrunerFactory,
+		imageStreamDeleter,
+		layerLinkDeleter,
+		blobDeleter,
+		manifestDeleter,
+	)
+	printSummary(o.Out, deletions, failures)
+	if len(failures) == 1 {
+		return &failures[0]
+	}
+	if len(failures) > 0 {
+		return fmt.Errorf("failed")
+	}
+	return nil
+}
+
+func printSummary(out io.Writer, deletions []imageprune.Deletion, failures []imageprune.Failure) {
+	// TODO: for higher verbosity, sum by error type
+	if len(failures) == 0 {
+		fmt.Fprintf(out, "Deleted %d objects.\n", len(deletions))
+	} else {
+		fmt.Fprintf(out, "Deleted %d objects out of %d.\n", len(deletions), len(deletions)+len(failures))
+		fmt.Fprintf(out, "Failed to delete %d objects.\n", len(failures))
+	}
+	if !glog.V(2) {
+		return
+	}
+
+	fmt.Fprintf(out, "\n")
+
+	w := tabwriter.NewWriter(out, 10, 4, 3, ' ', 0)
+	defer w.Flush()
+
+	buckets := make(map[string]struct{ deletions, failures, total uint64 })
+	count := func(node gonum.Node, parent gonum.Node, deletions uint64, failures uint64) {
+		bucket := ""
+		switch t := node.(type) {
+		case *imagegraph.ImageStreamNode:
+			bucket = "is"
+		case *imagegraph.ImageNode:
+			bucket = "image"
+		case *imagegraph.ImageComponentNode:
+			bucket = "component/" + string(t.Type)
+			if parent == nil {
+				bucket = "blob"
+			}
+		default:
+			bucket = fmt.Sprintf("other/%T", t)
+		}
+		c := buckets[bucket]
+		c.deletions += deletions
+		c.failures += failures
+		c.total += deletions + failures
+		buckets[bucket] = c
+	}
+
+	for _, d := range deletions {
+		count(d.Node, d.Parent, 1, 0)
+	}
+	for _, f := range failures {
+		count(f.Node, f.Parent, 0, 1)
+	}
+
+	printAndPopBucket := func(name string, desc string) {
+		cnt, ok := buckets[name]
+		if ok {
+			delete(buckets, name)
+		}
+		if cnt.total == 0 {
+			return
+		}
+		fmt.Fprintf(w, "%s:\t%d\n", desc, cnt.deletions)
+		if cnt.failures == 0 {
+			return
+		}
+		// add padding before failures to make it appear subordinate to the line above
+		for i := 0; i < len(desc)-len("failures"); i++ {
+			fmt.Fprintf(w, " ")
+		}
+		fmt.Fprintf(w, "failures:\t%d\n", cnt.failures)
+	}
+
+	printAndPopBucket("is", "Image Stream updates")
+	printAndPopBucket("image", "Image deletions")
+	printAndPopBucket("blob", "Blob deletions")
+	printAndPopBucket("component/"+string(imagegraph.ImageComponentTypeManifest), "Image Manifest Link deletions")
+	printAndPopBucket("component/"+string(imagegraph.ImageComponentTypeConfig), "Image Config Link deletions")
+	printAndPopBucket("component/"+string(imagegraph.ImageComponentTypeLayer), "Image Layer Link deletions")
+
+	for name := range buckets {
+		printAndPopBucket(name, fmt.Sprintf("%s deletions", strings.TrimPrefix(name, "other/")))
+	}
 }
 
 func (o *PruneImagesOptions) printGraphBuildErrors(errs kutilerrors.Aggregate) {
@@ -487,17 +615,11 @@ func (p *describingImageStreamDeleter) UpdateImageStream(stream *imageapi.ImageS
 }
 
 func (p *describingImageStreamDeleter) NotifyImageStreamPrune(stream *imageapi.ImageStream, updatedTags []string, deletedTags []string) {
-	if !p.headerPrinted {
-		p.headerPrinted = true
-		fmt.Fprintln(p.w, "Deleting references from image streams to images ...")
-		fmt.Fprintln(p.w, "STREAM\tACTION\tTAGS")
-	}
-
 	if len(updatedTags) > 0 {
-		fmt.Fprintf(p.w, "%s/%s\tUpdated\t%s\n", stream.Namespace, stream.Name, strings.Join(updatedTags, ", "))
+		fmt.Fprintf(p.w, "Updating istags %s/%s: %s\n", stream.Namespace, stream.Name, strings.Join(updatedTags, ", "))
 	}
 	if len(deletedTags) > 0 {
-		fmt.Fprintf(p.w, "%s/%s\tDeleted\t%s\n", stream.Namespace, stream.Name, strings.Join(deletedTags, ", "))
+		fmt.Fprintf(p.w, "Deleting istags %s/%s: %s\n", stream.Namespace, stream.Name, strings.Join(deletedTags, ", "))
 	}
 }
 
@@ -513,13 +635,7 @@ type describingImageDeleter struct {
 var _ imageprune.ImageDeleter = &describingImageDeleter{}
 
 func (p *describingImageDeleter) DeleteImage(image *imageapi.Image) error {
-	if !p.headerPrinted {
-		p.headerPrinted = true
-		fmt.Fprintln(p.w, "\nDeleting images from server ...")
-		fmt.Fprintln(p.w, "IMAGE")
-	}
-
-	fmt.Fprintf(p.w, "%s\n", image.Name)
+	fmt.Fprintf(p.w, "Deleting image %s\n", image.Name)
 
 	if p.delegate == nil {
 		return nil
@@ -545,13 +661,7 @@ type describingLayerLinkDeleter struct {
 var _ imageprune.LayerLinkDeleter = &describingLayerLinkDeleter{}
 
 func (p *describingLayerLinkDeleter) DeleteLayerLink(registryClient *http.Client, registryURL *url.URL, repo, name string) error {
-	if !p.headerPrinted {
-		p.headerPrinted = true
-		fmt.Fprintln(p.w, "\nDeleting registry repository layer links ...")
-		fmt.Fprintln(p.w, "REPO\tLAYER LINK")
-	}
-
-	fmt.Fprintf(p.w, "%s\t%s\n", repo, name)
+	fmt.Fprintf(p.w, "Deleting layer link %s in repository %s\n", name, repo)
 
 	if p.delegate == nil {
 		return nil
@@ -577,13 +687,7 @@ type describingBlobDeleter struct {
 var _ imageprune.BlobDeleter = &describingBlobDeleter{}
 
 func (p *describingBlobDeleter) DeleteBlob(registryClient *http.Client, registryURL *url.URL, layer string) error {
-	if !p.headerPrinted {
-		p.headerPrinted = true
-		fmt.Fprintln(p.w, "\nDeleting registry layer blobs ...")
-		fmt.Fprintln(p.w, "BLOB")
-	}
-
-	fmt.Fprintf(p.w, "%s\n", layer)
+	fmt.Fprintf(p.w, "Deleting blob %s\n", layer)
 
 	if p.delegate == nil {
 		return nil
@@ -610,13 +714,7 @@ type describingManifestDeleter struct {
 var _ imageprune.ManifestDeleter = &describingManifestDeleter{}
 
 func (p *describingManifestDeleter) DeleteManifest(registryClient *http.Client, registryURL *url.URL, repo, manifest string) error {
-	if !p.headerPrinted {
-		p.headerPrinted = true
-		fmt.Fprintln(p.w, "\nDeleting registry repository manifest data ...")
-		fmt.Fprintln(p.w, "REPO\tIMAGE")
-	}
-
-	fmt.Fprintf(p.w, "%s\t%s\n", repo, manifest)
+	fmt.Fprintf(p.w, "Deleting manifest link %s in repository %s\n", manifest, repo)
 
 	if p.delegate == nil {
 		return nil
@@ -624,15 +722,15 @@ func (p *describingManifestDeleter) DeleteManifest(registryClient *http.Client, 
 
 	err := p.delegate.DeleteManifest(registryClient, registryURL, repo, manifest)
 	if err != nil {
-		fmt.Fprintf(p.errOut, "error deleting manifest %s from repository %s: %v\n", manifest, repo, err)
+		fmt.Fprintf(p.errOut, "error deleting manifest link %s from repository %s: %v\n", manifest, repo, err)
 	}
 
 	return err
 }
 
 // getClients returns a OpenShift client and Kube client.
-func getClients(f *clientcmd.Factory) (appsclient.AppsInterface, buildclient.BuildInterface, imageclient.ImageInterface, kclientset.Interface, error) {
-	clientConfig, err := f.ClientConfig()
+func getClients(f kcmdutil.Factory) (appsclient.AppsInterface, buildclient.BuildInterface, imageclient.ImageInterface, kclientset.Interface, error) {
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -658,6 +756,17 @@ func getClients(f *clientcmd.Factory) (appsclient.AppsInterface, buildclient.Bui
 		return nil, nil, nil, nil, err
 	}
 	return appsClient, buildClient, imageClient, kubeClient, err
+}
+
+func getImageClientFactory(f kcmdutil.Factory) func() (imageclient.ImageInterface, error) {
+	return func() (imageclient.ImageInterface, error) {
+		clientConfig, err := f.ToRESTConfig()
+		if err != nil {
+			return nil, err
+		}
+
+		return imageclient.NewForConfig(clientConfig)
+	}
 }
 
 // getRegistryClient returns a registry client. Note that registryCABundle and registryInsecure=true are

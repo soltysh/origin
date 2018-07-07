@@ -15,10 +15,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	kyaml "k8s.io/apimachinery/pkg/util/yaml"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	"github.com/openshift/origin/pkg/cmd/server/apis/config"
 	configapilatest "github.com/openshift/origin/pkg/cmd/server/apis/config/latest"
@@ -29,7 +29,6 @@ import (
 	"github.com/openshift/origin/pkg/oc/admin/groups/sync"
 	"github.com/openshift/origin/pkg/oc/admin/groups/sync/interfaces"
 	"github.com/openshift/origin/pkg/oc/admin/groups/sync/syncerror"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	userclientinternal "github.com/openshift/origin/pkg/user/generated/internalclientset"
 	usertypedclient "github.com/openshift/origin/pkg/user/generated/internalclientset/typed/user/internalversion"
 )
@@ -129,9 +128,9 @@ func NewSyncOptions() *SyncOptions {
 	}
 }
 
-func NewCmdSync(name, fullName string, f *clientcmd.Factory, out io.Writer) *cobra.Command {
+func NewCmdSync(name, fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	options := NewSyncOptions()
-	options.Out = out
+	options.Out = streams.Out
 
 	typeArg := string(GroupSyncSourceLDAP)
 	whitelistFile := ""
@@ -186,7 +185,7 @@ func NewCmdSync(name, fullName string, f *clientcmd.Factory, out io.Writer) *cob
 	return cmd
 }
 
-func (o *SyncOptions) Complete(typeArg, whitelistFile, blacklistFile, configFile string, args []string, f *clientcmd.Factory) error {
+func (o *SyncOptions) Complete(typeArg, whitelistFile, blacklistFile, configFile string, args []string, f kcmdutil.Factory) error {
 	switch typeArg {
 	case string(GroupSyncSourceLDAP):
 		o.Source = GroupSyncSourceLDAP
@@ -223,7 +222,7 @@ func (o *SyncOptions) Complete(typeArg, whitelistFile, blacklistFile, configFile
 		}
 	}
 
-	clientConfig, err := f.ClientConfig()
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
@@ -359,7 +358,7 @@ func (o *SyncOptions) Validate() error {
 
 // Run creates the GroupSyncer specified and runs it to sync groups
 // the arguments are only here because its the only way to get the printer we need
-func (o *SyncOptions) Run(cmd *cobra.Command, f *clientcmd.Factory) error {
+func (o *SyncOptions) Run(cmd *cobra.Command, f kcmdutil.Factory) error {
 	bindPassword, err := config.ResolveStringValue(o.Config.BindPassword)
 	if err != nil {
 		return err
@@ -431,7 +430,7 @@ func (o *SyncOptions) Run(cmd *cobra.Command, f *clientcmd.Factory) error {
 	for _, item := range openshiftGroups {
 		list.Items = append(list.Items, item)
 	}
-	fn := print.VersionedPrintObject(legacyscheme.Scheme, legacyscheme.Registry, kcmdutil.PrintObject, cmd, o.Out)
+	fn := print.VersionedPrintObject(kcmdutil.PrintObject, cmd, o.Out)
 	if err := fn(list); err != nil {
 		return err
 	}

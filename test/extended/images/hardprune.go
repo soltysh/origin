@@ -22,7 +22,7 @@ import (
 	testutil "github.com/openshift/origin/test/util"
 )
 
-var _ = g.Describe("[Feature:ImagePrune][registry][Serial] Image hard prune", func() {
+var _ = g.Describe("[Feature:ImagePrune][registry][Serial][Suite:openshift/registry/serial][local] Image hard prune", func() {
 	defer g.GinkgoRecover()
 	var oc = exutil.NewCLI("prune-images", exutil.KubeConfigPath())
 	var originalAcceptSchema2 *bool
@@ -43,7 +43,11 @@ var _ = g.Describe("[Feature:ImagePrune][registry][Serial] Image hard prune", fu
 			})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		err = exutil.WaitForBuilderAccount(oc.KubeClient().Core().ServiceAccounts(oc.Namespace()))
+		g.By("waiting for default service account")
+		err = exutil.WaitForServiceAccount(oc.KubeClient().Core().ServiceAccounts(oc.Namespace()), "default")
+		o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("waiting for builder service account")
+		err = exutil.WaitForServiceAccount(oc.KubeClient().Core().ServiceAccounts(oc.Namespace()), "builder")
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		defer func(ns string) { oc.SetNamespace(ns) }(oc.Namespace())
@@ -436,7 +440,7 @@ func LogRegistryPod(oc *exutil.CLI) error {
 func ConfigureRegistry(oc *exutil.CLI, desiredState RegistryConfiguration) (bool, error) {
 	defer func(ns string) { oc.SetNamespace(ns) }(oc.Namespace())
 	oc = oc.SetNamespace(metav1.NamespaceDefault).AsAdmin()
-	env, err := oc.Run("env").Args("dc/docker-registry", "--list").Output()
+	env, err := oc.Run("set", "env").Args("dc/docker-registry", "--list").Output()
 	if err != nil {
 		return false, err
 	}
@@ -461,7 +465,7 @@ func ConfigureRegistry(oc *exutil.CLI, desiredState RegistryConfiguration) (bool
 		return false, nil
 	}
 
-	if err := oc.Run("env").Args(append([]string{"dc/docker-registry"}, envOverrides...)...).Execute(); err != nil {
+	if err := oc.Run("set", "env").Args(append([]string{"dc/docker-registry"}, envOverrides...)...).Execute(); err != nil {
 		return false, fmt.Errorf("failed to update registry's environment: %v", err)
 	}
 
@@ -525,7 +529,7 @@ func GetRegistryStorageSize(oc *exutil.CLI) (int64, error) {
 // schema 2.
 func DoesRegistryAcceptSchema2(oc *exutil.CLI) (bool, error) {
 	defer func(ns string) { oc.SetNamespace(ns) }(oc.Namespace())
-	env, err := oc.SetNamespace(metav1.NamespaceDefault).AsAdmin().Run("env").Args("dc/docker-registry", "--list").Output()
+	env, err := oc.SetNamespace(metav1.NamespaceDefault).AsAdmin().Run("set", "env").Args("dc/docker-registry", "--list").Output()
 	if err != nil {
 		return defaultAcceptSchema2, err
 	}

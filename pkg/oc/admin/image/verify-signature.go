@@ -25,7 +25,6 @@ import (
 	imageapi "github.com/openshift/origin/pkg/image/apis/image"
 	imageclientinternal "github.com/openshift/origin/pkg/image/generated/internalclientset"
 	imageclient "github.com/openshift/origin/pkg/image/generated/internalclientset/typed/image/internalversion"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	userclientinternal "github.com/openshift/origin/pkg/user/generated/internalclientset"
 )
 
@@ -93,7 +92,7 @@ const (
 	VerifyRecommendedName = "verify-image-signature"
 )
 
-func NewCmdVerifyImageSignature(name, fullName string, f *clientcmd.Factory, out, errOut io.Writer) *cobra.Command {
+func NewCmdVerifyImageSignature(name, fullName string, f kcmdutil.Factory, out, errOut io.Writer) *cobra.Command {
 	opts := &VerifyImageSignatureOptions{
 		ErrOut: errOut,
 		Out:    out,
@@ -137,7 +136,7 @@ func (o *VerifyImageSignatureOptions) Validate() error {
 	}
 	return nil
 }
-func (o *VerifyImageSignatureOptions) Complete(f *clientcmd.Factory, cmd *cobra.Command, args []string, out io.Writer) error {
+func (o *VerifyImageSignatureOptions) Complete(f kcmdutil.Factory, cmd *cobra.Command, args []string, out io.Writer) error {
 	if len(args) != 1 {
 		return kcmdutil.UsageErrorf(cmd, "exactly one image must be specified")
 	}
@@ -149,7 +148,7 @@ func (o *VerifyImageSignatureOptions) Complete(f *clientcmd.Factory, cmd *cobra.
 			return fmt.Errorf("unable to read --public-key: %v", err)
 		}
 	}
-	clientConfig, err := f.ClientConfig()
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
@@ -172,7 +171,7 @@ func (o *VerifyImageSignatureOptions) Complete(f *clientcmd.Factory, cmd *cobra.
 	} else {
 		o.CurrentUser = me.Name
 
-		if config, err := f.ClientConfig(); err != nil {
+		if config, err := f.ToRESTConfig(); err != nil {
 			return err
 		} else {
 			if o.CurrentUserToken = config.BearerToken; len(o.CurrentUserToken) == 0 {
@@ -245,6 +244,8 @@ func (o VerifyImageSignatureOptions) Run() error {
 	if o.Save || o.RemoveAll {
 		_, err := o.ImageClient.Images().Update(img)
 		return err
+	} else {
+		fmt.Fprintf(o.Out, "Neither --save nor --remove-all were passed, image %q not updated to %v\n", o.InputImage, img)
 	}
 	return nil
 }

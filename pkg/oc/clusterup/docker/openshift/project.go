@@ -6,16 +6,16 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	kclientcmd "k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	"github.com/openshift/origin/pkg/oc/cli/cmd"
 	"github.com/openshift/origin/pkg/oc/cli/config"
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	projectclientinternal "github.com/openshift/origin/pkg/project/generated/internalclientset"
 )
 
 // createProject creates a project
-func CreateProject(f *clientcmd.Factory, name, display, desc, basecmd string, out io.Writer) error {
-	clientConfig, err := f.ClientConfig()
+func CreateProject(f genericclioptions.RESTClientGetter, name, display, desc, basecmd string, out io.Writer) error {
+	clientConfig, err := f.ToRESTConfig()
 	if err != nil {
 		return err
 	}
@@ -50,18 +50,19 @@ func CreateProject(f *clientcmd.Factory, name, display, desc, basecmd string, ou
 	return nil
 }
 
-func setCurrentProject(f *clientcmd.Factory, name string, out io.Writer) error {
+func setCurrentProject(f genericclioptions.RESTClientGetter, name string, out io.Writer) error {
 	pathOptions := config.NewPathOptionsWithConfig("")
 	opt := &cmd.ProjectOptions{PathOptions: pathOptions}
 	opt.Complete(f, []string{name}, out)
 	return opt.RunProject()
 }
 
-func LoggedInUserFactory() (*clientcmd.Factory, error) {
+func LoggedInUserFactory() (genericclioptions.RESTClientGetter, error) {
 	cfg, err := kclientcmd.NewDefaultClientConfigLoadingRules().Load()
 	if err != nil {
 		return nil, err
 	}
 	defaultCfg := kclientcmd.NewDefaultClientConfig(*cfg, &kclientcmd.ConfigOverrides{})
-	return clientcmd.NewFactory(defaultCfg), nil
+
+	return genericclioptions.NewTestConfigFlags().WithClientConfig(defaultCfg), nil
 }

@@ -18,9 +18,9 @@ import (
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 	kubeversion "k8s.io/kubernetes/pkg/version"
 
-	"github.com/openshift/origin/pkg/oc/cli/util/clientcmd"
 	"github.com/openshift/origin/pkg/oc/util/tokencmd"
 	"github.com/openshift/origin/pkg/version"
 )
@@ -44,7 +44,7 @@ type VersionOptions struct {
 }
 
 // NewCmdVersion creates a command for displaying the version of this binary
-func NewCmdVersion(fullName string, f *clientcmd.Factory, out io.Writer, options VersionOptions) *cobra.Command {
+func NewCmdVersion(fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams, options VersionOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Display client and server versions",
@@ -52,7 +52,7 @@ func NewCmdVersion(fullName string, f *clientcmd.Factory, out io.Writer, options
 		Run: func(cmd *cobra.Command, args []string) {
 			options.BaseName = fullName
 
-			if err := options.Complete(cmd, f, out); err != nil {
+			if err := options.Complete(cmd, f, streams.Out); err != nil {
 				kcmdutil.CheckErr(kcmdutil.UsageErrorf(cmd, err.Error()))
 			}
 
@@ -65,18 +65,20 @@ func NewCmdVersion(fullName string, f *clientcmd.Factory, out io.Writer, options
 	return cmd
 }
 
-func (o *VersionOptions) Complete(cmd *cobra.Command, f *clientcmd.Factory, out io.Writer) error {
+func (o *VersionOptions) Complete(cmd *cobra.Command, f kcmdutil.Factory, out io.Writer) error {
 	o.Out = out
 
 	if f == nil {
 		return nil
 	}
 
-	o.Clients = f.ClientSet
 	var err error
-	o.ClientConfig, err = f.ClientConfig()
+	o.ClientConfig, err = f.ToRESTConfig()
 	if err != nil && !kclientcmd.IsEmptyConfig(err) {
 		return err
+	}
+	o.Clients = func() (kclientset.Interface, error) {
+		return kclientset.NewForConfig(o.ClientConfig)
 	}
 
 	if !o.IsServer {
@@ -85,7 +87,7 @@ func (o *VersionOptions) Complete(cmd *cobra.Command, f *clientcmd.Factory, out 
 		// flag, as flag value would have to be parsed
 		// from a string potentially not formatted as
 		// a valid time.Duration value
-		config, err := f.ClientConfig()
+		config, err := f.ToRESTConfig()
 		if err == nil {
 			o.Timeout = config.Timeout
 		}

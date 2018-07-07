@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	rbacv1 "k8s.io/api/rbac/v1"
 	kapierror "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -15,16 +16,18 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/discovery"
+	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	appsapi "k8s.io/kubernetes/pkg/apis/apps"
 	kubeauthorizationapi "k8s.io/kubernetes/pkg/apis/authorization"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
 	extensionsapi "k8s.io/kubernetes/pkg/apis/extensions"
+	rbacv1helpers "k8s.io/kubernetes/pkg/apis/rbac/v1"
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/authorization/internalversion"
+	rbacclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/rbac/internalversion"
 
-	authorizationapiv1 "github.com/openshift/api/authorization/v1"
 	"github.com/openshift/origin/pkg/api/legacy"
 	oappsapi "github.com/openshift/origin/pkg/apps/apis/apps"
 	appsclient "github.com/openshift/origin/pkg/apps/generated/internalclientset"
@@ -148,13 +151,13 @@ func TestClusterReaderCoverage(t *testing.T) {
 		{Group: "", Resource: "imagestreams/secrets"}: true,
 	}
 
-	readerRole, err := authorizationclient.NewForConfigOrDie(clusterAdminClientConfig).Authorization().ClusterRoles().Get(bootstrappolicy.ClusterReaderRoleName, metav1.GetOptions{})
+	readerRole, err := rbacclient.NewForConfigOrDie(clusterAdminClientConfig).ClusterRoles().Get(bootstrappolicy.ClusterReaderRoleName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	for _, rule := range readerRole.Rules {
 		for _, group := range rule.APIGroups {
-			for resource := range rule.Resources {
+			for _, resource := range rule.Resources {
 				gr := schema.GroupResource{Group: group, Resource: resource}
 				if escalatingResources[gr] {
 					t.Errorf("cluster-reader role has escalating resource %v.  Check pkg/cmd/server/bootstrappolicy/policy.go.", gr)
@@ -281,13 +284,13 @@ func TestAuthorizationResolution(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	clusterAdminAuthorizationClient := authorizationclient.NewForConfigOrDie(clusterAdminClientConfig).Authorization()
+	clusterAdminAuthorizationClient := rbacv1client.NewForConfigOrDie(clusterAdminClientConfig)
 
 	addValerie := &policy.RoleModificationOptions{
-		RoleNamespace:       "",
-		RoleName:            bootstrappolicy.ViewRoleName,
-		RoleBindingAccessor: policy.NewClusterRoleBindingAccessor(authorizationclient.NewForConfigOrDie(clusterAdminClientConfig).Authorization()),
-		Users:               []string{"valerie"},
+		RoleName:   bootstrappolicy.ViewRoleName,
+		RoleKind:   "ClusterRole",
+		RbacClient: clusterAdminAuthorizationClient,
+		Users:      []string{"valerie"},
 	}
 	if err := addValerie.AddRole(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -298,10 +301,10 @@ func TestAuthorizationResolution(t *testing.T) {
 	}
 
 	addEdgar := &policy.RoleModificationOptions{
-		RoleNamespace:       "",
-		RoleName:            bootstrappolicy.EditRoleName,
-		RoleBindingAccessor: policy.NewClusterRoleBindingAccessor(authorizationclient.NewForConfigOrDie(clusterAdminClientConfig).Authorization()),
-		Users:               []string{"edgar"},
+		RoleName:   bootstrappolicy.EditRoleName,
+		RoleKind:   "ClusterRole",
+		RbacClient: clusterAdminAuthorizationClient,
+		Users:      []string{"edgar"},
 	}
 	if err := addEdgar.AddRole(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -311,22 +314,22 @@ func TestAuthorizationResolution(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	roleWithGroup := &authorizationapi.ClusterRole{}
+	roleWithGroup := &rbacv1.ClusterRole{}
 	roleWithGroup.Name = "with-group"
-	roleWithGroup.Rules = append(roleWithGroup.Rules, authorizationapi.PolicyRule{
-		APIGroups: []string{buildapi.GroupName},
-		Verbs:     sets.NewString("list"),
-		Resources: sets.NewString("builds"),
-	})
+	roleWithGroup.Rules = append(roleWithGroup.Rules,
+		rbacv1helpers.NewRule("list").
+			Groups(buildapi.GroupName).
+			Resources("builds").
+			RuleOrDie())
 	if _, err := clusterAdminAuthorizationClient.ClusterRoles().Create(roleWithGroup); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	addBuildLister := &policy.RoleModificationOptions{
-		RoleNamespace:       "",
-		RoleName:            "with-group",
-		RoleBindingAccessor: policy.NewClusterRoleBindingAccessor(authorizationclient.NewForConfigOrDie(clusterAdminClientConfig).Authorization()),
-		Users:               []string{"build-lister"},
+		RoleName:   "with-group",
+		RoleKind:   "ClusterRole",
+		RbacClient: clusterAdminAuthorizationClient,
+		Users:      []string{"build-lister"},
 	}
 	if err := addBuildLister.AddRole(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -523,20 +526,22 @@ func TestAuthorizationResourceAccessReview(t *testing.T) {
 	markAuthorizationClient := authorizationclient.NewForConfigOrDie(markConfig).Authorization()
 
 	addValerie := &policy.RoleModificationOptions{
-		RoleNamespace:       "",
-		RoleName:            bootstrappolicy.ViewRoleName,
-		RoleBindingAccessor: policy.NewLocalRoleBindingAccessor("hammer-project", authorizationclient.NewForConfigOrDie(haroldConfig).Authorization()),
-		Users:               []string{"valerie"},
+		RoleBindingNamespace: "hammer-project",
+		RoleName:             bootstrappolicy.ViewRoleName,
+		RoleKind:             "ClusterRole",
+		RbacClient:           rbacv1client.NewForConfigOrDie(haroldConfig),
+		Users:                []string{"valerie"},
 	}
 	if err := addValerie.AddRole(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	addEdgar := &policy.RoleModificationOptions{
-		RoleNamespace:       "",
-		RoleName:            bootstrappolicy.EditRoleName,
-		RoleBindingAccessor: policy.NewLocalRoleBindingAccessor("mallet-project", authorizationclient.NewForConfigOrDie(markConfig).Authorization()),
-		Users:               []string{"edgar"},
+		RoleBindingNamespace: "mallet-project",
+		RoleName:             bootstrappolicy.EditRoleName,
+		RoleKind:             "ClusterRole",
+		RbacClient:           rbacv1client.NewForConfigOrDie(markConfig),
+		Users:                []string{"edgar"},
 	}
 	if err := addEdgar.AddRole(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -1027,20 +1032,22 @@ func TestAuthorizationSubjectAccessReview(t *testing.T) {
 	anonymousSARGetter := anonymousKubeClient.Authorization()
 
 	addAnonymous := &policy.RoleModificationOptions{
-		RoleNamespace:       "",
-		RoleName:            bootstrappolicy.EditRoleName,
-		RoleBindingAccessor: policy.NewLocalRoleBindingAccessor("hammer-project", authorizationclient.NewForConfigOrDie(clusterAdminClientConfig).Authorization()),
-		Users:               []string{"system:anonymous"},
+		RoleBindingNamespace: "hammer-project",
+		RoleName:             bootstrappolicy.EditRoleName,
+		RoleKind:             "ClusterRole",
+		RbacClient:           rbacv1client.NewForConfigOrDie(clusterAdminClientConfig),
+		Users:                []string{"system:anonymous"},
 	}
 	if err := addAnonymous.AddRole(); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 
 	addDanny := &policy.RoleModificationOptions{
-		RoleNamespace:       "",
-		RoleName:            bootstrappolicy.ViewRoleName,
-		RoleBindingAccessor: policy.NewLocalRoleBindingAccessor("default", authorizationclient.NewForConfigOrDie(clusterAdminClientConfig).Authorization()),
-		Users:               []string{"danny"},
+		RoleBindingNamespace: "default",
+		RoleName:             bootstrappolicy.ViewRoleName,
+		RoleKind:             "ClusterRole",
+		RbacClient:           rbacv1client.NewForConfigOrDie(clusterAdminClientConfig),
+		Users:                []string{"danny"},
 	}
 	if err := addDanny.AddRole(); err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -1092,20 +1099,22 @@ func TestAuthorizationSubjectAccessReview(t *testing.T) {
 	}.run(t)
 
 	addValerie := &policy.RoleModificationOptions{
-		RoleNamespace:       "",
-		RoleName:            bootstrappolicy.ViewRoleName,
-		RoleBindingAccessor: policy.NewLocalRoleBindingAccessor("hammer-project", authorizationclient.NewForConfigOrDie(haroldConfig).Authorization()),
-		Users:               []string{"valerie"},
+		RoleBindingNamespace: "hammer-project",
+		RoleName:             bootstrappolicy.ViewRoleName,
+		RoleKind:             "ClusterRole",
+		RbacClient:           rbacv1client.NewForConfigOrDie(haroldConfig),
+		Users:                []string{"valerie"},
 	}
 	if err := addValerie.AddRole(); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 
 	addEdgar := &policy.RoleModificationOptions{
-		RoleNamespace:       "",
-		RoleName:            bootstrappolicy.EditRoleName,
-		RoleBindingAccessor: policy.NewLocalRoleBindingAccessor("mallet-project", authorizationclient.NewForConfigOrDie(markConfig).Authorization()),
-		Users:               []string{"edgar"},
+		RoleBindingNamespace: "mallet-project",
+		RoleName:             bootstrappolicy.EditRoleName,
+		RoleKind:             "ClusterRole",
+		RbacClient:           rbacv1client.NewForConfigOrDie(markConfig),
+		Users:                []string{"edgar"},
 	}
 	if err := addEdgar.AddRole(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -1323,238 +1332,6 @@ func TestAuthorizationSubjectAccessReview(t *testing.T) {
 	}.run(t)
 }
 
-// TestOldLocalSubjectAccessReviewEndpoint checks to make sure that the old subject access review endpoint still functions properly
-// this is needed to support old docker registry images
-func TestOldLocalSubjectAccessReviewEndpoint(t *testing.T) {
-	masterConfig, clusterAdminKubeConfig, err := testserver.StartTestMasterAPI()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	defer testserver.CleanupMasterEtcd(t, masterConfig)
-
-	clusterAdminClientConfig, err := testutil.GetClusterAdminClientConfig(clusterAdminKubeConfig)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	clusterAdminAuthorizationClient := authorizationclient.NewForConfigOrDie(clusterAdminClientConfig).Authorization()
-
-	_, haroldConfig, err := testserver.CreateNewProject(clusterAdminClientConfig, "hammer-project", "harold")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	haroldClient := authorizationclient.NewForConfigOrDie(haroldConfig)
-
-	// install the legacy types into the client for decoding
-	legacy.InstallLegacy(authorizationapi.GroupName, authorizationapi.AddToSchemeInCoreGroup, authorizationapiv1.AddToSchemeInCoreGroup,
-		sets.NewString("ClusterRole", "ClusterRoleBinding", "ResourceAccessReviewResponse", "SubjectAccessReviewResponse"),
-		authorizationclientscheme.Registry, authorizationclientscheme.Scheme,
-	)
-
-	namespace := "hammer-project"
-
-	// simple check
-	{
-		sar := &authorizationapi.SubjectAccessReview{
-			Action: authorizationapi.Action{
-				Verb:     "get",
-				Resource: "imagestreams/layers",
-			},
-		}
-		sarBytes, err := runtime.Encode(legacyscheme.Codecs.LegacyCodec(schema.GroupVersion{Version: "v1"}), sar)
-		if err != nil {
-			t.Fatal(err)
-		}
-		actualResponse := &authorizationapi.SubjectAccessReviewResponse{}
-		err = haroldClient.Authorization().RESTClient().Post().AbsPath("/oapi/v1/namespaces/" + namespace + "/subjectaccessreviews").Body(sarBytes).Do().Into(actualResponse)
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-
-		expectedResponse := &authorizationapi.SubjectAccessReviewResponse{
-			Allowed:   true,
-			Reason:    `allowed by openshift authorizer`,
-			Namespace: namespace,
-		}
-		if (actualResponse.Namespace != expectedResponse.Namespace) ||
-			(actualResponse.Allowed != expectedResponse.Allowed) ||
-			(!strings.HasPrefix(actualResponse.Reason, expectedResponse.Reason)) {
-			t.Errorf("review\n\t%#v\nexpected\n\t%#v\ngot\n\t%#v", sar, expectedResponse, actualResponse)
-		}
-	}
-
-	// namespace forced to allowed namespace so we can't trick the server into leaking
-	{
-		sar := &authorizationapi.SubjectAccessReview{
-			Action: authorizationapi.Action{
-				Namespace: "sneaky-user",
-				Verb:      "get",
-				Resource:  "imagestreams/layers",
-			},
-		}
-		sarBytes, err := runtime.Encode(legacyscheme.Codecs.LegacyCodec(schema.GroupVersion{Version: "v1"}), sar)
-		if err != nil {
-			t.Fatal(err)
-		}
-		actualResponse := &authorizationapi.SubjectAccessReviewResponse{}
-		err = haroldClient.Authorization().RESTClient().Post().AbsPath("/oapi/v1/namespaces/" + namespace + "/subjectaccessreviews").Body(sarBytes).Do().Into(actualResponse)
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-
-		expectedResponse := &authorizationapi.SubjectAccessReviewResponse{
-			Allowed:   true,
-			Reason:    `allowed by openshift authorizer`,
-			Namespace: namespace,
-		}
-		if (actualResponse.Namespace != expectedResponse.Namespace) ||
-			(actualResponse.Allowed != expectedResponse.Allowed) ||
-			(!strings.HasPrefix(actualResponse.Reason, expectedResponse.Reason)) {
-			t.Errorf("review\n\t%#v\nexpected\n\t%#v\ngot\n\t%#v", sar, expectedResponse, actualResponse)
-		}
-	}
-
-	// harold should be able to issue a self SAR against any project with the OLD policy
-	{
-		otherNamespace := "chisel-project"
-		// we need a real project for this to make it past admission.
-		// TODO, this is an information leaking problem.  This admission plugin leaks knowledge of which projects exist via SARs
-		if _, _, err := testserver.CreateNewProject(clusterAdminClientConfig, otherNamespace, "charlie"); err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-
-		// remove the new permission for localSAR
-		basicUserRole, err := clusterAdminAuthorizationClient.ClusterRoles().Get(bootstrappolicy.BasicUserRoleName, metav1.GetOptions{})
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		for i := range basicUserRole.Rules {
-			basicUserRole.Rules[i].Resources.Delete("localsubjectaccessreviews")
-		}
-
-		if _, err := clusterAdminAuthorizationClient.ClusterRoles().Update(basicUserRole); err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-
-		sar := &authorizationapi.SubjectAccessReview{
-			Action: authorizationapi.Action{
-				Verb:     "get",
-				Resource: "imagestreams/layers",
-			},
-		}
-		sarBytes, err := runtime.Encode(legacyscheme.Codecs.LegacyCodec(schema.GroupVersion{Version: "v1"}), sar)
-		if err != nil {
-			t.Fatal(err)
-		}
-		actualResponse := &authorizationapi.SubjectAccessReviewResponse{}
-		err = haroldClient.Authorization().RESTClient().Post().AbsPath("/oapi/v1/namespaces/" + otherNamespace + "/subjectaccessreviews").Body(sarBytes).Do().Into(actualResponse)
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-
-		expectedResponse := &authorizationapi.SubjectAccessReviewResponse{
-			Allowed:   false,
-			Reason:    `User "harold" cannot get imagestreams/layers in project "chisel-project"`,
-			Namespace: otherNamespace,
-		}
-		if (actualResponse.Namespace != expectedResponse.Namespace) ||
-			(actualResponse.Allowed != expectedResponse.Allowed) ||
-			(!strings.HasPrefix(actualResponse.Reason, expectedResponse.Reason)) {
-			t.Errorf("review\n\t%#v\nexpected\n\t%#v\ngot\n\t%#v", sar, expectedResponse, actualResponse)
-		}
-	}
-
-}
-
-// TestOldLocalResourceAccessReviewEndpoint checks to make sure that the old resource access review endpoint still functions properly
-// this is needed to support old who-can client
-func TestOldLocalResourceAccessReviewEndpoint(t *testing.T) {
-	masterConfig, clusterAdminKubeConfig, err := testserver.StartTestMasterAPI()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	defer testserver.CleanupMasterEtcd(t, masterConfig)
-
-	clusterAdminClientConfig, err := testutil.GetClusterAdminClientConfig(clusterAdminKubeConfig)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	_, haroldConfig, err := testserver.CreateNewProject(clusterAdminClientConfig, "hammer-project", "harold")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	haroldClient := authorizationclient.NewForConfigOrDie(haroldConfig)
-
-	namespace := "hammer-project"
-
-	// install the legacy types into the client for decoding
-	legacy.InstallLegacy(authorizationapi.GroupName, authorizationapi.AddToSchemeInCoreGroup, authorizationapiv1.AddToSchemeInCoreGroup,
-		sets.NewString("ClusterRole", "ClusterRoleBinding", "ResourceAccessReviewResponse", "SubjectAccessReviewResponse"),
-		authorizationclientscheme.Registry, authorizationclientscheme.Scheme,
-	)
-
-	// simple check
-	{
-		rar := &authorizationapi.ResourceAccessReview{
-			Action: authorizationapi.Action{
-				Verb:     "get",
-				Resource: "imagestreams/layers",
-			},
-		}
-		rarBytes, err := runtime.Encode(legacyscheme.Codecs.LegacyCodec(schema.GroupVersion{Version: "v1"}), rar)
-		if err != nil {
-			t.Fatal(err)
-		}
-		actualResponse := &authorizationapi.ResourceAccessReviewResponse{}
-		err = haroldClient.Authorization().RESTClient().Post().AbsPath("/oapi/v1/namespaces/" + namespace + "/resourceaccessreviews").Body(rarBytes).Do().Into(actualResponse)
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-
-		expectedResponse := &authorizationapi.ResourceAccessReviewResponse{
-			Namespace: namespace,
-			Users:     sets.NewString("harold", "system:serviceaccount:kube-system:clusterrole-aggregation-controller", "system:serviceaccount:kube-system:generic-garbage-collector", "system:serviceaccount:kube-system:namespace-controller", "system:serviceaccount:openshift-infra:template-instance-controller", "system:serviceaccount:openshift-infra:template-instance-finalizer-controller", "system:serviceaccount:hammer-project:builder", "system:admin", "system:serviceaccount:openshift-infra:default-rolebindings-controller"),
-			Groups:    sets.NewString("system:cluster-admins", "system:masters", "system:cluster-readers", "system:serviceaccounts:hammer-project"),
-		}
-		if (actualResponse.Namespace != expectedResponse.Namespace) ||
-			!reflect.DeepEqual(actualResponse.Users.List(), expectedResponse.Users.List()) ||
-			!reflect.DeepEqual(actualResponse.Groups.List(), expectedResponse.Groups.List()) {
-			t.Errorf("review\n\t%#v\nexpected\n\t%#v\ngot\n\t%#v", rar, expectedResponse, actualResponse)
-		}
-	}
-
-	// namespace forced to allowed namespace so we can't trick the server into leaking
-	{
-		rar := &authorizationapi.ResourceAccessReview{
-			Action: authorizationapi.Action{
-				Namespace: "sneaky-user",
-				Verb:      "get",
-				Resource:  "imagestreams/layers",
-			},
-		}
-		rarBytes, err := runtime.Encode(legacyscheme.Codecs.LegacyCodec(schema.GroupVersion{Version: "v1"}), rar)
-		if err != nil {
-			t.Fatal(err)
-		}
-		actualResponse := &authorizationapi.ResourceAccessReviewResponse{}
-		err = haroldClient.Authorization().RESTClient().Post().AbsPath("/oapi/v1/namespaces/" + namespace + "/resourceaccessreviews").Body(rarBytes).Do().Into(actualResponse)
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-
-		expectedResponse := &authorizationapi.ResourceAccessReviewResponse{
-			Namespace: namespace,
-			Users:     sets.NewString("harold", "system:serviceaccount:kube-system:clusterrole-aggregation-controller", "system:serviceaccount:kube-system:generic-garbage-collector", "system:serviceaccount:kube-system:namespace-controller", "system:serviceaccount:openshift-infra:template-instance-controller", "system:serviceaccount:openshift-infra:template-instance-finalizer-controller", "system:serviceaccount:hammer-project:builder", "system:admin", "system:serviceaccount:openshift-infra:default-rolebindings-controller"),
-			Groups:    sets.NewString("system:cluster-admins", "system:masters", "system:cluster-readers", "system:serviceaccounts:hammer-project"),
-		}
-		if (actualResponse.Namespace != expectedResponse.Namespace) ||
-			!reflect.DeepEqual(actualResponse.Users.List(), expectedResponse.Users.List()) ||
-			!reflect.DeepEqual(actualResponse.Groups.List(), expectedResponse.Groups.List()) {
-			t.Errorf("review\n\t%#v\nexpected\n\t%#v\ngot\n\t%#v", rar, expectedResponse, actualResponse)
-		}
-	}
-}
-
 func TestBrowserSafeAuthorizer(t *testing.T) {
 	masterConfig, clusterAdminKubeConfig, err := testserver.StartTestMasterAPI()
 	if err != nil {
@@ -1661,10 +1438,7 @@ func TestLegacyLocalRoleBindingEndpoint(t *testing.T) {
 	testBindingName := "testrole"
 
 	// install the legacy types into the client for decoding
-	legacy.InstallLegacy(authorizationapi.GroupName, authorizationapi.AddToSchemeInCoreGroup, authorizationapiv1.AddToSchemeInCoreGroup,
-		sets.NewString("RoleBinding"),
-		authorizationclientscheme.Registry, authorizationclientscheme.Scheme,
-	)
+	legacy.InstallLegacyAuthorization(authorizationclientscheme.Scheme)
 
 	// create rolebinding
 	roleBindingToCreate := &authorizationapi.RoleBinding{
@@ -1833,10 +1607,7 @@ func TestLegacyClusterRoleBindingEndpoint(t *testing.T) {
 	clusterAdmin := authorizationclient.NewForConfigOrDie(clusterAdminClientConfig)
 
 	// install the legacy types into the client for decoding
-	legacy.InstallLegacy(authorizationapi.GroupName, authorizationapi.AddToSchemeInCoreGroup, authorizationapiv1.AddToSchemeInCoreGroup,
-		sets.NewString("ClusterRoleBinding"),
-		authorizationclientscheme.Registry, authorizationclientscheme.Scheme,
-	)
+	legacy.InstallLegacyAuthorization(authorizationclientscheme.Scheme)
 
 	clusterRoleBindingsPath := "/oapi/v1/clusterrolebindings"
 	testBindingName := "testbinding"
@@ -1974,10 +1745,7 @@ func TestLegacyClusterRoleEndpoint(t *testing.T) {
 	clusterAdmin := authorizationclient.NewForConfigOrDie(clusterAdminClientConfig)
 
 	// install the legacy types into the client for decoding
-	legacy.InstallLegacy(authorizationapi.GroupName, authorizationapi.AddToSchemeInCoreGroup, authorizationapiv1.AddToSchemeInCoreGroup,
-		sets.NewString("ClusterRole"),
-		authorizationclientscheme.Registry, authorizationclientscheme.Scheme,
-	)
+	legacy.InstallLegacyAuthorization(authorizationclientscheme.Scheme)
 
 	clusterRolesPath := "/oapi/v1/clusterroles"
 	testRole := "testrole"
@@ -2098,10 +1866,7 @@ func TestLegacyLocalRoleEndpoint(t *testing.T) {
 	}
 
 	// install the legacy types into the client for decoding
-	legacy.InstallLegacy(authorizationapi.GroupName, authorizationapi.AddToSchemeInCoreGroup, authorizationapiv1.AddToSchemeInCoreGroup,
-		sets.NewString("Role"),
-		authorizationclientscheme.Registry, authorizationclientscheme.Scheme,
-	)
+	legacy.InstallLegacyAuthorization(authorizationclientscheme.Scheme)
 
 	rolesPath := "/oapi/v1/namespaces/" + namespace + "/roles"
 	testRole := "testrole"

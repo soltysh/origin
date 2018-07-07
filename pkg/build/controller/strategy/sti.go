@@ -18,11 +18,7 @@ import (
 
 // SourceBuildStrategy creates STI(source to image) builds
 type SourceBuildStrategy struct {
-	Image string
-	// Codec is the codec to use for encoding the output pod.
-	// IMPORTANT: This may break backwards compatibility when
-	// it changes.
-	Codec          runtime.Codec
+	Image          string
 	SecurityClient securityinternalversion.SecurityInterface
 }
 
@@ -37,7 +33,7 @@ var DefaultDropCaps = []string{
 // CreateBuildPod creates a pod that will execute the STI build
 // TODO: Make the Pod definition configurable
 func (bs *SourceBuildStrategy) CreateBuildPod(build *buildapi.Build) (*v1.Pod, error) {
-	data, err := runtime.Encode(bs.Codec, build)
+	data, err := runtime.Encode(buildJSONCodec, build)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode the Build %s/%s: %v", build.Namespace, build.Name, err)
 	}
@@ -188,6 +184,7 @@ func (bs *SourceBuildStrategy) CreateBuildPod(build *buildapi.Build) (*v1.Pod, e
 	// location into the working directory.
 	// TODO: consider moving this into the git-clone container and doing the secret copying there instead.
 	setupInputSecrets(pod, &pod.Spec.Containers[0], build.Spec.Source.Secrets)
+	setupInputConfigMaps(pod, &pod.Spec.Containers[0], build.Spec.Source.ConfigMaps)
 	return pod, nil
 }
 
