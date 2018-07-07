@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit e30abcc230e240e014167fef8952b88cdeac0a0f
+%global commit 9ae590f04cc4c7fa97cee0d1cf8c76eb300db5b7
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=10+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.10.0-0.68.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.10.0+b81c8f8 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=b81c8f8 KUBE_GIT_MINOR=10+ OS_GIT_COMMIT=5d10a07 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=10+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.10.0-0.69.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=72e7215 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        3.11.0
-Release:        0.0.0%{?dist}
+Release:        0.1.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -482,6 +482,251 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Sat Jul 07 2018 Tim Bielawa <tbielawa@redhat.com> 3.11.0-0.1.0
+- Reverting PR 20052 reuse existing imagestreams (cdaley@redhat.com)
+- wait for builder+default service accounts before running tests
+  (bparees@redhat.com)
+- use oc set env in extended tests (bparees@redhat.com)
+- Generated changes (maszulik@redhat.com)
+- Switch set triggers to external (maszulik@redhat.com)
+- Update set (maszulik@redhat.com)
+- Update example (maszulik@redhat.com)
+- Remove deprecated oc env/volume (maszulik@redhat.com)
+- UPSTREAM: 65700: Update output format so that it matches actual accepted
+  values (maszulik@redhat.com)
+- add --read-only opt to oc set volumes (jvallejo@redhat.com)
+- UPSTREAM: <drop>: vSphere test has race conditions, disable
+  (ccoleman@redhat.com)
+- UPSTREAM: <drop>: GCE load balancer unit test is flaky (ccoleman@redhat.com)
+- Some build pushes can take less than a second (ccoleman@redhat.com)
+- WaitForBuilder was too fast, not too slow (ccoleman@redhat.com)
+- Ensure namespace info is dumped on project teardown (ccoleman@redhat.com)
+- generated (simo@redhat.com)
+- explicitly import x86 examples only (bparees@redhat.com)
+- Update create (maszulik@redhat.com)
+- Fix ldap extended tests (simo@redhat.com)
+- Avoid cloning the whole of openshift to source an outdated Dockerfile
+  (simo@redhat.com)
+- Store the test error log and the report output to the artifacts dir
+  (ccoleman@redhat.com)
+- UPSTREAM: <drop>: Fix pluginwatcher flake (vichoudh@redhat.com)
+- Add support for GitHub Enterprise IDP (mkhan@redhat.com)
+- Generated (mkhan@redhat.com)
+- Update GitLab IDP to support OIDC (mkhan@redhat.com)
+- bump(*) (jliggitt@redhat.com)
+- Don't strip working set in Prometheus (sross@redhat.com)
+- Pin github.com/apcera/gssapi to release-2.6.3 (mkhan@redhat.com)
+- unpin cfssl, certificate-transparency (jliggitt@redhat.com)
+- Apply defaults to bootstrap SCCs before reconciliation (jliggitt@redhat.com)
+- increase wait for builder service account creation (bparees@redhat.com)
+- update version file (jliggitt@redhat.com)
+- stop using legacyscheme in builds (deads@redhat.com)
+- move deployer test mock to point of use (deads@redhat.com)
+- be tolerant on deployment decode and strict on encode (deads@redhat.com)
+- publish master -> origin-3.11-kubernetes-1.11.0 (jliggitt@redhat.com)
+- Sometimes stress test takes exactly 30 times (ccoleman@redhat.com)
+- Switch origin to use gotest2junit (ccoleman@redhat.com)
+- Add tests to ensure type coercion handles errors correctly
+  (jliggitt@redhat.com)
+- UPSTREAM: <carry>: coerce string->int, empty object -> slice for backwards
+  compatibility (jliggitt@redhat.com)
+- generated (deads@redhat.com)
+- bump(*) (deads@redhat.com)
+- update glide for 1.11 GA (deads@redhat.com)
+- fix the go 1.10 unit test failures (deads@redhat.com)
+- extended tests: use leaner repo for contextdir test (jwozniak@redhat.com)
+- generated (deads@redhat.com)
+- switch to rbac v1 (deads@redhat.com)
+- Log an error when config data contains unknown fields (mkhan@redhat.com)
+- update publishing rules (deads@redhat.com)
+- make update (bparees@redhat.com)
+- bump(*) (bparees@redhat.com)
+- switch openshift/api back to master (bparees@redhat.com)
+- SCC: add AllowPrivilegeEscalation/DefaultAllowPrivilegeEscalation options for
+  controlling no-new-privs flag. (vsemushi@redhat.com)
+- Added tests for ICT trigger on BC (jwozniak@redhat.com)
+- Skip paused ICT on a BC (jwozniak@redhat.com)
+- oc import-image: remove legacy code using annotations (jwozniak@redhat.com)
+- Honor --kubelet-preferred-address-types (jliggitt@redhat.com)
+- Switch all commands to IOStreams (maszulik@redhat.com)
+- examples/prometheus: upgrade prometheus to 2.3.1 (pgier@redhat.com)
+- examples/prometheus: upgrade version of node_exporter to 0.16.0
+  (pgier@redhat.com)
+- UPSTREAM: 65587: Revert "certs: only append locally discovered addresses when
+  we got none from the cloudprovider" (jliggitt@redhat.com)
+- Fix build-local-images to use new symlink for deployer (obulatov@redhat.com)
+- squash to: imagepruning: temporarily disable event handling
+  (deads@redhat.com)
+- Restore TestSNI (jliggitt@redhat.com)
+- UPSTREAM: 65547: Honor custom transport dialer (jliggitt@redhat.com)
+- imagepruning: temporarily disable event handling (miminar@redhat.com)
+- update TSB so that it can handle secrets, but it's still generically broken
+  (deads@redhat.com)
+- disable sysctl tests that don't support SCC.  Needs to be reverted
+  (deads@redhat.com)
+- disable volume alpha e2e (deads@redhat.com)
+- generated (deads@redhat.com)
+- UPSTREAM: openshift/api: FIXME: stop registering list, omg (deads@redhat.com)
+- remove "OriginNamespaceLifecycle" plugin (deads@redhat.com)
+- role updates, collapse onto upstream roles where possible (deads@redhat.com)
+- fix template type registration (deads@redhat.com)
+- stop auto-registering the non-groupified versions (deads@redhat.com)
+- skip cluster/gce unit tests that depends on a disk format (deads@redhat.com)
+- remove namespaced resourceaccessreview and subjectaccessreview
+  (deads@redhat.com)
+- add types to the list and storage updates (deads@redhat.com)
+- make pod build annotation strict on output and flexible on input
+  (deads@redhat.com)
+- disable check of pod status because jenkins is OOMing (deads@redhat.com)
+- explicitly enable rotating server certificates (jliggitt@redhat.com)
+- fix oc unit tests (maszulik@redhat.com)
+- change scheme of some commands in oc.  others need to come post-rebase
+  (deads@redhat.com)
+- use dynamic client in oc instead of unhelpful helper (deads@redhat.com)
+- test-cmd: boring (deads@redhat.com)
+- update the scheme of some oc commands (deads@redhat.com)
+- disable -v in commands.  see https://github.com/openshift/origin/issues/20097
+  (deads@redhat.com)
+- updates for new fields and fuzzing (mfojtik@redhat.com)
+- SQUASH: upstream process default changes (deads@redhat.com)
+- STTTS: disable TestSNI.  Needs to be re-enabled.  Revert now?
+  (deads@redhat.com)
+- SKUZNETS: golang 1.10 (deads@redhat.com)
+- update oauth token expiration to use the 'normal' clock (deads@redhat.com)
+- fix imagestreams/secrets client generator (deads@redhat.com)
+- JMATTHEWS: avoid kubectl dependency in template service broker
+  (deads@redhat.com)
+- stop using kubectl based bulk and use dynamic client instead
+  (deads@redhat.com)
+- move openshift start etcd to avoid dep from hypershift (deads@redhat.com)
+- make project request endpoint use dynamic client instead of kubectl based
+  client (deads@redhat.com)
+- remove kubectl dependency from apps apiserver (deads@redhat.com)
+- use shimmed printers with minimal changes for oc during rebase
+  (deads@redhat.com)
+- rewire openshift diagnostics to change factory interaction (deads@redhat.com)
+- update to polymorphic kubectl funcs (deads@redhat.com)
+- update bulk to remove resource builder dependency (deads@redhat.com)
+- update oc to handle completely changed factory (deads@redhat.com)
+- remove reapers from oc (deads@redhat.com)
+- restmapper is no longer static (deads@redhat.com)
+- DECARR: quota contract changes (deads@redhat.com)
+- switch to external rbac (deads@redhat.com)
+- keep systctls alpha annotation working for now (deads@redhat.com)
+- api registration changes (deads@redhat.com)
+- add scoper to rest storage (deads@redhat.com)
+- request.Context switch (deads@redhat.com)
+- boring (deads@redhat.com)
+- UPSTREAM: 65377: special-case templates get.go (jvallejo@redhat.com)
+- UPSTREAM: 65480: allow enabling kubelet serving certificate rotation via flag
+  (jliggitt@redhat.com)
+- UPSTREAM: 65370: delete should tolerate a failed wait because of missing
+  verbs (deads@redhat.com)
+- UPSTREAM: 65367: make sure delete waiting doesn't re-evaluate the resource
+  lists (deads@redhat.com)
+- UPSTREAM: 65486: show type differences in reflect diff (jliggitt@redhat.com)
+- UPSTREAM: 65489: kubectl convert should not double wrap output in nested
+  lists (deads@redhat.com)
+- UPSTREAM: 65488: flatten nested lists for flatten in visitor
+  (deads@redhat.com)
+- UPSTREAM: 65368: legacy api endpoints only support v1 ever (deads@redhat.com)
+- UPSTREAM: 65329: make builder tolerant of restmapper failures when it doesn't
+  need the answer (deads@redhat.com)
+- UPSTREAM: 65326: fix printer check to tolerate vendoring (deads@redhat.com)
+- UPSTREAM: 65238: fix scheduler port boundary to match detection
+  (deads@redhat.com)
+- UPSTREAM: <carry> test restmapper hack (deads@redhat.com)
+- UPSTREAM: <drop>: hack to "fix" period problem. (deads@redhat.com)
+- UPSTREAM: <drop>: make auth reconcile work with backlevel versions until
+  ansible updates (deads@redhat.com)
+- UPSTREAM: <drop>: cloud provider vsphere data race (deads@redhat.com)
+- UPSTREAM: <carry>: switch back to use ugorji/go - decode to signed integers
+  (jliggitt@redhat.com)
+- UPSTREAM: <carry>: rewrite unstructured objects on the CLI to avoid oapi
+  (deads@redhat.com)
+- UPSTREAM: <drop>: carry old printers until we update (deads@redhat.com)
+- UPSTREAM: <carry>: allow injection into kubectl for oc (deads@redhat.com)
+- bump(*) (deads@redhat.com)
+- remove package deps for API constant refs (deads@redhat.com)
+- pre-rebase package cleanup (deads@redhat.com)
+- update glide.yaml for rebase (deads@redhat.com)
+- Allow egress-router to connect to DNS IP (rpenta@redhat.com)
+- ensure user has custom access before testing (bparees@redhat.com)
+- Small logic change to create projects when using existing projects (without
+  them already existing). (sejug@redhat.com)
+- start-build: remove false alarm warning for small archive binary input
+  (jwozniak@redhat.com)
+- up: store components user ran cluster up (mfojtik@redhat.com)
+- Bind mount /etc/origin/kubelet-plugins for flex volumes (hekumar@redhat.com)
+- Allow egress-router to connect to cluster service network for DNS, etc.
+  (rpenta@redhat.com)
+- Greetings me as a new SCC maintainer! (slaznick@redhat.com)
+- mark tests that use docker socket as [local] (bparees@redhat.com)
+- UPSTREAM: 65189: revert: fix paths w shortcuts when copying from pods"
+  (jliggitt@redhat.com)
+- openshift-kube-apiserver: use in-process loopback client config from Kube
+  (stefan.schimanski@gmail.com)
+- [WIP] resuse existing imagestreams with new-app (cdaley@redhat.com)
+- mark hard prune extended test as local only for now (bparees@redhat.com)
+- install ceph-common in control plane so rbd provisioner can find rbd cli to
+  create rbd images (hchen@redhat.com)
+- build: add ConfigMap build sources (adam.kaplan@redhat.com)
+- update-api (adam.kaplan@redhat.com)
+- build: add origin ConfigMap build source types (adam.kaplan@redhat.com)
+- bump(*): (adam.kaplan@redhat.com)
+- Bug 1593209 - Update OpenShift Excluder (rteague@redhat.com)
+- UPSTREAM: 64447: Add block volume support to internal provisioners
+  (jsafrane@redhat.com)
+- Verify that someone isn't accidentally importing staging (tnozicka@gmail.com)
+- image-pruner: prune images in their own jobs (miminar@redhat.com)
+- post-bump(gonum/graph): use the new interface (miminar@redhat.com)
+- bump(github.com/gonum/graph): fix node deletion bug (miminar@redhat.com)
+- adds --no-owner and --no-group flags to oc rsync (cdaley@redhat.com)
+- move extraneous factory methods to point of use (deads@redhat.com)
+- switch to upstream factory for cli (deads@redhat.com)
+- re-enable slave restart test (bparees@redhat.com)
+- UPSTREAM: 65189: fix paths w shortcuts when copying from pods
+  (jvallejo@redhat.com)
+- Revert "Make NewCommandStartNode() handle SIGTERM and SIGINT"
+  (amcdermo@redhat.com)
+- Fix a crash on a certain type of unsupported NetworkPolicy (danw@redhat.com)
+- disable mysql replica entirely (bparees@redhat.com)
+- Master now = 3.11 (tbielawa@redhat.com)
+- Branch for v3.11 (ccoleman@redhat.com)
+- update external example content (bparees@redhat.com)
+- serviceaccounts: do not manage pull secrets created by third parties
+  (mfojtik@redhat.com)
+- Move other binaries out of openshift (ccoleman@redhat.com)
+- Image mirror doesn't print out tag in error (ccoleman@redhat.com)
+- Fix default image paths used in network diagnostics (rpenta@redhat.com)
+- Move deployer images into oc (ccoleman@redhat.com)
+- Move reference out of image/apis (ccoleman@redhat.com)
+- Fix to pass quoted unsafe strings (with characters like *,<,5) correctly to
+  kubelet. Fix rhbz # 1587824. (avesh.ncsu@gmail.com)
+- Update Auth team related OWNERS (mkhan@redhat.com)
+- Always enable kube-proxy and dns metrics (ccoleman@redhat.com)
+- Take node out of dnsmasq when stopping or when caches aren't full
+  (ccoleman@redhat.com)
+- openshift start network should pass stopCh down to DNS (ccoleman@redhat.com)
+- UPSTREAM: 65063: Re-use private key after failed CSR (awly@google.com)
+- Fix math division truncation in migrate storage (mkhan@redhat.com)
+- Do not log Get failures for OAuthAccessToken lookups (mkhan@redhat.com)
+- Log image changes on verify-signature without --save (jwozniak@redhat.com)
+- Log ovs dump-flows at 5, not 4 (danw@redhat.com)
+- Basic high-availability for auto egress IPs (danw@redhat.com)
+- Simplify egress IP change tracking (danw@redhat.com)
+- Avoid duplicates when adding to roles (simo@redhat.com)
+- Replace uses of old policy RBAC types with new ones in oc (simo@redhat.com)
+- Prune builds for Jenkins Pipelines (cdaley@redhat.com)
+- add conformance tag to fast parallel registry tests (bparees@redhat.com)
+- change default bulk image import from 5 to 50 (bparees@redhat.com)
+- Allow to reject login if the user id does not match the id in Keystone
+  (mfedosin@redhat.com)
+- Prometheus metrics for image import controllers (miminar@redhat.com)
+- Include the keyword Area:Networking for NetworkPolicy tests
+  (rchopra@redhat.com)
+- Fix deployer pod tolerations (mfojtik@redhat.com)
+
 * Thu Jun 14 2018 Tim Bielawa <tbielawa@redhat.com> 3.10.0-0.69.0
 - Revert "3.11 - Move binaries into cmd/ where they belong" (rpenta@redhat.com)
 
