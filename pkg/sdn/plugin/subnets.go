@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
 
 	log "github.com/golang/glog"
 
@@ -14,6 +15,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	kapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/retry"
+	"k8s.io/kubernetes/pkg/cloudprovider/providers/azure"
 
 	osapi "github.com/openshift/origin/pkg/sdn/apis/network"
 	"github.com/openshift/origin/pkg/util/netutils"
@@ -120,6 +122,15 @@ func isValidNodeIP(validAddresses []kapi.NodeAddress, nodeIP string) bool {
 }
 
 func getNodeIP(node *kapi.Node) (string, error) {
+	// Azure specific handling
+	if strings.HasPrefix(node.Spec.ProviderID, azure.CloudProviderName) {
+		for _, addr := range node.Status.Addresses {
+			if addr.Type == kapi.NodeInternalIP {
+				return addr.Address, nil
+			}
+		}
+	}
+
 	if len(node.Status.Addresses) > 0 && node.Status.Addresses[0].Address != "" {
 		return node.Status.Addresses[0].Address, nil
 	} else {
