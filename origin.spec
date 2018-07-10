@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 9ae590f04cc4c7fa97cee0d1cf8c76eb300db5b7
+%global commit c995193386858ce6b20e5f5a13ff6aebee9b805e
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=10+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.10.0-0.69.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=72e7215 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.1.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=655d2aa KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        3.11.0
-Release:        0.1.0%{?dist}
+Release:        0.2.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -482,6 +482,36 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Jul 10 2018 Tim Bielawa <tbielawa@redhat.com> 3.11.0-0.2.0
+- Multicast test needs to wait for NetNamespace to be created
+  (ccoleman@redhat.com)
+- update printflags on create cmds (jvallejo@redhat.com)
+- Generated changes (maszulik@redhat.com)
+- Update debug (maszulik@redhat.com)
+- UPSTREAM: <drop>: carry old printers until we update (maszulik@redhat.com)
+- UPSTREAM: 65786: update --template printer defaulting (maszulik@redhat.com)
+- UPSTREAM: 65711: make template printers a recommended printer
+  (maszulik@redhat.com)
+- minimal change to bring in new install functions (deads@redhat.com)
+- bump(*) (deads@redhat.com)
+- generated (deads@redhat.com)
+- update rollout cmds (jvallejo@redhat.com)
+- install an imageimport secret for rhel images and allow import certificates
+  to be appended (bparees@redhat.com)
+- UPSTREAM: <drop>: Fix pluginwatcher flake (vichoudh@redhat.com)
+- Bindmount /var/lib/iscsi rw for iscsi attach (mawong@redhat.com)
+- Update cancel-build & build-logs (maszulik@redhat.com)
+- Update expose (maszulik@redhat.com)
+- Wire IOStreams to oc cluster (maszulik@redhat.com)
+- only set PodManifestConfig flags if explicitly specified
+  (sjenning@redhat.com)
+- Move real binaries into cmd/ (ccoleman@redhat.com)
+- explicitly timeout mongodb replica command (bparees@redhat.com)
+- oc: add configmaps to build via cli (adam.kaplan@redhat.com)
+- Update README.md (maulikjs@bu.edu)
+- Fix the oc adm message when the permissions are missing (bbennett@redhat.com)
+- Changed to pidof to find the haproxy pids (bbennett@redhat.com)
+
 * Sat Jul 07 2018 Tim Bielawa <tbielawa@redhat.com> 3.11.0-0.1.0
 - Reverting PR 20052 reuse existing imagestreams (cdaley@redhat.com)
 - wait for builder+default service accounts before running tests
