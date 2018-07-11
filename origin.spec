@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 9e2bac66b531629cd4d15e790bc260dbdfe2c03a
+%global commit 4d3544cd617df9d32d71b7a5e69c9dc5b1ae0865
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.2.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=83019b1 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.3.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=f6bdfec KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        3.11.0
-Release:        0.3.0%{?dist}
+Release:        0.4.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -482,6 +482,20 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Wed Jul 11 2018 Tim Bielawa <tbielawa@redhat.com> 3.11.0-0.4.0
+- update importimage, projects, rsh, req_project (jvallejo@redhat.com)
+- Avoid race between inserting secret for internal registry into SA and
+  creation of a Pod in DC tests (tnozicka@gmail.com)
+- Implement nbthreads for haproxy router (ichavero@redhat.com)
+- update export, rsync cmds (jvallejo@redhat.com)
+- UPSTREAM: 65908: switch delete strategy to background deletion
+  (jvallejo@redhat.com)
+- UPSTREAM: 64879: Add block volume support to Cinder volume plugin
+  (fabiojrb@gmail.com)
+- Migrate egress IP tracking code to pkg/network/common (danw@redhat.com)
+- handle update conflicts in webconsole component install (deads@redhat.com)
+- Add http/2 support for haproxy router. (smitram@gmail.com)
+
 * Tue Jul 10 2018 Tim Bielawa <tbielawa@redhat.com> 3.11.0-0.3.0
 - 
 
