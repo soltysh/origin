@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit b0d858ba416f989c24482e145c815733c5dbd117
+%global commit f4aeacbfeebef94bfc35bb33513c520208c2db51
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.57 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=d08f0ef
+%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.58 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=1da6ab8
 }
 
 %if 0%{?skip_build}
@@ -58,7 +58,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.7.58
+Version:        3.7.59
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -654,6 +654,9 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Tue Jul 17 2018 Tim Bielawa <tbielawa@redhat.com> 3.7.59-1
+- 
+
 * Fri Jul 13 2018 Tim Bielawa <tbielawa@redhat.com> 3.7.58-1
 - UPSTREAM: 59297: Improve error returned when fetching container logs during
   pod termination (joesmith@redhat.com)
