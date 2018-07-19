@@ -80,8 +80,16 @@
       "github.com/openshift/origin/pkg/cmd/server/apis/config/validation",
       "github.com/openshift/origin/pkg/cmd/server/handlers",
       "github.com/openshift/origin/pkg/oauth/util",
-      "github.com/openshift/origin/pkg/oc/admin",
-      "github.com/openshift/origin/pkg/oc/admin/groups/sync",
+      "github.com/openshift/origin/pkg/oc/cli/admin",
+      "github.com/openshift/origin/pkg/oc/cli/admin/createerrortemplate",
+      "github.com/openshift/origin/pkg/oc/cli/admin/createlogintemplate",
+      "github.com/openshift/origin/pkg/oc/cli/admin/createproviderselectiontemplate",
+      "github.com/openshift/origin/pkg/oc/cli/admin/groups/sync",
+      "github.com/openshift/origin/pkg/oc/lib/groupsync",
+      "github.com/openshift/origin/pkg/oc/lib/groupsync/ad",
+      "github.com/openshift/origin/pkg/oc/lib/groupsync/groupdetector",
+      "github.com/openshift/origin/pkg/oc/lib/groupsync/rfc2307",
+      "github.com/openshift/origin/pkg/oc/lib/groupsync/syncerror",
       "github.com/openshift/origin/pkg/user"
     ],
     "forbiddenImportPackageRoots": [
@@ -150,8 +158,15 @@
 
   {
     "checkedPackages": [
+      "github.com/openshift/origin/pkg/image/apis/image/docker10"
+    ],
+    "allowedImportPackageRoots": [],
+    "allowedImportPackages": []
+  },
+
+  {
+    "checkedPackages": [
       "github.com/openshift/origin/pkg/image/apis/image",
-      "github.com/openshift/origin/pkg/image/apis/image/docker10",
       "github.com/openshift/origin/pkg/image/apis/image/dockerpre012",
       "github.com/openshift/origin/pkg/image/apis/image/v1"
     ],
@@ -159,6 +174,7 @@
       "vendor/k8s.io/apimachinery",
       "github.com/openshift/origin/pkg/image/apis/image/internal",
       "github.com/openshift/origin/pkg/image/apis/image/reference",
+      "github.com/openshift/origin/pkg/image/apis/image/docker10",
       "vendor/k8s.io/api",
       "vendor/github.com/openshift/api",
       "github.com/openshift/origin/pkg/api/apihelpers"
@@ -382,7 +398,7 @@
       "github.com/openshift/origin/pkg/oc"
     ],
     "ignoredSubTrees": [
-      "github.com/openshift/origin/pkg/oc/admin/groups/examples"
+      "github.com/openshift/origin/pkg/oc/cli/admin/groups/examples"
     ],
     "allowedImportPackageRoots": [
       "vendor/github.com/aws/aws-sdk-go",
@@ -451,6 +467,7 @@
       "github.com/openshift/origin/pkg/apps/apis/apps/test",
       "github.com/openshift/origin/pkg/apps/client/internalversion",
       "github.com/openshift/origin/pkg/apps/client/v1",
+      "github.com/openshift/origin/pkg/apps/controller/util",
       "github.com/openshift/origin/pkg/apps/util",
       "github.com/openshift/origin/pkg/authorization/apis/authorization",
       "github.com/openshift/origin/pkg/authorization/apis/authorization/install",
@@ -484,6 +501,10 @@
       "github.com/openshift/origin/pkg/image/apis/image",
       "github.com/openshift/origin/pkg/image/apis/image/install",
       "github.com/openshift/origin/pkg/image/apis/image/v1/trigger",
+      "github.com/openshift/origin/pkg/image/apis/image/docker10",
+      "github.com/openshift/origin/pkg/image/apis/image/reference",
+      "github.com/openshift/origin/pkg/image/dockerlayer",
+      "github.com/openshift/origin/pkg/image/dockerlayer/add",
       "github.com/openshift/origin/pkg/image/importer/dockerv1client",
       "github.com/openshift/origin/pkg/image/registryclient",
       "github.com/openshift/origin/pkg/image/registryclient/dockercredentials",

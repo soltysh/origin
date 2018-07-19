@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"io/ioutil"
 	"testing"
 
 	"github.com/spf13/pflag"
@@ -13,9 +12,9 @@ import (
 
 	authorizationclient "github.com/openshift/origin/pkg/authorization/generated/internalclientset"
 	"github.com/openshift/origin/pkg/cmd/server/bootstrappolicy"
-	newproject "github.com/openshift/origin/pkg/oc/admin/project"
-	"github.com/openshift/origin/pkg/oc/cli/cmd"
-	"github.com/openshift/origin/pkg/oc/cli/cmd/login"
+	newproject "github.com/openshift/origin/pkg/oc/cli/admin/project"
+	"github.com/openshift/origin/pkg/oc/cli/login"
+	"github.com/openshift/origin/pkg/oc/cli/whoami"
 	projectclient "github.com/openshift/origin/pkg/project/generated/internalclientset"
 	userclient "github.com/openshift/origin/pkg/user/generated/internalclientset/typed/user/internalversion"
 	testutil "github.com/openshift/origin/test/util"
@@ -106,7 +105,7 @@ func TestLogin(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	userWhoamiOptions := cmd.WhoAmIOptions{UserInterface: userClient.Users(), Out: ioutil.Discard}
+	userWhoamiOptions := whoami.WhoAmIOptions{UserInterface: userClient.Users(), IOStreams: genericclioptions.NewTestIOStreamsDiscard()}
 	retrievedUser, err := userWhoamiOptions.WhoAmI()
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -115,7 +114,7 @@ func TestLogin(t *testing.T) {
 		t.Errorf("expected %v, got %v", retrievedUser.Name, username)
 	}
 
-	adminWhoamiOptions := cmd.WhoAmIOptions{UserInterface: adminUserClient.Users(), Out: ioutil.Discard}
+	adminWhoamiOptions := whoami.WhoAmIOptions{UserInterface: adminUserClient.Users(), IOStreams: genericclioptions.NewTestIOStreamsDiscard()}
 	retrievedAdmin, err := adminWhoamiOptions.WhoAmI()
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -141,8 +140,7 @@ func newLoginOptions(server string, username string, password string, insecure b
 		Password:           password,
 		InsecureTLS:        insecure,
 
-		Out:    ioutil.Discard,
-		ErrOut: ioutil.Discard,
+		IOStreams: genericclioptions.NewTestIOStreamsDiscard(),
 	}
 
 	return loginOptions

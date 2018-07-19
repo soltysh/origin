@@ -1,7 +1,6 @@
 package openshift
 
 import (
-	"io"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -11,12 +10,13 @@ import (
 	kclientcmd "k8s.io/client-go/tools/clientcmd"
 	kclientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/openshift/origin/pkg/oc/cli/cmd/login"
-	"github.com/openshift/origin/pkg/oc/cli/config"
+	"github.com/openshift/origin/pkg/oc/cli/login"
+	"github.com/openshift/origin/pkg/oc/lib/kubeconfig"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 )
 
 // Login logs into the specified server using given credentials and CA file
-func Login(username, password, server, configDir string, clientConfig kclientcmdapi.Config, c *cobra.Command, out, errOut io.Writer) error {
+func Login(username, password, server, configDir string, clientConfig kclientcmdapi.Config, c *cobra.Command, streams genericclioptions.IOStreams) error {
 	adminConfig, err := kclientcmd.LoadFromFile(filepath.Join(configDir, "admin.kubeconfig"))
 	if err != nil {
 		return err
@@ -50,22 +50,24 @@ func Login(username, password, server, configDir string, clientConfig kclientcmd
 			break
 		}
 	}
-	newConfig, err := config.MergeConfig(clientConfig, *adminConfig)
+	newConfig, err := kubeconfig.MergeConfig(clientConfig, *adminConfig)
 	if err != nil {
 		return err
 	}
+
 	output := ioutil.Discard
 	if glog.V(1) {
-		output = out
+		output = streams.Out
 	}
-	opts := &login.LoginOptions{
+	newStreams := genericclioptions.IOStreams{In: streams.In, Out: output, ErrOut: streams.ErrOut}
+
+	o := &login.LoginOptions{
 		Server:             server,
 		Username:           username,
 		Password:           password,
-		Out:                output,
-		ErrOut:             errOut,
+		IOStreams:          newStreams,
 		StartingKubeConfig: newConfig,
-		PathOptions:        config.NewPathOptions(c),
+		PathOptions:        kubeconfig.NewPathOptions(c),
 	}
-	return login.RunLogin(nil, opts)
+	return o.Run()
 }

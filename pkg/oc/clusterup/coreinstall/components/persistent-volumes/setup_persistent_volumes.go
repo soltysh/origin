@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/openshift/origin/pkg/oc/admin/policy"
+	"github.com/openshift/origin/pkg/oc/cli/admin/policy"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -83,7 +83,6 @@ function create_pv() {
 }
 
 basedir="%[2]s"
-setup_pv_dir "${basedir}/registry"
 
 for i in $(seq -f "%%04g" 1 %[1]d); do
   create_pv "${basedir}" "pv${i}"

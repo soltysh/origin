@@ -46,6 +46,7 @@
 // test/extended/testdata/builds/statusfail-fetchsourcedocker.yaml
 // test/extended/testdata/builds/statusfail-fetchsources2i.yaml
 // test/extended/testdata/builds/statusfail-genericreason.yaml
+// test/extended/testdata/builds/statusfail-oomkilled.yaml
 // test/extended/testdata/builds/statusfail-postcommithook.yaml
 // test/extended/testdata/builds/statusfail-pushtoregistry.yaml
 // test/extended/testdata/builds/sti-environment-build-app/.sti/environment
@@ -178,6 +179,7 @@
 // test/extended/testdata/roles/empty-role.yaml
 // test/extended/testdata/roles/policy-clusterroles.yaml
 // test/extended/testdata/roles/policy-roles.yaml
+// test/extended/testdata/router-config-manager.yaml
 // test/extended/testdata/router-http-echo-server.yaml
 // test/extended/testdata/router-metrics.yaml
 // test/extended/testdata/run_policy/parallel-bc.yaml
@@ -270,6 +272,8 @@
 // install/openshift-apiserver/install.yaml
 // install/openshift-controller-manager/install-rbac.yaml
 // install/openshift-controller-manager/install.yaml
+// install/openshift-service-cert-signer-operator/install-rbac.yaml
+// install/openshift-service-cert-signer-operator/install.yaml
 // install/openshift-web-console-operator/install-rbac.yaml
 // install/openshift-web-console-operator/install.yaml
 // install/origin-web-console/console-config.yaml
@@ -1969,6 +1973,40 @@ func testExtendedTestdataBuildsStatusfailGenericreasonYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "test/extended/testdata/builds/statusfail-genericreason.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _testExtendedTestdataBuildsStatusfailOomkilledYaml = []byte(`kind: BuildConfig
+apiVersion: v1
+metadata:
+  name: statusfail-oomkilled
+spec:
+  resources:
+    limits:
+      memory: 10Mi
+  source:
+    git:
+      uri: "https://github.com/openshift/ruby-hello-world"
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: DockerImage
+        name: centos/ruby-23-centos7:latest
+`)
+
+func testExtendedTestdataBuildsStatusfailOomkilledYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataBuildsStatusfailOomkilledYaml, nil
+}
+
+func testExtendedTestdataBuildsStatusfailOomkilledYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataBuildsStatusfailOomkilledYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/builds/statusfail-oomkilled.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -10079,6 +10117,297 @@ func testExtendedTestdataRolesPolicyRolesYaml() (*asset, error) {
 	return a, nil
 }
 
+var _testExtendedTestdataRouterConfigManagerYaml = []byte(`apiVersion: v1
+kind: Template
+parameters:
+- name: IMAGE
+  value: openshift/origin-haproxy-router:latest
+objects:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: router-haproxy-cfgmgr
+    labels:
+      test: router-haproxy-cfgmgr
+  spec:
+    terminationGracePeriodSeconds: 1
+    containers:
+    - name: router
+      image: ${IMAGE}
+      imagePullPolicy: IfNotPresent
+      env:
+      - name: POD_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
+      args: ["--namespace=$(POD_NAMESPACE)", "--loglevel=4", "--haproxy-config-manager=true", "--blueprint-route-labels=select=hapcm-blueprint", "--labels=select=haproxy-cfgmgr", "--stats-password=password", "--stats-port=1936", "--stats-user=admin"]
+      hostNetwork: false
+      ports:
+      - containerPort: 80
+      - containerPort: 443
+      - containerPort: 1936
+        name: stats
+        protocol: TCP
+    serviceAccountName: default
+
+# ensure the router can access routes and endpoints
+- apiVersion: v1
+  kind: RoleBinding
+  metadata:
+    name: system-router
+  subjects:
+  - kind: ServiceAccount
+    name: default
+  roleRef:
+    name: system:router
+
+# blueprints for edge, reencrypt and passthrough routes with annotation(s)
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: edge-blueprint
+    labels:
+      test: router
+      select: hapcm-blueprint
+    annotations:
+      router.openshift.io/cookie_name: empire
+  spec:
+    tls:
+      termination: edge
+    host: edge.blueprint.hapcm.test
+    to:
+      name: insecure-service
+      kind: Service
+    ports:
+    - targetPort: 8080
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: reencrypt-blueprint
+    labels:
+      test: router
+      select: hapcm-blueprint
+    annotations:
+      ren: stimpy
+  spec:
+    tls:
+      termination: reencrypt
+    host: reencrypt.blueprint.hapcm.test
+    to:
+      name: secure-service
+      kind: Service
+    ports:
+    - targetPort: 8443
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: passthrough-blueprint
+    labels:
+      test: router
+      select: hapcm-blueprint
+    annotations:
+      test: ptcruiser
+      foo: bar
+  spec:
+    tls:
+      termination: passthrough
+    host: passthrough.blueprint.hapcm.test
+    to:
+      name: secure-service
+      kind: Service
+
+# config map for nginx
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: serving-cert
+  data:
+    nginx.conf: |
+      daemon off;
+      events { }
+      http {
+        server {
+            listen 8443;
+            ssl    on;
+            ssl_certificate     /etc/serving-cert/tls.crt;
+            ssl_certificate_key    /etc/serving-cert/tls.key;
+            server_name  "*.svc";
+            location / {
+                root   /usr/share/nginx/html;
+                index  index.html index.htm;
+            }
+            error_page   500 502 503 504  /50x.html;
+            location = /50x.html {
+                root   /usr/share/nginx/html;
+            }
+        }
+      }
+
+# pods that service http[s] requests
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: insecure-endpoint
+    labels:
+      test: haproxy-cfgmgr
+      endpoints: insecure-endpoint
+  spec:
+    terminationGracePeriodSeconds: 1
+    containers:
+    - name: test
+      image: openshift/hello-openshift
+      ports:
+      - containerPort: 8080
+        name: http
+      - containerPort: 100
+        protocol: UDP
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: secure-endpoint
+    labels:
+      app: secure-endpoint
+  spec:
+    containers:
+    - image: nginx:latest
+      name: serve
+      command:
+        - /usr/sbin/nginx
+      args:
+        - -c
+        - /etc/nginx/nginx.conf
+      ports:
+      - containerPort: 8443
+        protocol: TCP
+      volumeMounts:
+      - name: cert
+        mountPath: /etc/serving-cert
+      - name: conf
+        mountPath: /etc/nginx
+      - name: tmp
+        mountPath: /var/cache/nginx
+      - name: tmp
+        mountPath: /var/run
+    volumes:
+    - name: conf
+      configMap:
+        name: serving-cert
+    - name: cert
+      secret:
+        secretName: serving-cert
+    - name: tmp
+      emptyDir: {}
+    - name: tmp2
+      emptyDir: {}
+
+# services that can be routed to
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: insecure-service
+    labels:
+      test: router
+  spec:
+    selector:
+      test: haproxy-cfgmgr
+      endpoints: insecure-endpoint
+    ports:
+    - port: 8080
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: secure-service
+    annotations:
+      service.alpha.openshift.io/serving-cert-secret-name: serving-cert
+  spec:
+    selector:
+      app: secure-endpoint
+    ports:
+      - port: 443
+        name: https
+        targetPort: 8443
+        protocol: TCP
+
+
+# insecure, edge secured, reencrypt and passthrough routes
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: insecure-route
+    labels:
+      test: haproxy-cfgmgr
+      select: haproxy-cfgmgr
+  spec:
+    host: insecure.hapcm.test
+    to:
+      name: insecure-service
+      kind: Service
+    ports:
+    - targetPort: 8080
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: edge-allow-http-route
+    labels:
+      test: haproxy-cfgmgr
+      select: haproxy-cfgmgr
+  spec:
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Allow
+    host: edge.allow.hapcm.test
+    to:
+      name: insecure-service
+      kind: Service
+    ports:
+    - targetPort: 8080
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: reencrypt-route
+    labels:
+      test: haproxy-cfgmgr
+      select: haproxy-cfgmgr
+  spec:
+    tls:
+      termination: reencrypt
+    host: reencrypt.hapcm.test
+    to:
+      name: secure-service
+      kind: Service
+    ports:
+    - targetPort: 8443
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: passthrough-route
+    labels:
+      test: haproxy-cfgmgr
+      select: haproxy-cfgmgr
+  spec:
+    tls:
+      termination: passthrough
+    host: passthrough.hapcm.test
+    to:
+      name: secure-service
+      kind: Service
+`)
+
+func testExtendedTestdataRouterConfigManagerYamlBytes() ([]byte, error) {
+	return _testExtendedTestdataRouterConfigManagerYaml, nil
+}
+
+func testExtendedTestdataRouterConfigManagerYaml() (*asset, error) {
+	bytes, err := testExtendedTestdataRouterConfigManagerYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "test/extended/testdata/router-config-manager.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 var _testExtendedTestdataRouterHttpEchoServerYaml = []byte(`apiVersion: v1
 kind: List
 metadata: {}
@@ -17177,7 +17506,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/httpd-24-rhel7"
+              "name": "registry.redhat.io/rhscl/httpd-24-rhel7"
             },
             "name": "2.4",
             "referencePolicy": {
@@ -17226,7 +17555,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/openshift3/jenkins-1-rhel7:latest"
+              "name": "registry.redhat.io/openshift3/jenkins-1-rhel7:latest"
             },
             "name": "1",
             "referencePolicy": {
@@ -17244,7 +17573,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/openshift3/jenkins-2-rhel7:v3.11"
+              "name": "registry.redhat.io/openshift3/jenkins-2-rhel7:v3.11"
             },
             "name": "2",
             "referencePolicy": {
@@ -17293,7 +17622,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/mariadb-101-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/mariadb-101-rhel7:latest"
             },
             "name": "10.1",
             "referencePolicy": {
@@ -17311,7 +17640,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/mariadb-102-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/mariadb-102-rhel7:latest"
             },
             "name": "10.2",
             "referencePolicy": {
@@ -17360,7 +17689,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/openshift3/mongodb-24-rhel7:latest"
+              "name": "registry.redhat.io/openshift3/mongodb-24-rhel7:latest"
             },
             "name": "2.4",
             "referencePolicy": {
@@ -17378,7 +17707,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/mongodb-26-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/mongodb-26-rhel7:latest"
             },
             "name": "2.6",
             "referencePolicy": {
@@ -17396,7 +17725,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/mongodb-32-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/mongodb-32-rhel7:latest"
             },
             "name": "3.2",
             "referencePolicy": {
@@ -17414,7 +17743,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/mongodb-34-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/mongodb-34-rhel7:latest"
             },
             "name": "3.4",
             "referencePolicy": {
@@ -17432,7 +17761,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/mongodb-36-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/mongodb-36-rhel7:latest"
             },
             "name": "3.6",
             "referencePolicy": {
@@ -17481,7 +17810,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/openshift3/mysql-55-rhel7:latest"
+              "name": "registry.redhat.io/openshift3/mysql-55-rhel7:latest"
             },
             "name": "5.5",
             "referencePolicy": {
@@ -17499,7 +17828,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/mysql-56-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/mysql-56-rhel7:latest"
             },
             "name": "5.6",
             "referencePolicy": {
@@ -17517,7 +17846,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/mysql-57-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/mysql-57-rhel7:latest"
             },
             "name": "5.7",
             "referencePolicy": {
@@ -17551,7 +17880,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/nginx-18-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/nginx-18-rhel7:latest"
             },
             "name": "1.8",
             "referencePolicy": {
@@ -17571,7 +17900,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/nginx-110-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/nginx-110-rhel7:latest"
             },
             "name": "1.10",
             "referencePolicy": {
@@ -17591,7 +17920,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/nginx-112-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/nginx-112-rhel7:latest"
             },
             "name": "1.12",
             "referencePolicy": {
@@ -17663,7 +17992,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/openshift3/nodejs-010-rhel7:latest"
+              "name": "registry.redhat.io/openshift3/nodejs-010-rhel7:latest"
             },
             "name": "0.10",
             "referencePolicy": {
@@ -17683,7 +18012,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/nodejs-4-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/nodejs-4-rhel7:latest"
             },
             "name": "4",
             "referencePolicy": {
@@ -17703,7 +18032,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/nodejs-6-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/nodejs-6-rhel7:latest"
             },
             "name": "6",
             "referencePolicy": {
@@ -17722,7 +18051,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/nodejs-8-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/nodejs-8-rhel7:latest"
             },
             "name": "8",
             "referencePolicy": {
@@ -17741,7 +18070,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhoar-nodejs/nodejs-8"
+              "name": "registry.redhat.io/rhoar-nodejs/nodejs-8"
             },
             "name": "8-RHOAR",
             "referencePolicy": {
@@ -17760,7 +18089,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhoar-nodejs/nodejs-10"
+              "name": "registry.redhat.io/rhoar-nodejs/nodejs-10"
             },
             "name": "10",
             "referencePolicy": {
@@ -17813,7 +18142,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/openshift3/perl-516-rhel7:latest"
+              "name": "registry.redhat.io/openshift3/perl-516-rhel7:latest"
             },
             "name": "5.16",
             "referencePolicy": {
@@ -17833,7 +18162,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/perl-520-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/perl-520-rhel7:latest"
             },
             "name": "5.20",
             "referencePolicy": {
@@ -17853,7 +18182,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/perl-524-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/perl-524-rhel7:latest"
             },
             "name": "5.24",
             "referencePolicy": {
@@ -17873,7 +18202,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/perl-526-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/perl-526-rhel7:latest"
             },
             "name": "5.26",
             "referencePolicy": {
@@ -17926,7 +18255,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/openshift3/php-55-rhel7:latest"
+              "name": "registry.redhat.io/openshift3/php-55-rhel7:latest"
             },
             "name": "5.5",
             "referencePolicy": {
@@ -17946,7 +18275,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/php-56-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/php-56-rhel7:latest"
             },
             "name": "5.6",
             "referencePolicy": {
@@ -17966,7 +18295,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/php-70-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/php-70-rhel7:latest"
             },
             "name": "7.0",
             "referencePolicy": {
@@ -17986,7 +18315,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/php-71-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/php-71-rhel7:latest"
             },
             "name": "7.1",
             "referencePolicy": {
@@ -18035,7 +18364,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/openshift3/postgresql-92-rhel7:latest"
+              "name": "registry.redhat.io/openshift3/postgresql-92-rhel7:latest"
             },
             "name": "9.2",
             "referencePolicy": {
@@ -18053,7 +18382,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/postgresql-94-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/postgresql-94-rhel7:latest"
             },
             "name": "9.4",
             "referencePolicy": {
@@ -18071,7 +18400,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/postgresql-95-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/postgresql-95-rhel7:latest"
             },
             "name": "9.5",
             "referencePolicy": {
@@ -18089,7 +18418,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/postgresql-96-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/postgresql-96-rhel7:latest"
             },
             "name": "9.6",
             "referencePolicy": {
@@ -18107,7 +18436,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/postgresql-10-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/postgresql-10-rhel7:latest"
             },
             "name": "10",
             "referencePolicy": {
@@ -18160,7 +18489,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/openshift3/python-33-rhel7:latest"
+              "name": "registry.redhat.io/openshift3/python-33-rhel7:latest"
             },
             "name": "3.3",
             "referencePolicy": {
@@ -18180,7 +18509,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/python-27-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/python-27-rhel7:latest"
             },
             "name": "2.7",
             "referencePolicy": {
@@ -18200,7 +18529,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/python-34-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/python-34-rhel7:latest"
             },
             "name": "3.4",
             "referencePolicy": {
@@ -18220,7 +18549,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/python-35-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/python-35-rhel7:latest"
             },
             "name": "3.5",
             "referencePolicy": {
@@ -18240,7 +18569,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/python-36-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/python-36-rhel7:latest"
             },
             "name": "3.6",
             "referencePolicy": {
@@ -18289,7 +18618,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/redis-32-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/redis-32-rhel7:latest"
             },
             "name": "3.2",
             "referencePolicy": {
@@ -18342,7 +18671,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/openshift3/ruby-20-rhel7:latest"
+              "name": "registry.redhat.io/openshift3/ruby-20-rhel7:latest"
             },
             "name": "2.0",
             "referencePolicy": {
@@ -18362,7 +18691,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/ruby-22-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/ruby-22-rhel7:latest"
             },
             "name": "2.2",
             "referencePolicy": {
@@ -18382,7 +18711,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/ruby-23-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/ruby-23-rhel7:latest"
             },
             "name": "2.3",
             "referencePolicy": {
@@ -18402,7 +18731,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/ruby-24-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/ruby-24-rhel7:latest"
             },
             "name": "2.4",
             "referencePolicy": {
@@ -18422,7 +18751,7 @@ var _examplesImageStreamsImageStreamsRhel7Json = []byte(`{
             },
             "from": {
               "kind": "DockerImage",
-              "name": "registry.access.redhat.com/rhscl/ruby-25-rhel7:latest"
+              "name": "registry.redhat.io/rhscl/ruby-25-rhel7:latest"
             },
             "name": "2.5",
             "referencePolicy": {
@@ -27922,7 +28251,7 @@ parameters:
   value: openshift/prometheus:v2.3.1
 - description: The location of the alertmanager image
   name: IMAGE_ALERTMANAGER
-  value: openshift/prometheus-alertmanager:v0.14.0
+  value: openshift/prometheus-alertmanager:v0.15.0
 - description: The location of alert-buffer image
   name: IMAGE_ALERT_BUFFER
   value: openshift/prometheus-alert-buffer:v0.0.2
@@ -32378,10 +32707,12 @@ objects:
             privileged: true
             runAsUser: 0
           volumeMounts:
-           - mountPath: /etc/origin/master/
-             name: master-config
-           - mountPath: /etc/origin/cloudprovider/
-             name: master-cloud-provider
+          - mountPath: /var/serving-cert
+            name: serving-cert
+          - mountPath: /etc/origin/master/
+            name: master-config
+          - mountPath: /etc/origin/cloudprovider/
+            name: master-cloud-provider
           readinessProbe:
             httpGet:
               path: /healthz
@@ -32395,6 +32726,9 @@ objects:
         - name: master-cloud-provider
           hostPath:
             path: /etc/origin/cloudprovider
+        - name: serving-cert
+          secret:
+            secretName: serving-cert
 
 
 # to be able to assign powers to the process
@@ -32410,7 +32744,7 @@ objects:
     namespace: ${NAMESPACE}
     name: api
     annotations:
-      service.alpha.openshift.io/serving-cert-secret-name: apiserver-serving-cert
+      service.alpha.openshift.io/serving-cert-secret-name: serving-cert
   spec:
     selector:
       openshift.io/component: api
@@ -32423,13 +32757,14 @@ objects:
   kind: APIService
   metadata:
     name: v1.apps.openshift.io
+    annotations:
+      service.alpha.openshift.io/inject-cabundle: "true"
   spec:
     group: apps.openshift.io
     version: v1
     service:
       namespace: openshift-apiserver
       name: api
-    insecureSkipTLSVerify: true
     groupPriorityMinimum: 9900
     versionPriority: 15
 
@@ -32437,13 +32772,14 @@ objects:
   kind: APIService
   metadata:
     name: v1.authorization.openshift.io
+    annotations:
+      service.alpha.openshift.io/inject-cabundle: "true"
   spec:
     group: authorization.openshift.io
     version: v1
     service:
       namespace: openshift-apiserver
       name: api
-    insecureSkipTLSVerify: true
     groupPriorityMinimum: 9900
     versionPriority: 15
 
@@ -32451,13 +32787,14 @@ objects:
   kind: APIService
   metadata:
     name: v1.build.openshift.io
+    annotations:
+      service.alpha.openshift.io/inject-cabundle: "true"
   spec:
     group: build.openshift.io
     version: v1
     service:
       namespace: openshift-apiserver
       name: api
-    insecureSkipTLSVerify: true
     groupPriorityMinimum: 9900
     versionPriority: 15
 
@@ -32465,13 +32802,14 @@ objects:
   kind: APIService
   metadata:
     name: v1.image.openshift.io
+    annotations:
+      service.alpha.openshift.io/inject-cabundle: "true"
   spec:
     group: image.openshift.io
     version: v1
     service:
       namespace: openshift-apiserver
       name: api
-    insecureSkipTLSVerify: true
     groupPriorityMinimum: 9900
     versionPriority: 15
 
@@ -32479,13 +32817,14 @@ objects:
   kind: APIService
   metadata:
     name: v1.network.openshift.io
+    annotations:
+      service.alpha.openshift.io/inject-cabundle: "true"
   spec:
     group: network.openshift.io
     version: v1
     service:
       namespace: openshift-apiserver
       name: api
-    insecureSkipTLSVerify: true
     groupPriorityMinimum: 9900
     versionPriority: 15
 
@@ -32493,13 +32832,14 @@ objects:
   kind: APIService
   metadata:
     name: v1.oauth.openshift.io
+    annotations:
+      service.alpha.openshift.io/inject-cabundle: "true"
   spec:
     group: oauth.openshift.io
     version: v1
     service:
       namespace: openshift-apiserver
       name: api
-    insecureSkipTLSVerify: true
     groupPriorityMinimum: 9900
     versionPriority: 15
 
@@ -32507,13 +32847,14 @@ objects:
   kind: APIService
   metadata:
     name: v1.project.openshift.io
+    annotations:
+      service.alpha.openshift.io/inject-cabundle: "true"
   spec:
     group: project.openshift.io
     version: v1
     service:
       namespace: openshift-apiserver
       name: api
-    insecureSkipTLSVerify: true
     groupPriorityMinimum: 9900
     versionPriority: 15
 
@@ -32521,13 +32862,14 @@ objects:
   kind: APIService
   metadata:
     name: v1.quota.openshift.io
+    annotations:
+      service.alpha.openshift.io/inject-cabundle: "true"
   spec:
     group: quota.openshift.io
     version: v1
     service:
       namespace: openshift-apiserver
       name: api
-    insecureSkipTLSVerify: true
     groupPriorityMinimum: 9900
     versionPriority: 15
 
@@ -32535,13 +32877,14 @@ objects:
   kind: APIService
   metadata:
     name: v1.route.openshift.io
+    annotations:
+      service.alpha.openshift.io/inject-cabundle: "true"
   spec:
     group: route.openshift.io
     version: v1
     service:
       namespace: openshift-apiserver
       name: api
-    insecureSkipTLSVerify: true
     groupPriorityMinimum: 9900
     versionPriority: 15
 
@@ -32549,13 +32892,14 @@ objects:
   kind: APIService
   metadata:
     name: v1.security.openshift.io
+    annotations:
+      service.alpha.openshift.io/inject-cabundle: "true"
   spec:
     group: security.openshift.io
     version: v1
     service:
       namespace: openshift-apiserver
       name: api
-    insecureSkipTLSVerify: true
     groupPriorityMinimum: 9900
     versionPriority: 15
 
@@ -32563,13 +32907,14 @@ objects:
   kind: APIService
   metadata:
     name: v1.template.openshift.io
+    annotations:
+      service.alpha.openshift.io/inject-cabundle: "true"
   spec:
     group: template.openshift.io
     version: v1
     service:
       namespace: openshift-apiserver
       name: api
-    insecureSkipTLSVerify: true
     groupPriorityMinimum: 9900
     versionPriority: 15
 
@@ -32577,13 +32922,14 @@ objects:
   kind: APIService
   metadata:
     name: v1.user.openshift.io
+    annotations:
+      service.alpha.openshift.io/inject-cabundle: "true"
   spec:
     group: user.openshift.io
     version: v1
     service:
       namespace: openshift-apiserver
       name: api
-    insecureSkipTLSVerify: true
     groupPriorityMinimum: 9900
     versionPriority: 15
 `)
@@ -32834,6 +33180,171 @@ func installOpenshiftControllerManagerInstallYaml() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "install/openshift-controller-manager/install.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _installOpenshiftServiceCertSignerOperatorInstallRbacYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+parameters:
+- name: IMAGE
+  value: openshift/origin-control-plane:latest
+- name: OPENSHIFT_PULL_POLICY
+  value: Always
+- name: NAMESPACE
+  value: openshift-core-operators
+- name: LOGLEVEL
+  value: "0"
+
+objects:
+
+# When we have an orchestrating operator, it will do this
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
+    name: system:openshift:operator:service-cert-signer
+  roleRef:
+    kind: ClusterRole
+    name: cluster-admin
+  subjects:
+  - kind: ServiceAccount
+    namespace: ${NAMESPACE}
+    name: openshift-service-cert-signer-operator
+`)
+
+func installOpenshiftServiceCertSignerOperatorInstallRbacYamlBytes() ([]byte, error) {
+	return _installOpenshiftServiceCertSignerOperatorInstallRbacYaml, nil
+}
+
+func installOpenshiftServiceCertSignerOperatorInstallRbacYaml() (*asset, error) {
+	bytes, err := installOpenshiftServiceCertSignerOperatorInstallRbacYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "install/openshift-service-cert-signer-operator/install-rbac.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _installOpenshiftServiceCertSignerOperatorInstallYaml = []byte(`apiVersion: template.openshift.io/v1
+kind: Template
+parameters:
+- name: IMAGE
+  value: openshift/origin-service-serving-cert-signer:latest
+- name: OPENSHIFT_PULL_POLICY
+  value: Always
+- name: NAMESPACE
+  value: openshift-core-operators
+- name: LOGLEVEL
+  value: "0"
+
+objects:
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    labels:
+      openshift.io/run-level: "1"
+    name: openshift-core-operators
+
+- apiVersion: apiextensions.k8s.io/v1beta1
+  kind: CustomResourceDefinition
+  metadata:
+    name: servicecertsigneroperatorconfigs.servicecertsigner.config.openshift.io
+  spec:
+    scope: Cluster
+    group: servicecertsigner.config.openshift.io
+    version: v1alpha1
+    names:
+      kind: ServiceCertSignerOperatorConfig
+      plural: servicecertsigneroperatorconfigs
+      singular: servicecertsigneroperatorconfig
+    subresources:
+      status: {}
+
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    namespace: ${NAMESPACE}
+    name: openshift-service-cert-signer-operator-config
+  data:
+    operator-config.yaml: |
+      apiVersion: operator.openshift.io/v1alpha1
+      kind: GenericOperatorConfig
+
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    namespace: ${NAMESPACE}
+    name: openshift-service-cert-signer-operator
+    labels:
+      app: openshift-service-cert-signer-operator
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: openshift-service-cert-signer-operator
+    template:
+      metadata:
+        name: openshift-service-cert-signer-operator
+        labels:
+          app: openshift-service-cert-signer-operator
+      spec:
+        serviceAccountName: openshift-service-cert-signer-operator
+        containers:
+        - name: operator
+          image: openshift/origin-service-serving-cert-signer:v3.11
+          imagePullPolicy: ${OPENSHIFT_PULL_POLICY}
+          command: ["service-serving-cert-signer", "operator"]
+          args:
+          - "--config=/var/run/configmaps/config/operator-config.yaml"
+          - "-v=4"
+          volumeMounts:
+          - mountPath: /var/run/configmaps/config
+            name: config
+        volumes:
+        - name: serving-cert
+          secret:
+            defaultMode: 400
+            secretName: openshift-service-cert-signer-operator-serving-cert
+            optional: true
+        - name: config
+          configMap:
+            defaultMode: 440
+            name: openshift-service-cert-signer-operator-config
+
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    namespace: ${NAMESPACE}
+    name: openshift-service-cert-signer-operator
+    labels:
+      app: openshift-service-cert-signer-operator
+
+- apiVersion: servicecertsigner.config.openshift.io/v1alpha1
+  kind: ServiceCertSignerOperatorConfig
+  metadata:
+    name: instance
+  spec:
+    managementState: Managed
+    imagePullSpec: openshift/origin-service-serving-cert-signer:v3.11
+    version: 3.10.0
+    logging:
+      level: 4
+    replicas: 1
+`)
+
+func installOpenshiftServiceCertSignerOperatorInstallYamlBytes() ([]byte, error) {
+	return _installOpenshiftServiceCertSignerOperatorInstallYaml, nil
+}
+
+func installOpenshiftServiceCertSignerOperatorInstallYaml() (*asset, error) {
+	bytes, err := installOpenshiftServiceCertSignerOperatorInstallYamlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "install/openshift-service-cert-signer-operator/install.yaml", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -33607,6 +34118,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/builds/statusfail-fetchsourcedocker.yaml": testExtendedTestdataBuildsStatusfailFetchsourcedockerYaml,
 	"test/extended/testdata/builds/statusfail-fetchsources2i.yaml": testExtendedTestdataBuildsStatusfailFetchsources2iYaml,
 	"test/extended/testdata/builds/statusfail-genericreason.yaml": testExtendedTestdataBuildsStatusfailGenericreasonYaml,
+	"test/extended/testdata/builds/statusfail-oomkilled.yaml": testExtendedTestdataBuildsStatusfailOomkilledYaml,
 	"test/extended/testdata/builds/statusfail-postcommithook.yaml": testExtendedTestdataBuildsStatusfailPostcommithookYaml,
 	"test/extended/testdata/builds/statusfail-pushtoregistry.yaml": testExtendedTestdataBuildsStatusfailPushtoregistryYaml,
 	"test/extended/testdata/builds/sti-environment-build-app/.sti/environment": testExtendedTestdataBuildsStiEnvironmentBuildAppStiEnvironment,
@@ -33739,6 +34251,7 @@ var _bindata = map[string]func() (*asset, error){
 	"test/extended/testdata/roles/empty-role.yaml": testExtendedTestdataRolesEmptyRoleYaml,
 	"test/extended/testdata/roles/policy-clusterroles.yaml": testExtendedTestdataRolesPolicyClusterrolesYaml,
 	"test/extended/testdata/roles/policy-roles.yaml": testExtendedTestdataRolesPolicyRolesYaml,
+	"test/extended/testdata/router-config-manager.yaml": testExtendedTestdataRouterConfigManagerYaml,
 	"test/extended/testdata/router-http-echo-server.yaml": testExtendedTestdataRouterHttpEchoServerYaml,
 	"test/extended/testdata/router-metrics.yaml": testExtendedTestdataRouterMetricsYaml,
 	"test/extended/testdata/run_policy/parallel-bc.yaml": testExtendedTestdataRun_policyParallelBcYaml,
@@ -33831,6 +34344,8 @@ var _bindata = map[string]func() (*asset, error){
 	"install/openshift-apiserver/install.yaml": installOpenshiftApiserverInstallYaml,
 	"install/openshift-controller-manager/install-rbac.yaml": installOpenshiftControllerManagerInstallRbacYaml,
 	"install/openshift-controller-manager/install.yaml": installOpenshiftControllerManagerInstallYaml,
+	"install/openshift-service-cert-signer-operator/install-rbac.yaml": installOpenshiftServiceCertSignerOperatorInstallRbacYaml,
+	"install/openshift-service-cert-signer-operator/install.yaml": installOpenshiftServiceCertSignerOperatorInstallYaml,
 	"install/openshift-web-console-operator/install-rbac.yaml": installOpenshiftWebConsoleOperatorInstallRbacYaml,
 	"install/openshift-web-console-operator/install.yaml": installOpenshiftWebConsoleOperatorInstallYaml,
 	"install/origin-web-console/console-config.yaml": installOriginWebConsoleConsoleConfigYaml,
@@ -33977,6 +34492,10 @@ var _bintree = &bintree{nil, map[string]*bintree{
 			"install-rbac.yaml": &bintree{installOpenshiftControllerManagerInstallRbacYaml, map[string]*bintree{}},
 			"install.yaml": &bintree{installOpenshiftControllerManagerInstallYaml, map[string]*bintree{}},
 		}},
+		"openshift-service-cert-signer-operator": &bintree{nil, map[string]*bintree{
+			"install-rbac.yaml": &bintree{installOpenshiftServiceCertSignerOperatorInstallRbacYaml, map[string]*bintree{}},
+			"install.yaml": &bintree{installOpenshiftServiceCertSignerOperatorInstallYaml, map[string]*bintree{}},
+		}},
 		"openshift-web-console-operator": &bintree{nil, map[string]*bintree{
 			"install-rbac.yaml": &bintree{installOpenshiftWebConsoleOperatorInstallRbacYaml, map[string]*bintree{}},
 			"install.yaml": &bintree{installOpenshiftWebConsoleOperatorInstallYaml, map[string]*bintree{}},
@@ -34076,6 +34595,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"statusfail-fetchsourcedocker.yaml": &bintree{testExtendedTestdataBuildsStatusfailFetchsourcedockerYaml, map[string]*bintree{}},
 					"statusfail-fetchsources2i.yaml": &bintree{testExtendedTestdataBuildsStatusfailFetchsources2iYaml, map[string]*bintree{}},
 					"statusfail-genericreason.yaml": &bintree{testExtendedTestdataBuildsStatusfailGenericreasonYaml, map[string]*bintree{}},
+					"statusfail-oomkilled.yaml": &bintree{testExtendedTestdataBuildsStatusfailOomkilledYaml, map[string]*bintree{}},
 					"statusfail-postcommithook.yaml": &bintree{testExtendedTestdataBuildsStatusfailPostcommithookYaml, map[string]*bintree{}},
 					"statusfail-pushtoregistry.yaml": &bintree{testExtendedTestdataBuildsStatusfailPushtoregistryYaml, map[string]*bintree{}},
 					"sti-environment-build-app": &bintree{nil, map[string]*bintree{
@@ -34273,6 +34793,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 					"policy-clusterroles.yaml": &bintree{testExtendedTestdataRolesPolicyClusterrolesYaml, map[string]*bintree{}},
 					"policy-roles.yaml": &bintree{testExtendedTestdataRolesPolicyRolesYaml, map[string]*bintree{}},
 				}},
+				"router-config-manager.yaml": &bintree{testExtendedTestdataRouterConfigManagerYaml, map[string]*bintree{}},
 				"router-http-echo-server.yaml": &bintree{testExtendedTestdataRouterHttpEchoServerYaml, map[string]*bintree{}},
 				"router-metrics.yaml": &bintree{testExtendedTestdataRouterMetricsYaml, map[string]*bintree{}},
 				"run_policy": &bintree{nil, map[string]*bintree{

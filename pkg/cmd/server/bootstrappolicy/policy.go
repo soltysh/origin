@@ -24,6 +24,7 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/auth/authorizer/rbac/bootstrappolicy"
 
 	oapi "github.com/openshift/origin/pkg/api"
+	"github.com/openshift/origin/pkg/api/legacy"
 	appsapi "github.com/openshift/origin/pkg/apps/apis/apps"
 	authorizationapi "github.com/openshift/origin/pkg/authorization/apis/authorization"
 	buildapi "github.com/openshift/origin/pkg/build/apis/build"
@@ -71,7 +72,7 @@ var (
 	authzGroup          = authorizationapi.GroupName
 	kAuthzGroup         = kauthorizationapi.GroupName
 	kAuthnGroup         = kauthenticationapi.GroupName
-	legacyAuthzGroup    = authorizationapi.LegacyGroupName
+	legacyAuthzGroup    = legacy.GroupName
 	buildGroup          = buildapi.GroupName
 	legacyBuildGroup    = buildapi.LegacyGroupName
 	deployGroup         = appsapi.GroupName
@@ -581,7 +582,7 @@ func GetOpenshiftBootstrapClusterRoles() []rbacv1.ClusterRole {
 				Name: RegistryRoleName,
 			},
 			Rules: []rbacv1.PolicyRule{
-				rbacv1helpers.NewRule("list").Groups(kapiGroup).Resources("limitranges", "resourcequotas").RuleOrDie(),
+				rbacv1helpers.NewRule("list").Groups(kapiGroup).Resources("limitranges", "resourcequotas", "imagestreams").RuleOrDie(),
 
 				rbacv1helpers.NewRule("get", "delete").Groups(imageGroup, legacyImageGroup).Resources("images", "imagestreamtags").RuleOrDie(),
 				rbacv1helpers.NewRule("get").Groups(imageGroup, legacyImageGroup).Resources("imagestreamimages", "imagestreams/secrets").RuleOrDie(),

@@ -270,7 +270,7 @@ function os::start::master() {
 	os::log::debug "$( ps -ef | grep openshift )"
 
 	os::log::debug "Starting OpenShift server"
-	local openshift_env=( "OPENSHIFT_PROFILE=${OPENSHIFT_PROFILE:-web}" "OPENSHIFT_ON_PANIC=crash" )
+	local openshift_env=( "OPENSHIFT_ON_PANIC=crash" )
 	$(os::start::internal::openshift_executable) start master                                       \
 	                                             --loglevel=4                                       \
 	                                             --logspec='*importer=5'                            \
@@ -612,6 +612,13 @@ function os::start::router() {
 		oc adm router --config="${ADMIN_KUBECONFIG}" --images="${USE_IMAGES}" --service-account=router --default-cert="${MASTER_CONFIG_DIR}/router.pem"
 	else
 		oc adm router --config="${ADMIN_KUBECONFIG}" --images="${USE_IMAGES}" --service-account=router
+	fi
+
+	# Note that when the haproxy config manager is set based on router type,
+	# the env entry may need to be always set or removed (if defaulted).
+	if [[ -n "${ROUTER_HAPROXY_CONFIG_MANAGER:-}" ]]; then
+		os::log::debug "Changing the router DC to enable the haproxy config manager"
+		oc set env dc/router -c router ROUTER_HAPROXY_CONFIG_MANAGER=true
 	fi
 }
 readonly -f os::start::router

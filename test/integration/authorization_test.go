@@ -12,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -40,7 +41,7 @@ import (
 	"github.com/openshift/origin/pkg/cmd/server/bootstrappolicy"
 	imageapi "github.com/openshift/origin/pkg/image/apis/image"
 	oauthapi "github.com/openshift/origin/pkg/oauth/apis/oauth"
-	policy "github.com/openshift/origin/pkg/oc/admin/policy"
+	policy "github.com/openshift/origin/pkg/oc/cli/admin/policy"
 	projectclient "github.com/openshift/origin/pkg/project/generated/internalclientset"
 	testutil "github.com/openshift/origin/test/util"
 	testserver "github.com/openshift/origin/test/util/server"
@@ -1968,5 +1969,61 @@ func TestLegacyLocalRoleEndpoint(t *testing.T) {
 		t.Errorf("expected error")
 	} else if !kapierror.IsNotFound(err) {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestOldLocalAccessReviewEndpoints(t *testing.T) {
+	masterConfig, clusterAdminKubeConfig, err := testserver.StartTestMasterAPI()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer testserver.CleanupMasterEtcd(t, masterConfig)
+
+	clusterAdminClientConfig, err := testutil.GetClusterAdminClientConfig(clusterAdminKubeConfig)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	clusterAdminAuthorizationClient := authorizationclient.NewForConfigOrDie(clusterAdminClientConfig).Authorization()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	namespace := "hammer-project"
+	if _, _, err := testserver.CreateNewProject(clusterAdminClientConfig, namespace, "harold"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// install the legacy types into the client for decoding
+	legacy.InstallLegacyAuthorization(authorizationclientscheme.Scheme)
+	codecFactory := serializer.NewCodecFactory(authorizationclientscheme.Scheme)
+
+	sar := &authorizationapi.SubjectAccessReview{
+		Action: authorizationapi.Action{
+			Verb:     "get",
+			Resource: "imagestreams/layers",
+		},
+	}
+	sarBytes, err := runtime.Encode(codecFactory.LegacyCodec(schema.GroupVersion{Version: "v1"}), sar)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = clusterAdminAuthorizationClient.RESTClient().Post().AbsPath("/oapi/v1/namespaces/" + namespace + "/subjectaccessreviews").Body(sarBytes).Do().Into(&authorizationapi.SubjectAccessReviewResponse{})
+	if !kapierror.IsNotFound(err) {
+		t.Fatal(err)
+	}
+
+	rar := &authorizationapi.ResourceAccessReview{
+		Action: authorizationapi.Action{
+			Verb:     "get",
+			Resource: "imagestreams/layers",
+		},
+	}
+	rarBytes, err := runtime.Encode(codecFactory.LegacyCodec(schema.GroupVersion{Version: "v1"}), rar)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = clusterAdminAuthorizationClient.RESTClient().Post().AbsPath("/oapi/v1/namespaces/" + namespace + "/resourceaccessreviews").Body(rarBytes).Do().Into(&authorizationapi.ResourceAccessReviewResponse{})
+	if !kapierror.IsNotFound(err) {
+		t.Fatal(err)
 	}
 }

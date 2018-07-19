@@ -2,13 +2,13 @@ package originpolymorphichelpers
 
 import (
 	"k8s.io/apimachinery/pkg/api/meta"
-	kinternalclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/kubectl"
 	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 	"k8s.io/kubernetes/pkg/kubectl/polymorphichelpers"
 
 	appsapi "github.com/openshift/origin/pkg/apps/apis/apps"
-	deploymentcmd "github.com/openshift/origin/pkg/oc/cli/deploymentconfigs"
+	deploymentcmd "github.com/openshift/origin/pkg/oc/originpolymorphichelpers/deploymentconfigs"
 )
 
 func NewHistoryViewerFn(delegate polymorphichelpers.HistoryViewerFunc) polymorphichelpers.HistoryViewerFunc {
@@ -18,7 +18,7 @@ func NewHistoryViewerFn(delegate polymorphichelpers.HistoryViewerFunc) polymorph
 			if err != nil {
 				return nil, err
 			}
-			coreClient, err := kinternalclient.NewForConfig(config)
+			coreClient, err := kubernetes.NewForConfig(config)
 			if err != nil {
 				return nil, err
 			}
