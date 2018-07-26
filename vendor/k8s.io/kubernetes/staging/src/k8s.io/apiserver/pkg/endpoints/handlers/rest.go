@@ -631,18 +631,19 @@ func patchResource(
 
 	namespace := request.NamespaceValue(ctx)
 
-	var (
-		originalObjJS           []byte
-		originalPatchedObjJS    []byte
-		originalObjMap          map[string]interface{}
-		getOriginalPatchMap     func() (map[string]interface{}, error)
-		lastConflictErr         error
-		originalResourceVersion string
-	)
+	var lastConflictErr error
 
 	// applyPatch is called every time GuaranteedUpdate asks for the updated object,
 	// and is given the currently persisted object as input.
 	applyPatch := func(_ request.Context, _, currentObject runtime.Object) (runtime.Object, error) {
+		var (
+			originalObjJS           []byte
+			originalPatchedObjJS    []byte
+			originalObjMap          map[string]interface{}
+			getOriginalPatchMap     func() (map[string]interface{}, error)
+			originalResourceVersion string
+		)
+
 		// Make sure we actually have a persisted currentObject
 		if hasUID, err := hasUID(currentObject); err != nil {
 			return nil, err
