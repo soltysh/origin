@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 3404dd356e954343909407732c48a8ddd8f6fcb0
+%global commit e90751e69522ad79ccfd7c77e0322f57a00fef7b
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.8.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=756a615 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.9.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=c0042dc KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        3.11.0
-Release:        0.9.0%{?dist}
+Release:        0.10.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -486,6 +486,65 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Fri Jul 27 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.10.0
+- Add tests for restored -v (maszulik@redhat.com)
+- restore -v for all command (deads@redhat.com)
+- Restore -v in set deploymenthook and status (maszulik@redhat.com)
+- Move fake_haproxy.go to its own package (maszulik@redhat.com)
+- update import restrictions (jvallejo@redhat.com)
+- update idle command (jvallejo@redhat.com)
+- switch logs to externals (jvallejo@redhat.com)
+- bump images for ruby and nodejs (adam.kaplan@redhat.com)
+- make buildlog client external (jvallejo@redhat.com)
+- UPSTREAM: 66352: update logs cmd to deal w external versions
+  (jvallejo@redhat.com)
+- apps: move deployer controller to external types (mfojtik@redhat.com)
+- apps: remove more internal helpers (mfojtik@redhat.com)
+- cli: convert apps commands to external helpers (mfojtik@redhat.com)
+- apps: rename ok test to internaltest (mfojtik@redhat.com)
+- apps: convert more utils (mfojtik@redhat.com)
+- apps: make rollout log client external (mfojtik@redhat.com)
+- apps: re-introduce versioned MakeDeployment and add test sub-package
+  (mfojtik@redhat.com)
+- UPSTREAM: 64860:checkLimitsForResolvConf for the pod create and update events
+  instead of checking period (ravisantoshgudimetla@gmail.com)
+- UPSTREAM: revert: <carry>: partial revert of 'rewrite unstructured objects on
+  the CLI to avoid oapi' (deads@redhat.com)
+- UPSTREAM: 66249: fill in normal restmapping info with the legacy guess
+  (deads@redhat.com)
+- switch etcdstorage test to be driven via discovery (deads@redhat.com)
+- switch etcdstorage test to be driven via discovery (deads@redhat.com)
+- Update repo names for sclorg examples (adam.kaplan@redhat.com)
+- remove template api helpers from template package (deads@redhat.com)
+- convert docs to external types (deads@redhat.com)
+- post-1.11.1 rebase publishing rules (jliggitt@redhat.com)
+- start tightening scheme usage in oc (deads@redhat.com)
+- use normal sudo arg to preserve env (deads@redhat.com)
+- show better info oc size growth (deads@redhat.com)
+- ensure we never print a non-groupified object (deads@redhat.com)
+- UPSTREAM: <carry>: tidy up oc patches and ensure we never print a non-
+  groupified object (deads@redhat.com)
+- fixup doc generation (jliggitt@redhat.com)
+- update test for 1.11.1 defaults (jliggitt@redhat.com)
+- enable priority admission by default (jliggitt@redhat.com)
+- generated changes (jliggitt@redhat.com)
+- bump(*) (jliggitt@redhat.com)
+- update to 1.11.1 (jliggitt@redhat.com)
+- remove build helpers from api packages (deads@redhat.com)
+- generated (deads@redhat.com)
+- ServiceCatalog:  add NamespacedServiceBroker & CatalogRestrictions feature
+  gates, fixes #20380 (jaboyd@redhat.com)
+- scrub build utils to split into proper binaries (deads@redhat.com)
+- Reuse imagestreams with new-app (cdaley@redhat.com)
+- set up 1.11.1 branch publishing (jliggitt@redhat.com)
+- examples/prometheus: upgrade image versions (spasquie@redhat.com)
+- catalog: add RBAC rules for namespaced brokers (jpeeler@redhat.com)
+- fix govet errors (mfojtik@redhat.com)
+- update image/mirror image/append cmds (jvallejo@redhat.com)
+- add --dry-run option to "oc adm groups new" (jvallejo@redhat.com)
+- Update apiVersion in migrate-network-policy.sh, add comments
+  (danw@redhat.com)
+
 * Mon Jul 23 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.9.0
 - 
 
