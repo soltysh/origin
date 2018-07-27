@@ -15302,10 +15302,10 @@ parameters:
   value: openshift/oauth-proxy:v1.0.0
 - description: The location of the prometheus image
   name: IMAGE_PROMETHEUS
-  value: openshift/prometheus:v2.3.1
+  value: openshift/prometheus:v2.3.2
 - description: The location of the alertmanager image
   name: IMAGE_ALERTMANAGER
-  value: openshift/prometheus-alertmanager:v0.15.0
+  value: openshift/prometheus-alertmanager:v0.15.1
 - description: The location of alert-buffer image
   name: IMAGE_ALERT_BUFFER
   value: openshift/prometheus-alert-buffer:v0.0.2
@@ -16190,6 +16190,10 @@ objects:
     - servicebindings/status
     - servicebindings/finalizers
     - serviceinstances/reference
+    # the below resources are for namespaced brokers
+    - servicebrokers/status
+    - serviceclasses/status
+    - serviceplans/status
     verbs:
     - update
   - apiGroups:
@@ -16198,6 +16202,8 @@ objects:
     - clusterservicebrokers
     - serviceinstances
     - servicebindings
+    # for namespaced brokers
+    - servicebrokers
     verbs:
     - list
     - get
@@ -16214,6 +16220,9 @@ objects:
     resources:
     - clusterserviceclasses
     - clusterserviceplans
+    # for namespaced brokers
+    - serviceclasses
+    - serviceplans
     verbs:
     - create
     - delete
@@ -16412,6 +16421,8 @@ objects:
           - ${CORS_ALLOWED_ORIGIN}
           - --feature-gates
           - OriginatingIdentity=true
+          - --feature-gates
+          - NamespacedServiceBroker=true
           image: ${SERVICE_CATALOG_IMAGE}
           imagePullPolicy: IfNotPresent
           name: apiserver
@@ -16512,6 +16523,8 @@ objects:
           - OriginatingIdentity=true
           - --feature-gates
           - AsyncBindingOperations=true
+          - --feature-gates
+          - NamespacedServiceBroker=true
           image: ${SERVICE_CATALOG_IMAGE}
           imagePullPolicy: IfNotPresent
           name: controller-manager

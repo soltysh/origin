@@ -155,6 +155,7 @@
     "allowedImportPackages": [
       "vendor/k8s.io/kubernetes/pkg/apis/core",
       "vendor/k8s.io/kubernetes/pkg/apis/core/v1",
+      "github.com/openshift/origin/pkg/build/buildapihelpers",
       "github.com/openshift/origin/pkg/image/apis/image"
     ]
   },
@@ -293,8 +294,7 @@
     ],
     "allowedImportPackages": [
       "vendor/k8s.io/kubernetes/pkg/apis/core",
-      "vendor/k8s.io/kubernetes/pkg/apis/core/v1",
-      "vendor/k8s.io/kubernetes/pkg/api/legacyscheme"
+      "vendor/k8s.io/kubernetes/pkg/apis/core/v1"
     ]
   },
 
@@ -449,6 +449,8 @@
 
       "github.com/openshift/origin/pkg/apps/generated",
       "github.com/openshift/origin/pkg/authorization/generated",
+      "github.com/openshift/origin/pkg/build/apis/build/v1",
+      "github.com/openshift/origin/pkg/build/client/v1",
       "github.com/openshift/origin/pkg/build/generated",
       "github.com/openshift/origin/pkg/image/generated",
       "github.com/openshift/origin/pkg/network/generated",
@@ -470,16 +472,17 @@
       "github.com/openshift/origin/pkg/api/meta",
       "github.com/openshift/origin/pkg/apps/apis/apps",
       "github.com/openshift/origin/pkg/apps/apis/apps/install",
-      "github.com/openshift/origin/pkg/apps/apis/apps/test",
+      "github.com/openshift/origin/pkg/apps/apis/apps/internaltest",
+      "github.com/openshift/origin/pkg/apps/util/test",
       "github.com/openshift/origin/pkg/apps/client/internalversion",
       "github.com/openshift/origin/pkg/apps/client/v1",
-      "github.com/openshift/origin/pkg/apps/controller/util",
       "github.com/openshift/origin/pkg/apps/util",
       "github.com/openshift/origin/pkg/authorization/apis/authorization",
       "github.com/openshift/origin/pkg/authorization/apis/authorization/install",
       "github.com/openshift/origin/pkg/authorization/util",
       "github.com/openshift/origin/pkg/build/apis/build",
       "github.com/openshift/origin/pkg/build/apis/build/install",
+      "github.com/openshift/origin/pkg/build/buildapihelpers",
       "github.com/openshift/origin/pkg/build/client",
       "github.com/openshift/origin/pkg/build/client/internalversion",
       "github.com/openshift/origin/pkg/build/util",

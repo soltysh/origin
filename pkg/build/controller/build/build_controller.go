@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/openshift/origin/pkg/build/buildapihelpers"
 	metrics "github.com/openshift/origin/pkg/build/metrics/prometheus"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -342,7 +343,7 @@ func (bc *BuildController) handleBuild(build *buildapi.Build) error {
 
 	glog.V(4).Infof("Handling build %s", buildDesc(build))
 
-	pod, podErr := bc.podStore.Pods(build.Namespace).Get(buildapi.GetBuildPodName(build))
+	pod, podErr := bc.podStore.Pods(build.Namespace).Get(buildapihelpers.GetBuildPodName(build))
 
 	// Technically the only error that is returned from retrieving the pod is the
 	// NotFound error so this check should not be needed, but leaving here in case
@@ -421,7 +422,7 @@ func shouldCancel(build *buildapi.Build) bool {
 func (bc *BuildController) cancelBuild(build *buildapi.Build) (*buildUpdate, error) {
 	glog.V(4).Infof("Cancelling build %s", buildDesc(build))
 
-	podName := buildapi.GetBuildPodName(build)
+	podName := buildapihelpers.GetBuildPodName(build)
 	err := bc.podClient.Pods(build.Namespace).Delete(podName, &metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return nil, fmt.Errorf("could not delete build pod %s/%s to cancel build %s: %v", build.Namespace, podName, buildDesc(build), err)
@@ -1175,7 +1176,7 @@ func (bc *BuildController) patchBuild(build *buildapi.Build, update *buildUpdate
 // It is called when a corresponding pod for a build is not found in the cache.
 func (bc *BuildController) findMissingPod(build *buildapi.Build) *v1.Pod {
 	// Make one last attempt to fetch the pod using the REST client
-	pod, err := bc.podClient.Pods(build.Namespace).Get(buildapi.GetBuildPodName(build), metav1.GetOptions{})
+	pod, err := bc.podClient.Pods(build.Namespace).Get(buildapihelpers.GetBuildPodName(build), metav1.GetOptions{})
 	if err == nil {
 		glog.V(2).Infof("Found missing pod for build %s by using direct client.", buildDesc(build))
 		return pod
@@ -1281,7 +1282,7 @@ func (bc *BuildController) enqueueBuild(build *buildapi.Build) {
 // enqueueBuildForPod adds the build corresponding to the given pod to the controller
 // buildQueue. If a build is not found for the pod, then an error is logged.
 func (bc *BuildController) enqueueBuildForPod(pod *v1.Pod) {
-	bc.buildQueue.Add(resourceName(pod.Namespace, buildutil.GetBuildName(pod)))
+	bc.buildQueue.Add(resourceName(pod.Namespace, getBuildName(pod)))
 }
 
 // imageStreamAdded queues any builds that have registered themselves for this image stream.
@@ -1345,7 +1346,7 @@ func (bc *BuildController) handleBuildConfigError(err error, key interface{}) {
 
 // isBuildPod returns true if the given pod is a build pod
 func isBuildPod(pod *v1.Pod) bool {
-	return len(buildutil.GetBuildName(pod)) > 0
+	return len(getBuildName(pod)) > 0
 }
 
 // buildDesc is a utility to format the namespace/name and phase of a build
@@ -1454,4 +1455,12 @@ func hasError(err error, fns ...utilerrors.Matcher) bool {
 		}
 	}
 	return false
+}
+
+// getBuildName returns name of the build pod.
+func getBuildName(pod metav1.Object) string {
+	if pod == nil {
+		return ""
+	}
+	return pod.GetAnnotations()[buildapi.BuildAnnotation]
 }
