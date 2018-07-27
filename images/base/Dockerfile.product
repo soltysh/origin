@@ -6,12 +6,12 @@
 #
 FROM rhel7.2:7.2-released
 
-LABEL Component="openshift-enterprise-base-docker"
+LABEL Component="openshift-enterprise-base-container"
 LABEL Name="openshift3/ose-base"
 LABEL Version="v3.3.0.2"
 LABEL Release="1"
 LABEL Architecture="x86_64"
-LABEL BZComponent="openshift-enterprise-base-docker"
+LABEL BZComponent="openshift-enterprise-base-container"
 
 # Install our packages
 RUN yum-config-manager --enable rhel-7-server-rpms --enable rhel-7-server-optional-rpms || :
