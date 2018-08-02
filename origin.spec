@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit e90751e69522ad79ccfd7c77e0322f57a00fef7b
+%global commit 5c965c8745f63812d6a85e8021d354fa84fabf2a
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.9.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=c0042dc KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.10.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=c69d9e2 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        3.11.0
-Release:        0.10.0%{?dist}
+Release:        0.11.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -486,6 +486,139 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Thu Aug 02 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.11.0
+- up: move node check to external kube client (mfojtik@redhat.com)
+- up: stop installing our apis to legacy scheme (mfojtik@redhat.com)
+- up: switch security client to external (mfojtik@redhat.com)
+- up: move router component to external client (mfojtik@redhat.com)
+- up: switch modify scc helpers to external for pvc setup (mfojtik@redhat.com)
+- apps: remove unused consts (mfojtik@redhat.com)
+- remove apps internal client from various places (mfojtik@redhat.com)
+- apps: delete generated internal client (mfojtik@redhat.com)
+- set full user info for SAR check on template readiness checks
+  (bparees@redhat.com)
+- make cancelbuild cmd external (jvallejo@redhat.com)
+- divorce the build overrides and defaults from the main configapi scheme
+  (deads@redhat.com)
+- switch to external SARs (deads@redhat.com)
+- UPSTREAM: 66837: fix panic fake SAR client expansion (deads@redhat.com)
+- avoid unnecessary admission plugin initializers (deads@redhat.com)
+- hack: fix usage of du in osx (mfojtik@redhat.com)
+- build: copy symlinks as symlinks for s2i (jwozniak@redhat.com)
+- bump(*): - s2i dockerfile build, other bug fixes - k8s
+  (adam.kaplan@redhat.com)
+- generated (deads@redhat.com)
+- tighten access to admission plugins (deads@redhat.com)
+- Use `--apparent-size` in size check (ccoleman@redhat.com)
+- add patch tests for updated behavior (jvallejo@redhat.com)
+- move more build helpers to point of use (deads@redhat.com)
+- apps: move some registries to external types (mfojtik@redhat.com)
+- apps: switch WaitForDeploymentConfig to external (mfojtik@redhat.com)
+- Generated changes (maszulik@redhat.com)
+- Remove oc deploy entirely (maszulik@redhat.com)
+- make config scheme install normal (deads@redhat.com)
+- UPSTREAM: 66779: add methods to apimachinery to easy unit testing
+  (deads@redhat.com)
+- tighten usage of oauthserver package in openshift (deads@redhat.com)
+- Fix govet failures (maszulik@redhat.com)
+- Update verify-govet script (maszulik@redhat.com)
+- Bug 1608254 - update help messages (maszulik@redhat.com)
+- Switch prune auth to externals (maszulik@redhat.com)
+- Switch prune deployments to externals (maszulik@redhat.com)
+- Switch prune builds to externals (maszulik@redhat.com)
+- apps: boring: convert deployment extended tests to external client
+  (mfojtik@redhat.com)
+- apps: convert WaitForRunningDeployment to external (mfojtik@redhat.com)
+- apps: add external client to for apps in extended tests (mfojtik@redhat.com)
+- apps: boring: adjust rest of the tests to external helpers
+  (mfojtik@redhat.com)
+- apps: adjust registry to minimalize use of internal helpers
+  (mfojtik@redhat.com)
+- apps: remove internal controller utils (mfojtik@redhat.com)
+- apps: remove unused deployment config lister expansion (mfojtik@redhat.com)
+- apps: move controllers to external informers (mfojtik@redhat.com)
+- plumb trigger controller to use external apps informers and types
+  (mfojtik@redhat.com)
+- rename openshift informers to internal and replace apps with external
+  informer (mfojtik@redhat.com)
+- Increase layers check slightly longer for builds (ccoleman@redhat.com)
+- Fix router mutual tls bug if no ca is specified. fixes bugz #1608759
+  (smitram@gmail.com)
+- Increase timeout for image build in test (mrunalp@gmail.com)
+- test/extended/deployments: do not check logs if deployment still running
+  (runcom@redhat.com)
+- invert tag string selection logic (mlamouri@redhat.com)
+- prevent package from relying on the apiserver (deads@redhat.com)
+- snip more oauthserver to registry links (deads@redhat.com)
+- tighten package distinctions for apiservers to start preventing import
+  (deads@redhat.com)
+- An image represents a manifest (and is a blob) and also references a config
+  (ccoleman@redhat.com)
+- make startbuild cmd external (jvallejo@redhat.com)
+- UPSTREAM: 66725: update exit code to 0 if patch not needed
+  (jvallejo@redhat.com)
+- increase timeout to cancel pipeline builds, augment cancel-build status
+  (gmontero@redhat.com)
+- make build webhooks and instantiatebinary clients external
+  (jvallejo@redhat.com)
+- clean up pkg/api (deads@redhat.com)
+- auto generated files (jtanenba@redhat.com)
+-  Make the cluster's vxlan configurable by a cluster administrator
+  (jtanenba@redhat.com)
+- bump(*) (jtanenba@redhat.com)
+- pick up recent quickstart changes (gmontero@redhat.com)
+- UPSTREAM: 66406: tolerate missing column headers in server-side print output
+  (jliggitt@redhat.com)
+- UPSTREAM: 66406: Send correct headers for pod printing (jliggitt@redhat.com)
+- Add tbielawa to OWNERS file (tbielawa@redhat.com)
+- deflake integration test (deads@redhat.com)
+- tighten static pod manifest check frequency (deads@redhat.com)
+- use the release string if tito provides it for the tag string
+  (markllama@gmail.com)
+- Fix Go 1.10 issue with integration test (ccoleman@redhat.com)
+- Importer integration test was an off by one (ccoleman@redhat.com)
+- Skip the HAProxy config manager until it is deflaked (ccoleman@redhat.com)
+- Provide a client method to bypass server side timeout on upload
+  (ccoleman@redhat.com)
+- UPSTREAM: 66464: Avoid overflowing int64 in RoundUpSize and return error if
+  overflow int (mawong@redhat.com)
+- UPSTREAM: 65987: Add region label to dynamic provisioned cinder PVs
+  (mawong@redhat.com)
+- UPSTREAM: 66324: Fixing E2E tests for disk resizing (mawong@redhat.com)
+- UPSTREAM: 66172: Reverting commit #56600 as GCE PD is allocated in chunks of
+  GiB inste... (mawong@redhat.com)
+- Prevent panic in build controller when pod has already been deleted
+  (ccoleman@redhat.com)
+- Make egress IP code handle node IP address changes (danw@redhat.com)
+- Set UID in egressip_test objects (danw@redhat.com)
+- update readme to include origin-specific guide (jvallejo@redhat.com)
+- Update cli.go (bysnupy@hotmail.com)
+- Fix for ip whitelist exceeding max config arguments haproxy allows. fixes
+  bugz #1598738 (smitram@gmail.com)
+- Remove kubelet package dependency from diagnostics cli command
+  (rpenta@redhat.com)
+- Do not remove logs from the network diagnostic test pods (rpenta@redhat.com)
+- Removed unused ContainerID struct from diags (rpenta@redhat.com)
+- Added cri-tools package to dind node image (rpenta@redhat.com)
+- Create CRI runtime service once and reuse in all the network diag checks
+  (rpenta@redhat.com)
+- Converted docker inspect calls to runtime agnostic CRI calls in network diags
+  (rpenta@redhat.com)
+- Network diags: Fix capturing runtime network file (rpenta@redhat.com)
+- Network diags logging interface to use CRI runtime service instead of docker
+  calls (rpenta@redhat.com)
+- Added accessor method to get pid of the given container id
+  (rpenta@redhat.com)
+- Added helper methods to return CRI runtime interface (rpenta@redhat.com)
+- Update bootstrap tests for aggregated cluster-reader (mrogers@redhat.com)
+- Remove duplicate view roles from aggregated cluster-reader
+  (mrogers@redhat.com)
+- Aggregate cluster-reader role (mrogers@redhat.com)
+- update completions (mrogers@redhat.com)
+- UPSTREAM: 64541: Add more kubectl auth reconcile flags (mrogers@redhat.com)
+- UPSTREAM: <carry>: gracefully handle empty volume-config file
+  (sjenning@redhat.com)
+
 * Fri Jul 27 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.10.0
 - Add tests for restored -v (maszulik@redhat.com)
 - restore -v for all command (deads@redhat.com)
