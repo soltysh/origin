@@ -14,8 +14,8 @@ import (
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
-	buildapi "github.com/openshift/origin/pkg/build/apis/build"
-	buildfake "github.com/openshift/origin/pkg/build/generated/internalclientset/fake"
+	buildv1 "github.com/openshift/api/build/v1"
+	buildfake "github.com/openshift/client-go/build/clientset/versioned/fake"
 )
 
 // TestCancelBuildDefaultFlags ensures that flags default values are set.
@@ -58,19 +58,20 @@ func TestCancelBuildDefaultFlags(t *testing.T) {
 func TestCancelBuildRun(t *testing.T) {
 	tests := map[string]struct {
 		opts            *CancelBuildOptions
-		phase           buildapi.BuildPhase
+		phase           buildv1.BuildPhase
 		expectedActions []testAction
 		expectedErr     error
 	}{
 		"cancelled": {
 			opts: &CancelBuildOptions{
-				PrinterCancel:  &discardingPrinter{},
-				PrinterRestart: &discardingPrinter{},
-				IOStreams:      genericclioptions.NewTestIOStreamsDiscard(),
-				Namespace:      "test",
-				States:         []string{"new", "pending", "running"},
+				PrinterCancel:           &discardingPrinter{},
+				PrinterCancelInProgress: &discardingPrinter{},
+				PrinterRestart:          &discardingPrinter{},
+				IOStreams:               genericclioptions.NewTestIOStreamsDiscard(),
+				Namespace:               "test",
+				States:                  []string{"new", "pending", "running"},
 			},
-			phase: buildapi.BuildPhaseCancelled,
+			phase: buildv1.BuildPhaseCancelled,
 			expectedActions: []testAction{
 				{verb: "get", resource: "builds"},
 			},
@@ -78,12 +79,13 @@ func TestCancelBuildRun(t *testing.T) {
 		},
 		"complete": {
 			opts: &CancelBuildOptions{
-				PrinterCancel:  &discardingPrinter{},
-				PrinterRestart: &discardingPrinter{},
-				IOStreams:      genericclioptions.NewTestIOStreamsDiscard(),
-				Namespace:      "test",
+				PrinterCancel:           &discardingPrinter{},
+				PrinterCancelInProgress: &discardingPrinter{},
+				PrinterRestart:          &discardingPrinter{},
+				IOStreams:               genericclioptions.NewTestIOStreamsDiscard(),
+				Namespace:               "test",
 			},
-			phase: buildapi.BuildPhaseComplete,
+			phase: buildv1.BuildPhaseComplete,
 			expectedActions: []testAction{
 				{verb: "get", resource: "builds"},
 			},
@@ -91,12 +93,13 @@ func TestCancelBuildRun(t *testing.T) {
 		},
 		"new": {
 			opts: &CancelBuildOptions{
-				PrinterCancel:  &discardingPrinter{},
-				PrinterRestart: &discardingPrinter{},
-				IOStreams:      genericclioptions.NewTestIOStreamsDiscard(),
-				Namespace:      "test",
+				PrinterCancel:           &discardingPrinter{},
+				PrinterCancelInProgress: &discardingPrinter{},
+				PrinterRestart:          &discardingPrinter{},
+				IOStreams:               genericclioptions.NewTestIOStreamsDiscard(),
+				Namespace:               "test",
 			},
-			phase: buildapi.BuildPhaseNew,
+			phase: buildv1.BuildPhaseNew,
 			expectedActions: []testAction{
 				{verb: "get", resource: "builds"},
 				{verb: "update", resource: "builds"},
@@ -106,12 +109,13 @@ func TestCancelBuildRun(t *testing.T) {
 		},
 		"pending": {
 			opts: &CancelBuildOptions{
-				PrinterCancel:  &discardingPrinter{},
-				PrinterRestart: &discardingPrinter{},
-				IOStreams:      genericclioptions.NewTestIOStreamsDiscard(),
-				Namespace:      "test",
+				PrinterCancel:           &discardingPrinter{},
+				PrinterCancelInProgress: &discardingPrinter{},
+				PrinterRestart:          &discardingPrinter{},
+				IOStreams:               genericclioptions.NewTestIOStreamsDiscard(),
+				Namespace:               "test",
 			},
-			phase: buildapi.BuildPhaseNew,
+			phase: buildv1.BuildPhaseNew,
 			expectedActions: []testAction{
 				{verb: "get", resource: "builds"},
 				{verb: "update", resource: "builds"},
@@ -121,13 +125,14 @@ func TestCancelBuildRun(t *testing.T) {
 		},
 		"running and restart": {
 			opts: &CancelBuildOptions{
-				PrinterCancel:  &discardingPrinter{},
-				PrinterRestart: &discardingPrinter{},
-				IOStreams:      genericclioptions.NewTestIOStreamsDiscard(),
-				Namespace:      "test",
-				Restart:        true,
+				PrinterCancel:           &discardingPrinter{},
+				PrinterCancelInProgress: &discardingPrinter{},
+				PrinterRestart:          &discardingPrinter{},
+				IOStreams:               genericclioptions.NewTestIOStreamsDiscard(),
+				Namespace:               "test",
+				Restart:                 true,
 			},
-			phase: buildapi.BuildPhaseNew,
+			phase: buildv1.BuildPhaseNew,
 			expectedActions: []testAction{
 				{verb: "get", resource: "builds"},
 				{verb: "update", resource: "builds"},
@@ -145,7 +150,7 @@ func TestCancelBuildRun(t *testing.T) {
 		// main resource (builds), but uses the resource from the clone function,
 		// which is a BuildRequest. It needs to be able to "update"/"get" a
 		// BuildRequest, so we stub one out here.
-		stubbedBuildRequest := &buildapi.BuildRequest{
+		stubbedBuildRequest := &buildv1.BuildRequest{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: test.opts.Namespace,
 				Name:      build.Name,
@@ -157,7 +162,7 @@ func TestCancelBuildRun(t *testing.T) {
 		})
 		client.PrependReactor("update", "builds", func(action clientgotesting.Action) (handled bool, ret runtime.Object, err error) {
 			if build.Status.Cancelled == true {
-				build.Status.Phase = buildapi.BuildPhaseCancelled
+				build.Status.Phase = buildv1.BuildPhaseCancelled
 			}
 			return false, build, nil
 		})
@@ -169,7 +174,7 @@ func TestCancelBuildRun(t *testing.T) {
 		})
 
 		test.opts.timeout = 1 * time.Second
-		test.opts.Client = client
+		test.opts.Client = client.BuildV1()
 		test.opts.BuildClient = client.Build().Builds(test.opts.Namespace)
 		test.opts.ReportError = func(err error) {
 			test.opts.HasError = true
@@ -183,7 +188,7 @@ func TestCancelBuildRun(t *testing.T) {
 			t.Fatalf("%s: error mismatch: expected %v, got %v", testName, test.expectedErr, err)
 		}
 
-		got := test.opts.Client.(*buildfake.Clientset).Actions()
+		got := client.Actions()
 		if len(test.expectedActions) != len(got) {
 			t.Fatalf("%s: action length mismatch: expected %d, got %d", testName, len(test.expectedActions), len(got))
 		}
@@ -202,13 +207,13 @@ func (*discardingPrinter) PrintObj(runtime.Object, io.Writer) error {
 	return nil
 }
 
-func genBuild(phase buildapi.BuildPhase) *buildapi.Build {
-	build := buildapi.Build{
+func genBuild(phase buildv1.BuildPhase) *buildv1.Build {
+	build := buildv1.Build{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ruby-ex",
 			Namespace: "test",
 		},
-		Status: buildapi.BuildStatus{
+		Status: buildv1.BuildStatus{
 			Phase: phase,
 		},
 	}

@@ -13,7 +13,7 @@ import (
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
-	appsclientinternal "github.com/openshift/origin/pkg/apps/generated/internalclientset"
+	appsclient "github.com/openshift/client-go/apps/clientset/versioned"
 	buildclientinternal "github.com/openshift/origin/pkg/build/generated/internalclientset"
 	imageclientinternal "github.com/openshift/origin/pkg/image/generated/internalclientset"
 	"github.com/openshift/origin/pkg/oc/lib/describe"
@@ -46,7 +46,7 @@ var (
 	  %[1]s -o dot | dot -T svg -o project.svg
 
 	  # See an overview of the current project including details for any identified issues.
-	  %[1]s --sugest`)
+	  %[1]s --suggest`)
 )
 
 // StatusOptions contains all the necessary options for the Openshift cli status command.
@@ -76,7 +76,7 @@ func NewStatusOptions(streams genericclioptions.IOStreams) *StatusOptions {
 func NewCmdStatus(name, baseCLIName, fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	o := NewStatusOptions(streams)
 	cmd := &cobra.Command{
-		Use:     fmt.Sprintf("%s [-o dot | --sugest ]", StatusRecommendedName),
+		Use:     fmt.Sprintf("%s [-o dot | --suggest ]", StatusRecommendedName),
 		Short:   "Show an overview of the current project",
 		Long:    fmt.Sprintf(statusLong, baseCLIName),
 		Example: fmt.Sprintf(statusExample, fullName),
@@ -131,7 +131,7 @@ func (o *StatusOptions) Complete(f kcmdutil.Factory, cmd *cobra.Command, baseCLI
 	if err != nil {
 		return err
 	}
-	appsClient, err := appsclientinternal.NewForConfig(clientConfig)
+	appsClient, err := appsclient.NewForConfig(clientConfig)
 	if err != nil {
 		return err
 	}

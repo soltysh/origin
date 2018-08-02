@@ -31,9 +31,6 @@ import (
 	"github.com/openshift/origin/pkg/oc/clusterup/docker/dockerhelper"
 	"github.com/openshift/origin/pkg/oc/clusterup/docker/host"
 	"github.com/openshift/origin/pkg/oc/clusterup/manifests"
-
-	// install our apis into the legacy scheme
-	_ "github.com/openshift/origin/pkg/api/install"
 )
 
 type staticInstall struct {
@@ -510,6 +507,7 @@ func (c *ClusterUpConfig) startKubelet(out io.Writer, masterConfigDir, nodeConfi
 		actualKubeletFlags = append(actualKubeletFlags, curr)
 	}
 	container.Args = append(actualKubeletFlags, "--pod-manifest-path=/var/lib/origin/pod-manifests")
+	container.Args = append(container.Args, "--file-check-frequency=1s")
 	container.Args = append(container.Args, "--cluster-dns=172.30.0.2")
 	container.Args = append(container.Args, fmt.Sprintf("--v=%d", c.ServerLogLevel))
 	glog.V(1).Info(strings.Join(container.Args, " "))
