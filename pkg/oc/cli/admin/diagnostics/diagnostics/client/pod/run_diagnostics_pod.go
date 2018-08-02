@@ -148,7 +148,7 @@ func (d *DiagnosticPod) processDiagnosticPodResults(protoPod *kapi.Pod, imageNam
 		Follow:     true,
 		LimitBytes: &bytelim,
 	}
-	req, err := polymorphichelpers.LogsForObjectFn(d.Factory, pod, podLogsOpts, 1*time.Minute)
+	requests, err := polymorphichelpers.LogsForObjectFn(d.Factory, pod, podLogsOpts, 1*time.Minute, false)
 	if err != nil {
 		r.Error("DCli2005", err, fmt.Sprintf("The request for diagnostic pod logs failed unexpectedly. Error: (%T) %[1]v", err))
 		return
@@ -157,28 +157,30 @@ func (d *DiagnosticPod) processDiagnosticPodResults(protoPod *kapi.Pod, imageNam
 	// wait for pod to be started and logs available
 	var scanner *bufio.Scanner
 	var lastError error
+outerLoop:
 	for times := 1; true; times++ {
 		if times <= 50 {
-			readCloser, err := req.Stream()
-			if err != nil {
-				lastError = err
-				r.Debug("DCli2010", fmt.Sprintf("Could not get diagnostic pod logs (loop %d): (%T[2]) %[2]v", times, err))
+			for _, req := range requests {
+				readCloser, err := req.Stream()
+				if err != nil {
+					lastError = err
+					r.Debug("DCli2010", fmt.Sprintf("Could not get diagnostic pod logs (loop %d): (%T[2]) %[2]v", times, err))
+					time.Sleep(time.Duration(times*100) * time.Millisecond)
+					continue outerLoop
+				}
+				// make sure we can actually get something from the stream before going on.
+				// it seems the creation of docker logs can trail the container start a bit.
+				lineScanner := bufio.NewScanner(readCloser)
+				if lineScanner.Scan() {
+					scanner = lineScanner
+					break outerLoop // success - drop down to reading the logs.
+				}
+				// no luck - try, try again
+				lastError = fmt.Errorf("Diagnostics pod is ready but not its logs (loop %d). Retry.", times)
+				r.Debug("DCli2010", lastError.Error())
 				time.Sleep(time.Duration(times*100) * time.Millisecond)
-				continue
+				continue outerLoop
 			}
-			defer readCloser.Close()
-			// make sure we can actually get something from the stream before going on.
-			// it seems the creation of docker logs can trail the container start a bit.
-			lineScanner := bufio.NewScanner(readCloser)
-			if lineScanner.Scan() {
-				scanner = lineScanner
-				break // success - drop down to reading the logs.
-			}
-			// no luck - try, try again
-			lastError = fmt.Errorf("Diagnostics pod is ready but not its logs (loop %d). Retry.", times)
-			r.Debug("DCli2010", lastError.Error())
-			time.Sleep(time.Duration(times*100) * time.Millisecond)
-			continue
 		}
 		// tries exhausted
 		r.Warn("DCli2006", err, fmt.Sprintf("Timed out preparing diagnostic pod logs for streaming, so this diagnostic cannot run.\nIt is likely that the image '%s' was not pulled and running yet.\nLast error: (%T[2]) %[2]v", pod.Spec.Containers[0].Image, lastError))
