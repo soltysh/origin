@@ -184,8 +184,7 @@ readonly -f os::util::list_go_src_files
 # Returns:
 #  None
 function os::util::list_go_src_dirs() {
-	os::util::list_go_src_files | cut -d '/' -f 1-2 | grep -v ".go$" | grep -v "^./cmd" | LC_ALL=C sort -u
-	os::util::list_go_src_files | grep "^./cmd/"| cut -d '/' -f 1-3 | grep -v ".go$" | LC_ALL=C sort -u
+    go list -e ./... | grep -Ev "/(third_party|vendor|staging|clientset_generated)/" | LC_ALL=C sort -u
 }
 readonly -f os::util::list_go_src_dirs
 
@@ -350,19 +349,21 @@ function os::build::check_binaries() {
   # enforce that certain binaries don't accidentally grow too large
   # IMPORTANT: contact Clayton or another master team member before altering this code
   if [[ -f "${OS_OUTPUT_BINPATH}/${platform}/oc" ]]; then
-    ocsize=$($duexe --apparent-size -m "${OS_OUTPUT_BINPATH}/${platform}/oc" | cut -f 1)
-    if [[ "${ocsize}" -gt "118" ]]; then
-      os::log::fatal "oc binary has grown substantially to ${ocsize}. You must have approval before bumping this limit."
+    size=$($duexe --apparent-size -m "${OS_OUTPUT_BINPATH}/${platform}/oc" | cut -f 1)
+    if [[ "${size}" -gt "118" ]]; then
+      os::log::fatal "oc binary has grown substantially to ${size}. You must have approval before bumping this limit."
     fi
   fi
   if [[ -f "${OS_OUTPUT_BINPATH}/${platform}/openshift-node-config" ]]; then
-    if [[ "$($duexe --apparent-size -m "${OS_OUTPUT_BINPATH}/${platform}/openshift-node-config" | cut -f 1)" -gt "22" ]]; then
-      os::log::fatal "openshift-node-config binary has grown substantially. You must have approval before bumping this limit."
+    size=$($duexe --apparent-size -m "${OS_OUTPUT_BINPATH}/${platform}/openshift-node-config" | cut -f 1)
+    if [[ "${size}" -gt "30" ]]; then
+      os::log::fatal "openshift-node-config binary has grown substantially to ${size}. You must have approval before bumping this limit."
     fi
   fi
   if [[ -f "${OS_OUTPUT_BINPATH}/${platform}/pod" ]]; then
-    if [[ "$($duexe --apparent-size -m "${OS_OUTPUT_BINPATH}/${platform}/pod" | cut -f 1)" -gt "2" ]]; then
-      os::log::fatal "pod binary has grown substantially. You must have approval before bumping this limit."
+    size=$($duexe --apparent-size -m "${OS_OUTPUT_BINPATH}/${platform}/pod" | cut -f 1)
+    if [[ "${size}" -gt "2" ]]; then
+      os::log::fatal "pod binary has grown substantially to ${size}. You must have approval before bumping this limit."
     fi
   fi
 }
