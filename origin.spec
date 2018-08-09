@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 5c965c8745f63812d6a85e8021d354fa84fabf2a
+%global commit 9611b8d7f4e3378e3b923c6263b522233e6a7f6e
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.10.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=c69d9e2 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.11.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=f7226ba KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        3.11.0
-Release:        0.11.0%{?dist}
+Release:        0.12.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -486,6 +486,81 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Thu Aug 09 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.12.0
+- info/diag for direct ext test invocation on gcp/prow (gmontero@redhat.com)
+- Fix for router with dynamic config changes not reloading - need to simulate
+  an actual change otherwise router commit doesn't call reload. And address
+  @mfojtik review comments. fixes bugz #1612019 (smitram@gmail.com)
+- Drop authorizer wrapper (simo@redhat.com)
+- switch networking to external types (deads@redhat.com)
+- generated (deads@redhat.com)
+- bump (deads@redhat.com)
+- limit object conversion to known gvks (jvallejo@redhat.com)
+- UPSTREAM: 67024: add CancelRequest to discovery round-tripper
+  (jvallejo@redhat.com)
+- UPSTREAM: 66929: add logging to find offending transports
+  (jvallejo@redhat.com)
+- Show builds history limit settings with oc describe bc/foo
+  (cdaley@redhat.com)
+- ensure req'ed env vars are availave for e2e style direct ginkgo invocation of
+  extended tests (gmontero@redhat.com)
+- switch authenticators to external clients (deads@redhat.com)
+- clean up image registry hostname retrieval (deads@redhat.com)
+- up: update cluster up to prepare for external config (mfojtik@redhat.com)
+- config: prefix scheme with legacy (mfojtik@redhat.com)
+- browsersafe reason (mkhan@redhat.com)
+- UPSTREAM: 65906: Improve multi-authorizer errors (jliggitt@redhat.com)
+- apps: fix todos (mfojtik@redhat.com)
+- apps: unify apps client name (mfojtik@redhat.com)
+- build/controller/build: simplify bool exprs (quasilyte@gmail.com)
+- apps: replace func lits with wrapped func value (quasilyte@gmail.com)
+- cmd/server: replace raw literals with named constants (quasilyte@gmail.com)
+- fix set build-hook panic on empty file (jvallejo@redhat.com)
+- allow versions to be specified for bc logs (jvallejo@redhat.com)
+- Move project-related commands to external client (maszulik@redhat.com)
+- update import-image cmd to use external versions (jvallejo@redhat.com)
+- Update README.md to reflect OKD rebranding (skuznets@redhat.com)
+- manually bind flag values from upstream logs cmd (jvallejo@redhat.com)
+- Change scheme to kubectl and fix test-cmd (maszulik@redhat.com)
+- React to LogsForObjectFn signature change (maszulik@redhat.com)
+- UPSTREAM: 66931: Use the passed-in streams in kubectl top (sross@redhat.com)
+- Change logo, favicon, name on login page (rhamilto@redhat.com)
+- hack/cherry-pick.sh: apply merge commit by default and add APPLY_PR_COMMITS
+  for old mode (stefan.schimanski@gmail.com)
+- only print each webhook once. (bparees@redhat.com)
+- Injecting new required vars into origin.spec file (dani_comnea@yahoo.com)
+- hack/cherry-pick.sh: add UPSTREAM_BRANCH var (stefan.schimanski@gmail.com)
+- fix for parallel tests creating an execpod (gmontero@redhat.com)
+- update log cmd to use corev1.PodLogOptions (jvallejo@redhat.com)
+- update import restrictions (jvallejo@redhat.com)
+- update generated completions (jvallejo@redhat.com)
+- update secret cmd to externals (jvallejo@redhat.com)
+- update debug cmd to use externals (jvallejo@redhat.com)
+- update rsync (jvallejo@redhat.com)
+- update extract command (jvallejo@redhat.com)
+- UPSTREAM: 66519: switch attach to use external objs (jvallejo@redhat.com)
+- UPSTREAM: 66398: fix logs command to be generic for all resources again
+  (maszulik@redhat.com)
+- check for tag before proceeding with new-app test (bparees@redhat.com)
+- update jenkins test to use pod/curl util for rest calls; add header setting
+  to pod/curl util; enable posting data with pod/curl util
+  (gmontero@redhat.com)
+- Switch go list to list_go_src_dirs (maszulik@redhat.com)
+- move build controller configapi to configapi (deads@redhat.com)
+- generated (deads@redhat.com)
+- Update SCC-related commands' descriptions (maszulik@redhat.com)
+- When images are not found in the cache, delay slightly and retry
+  (ccoleman@redhat.com)
+- UPSTREAM: 64896: kubectl: wait for all errors and successes on podEviction
+  (rphillips@redhat.com)
+- UPSTREAM: 64378: Don't reset global timeout on each for loop iteration
+  (ward.loos@gmail.com)
+- make hack/build-local-images.py runnable with py3 (slaznick@redhat.com)
+- reconcile scc: don't print misleading debug (slaznick@redhat.com)
+- Make ReconcileSCCOptions.ChangedSCCs return separate constraints slices
+  (slaznick@redhat.com)
+- Bump grafana version. (mrsiano@gmail.com)
+
 * Thu Aug 02 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.11.0
 - up: move node check to external kube client (mfojtik@redhat.com)
 - up: stop installing our apis to legacy scheme (mfojtik@redhat.com)
