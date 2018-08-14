@@ -49,7 +49,8 @@
       "github.com/openshift/origin/pkg/user/apiserver",
       "github.com/openshift/origin/pkg/quota/admission/clusterresourceoverride",
       "github.com/openshift/origin/pkg/oc/cli/admin/createbootstrapprojecttemplate",
-      "github.com/openshift/origin/pkg/cmd/server"
+      "github.com/openshift/origin/pkg/cmd/server",
+      "github.com/openshift/origin/pkg/cmd/openshift-apiserver"
     ],
     "forbiddenImportPackageRoots": [
       "github.com/openshift/origin/pkg/apps/apiserver",
@@ -568,8 +569,6 @@
       "github.com/openshift/origin/pkg/security/apis/security",
       "github.com/openshift/origin/pkg/security/securitycontextconstraints",
       "github.com/openshift/origin/pkg/security/securitycontextconstraints/util",
-      "github.com/openshift/origin/pkg/serviceaccounts",
-      "github.com/openshift/origin/pkg/serviceaccounts/util",
       "github.com/openshift/origin/pkg/service/admission",
       "github.com/openshift/origin/pkg/template/apis/template",
       "github.com/openshift/origin/pkg/template/apis/template/validation",
