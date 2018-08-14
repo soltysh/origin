@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 9f36d6f1a228ab29d0cd8eaf65095eba1f875091
+%global commit c1e34f8c5ab1c3bf812c3dadffda3190ae7f7a9f
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.13.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=afb2f83 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.14.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=c1d0590 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        3.11.0
-Release:        0.14.0%{?dist}
+Release:        0.15.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -474,6 +474,56 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Aug 14 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.15.0
+- Update tests to take into account removal of start node (ccoleman@redhat.com)
+- generated: Completions (ccoleman@redhat.com)
+- Remove more dependencies from origin.spec (ccoleman@redhat.com)
+- Move --print-ip from openshift start to openshift start master
+  (ccoleman@redhat.com)
+- Remove dependencies on openshift start node (ccoleman@redhat.com)
+- Remove `openshift start node` (ccoleman@redhat.com)
+- Add an `oc image extract` command that can copy contents out of images to
+  disk (ccoleman@redhat.com)
+- wire openshift apiserver specifically (deads@redhat.com)
+- straight move of openshift apiserver (deads@redhat.com)
+- remove unnecessary internal client (deads@redhat.com)
+- Add debugging to templateinstance gc test (bparees@redhat.com)
+- UPSTREAM: <drop>: increase loglevel for health check (mfojtik@redhat.com)
+- Wire factory to DiagnosticsOptions (maszulik@redhat.com)
+- Generated changes (maszulik@redhat.com)
+- Update admin commands to use IOStreams (maszulik@redhat.com)
+- switch to using external clientset in oc rollout retry (jvallejo@redhat.com)
+- bump(*): (adam.kaplan@redhat.com)
+- UPSTREAM: 67094:Ouput volumes (total capacity and requests) too along with
+  cpu and memory when the feature BalanceAttachedNodeVolumes is used.
+  (avesh.ncsu@gmail.com)
+- UPSTREAM: 67094:Fix incorrect reporting of total request including current
+  pod in the resource allocation priority function. (avesh.ncsu@gmail.com)
+- Revert "Provide feedback on progression for extracting of binary build"
+  (bparees@redhat.com)
+- update generated files (jvallejo@redhat.com)
+- UPSTREAM: 66225: update testcase for edit (jvallejo@redhat.com)
+- UPSTREAM: 66225: add support for "success" output for edit command
+  (jvallejo@redhat.com)
+- Bug 1608254 - update help messages (maszulik@redhat.com)
+- Fix issue where routes are not cleaned up when a namespace label is deleted
+  or updated. fixes bugz #1613163 (smitram@gmail.com)
+- update serviceaccount cmds to use externals (jvallejo@redhat.com)
+- make sure build loglevel is always being set (bparees@redhat.com)
+- build defaulter should set build envs on custom build pod
+  (bparees@redhat.com)
+- separate controller manager and apiserver informers (deads@redhat.com)
+- fix debug panic (jvallejo@redhat.com)
+- Invalidate discovery cache before migration commands (mkhan@redhat.com)
+- UPSTREAM: 67033: expose default LogsForObject consumeRequest func
+  (jvallejo@redhat.com)
+- Fix router bug where cookie is not set correctly when dynamic changes are
+  enabled. fixes bugz #1610712 (smitram@gmail.com)
+- Clean up internal data when egress IPs go away (danw@redhat.com)
+- Don't auto-assign egress IPs that are no longer in use (danw@redhat.com)
+- Unify manifest extraction in image commands (ccoleman@redhat.com)
+- Unify helpers in image cli commands (ccoleman@redhat.com)
+
 * Sun Aug 12 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.14.0
 - enable override of agent pod template images during prow/gcp invocation of
   jenkins extended tests (gmontero@redhat.com)
