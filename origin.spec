@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit c1e34f8c5ab1c3bf812c3dadffda3190ae7f7a9f
+%global commit 2b095464478e7749884095807769bd78ef6d8b45
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.14.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=c1d0590 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.15.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=2d9660b KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        3.11.0
-Release:        0.15.0%{?dist}
+Release:        0.16.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -474,6 +474,22 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Wed Aug 15 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.16.0
+- Fix provided options object is not a PodLogOptions error in network diags
+  (rpenta@redhat.com)
+- Bug 1614660 - Network diagnostic will auto detect runtime (rpenta@redhat.com)
+- UPSTREAM: 67093: improve config file modification time (jvallejo@redhat.com)
+- externalize app.json (jvallejo@redhat.com)
+- Use the cloned blueprint with the correct blueprint namespace in
+  add/remove/provision - sorta works but the route namespaces are off and
+  creates cleanup issues. fixes bugz #1614727 (smitram@gmail.com)
+- UPSTREAM: 65686: fix `kubectl create priorityclass` failure bug
+  (jvallejo@redhat.com)
+- externalize remaining create commands & expose command (jvallejo@redhat.com)
+- sdn: don't fail when adding a duplicate route (cdc@redhat.com)
+- UPSTREAM: <carry>: ensure perFSGroup quanity is positive
+  (sjenning@redhat.com)
+
 * Tue Aug 14 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.15.0
 - Update tests to take into account removal of start node (ccoleman@redhat.com)
 - generated: Completions (ccoleman@redhat.com)
