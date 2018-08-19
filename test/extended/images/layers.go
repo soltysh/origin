@@ -34,6 +34,44 @@ var _ = g.Describe("[Feature:ImageLayers] Image layer subresource", func() {
 
 	oc = exutil.NewCLI("image-layers", exutil.KubeConfigPath())
 
+	g.It("should identify a deleted image as missing", func() {
+		client := imageclientset.NewForConfigOrDie(oc.AdminConfig()).Image()
+		_, err := client.ImageStreams(oc.Namespace()).Create(&imageapi.ImageStream{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test",
+			},
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		_, err = client.ImageStreamMappings(oc.Namespace()).Create(&imageapi.ImageStreamMapping{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test",
+			},
+			Image: imageapi.Image{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "an_image_to_be_deleted",
+				},
+				DockerImageReference: "example.com/random/image:latest",
+			},
+			Tag: "missing",
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = client.Images().Delete("an_image_to_be_deleted", nil)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		err = wait.PollImmediate(time.Second, time.Minute, func() (bool, error) {
+			layers, err := client.ImageStreams(oc.Namespace()).Layers("test", metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			ref, ok := layers.Images["an_image_to_be_deleted"]
+			if !ok {
+				return false, nil
+			}
+			o.Expect(ref.ImageMissing).To(o.BeTrue())
+			return true, nil
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+	})
+
 	g.It("should return layers from tagged images", func() {
 		ns = []string{oc.Namespace()}
 		client := imageclientset.NewForConfigOrDie(oc.UserConfig()).Image()
@@ -71,9 +109,9 @@ var _ = g.Describe("[Feature:ImageLayers] Image layer subresource", func() {
 				l, ok := layers.Images[image.Image.Name]
 				o.Expect(ok).To(o.BeTrue())
 				o.Expect(len(l.Layers)).To(o.BeNumerically(">", 0))
-				o.Expect(l.Manifest).ToNot(o.BeNil())
-				o.Expect(layers.Blobs[*l.Manifest]).ToNot(o.BeNil())
-				o.Expect(layers.Blobs[*l.Manifest].MediaType).To(o.Equal("application/vnd.docker.container.image.v1+json"))
+				o.Expect(l.Config).ToNot(o.BeNil())
+				o.Expect(layers.Blobs[*l.Config]).ToNot(o.BeNil())
+				o.Expect(layers.Blobs[*l.Config].MediaType).To(o.Equal("application/vnd.docker.container.image.v1+json"))
 				for _, layerID := range l.Layers {
 					o.Expect(layers.Blobs).To(o.HaveKey(layerID))
 					o.Expect(layers.Blobs[layerID].MediaType).NotTo(o.BeEmpty())
