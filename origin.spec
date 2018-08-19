@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 3cbf60ce08321a325ea37240be78c4b7a45bcc19
+%global commit 487ba2089252113e45e1a4e7bcbf9309c7b0fbdf
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.16.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=f302c3e KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.17.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=51af729 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        3.11.0
-Release:        0.17.0%{?dist}
+Release:        0.18.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -476,6 +476,34 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Sun Aug 19 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.18.0
+- in e2e wait for istag creation after the import, before the pull
+  (gmontero@redhat.com)
+- snip template client internal refs (deads@redhat.com)
+- snip internal security deps (deads@redhat.com)
+- start import restrictions (deads@redhat.com)
+- snip last project internal client refs (deads@redhat.com)
+- Update openshift image layers API (ccoleman@redhat.com)
+- Fix dnsmasq/node dependency (ironcladlou@gmail.com)
+- bump(*): (adam.kaplan@redhat.com)
+- bump(*) (deads@redhat.com)
+- minimal change to deserialize into an exteral type (deads@redhat.com)
+- generated (deads@redhat.com)
+- make build types match internal/external (deads@redhat.com)
+- Update openshift image layers API (ccoleman@redhat.com)
+- use K8s NamespaceLifecycle admission controller (jaboyd@redhat.com)
+- use local dockerconfig for auth when pulling images (bparees@redhat.com)
+- UPSTREAM: 66350: Start cloudResourceSyncsManager before getNodeAnyWay
+  (initializeModules) to avoid kubelet getting stuck in retrieving node
+  addresses from a cloudprovider (jchaloup@redhat.com)
+- UPSTREAM: 65226: Put all the node address cloud provider retrival complex
+  logic into cloudResourceSyncManager (jchaloup@redhat.com)
+- Add Rust detector (pat2man@gmail.com)
+- UPSTREAM: 65549: Fix flexvolume in containerized kubelets
+  (hekumar@redhat.com)
+- Expose device-plugins directory in origin container
+  (karimboumedhel@gmail.com)
+
 * Thu Aug 16 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.17.0
 - Clean up bad OVS ports (danw@redhat.com)
 - Fix haproxy router config manager issue where sanitize pems don't match when
