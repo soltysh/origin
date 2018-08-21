@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit b522c6028a80c463f73887481a0ca8edf1316264
+%global commit c167cf2514a74d74a7dc8ecb833a0f355f15decb
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.127 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=4ae284b
+%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.128 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=c167cf2
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.6.173.0.128
+Version:        3.6.173.0.129
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -642,6 +642,14 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Tue Aug 21 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.6.173.0.129-1
+- UPSTREAM: 61294: Fix cpu cfs quota flag with pod cgroups
+  (sjenning@redhat.com)
+- UPSTREAM: opencontainers/runc: 1805: fix systemd cpu quota for -1
+  (sjenning@redhat.com)
+- UPSTREAM: 53318: create separate transports for liveness and readiness probes
+  (sjenning@redhat.com)
+
 * Fri Jul 27 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.6.173.0.128-1
 - [PATCH] Update custom tito tagger for new version (skuznets@redhat.com)
 - UPSTREAM: 66350: Start cloudResourceSyncsManager before getNodeAnyWay
