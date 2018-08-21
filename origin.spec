@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 20339020e8c40acd48d2dc0ada661a31db1c3e3a
+%global commit c4dd66578e0bf44ba610e2b8294e95b4218a2c37
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.60 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=08e8675
+%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.61 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=a1d2a30
 }
 
 %if 0%{?skip_build}
@@ -58,7 +58,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.7.61
+Version:        3.7.62
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -654,6 +654,12 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Mon Aug 20 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.7.62-1
+- UPSTREAM: 59931: do not delete node in openstack, if those still exist in
+  cloudprovider (sjenning@redhat.com)
+- set full user info for SAR check on template readiness checks
+  (bparees@redhat.com)
+
 * Mon Jul 30 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.7.61-1
 - 
 
