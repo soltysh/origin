@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 51332bd3969fb3c1bf68e281a183462b07ae5f0a
+%global commit a13332b6942d13113815fc6c38d41481009ca058
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.18.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=007f723 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.19.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=97218d8 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        3.11.0
-Release:        0.19.0%{?dist}
+Release:        0.20.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -476,6 +476,80 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Aug 21 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.20.0
+- make external ip ranger admission config based (deads@redhat.com)
+- switch restrcted endpoints admission to config driven (deads@redhat.com)
+- generated (deads@redhat.com)
+- Restore OCP branding to error, login, and selectprovider pages
+  (rhamilto@redhat.com)
+- Update OWNERS for automation service broker oc cluster component
+  (jwmatthews@gmail.com)
+- Add Automation Service Broker Owners (jmontleo@redhat.com)
+- UPSTREAM: 67399: update patch to work with --local and avoid extra requests
+  (jvallejo@redhat.com)
+- Update import restrictions (maszulik@redhat.com)
+- Fix DockerImageMetadata reading when dealing with versioned client
+  (maszulik@redhat.com)
+- Externalize admin commands depending on graph library (maszulik@redhat.com)
+- Externalize graph library (maszulik@redhat.com)
+- Change manual conversions for image's meta (maszulik@redhat.com)
+- Add missing versions to GetPodSpec (maszulik@redhat.com)
+- Drop DeploymentConfigAnnotation and DeploymentCancelledAnnotation from
+  appsapi entirely (maszulik@redhat.com)
+- Move apps helpers to graph helpers (maszulik@redhat.com)
+- UPSTREAM: 67493: Tolerate nil input in GetValueFromIntOrPercent
+  (maszulik@redhat.com)
+- allow substitution of legacy api kinds in templates (deads@redhat.com)
+- move git server to external build client (mfojtik@redhat.com)
+- extended: fix helper usage and clients in build extended tests
+  (mfojtik@redhat.com)
+- fix integration build errors (mfojtik@redhat.com)
+- boring: rename metrics imports (mfojtik@redhat.com)
+- template: make template instance readiness use internal build helpers
+  (mfojtik@redhat.com)
+- cli: fix up cli for external build helpers (mfojtik@redhat.com)
+- cli: move envresolve to external types (mfojtik@redhat.com)
+- envresolve: copy to internal version (mfojtik@redhat.com)
+- image: fix up buildconfig trigger controller (mfojtik@redhat.com)
+- build: move webhooks to external types (mfojtik@redhat.com)
+- consolidate generator helper usage (mfojtik@redhat.com)
+- build: move build controllers to external types (mfojtik@redhat.com)
+- build: move some parts of api server to external and consolidate usage of
+  helpers (mfojtik@redhat.com)
+- add build/v1 into buildscheme (mfojtik@redhat.com)
+- fix build conversion and validation (mfojtik@redhat.com)
+- build: update pkg/build/client to versioned api (mfojtik@redhat.com)
+- controllers: introduce external build client (mfojtik@redhat.com)
+- image: update imagepolicy admission to use internalversion of
+  imagereferencemutators (mfojtik@redhat.com)
+- copy imagereferencemutators to internalversion (mfojtik@redhat.com)
+- move existing build helpers to external versions (mfojtik@redhat.com)
+- Make the router tests tolerate multiple namespaces (ccoleman@redhat.com)
+- Fix router issue to use tcp balance scheme if it is configured before falling
+  back to using the default router load balance algorithm. fixes bugz #1618563
+  (smitram@gmail.com)
+- Fixing a few imagestream bugs (cdaley@redhat.com)
+- switch to using jsonpatch and upstream patch cmd (jvallejo@redhat.com)
+- remove the ability to limit secret refs based on service account
+  (deads@redhat.com)
+- make cluster quota controller tolerate inaccessible api resources
+  (deads@redhat.com)
+- UPSTREAM: 67433: allow failed discovery on initial quota controller start
+  (deads@redhat.com)
+- snip route internal client use (deads@redhat.com)
+- duplicate some existing build helpers for internal use (mfojtik@redhat.com)
+- copy out some internal consts and vars for external use (mfojtik@redhat.com)
+- Bug 1600741 - Provide better help for network diagnostic flags
+  (rpenta@redhat.com)
+- UPSTREAM: 67316: Adds tests for --all-containers=true (jvallejo@redhat.com)
+- expose external type installation for configapi (deads@redhat.com)
+- UPSTREAM: 67399: update patch to work with --local and avoid extra requests
+  (deads@redhat.com)
+- use the upstream RBAC roles for reconciliation (deads@redhat.com)
+- generated (deads@redhat.com)
+- update CLI Hacking Guide (jvallejo@redhat.com)
+- Add forwarded header instead of replacing it (kristine.jetzke@kreuzwerker.de)
+
 * Mon Aug 20 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.19.0
 - 
 
