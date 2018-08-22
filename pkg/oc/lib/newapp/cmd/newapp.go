@@ -27,7 +27,7 @@ import (
 	ometa "github.com/openshift/origin/pkg/api/imagereferencemutators"
 	authapi "github.com/openshift/origin/pkg/authorization/apis/authorization"
 	buildapi "github.com/openshift/origin/pkg/build/apis/build"
-	"github.com/openshift/origin/pkg/build/buildapihelpers"
+	buildinternalhelpers "github.com/openshift/origin/pkg/build/apis/build/internal_helpers"
 	imageapi "github.com/openshift/origin/pkg/image/apis/image"
 	imageclient "github.com/openshift/origin/pkg/image/generated/internalclientset/typed/image/internalversion"
 	dockerregistry "github.com/openshift/origin/pkg/image/importer/dockerv1client"
@@ -888,6 +888,13 @@ func (c *AppConfig) Run() (*AppResult, error) {
 			return nil, err
 		}
 	}
+
+	// Ensure that extra tags are not being created
+	objects, err = c.removeRedundantTags(objects)
+	if err != nil {
+		return nil, err
+	}
+
 	// check for circular reference specifically from the newly generated objects, handling new-app vs. new-build nuances as needed
 	err = c.checkCircularReferences(objects)
 	if err != nil {
@@ -1180,6 +1187,51 @@ func (c *AppConfig) followRefToDockerImage(ref *kapi.ObjectReference, isContext 
 	return c.followRefToDockerImage(target, isContext, objects)
 }
 
+// removeRedundantTags cycles through the supplied list of objects and removes
+// any tags that are already being created in an imagestream
+func (c *AppConfig) removeRedundantTags(objects app.Objects) (app.Objects, error) {
+	objectsToRemove := map[string]struct{}{}
+	for _, obj := range objects {
+		if ist, ok := obj.(*imageapi.ImageStreamTag); ok {
+			istNamespace := ist.Namespace
+			if len(istNamespace) == 0 {
+				istNamespace = c.OriginNamespace
+			}
+			streamName, tagName, ok := imageapi.SplitImageStreamTag(ist.Name)
+			if !ok {
+				return nil, fmt.Errorf("Unable to split ImageStreamTag: %s", ist.Name)
+			}
+			is := c.findImageStreamInObjectList(objects, streamName, istNamespace)
+			if is != nil {
+				for name := range is.Spec.Tags {
+					if name == tagName {
+						objectsToRemove[fmt.Sprintf("%s/%s", istNamespace, ist.Name)] = struct{}{}
+					}
+				}
+			}
+
+		}
+	}
+
+	objectsToKeep := app.Objects{}
+	for _, obj := range objects {
+		if ist, ok := obj.(*imageapi.ImageStreamTag); ok {
+			istNamespace := ist.Namespace
+			if len(istNamespace) == 0 {
+				istNamespace = c.OriginNamespace
+			}
+			istName := fmt.Sprintf("%s/%s", istNamespace, ist.Name)
+			if _, ok := objectsToRemove[istName]; ok {
+				glog.V(4).Infof("Removing duplicate tag from object list: %s", istName)
+				continue
+			}
+		}
+		objectsToKeep = append(objectsToKeep, obj)
+	}
+
+	return objectsToKeep, nil
+}
+
 // checkCircularReferences ensures there are no builds that can trigger themselves
 // due to an imagechangetrigger that matches the output destination of the image.
 // objects is a list of api objects produced by new-app.
@@ -1192,7 +1244,7 @@ func (c *AppConfig) checkCircularReferences(objects app.Objects) error {
 		}
 
 		if bc, ok := obj.(*buildapi.BuildConfig); ok {
-			input := buildapihelpers.GetInputReference(bc.Spec.Strategy)
+			input := buildinternalhelpers.GetInputReference(bc.Spec.Strategy)
 			output := bc.Spec.Output.To
 
 			if output == nil || input == nil {
