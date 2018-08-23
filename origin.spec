@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit a13332b6942d13113815fc6c38d41481009ca058
+%global commit 65360d8d75edb8dfbb70ed7fe2b5c07b2564824b
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.19.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=97218d8 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.20.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=a267e6e KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        3.11.0
-Release:        0.20.0%{?dist}
+Release:        0.21.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -480,6 +480,48 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Thu Aug 23 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.21.0
+- Consistently use defined constants (mkhan@redhat.com)
+- Simplify CSRF interface (mkhan@redhat.com)
+- Add comments for enforcing HTTPS on all cookies (mkhan@redhat.com)
+- Use random string as client secret instead of UUID (mkhan@redhat.com)
+- Refactor TokenGen (mkhan@redhat.com)
+- Prevent open redirect on grant approval flow (mkhan@redhat.com)
+- Remove github.com/pborman/uuid dependency from oc (mkhan@redhat.com)
+- Refactor OAuth session logic (mkhan@redhat.com)
+- Minor cosmetic changes to OAuth server (mkhan@redhat.com)
+- Make all OAuth constants private (mkhan@redhat.com)
+- Add utility crypto library for OAuth server (mkhan@redhat.com)
+- Remove unused dead CSRF code (mkhan@redhat.com)
+- Consolidate user conversion logic (mkhan@redhat.com)
+- Remove duplicate UserIdentityMapper logic (mkhan@redhat.com)
+- Remove misleading CreationTimestamp from tokens (mkhan@redhat.com)
+- Include all groups in ~ user (mkhan@redhat.com)
+- Remove embedded user groups from identity mapper (mkhan@redhat.com)
+- git: copy struct fields and lose the s2i dependency (mfojtik@redhat.com)
+- switch test-cmd tests use mostly kubeconfig (deads@redhat.com)
+- generated (deads@redhat.com)
+- oc debug fix crash on attach (rphillips@redhat.com)
+- UPSTREAM: 67615: attach: Move the AttachFunc default function to the
+  initializer (rphillips@redhat.com)
+- RPMS - Add stub /etc/sysconfig/origin-node (sdodson@redhat.com)
+- UPSTREAM: <carry>: oc patches on kubectl (deads@redhat.com)
+- wire hypershift openshift-kube-apiserver to use minimal patching strategy
+  (deads@redhat.com)
+- generated (deads@redhat.com)
+- UPSTREAM: <carry>: allow injection of kube-apiserver options
+  (deads@redhat.com)
+- UPSTREAM: <carry>: patch in a non-standard location for apiservices
+  (deads@redhat.com)
+- Fix NameFromCommandArgs when passing command after -- (maszulik@redhat.com)
+- UPSTREAM: 67698: Fix NameFromCommandArgs when passing command after --
+  (maszulik@redhat.com)
+- switch template controller to external (mfojtik@redhat.com)
+- always pull image before rebuilding local images (bparees@redhat.com)
+- Update the Automation Broker APB command (jmontleo@redhat.com)
+- UPSTREAM: 67236: fix azure disk create failure due to sdk upgrade
+  (mawong@redhat.com)
+
 * Tue Aug 21 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.20.0
 - make external ip ranger admission config based (deads@redhat.com)
 - switch restrcted endpoints admission to config driven (deads@redhat.com)
