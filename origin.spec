@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 35d07a2c1e5bd6bef01acaffc8838a8680e01562
+%global commit dfaef39dccc5084e41b943f34b2f8b684f75b974
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.21.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=1ceb2a5 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.22.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=8d5b0c3 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        3.11.0
-Release:        0.22.0%{?dist}
+Release:        0.23.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -480,6 +480,21 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Sun Aug 26 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.23.0
+- Egress DNS proxy router: Allow load distribution when domain resolves to
+  multiple IP addrs (rpenta@redhat.com)
+- Add custom resource coverage to ETCD path test (mkhan@redhat.com)
+- bump (deads@redhat.com)
+- use upstream install function (deads@redhat.com)
+- UPSTREAM: 66835: cloudprovider: aws: return true on existence check for
+  stopped instances (sjenning@redhat.com)
+- UPSTREAM: 66397: Fix upper limit on m5/c5 instance typesn
+  (hekumar@redhat.com)
+- UPSTREAM: 65705: Block volumes should have empty FSType (jsafrane@redhat.com)
+- UPSTREAM: 65447: Resolve potential devicePath symlink when MapVolume
+  (mawong@redhat.com)
+- UPSTREAM: 64426: Clean up fake mounters. (mawong@redhat.com)
+
 * Thu Aug 23 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.22.0
 - Allows the dash (-) character to be included in environment variable keys in
   the build configuration. (cdaley@redhat.com)
