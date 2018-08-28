@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 8eb42488e1bca6371b596555610f6e7b0316cf2c
+%global commit 7829bc96f8a38d4abc6d0535b49bc10ff31b1e50
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.23.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=b2fa19a KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.24.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=72c960b KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        3.11.0
-Release:        0.24.0%{?dist}
+Release:        0.25.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -480,6 +480,21 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Aug 28 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.25.0
+- Remove count from new-build/new-app error message (cdaley@redhat.com)
+- Bug 1609676 - Fix missing bind values regression (erik@nsk.io)
+- UPSTREAM: 67822: Remove provisioner config from log message.
+  (hchiramm@redhat.com)
+- Minor fixup to egress IP monitoring (danw@redhat.com)
+- Test deleting all EgressIPs from auto-assigned NetNamespace (danw@redhat.com)
+- Rebalance auto-assigned egress IPs when necessary (danw@redhat.com)
+- Track node online/offline state in master egress IP allocator
+  (danw@redhat.com)
+- Change ReallocateEgressIPs() to return the full allocation, not just changes
+  (danw@redhat.com)
+- Add HostSubnet.EgressCIDRs support to "oc get" and "oc describe"
+  (danw@redhat.com)
+
 * Mon Aug 27 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.24.0
 - 
 
