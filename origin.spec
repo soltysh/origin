@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 7829bc96f8a38d4abc6d0535b49bc10ff31b1e50
+%global commit d88041ea04981fdd4cceb8e9f3c64b6a3e0caf09
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.24.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=72c960b KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.25.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=61d2513 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        3.11.0
-Release:        0.25.0%{?dist}
+Release:        0.26.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -480,6 +480,98 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Sep 04 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.26.0
+- Fix up logic in TestEgressCIDRAllocationOffline (danw@redhat.com)
+- switch to new registry for infra images (bparees@redhat.com)
+- Filter out non-participating images from the payload list
+  (ccoleman@redhat.com)
+- Add a prototype release command (ccoleman@redhat.com)
+- ImageLayers test should loop until image is missing (ccoleman@redhat.com)
+- When a docker layer has a gzip error, read after error (ccoleman@redhat.com)
+- Append should allow '-' for a layer (ccoleman@redhat.com)
+- Support parallel execution of extract for internal callers
+  (ccoleman@redhat.com)
+- Better debugging and fix off by one error on from (ccoleman@redhat.com)
+- Allow append to take a writer (ccoleman@redhat.com)
+- If layer is missing, retry the test (ccoleman@redhat.com)
+- Master replica can also contend and cause us to exceed our hard limit
+  (ccoleman@redhat.com)
+- hack/cherry-pick.sh: simplify PR cherry-pick (stefan.schimanski@gmail.com)
+- remove internal build client (mfojtik@redhat.com)
+- fix extended tests (mfojtik@redhat.com)
+- fix integration tests (mfojtik@redhat.com)
+- build: remove usages of internal build client (mfojtik@redhat.com)
+- disable 'starting a build without a --from-xxxx value' test
+  (mfojtik@redhat.com)
+- disable 'starting a build without a --from-xxxx value' test
+  (mfojtik@redhat.com)
+- image: switch trigger controller test to external build generator
+  (mfojtik@redhat.com)
+- build: move build generator to external client (mfojtik@redhat.com)
+- git: move to external and lose s2i dep (mfojtik@redhat.com)
+- image: switch trigger controller test to external build generator
+  (mfojtik@redhat.com)
+- build: move build generator to external client (mfojtik@redhat.com)
+- Switch prometheus tests to use cluster monitoring operator
+  (ccoleman@redhat.com)
+- Images should print their layers (too important to hide)
+  (ccoleman@redhat.com)
+- CRI-O and Docker behavior differs on how stdin is handled
+  (ccoleman@redhat.com)
+- Create a minimal suite for use from single node jobs in limited spots
+  (ccoleman@redhat.com)
+- Enable upstream tests (ccoleman@redhat.com)
+- UPSTREAM: <carry>: Disable ephemeral storage in quota test
+  (ccoleman@redhat.com)
+- UPSTREAM: <carry>: Disable ephemeral storage in tests (ccoleman@redhat.com)
+- UPSTREAM: 67835: Tests that use CheckTestingNSDeletedExcept must be serial
+  (ccoleman@redhat.com)
+- UPSTREAM: <drop>: Remove influxdb dependency until the next rebase
+  (ccoleman@redhat.com)
+- cluster up image policy for kubeapiserver (deads@redhat.com)
+- Avoid using nginx:latest tag in extended tests (miciah.masters@gmail.com)
+- remove internal const usages for apps (mfojtik@redhat.com)
+- swap pkg/git to library-go pkg/git (mfojtik@redhat.com)
+- use appsv1 consts and remove appsutil const (mfojtik@redhat.com)
+- bump(*): bump to get library-go and apps const (mfojtik@redhat.com)
+- make a kube-apiserver config struct (deads@redhat.com)
+- make a separate openshift apiserver type to launch from (deads@redhat.com)
+- generated (deads@redhat.com)
+- Update import-restrictions.json (maszulik@redhat.com)
+- External image controllers (maszulik@redhat.com)
+- External images in quota (maszulik@redhat.com)
+- External image informers (maszulik@redhat.com)
+- External images in build controller (maszulik@redhat.com)
+- Image v1 helpers (maszulik@redhat.com)
+- Update import-restrictions.json (maszulik@redhat.com)
+- Update admin network commands to use external clients (maszulik@redhat.com)
+- UPSTREAM: 68007: Orphan DaemonSet when deleting with --cascade option set
+  (maszulik@redhat.com)
+- apps: raise trigger timeout for slow servers (mfojtik@redhat.com)
+- tighten admission to avoid unnecessary pieces of config (deads@redhat.com)
+- clean up construction to make creating types more obvious (deads@redhat.com)
+- collapse onto upstream storage RESTOptions (deads@redhat.com)
+- use a more 'normal' storage factory (deads@redhat.com)
+- UPSTREAM: 67896: expose generic storage factory primitives (deads@redhat.com)
+- clean up owners (jliggitt@redhat.com)
+- dind: ovn-kubernetes fixes (dcbw@redhat.com)
+- dind: move to hyperkube and 'openshift start network' (dcbw@redhat.com)
+- remove jim-minter from OWNERS files (jminter@redhat.com)
+- add skip-tags to publishing kube rules (mfojtik@redhat.com)
+- update suggested build metric query rules (bparees@redhat.com)
+- UPSTREAM: 67957: Size http2 buffers to allow concurrent streams
+  (jliggitt@redhat.com)
+- Revert "new-app: verify if API has required resources enabled"
+  (bparees@users.noreply.github.com)
+- UPSTREAM: 66085: fix updateJob scheduling of resync (maszulik@redhat.com)
+- Fix DNS in oc cluster up for user having DNS on localhost
+  (tnozicka@gmail.com)
+- remove alternate platforms from cluster up documentation
+  (bparees@users.noreply.github.com)
+- Add warnings when bootstrap rolebindings are modified (simo@redhat.com)
+- Fix ovn script so that apiserver can be fetched correctly using go-template
+  format (rchopra@redhat.com)
+
 * Tue Aug 28 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.25.0
 - Remove count from new-build/new-app error message (cdaley@redhat.com)
 - Bug 1609676 - Fix missing bind values regression (erik@nsk.io)
