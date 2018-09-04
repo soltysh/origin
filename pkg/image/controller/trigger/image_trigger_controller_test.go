@@ -21,21 +21,19 @@ import (
 	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/apimachinery/pkg/watch"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
+	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	kapi "k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 
 	appsv1 "github.com/openshift/api/apps/v1"
 	buildv1 "github.com/openshift/api/build/v1"
-	buildapi "github.com/openshift/origin/pkg/build/apis/build"
+	imagev1 "github.com/openshift/api/image/v1"
+	imagev1lister "github.com/openshift/client-go/image/listers/image/v1"
 	buildgenerator "github.com/openshift/origin/pkg/build/generator"
 	buildutil "github.com/openshift/origin/pkg/build/util"
 	"github.com/openshift/origin/pkg/cmd/server/bootstrappolicy"
-	imageapi "github.com/openshift/origin/pkg/image/apis/image"
 	triggerapi "github.com/openshift/origin/pkg/image/apis/image/v1/trigger"
-	imageinternalversion "github.com/openshift/origin/pkg/image/generated/listers/image/internalversion"
 	"github.com/openshift/origin/pkg/image/trigger"
 	"github.com/openshift/origin/pkg/image/trigger/annotations"
 	"github.com/openshift/origin/pkg/image/trigger/buildconfigs"
@@ -117,18 +115,18 @@ func (r *mockTagRetriever) ImageStreamTag(namespace, name string) (string, int64
 type mockImageStreamLister struct {
 	namespace string
 
-	stream *imageapi.ImageStream
+	stream *imagev1.ImageStream
 	err    error
 }
 
-func (l *mockImageStreamLister) List(selector labels.Selector) (ret []*imageapi.ImageStream, err error) {
+func (l *mockImageStreamLister) List(selector labels.Selector) (ret []*imagev1.ImageStream, err error) {
 	return nil, l.err
 }
-func (l *mockImageStreamLister) ImageStreams(namespace string) imageinternalversion.ImageStreamNamespaceLister {
+func (l *mockImageStreamLister) ImageStreams(namespace string) imagev1lister.ImageStreamNamespaceLister {
 	l.namespace = namespace
 	return l
 }
-func (l *mockImageStreamLister) Get(name string) (*imageapi.ImageStream, error) {
+func (l *mockImageStreamLister) Get(name string) (*imagev1.ImageStream, error) {
 	return l.stream, l.err
 }
 
@@ -140,8 +138,8 @@ func (f *imageStreamInformer) Informer() cache.SharedIndexInformer {
 	return f.informer
 }
 
-func (f *imageStreamInformer) Lister() imageinternalversion.ImageStreamLister {
-	return imageinternalversion.NewImageStreamLister(f.informer.GetIndexer())
+func (f *imageStreamInformer) Lister() imagev1lister.ImageStreamLister {
+	return imagev1lister.NewImageStreamLister(f.informer.GetIndexer())
 }
 
 type fakeInstantiator struct {
@@ -161,22 +159,7 @@ func (i *fakeInstantiator) Instantiate(namespace string, req *buildv1.BuildReque
 	if i.generator == nil {
 		return nil, nil
 	}
-	internalReq := &buildapi.BuildRequest{}
-	if err := legacyscheme.Scheme.Convert(req, internalReq, nil); err != nil {
-		panic(err)
-	}
-	internalBuild, err := i.generator.Instantiate(apirequest.WithNamespace(apirequest.NewContext(), namespace), internalReq)
-	if err != nil {
-		return nil, err
-	}
-	if internalBuild == nil {
-		return nil, nil
-	}
-	result := &buildv1.Build{}
-	if err := legacyscheme.Scheme.Convert(internalBuild, result, nil); err != nil {
-		panic(err)
-	}
-	return result, nil
+	return i.generator.Instantiate(apirequest.WithNamespace(apirequest.NewContext(), namespace), req)
 }
 
 type fakeBuildConfigUpdater struct {
@@ -191,14 +174,10 @@ func (m *fakeBuildConfigUpdater) Update(buildcfg *buildv1.BuildConfig) error {
 	return m.err
 }
 
-func fakeBuildConfigInstantiator(buildcfg *buildv1.BuildConfig, imageStream *imageapi.ImageStream) *fakeInstantiator {
-	internalBuildConfig := &buildapi.BuildConfig{}
-	if err := legacyscheme.Scheme.Convert(buildcfg, internalBuildConfig, nil); err != nil {
-		panic(err)
-	}
-	builderAccount := kapi.ServiceAccount{
+func fakeBuildConfigInstantiator(buildcfg *buildv1.BuildConfig, imageStream *imagev1.ImageStream) *fakeInstantiator {
+	builderAccount := corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{Name: bootstrappolicy.BuilderServiceAccountName, Namespace: buildcfg.Namespace},
-		Secrets:    []kapi.ObjectReference{},
+		Secrets:    []corev1.ObjectReference{},
 	}
 	instantiator := &fakeInstantiator{}
 	instantiator.buildConfigUpdater = &fakeBuildConfigUpdater{}
@@ -206,25 +185,25 @@ func fakeBuildConfigInstantiator(buildcfg *buildv1.BuildConfig, imageStream *ima
 		Secrets:         fake.NewSimpleClientset().Core(),
 		ServiceAccounts: fake.NewSimpleClientset(&builderAccount).Core(),
 		Client: buildgenerator.TestingClient{
-			GetBuildConfigFunc: func(ctx context.Context, name string, options *metav1.GetOptions) (*buildapi.BuildConfig, error) {
-				return internalBuildConfig, nil
+			GetBuildConfigFunc: func(ctx context.Context, name string, options *metav1.GetOptions) (*buildv1.BuildConfig, error) {
+				return buildcfg, nil
 			},
-			UpdateBuildConfigFunc: func(ctx context.Context, buildConfig *buildapi.BuildConfig) error {
+			UpdateBuildConfigFunc: func(ctx context.Context, buildConfig *buildv1.BuildConfig) error {
 				return instantiator.buildConfigUpdater.Update(buildcfg)
 			},
-			CreateBuildFunc: func(ctx context.Context, build *buildapi.Build) error {
+			CreateBuildFunc: func(ctx context.Context, build *buildv1.Build) error {
 				return nil
 			},
-			GetBuildFunc: func(ctx context.Context, name string, options *metav1.GetOptions) (*buildapi.Build, error) {
+			GetBuildFunc: func(ctx context.Context, name string, options *metav1.GetOptions) (*buildv1.Build, error) {
 				return nil, nil
 			},
-			GetImageStreamFunc: func(ctx context.Context, name string, options *metav1.GetOptions) (*imageapi.ImageStream, error) {
+			GetImageStreamFunc: func(ctx context.Context, name string, options *metav1.GetOptions) (*imagev1.ImageStream, error) {
 				return imageStream, nil
 			},
-			GetImageStreamTagFunc: func(ctx context.Context, name string, options *metav1.GetOptions) (*imageapi.ImageStreamTag, error) {
+			GetImageStreamTagFunc: func(ctx context.Context, name string, options *metav1.GetOptions) (*imagev1.ImageStreamTag, error) {
 				return nil, nil
 			},
-			GetImageStreamImageFunc: func(ctx context.Context, name string, options *metav1.GetOptions) (*imageapi.ImageStreamImage, error) {
+			GetImageStreamImageFunc: func(ctx context.Context, name string, options *metav1.GetOptions) (*imagev1.ImageStreamImage, error) {
 				return nil, nil
 			},
 		}}
@@ -263,7 +242,7 @@ func TestTriggerControllerSyncImageStream(t *testing.T) {
 func TestTriggerControllerSyncBuildConfigResource(t *testing.T) {
 	tests := []struct {
 		name    string
-		is      *imageapi.ImageStream
+		is      *imagev1.ImageStream
 		bc      *buildv1.BuildConfig
 		tagResp []fakeTagResponse
 		req     *buildv1.BuildRequest
@@ -292,17 +271,19 @@ func TestTriggerControllerSyncBuildConfigResource(t *testing.T) {
 			name:    "NewImageIDDefaultTag",
 			is:      scenario_1_imageStream_single_defaultImageTag("test", "stream", "10"),
 			bc:      scenario_1_buildConfig_imageSource_defaultImageTag(),
-			tagResp: []fakeTagResponse{{Namespace: "other", Name: "stream:" + imageapi.DefaultImageTag, Ref: "image/result:1"}},
+			tagResp: []fakeTagResponse{{Namespace: "other", Name: "stream:latest", Ref: "image/result:1"}},
 			req: &buildv1.BuildRequest{
-				ObjectMeta:       metav1.ObjectMeta{Name: "build2", Namespace: "test2"},
-				From:             &corev1.ObjectReference{Kind: "ImageStreamTag", Name: "stream:" + imageapi.DefaultImageTag, Namespace: "other"},
+				ObjectMeta: metav1.ObjectMeta{Name: "build2", Namespace: "test2"},
+				From: &corev1.ObjectReference{APIVersion: imagev1.GroupVersion.Version, Kind: "ImageStreamTag", Name: "stream:latest",
+					Namespace: "other"},
 				TriggeredByImage: &corev1.ObjectReference{Kind: "DockerImage", Name: "image/result:1"},
 				TriggeredBy: []buildv1.BuildTriggerCause{
 					{
 						Message: "Image change",
 						ImageChangeBuild: &buildv1.ImageChangeCause{
 							ImageID: "image/result:1",
-							FromRef: &corev1.ObjectReference{Kind: "ImageStreamTag", Name: "stream:" + imageapi.DefaultImageTag, Namespace: "other"},
+							FromRef: &corev1.ObjectReference{APIVersion: imagev1.GroupVersion.Version, Kind: "ImageStreamTag", Name: "stream:latest",
+								Namespace: "other"},
 						},
 					},
 				},
@@ -340,7 +321,7 @@ func TestTriggerControllerSyncBuildConfigResource(t *testing.T) {
 			t.Errorf("For test %s unexpected: %s %s", test.name, inst.namespace, diff.ObjectReflectDiff(test.req, inst.req))
 		}
 		if inst.buildConfigUpdater.buildcfg == nil {
-			t.Errorf("For test %s expected buildConfig update when new image was created!", test.name)
+			t.Fatalf("For test %s expected buildConfig update when new image was created!", test.name)
 		}
 		found := false
 		imageIDs := ""
@@ -616,27 +597,33 @@ func scenario_1_buildConfig_strategy() *buildv1.BuildConfig {
 	}
 }
 
-func scenario_1_imageStream_single(namespace, name, rv string) *imageapi.ImageStream {
-	return &imageapi.ImageStream{
+func scenario_1_imageStream_single(namespace, name, rv string) *imagev1.ImageStream {
+	return &imagev1.ImageStream{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, ResourceVersion: rv},
-		Status: imageapi.ImageStreamStatus{
-			Tags: map[string]imageapi.TagEventList{
-				"1": {Items: []imageapi.TagEvent{
-					{DockerImageReference: "image/result:1"},
-				}},
+		Status: imagev1.ImageStreamStatus{
+			Tags: []imagev1.NamedTagEventList{
+				{
+					Tag: "1",
+					Items: []imagev1.TagEvent{
+						{DockerImageReference: "image/result:1"},
+					},
+				},
 			},
 		},
 	}
 }
 
-func scenario_1_imageStream_single_defaultImageTag(namespace, name, rv string) *imageapi.ImageStream {
-	return &imageapi.ImageStream{
+func scenario_1_imageStream_single_defaultImageTag(namespace, name, rv string) *imagev1.ImageStream {
+	return &imagev1.ImageStream{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, ResourceVersion: rv},
-		Status: imageapi.ImageStreamStatus{
-			Tags: map[string]imageapi.TagEventList{
-				imageapi.DefaultImageTag: {Items: []imageapi.TagEvent{
-					{DockerImageReference: "image/result:1"},
-				}},
+		Status: imagev1.ImageStreamStatus{
+			Tags: []imagev1.NamedTagEventList{
+				{
+					Tag: "latest",
+					Items: []imagev1.TagEvent{
+						{DockerImageReference: "image/result:1"},
+					},
+				},
 			},
 		},
 	}
@@ -649,7 +636,9 @@ func scenario_1_buildConfig_imageSource_defaultImageTag() *buildv1.BuildConfig {
 			Triggers: []buildv1.BuildTriggerPolicy{
 				{ImageChange: &buildv1.ImageChangeTrigger{}},
 				{ImageChange: &buildv1.ImageChangeTrigger{
-					From:                 &corev1.ObjectReference{Kind: "ImageStreamTag", Name: "stream:" + imageapi.DefaultImageTag, Namespace: "other"},
+					From: &corev1.ObjectReference{APIVersion: imagev1.GroupVersion.Version, Kind: "ImageStreamTag",
+						Name:      "stream:latest",
+						Namespace: "other"},
 					LastTriggeredImageID: "image/result:2",
 				}},
 				{ImageChange: &buildv1.ImageChangeTrigger{From: &corev1.ObjectReference{Kind: "DockerImage", Name: "mysql", Namespace: "other"}}},
@@ -657,7 +646,7 @@ func scenario_1_buildConfig_imageSource_defaultImageTag() *buildv1.BuildConfig {
 			CommonSpec: buildv1.CommonSpec{
 				Strategy: buildv1.BuildStrategy{
 					DockerStrategy: &buildv1.DockerBuildStrategy{
-						From: &corev1.ObjectReference{Kind: "ImageStreamTag", Name: "stream:" + imageapi.DefaultImageTag},
+						From: &corev1.ObjectReference{APIVersion: imagev1.GroupVersion.Version, Kind: "ImageStreamTag", Name: "stream:latest"},
 					},
 				},
 			},
@@ -942,17 +931,18 @@ func benchmark_1_deploymentConfig(r *rand.Rand, identity, maxStreams, maxTags, c
 	return dc
 }
 
-func benchmark_1_imageStream(identity, maxTags, sequence int32, round, index int) *imageapi.ImageStream {
-	is := &imageapi.ImageStream{
+func benchmark_1_imageStream(identity, maxTags, sequence int32, round, index int) *imagev1.ImageStream {
+	is := &imagev1.ImageStream{
 		ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("stream-%d", identity), Namespace: "test"},
-		Status:     imageapi.ImageStreamStatus{Tags: map[string]imageapi.TagEventList{}},
+		Status:     imagev1.ImageStreamStatus{Tags: []imagev1.NamedTagEventList{}},
 	}
 	for i := int32(0); i < maxTags; i++ {
-		is.Status.Tags[strconv.Itoa(int(i))] = imageapi.TagEventList{
-			Items: []imageapi.TagEvent{
+		is.Status.Tags = append(is.Status.Tags, imagev1.NamedTagEventList{
+			Tag: strconv.Itoa(int(i)),
+			Items: []imagev1.TagEvent{
 				{DockerImageReference: fmt.Sprintf("image-%d-%d:%d-%d-%d", identity, i, round, index, sequence)},
 			},
-		}
+		})
 	}
 	return is
 }
@@ -1117,7 +1107,7 @@ func TestTriggerController(t *testing.T) {
 	defer close(stopCh)
 	bcInformer, bcFakeWatch := newFakeInformer(&buildv1.BuildConfig{}, &buildv1.BuildConfigList{ListMeta: metav1.ListMeta{ResourceVersion: "1"}})
 	bcWatch := &consistentWatch{watch: bcFakeWatch}
-	isInformer, isFakeWatch := newFakeInformer(&imageapi.ImageStream{}, &imageapi.ImageStreamList{ListMeta: metav1.ListMeta{ResourceVersion: "1"}})
+	isInformer, isFakeWatch := newFakeInformer(&imagev1.ImageStream{}, &imagev1.ImageStreamList{ListMeta: metav1.ListMeta{ResourceVersion: "1"}})
 	isWatch := &consistentWatch{watch: isFakeWatch}
 	podInformer, podWatch := newFakeInformer(&kapi.Pod{}, &kapi.PodList{ListMeta: metav1.ListMeta{ResourceVersion: "1"}})
 	dcInformer, dcFakeWatch := newFakeInformer(&appsv1.DeploymentConfig{}, &appsv1.DeploymentConfigList{ListMeta: metav1.ListMeta{ResourceVersion: "1"}})
@@ -1233,7 +1223,7 @@ func TestTriggerController(t *testing.T) {
 					i = i - 1
 					continue
 				}
-				stream.ResourceVersion = existing.(*imageapi.ImageStream).ResourceVersion
+				stream.ResourceVersion = existing.(*imagev1.ImageStream).ResourceVersion
 				if err := isWatch.Modify(stream); err != nil {
 					t.Logf("[round=%d change=%d] failed to modify image stream: %v", round, i, err)
 				}
@@ -1246,11 +1236,11 @@ func TestTriggerController(t *testing.T) {
 				bc := originalBc.DeepCopy()
 				if len(bc.Spec.Triggers) > 0 {
 					index := rnd.Int31n(int32(len(bc.Spec.Triggers)))
-					trigger := &bc.Spec.Triggers[index]
-					if trigger.ImageChange.From != nil {
-						old := trigger.ImageChange.From.Name
-						trigger.ImageChange.From.Name = randomStreamTag(rnd, numStreams, numTagsPerStream)
-						describe[bc.Namespace+"/"+bc.Name] = append(describe[bc.Namespace+"/"+bc.Name], fmt.Sprintf("[round=%d change=%d]: change trigger %d from %q to %q", round, i, index, old, trigger.ImageChange.From.Name))
+					triggerPolicy := &bc.Spec.Triggers[index]
+					if triggerPolicy.ImageChange.From != nil {
+						old := triggerPolicy.ImageChange.From.Name
+						triggerPolicy.ImageChange.From.Name = randomStreamTag(rnd, numStreams, numTagsPerStream)
+						describe[bc.Namespace+"/"+bc.Name] = append(describe[bc.Namespace+"/"+bc.Name], fmt.Sprintf("[round=%d change=%d]: change trigger %d from %q to %q", round, i, index, old, triggerPolicy.ImageChange.From.Name))
 					} else {
 						old := bc.Spec.Strategy.DockerStrategy.From.Name
 						bc.Spec.Strategy.DockerStrategy.From.Name = randomStreamTag(rnd, numStreams, numTagsPerStream)

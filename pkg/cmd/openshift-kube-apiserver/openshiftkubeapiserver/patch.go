@@ -47,7 +47,7 @@ type KubeAPIServerServerPatchContext struct {
 	informerStartFuncs []func(stopCh <-chan struct{})
 }
 
-func NewOpenShiftKubeAPIServerConfigPatch(delegateAPIServer genericapiserver.DelegationTarget, kubeAPIServerConfig *configapi.MasterConfig) (app.KubeAPIServerConfigFunc, *KubeAPIServerServerPatchContext) {
+func NewOpenShiftKubeAPIServerConfigPatch(delegateAPIServer genericapiserver.DelegationTarget, kubeAPIServerConfig *configapi.KubeAPIServerConfig) (app.KubeAPIServerConfigFunc, *KubeAPIServerServerPatchContext) {
 	patchContext := &KubeAPIServerServerPatchContext{
 		postStartHooks: map[string]genericapiserver.PostStartHookFunc{},
 	}
@@ -59,7 +59,8 @@ func NewOpenShiftKubeAPIServerConfigPatch(delegateAPIServer genericapiserver.Del
 
 		// AUTHENTICATOR
 		authenticator, postStartHooks, err := NewAuthenticator(
-			*kubeAPIServerConfig,
+			kubeAPIServerConfig.ServingInfo.ServingInfo,
+			kubeAPIServerConfig.ServiceAccountPublicKeyFiles, kubeAPIServerConfig.OAuthConfig, kubeAPIServerConfig.AuthConfig,
 			genericConfig.LoopbackClientConfig,
 			kubeAPIServerInformers.OpenshiftOAuthInformers.Oauth().V1().OAuthClients().Lister(),
 			kubeAPIServerInformers.OpenshiftUserInformers.User().V1().Groups())
@@ -101,16 +102,12 @@ func NewOpenShiftKubeAPIServerConfigPatch(delegateAPIServer genericapiserver.Del
 		openshiftPluginInitializer := &oadmission.PluginInitializer{
 			ProjectCache:                 projectCache,
 			OriginQuotaRegistry:          quotaRegistry,
-			JenkinsPipelineConfig:        kubeAPIServerConfig.JenkinsPipelineConfig,
 			RESTClientConfig:             *genericConfig.LoopbackClientConfig,
 			ClusterResourceQuotaInformer: kubeAPIServerInformers.GetInternalOpenshiftQuotaInformers().Quota().InternalVersion().ClusterResourceQuotas(),
 			ClusterQuotaMapper:           clusterQuotaMappingController.GetClusterQuotaMapper(),
 			RegistryHostnameRetriever:    registryHostnameRetriever,
 			SecurityInformers:            kubeAPIServerInformers.GetInternalOpenshiftSecurityInformers(),
 			UserInformers:                kubeAPIServerInformers.GetOpenshiftUserInformers(),
-		}
-		if err != nil {
-			return nil, err
 		}
 		*pluginInitializers = append(*pluginInitializers, openshiftPluginInitializer)
 
@@ -129,7 +126,7 @@ func NewOpenShiftKubeAPIServerConfigPatch(delegateAPIServer genericapiserver.Del
 		// END ADMISSION
 
 		// HANDLER CHAIN (with oauth server and web console)
-		genericConfig.BuildHandlerChainFunc, postStartHooks, err = BuildHandlerChain(genericConfig, kubeInformers, kubeAPIServerConfig)
+		genericConfig.BuildHandlerChainFunc, postStartHooks, err = BuildHandlerChain(genericConfig, kubeInformers, kubeAPIServerConfig.LegacyServiceServingCertSignerCABundle, kubeAPIServerConfig.OAuthConfig, kubeAPIServerConfig.UserAgentMatchingConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -139,7 +136,7 @@ func NewOpenShiftKubeAPIServerConfigPatch(delegateAPIServer genericapiserver.Del
 		// END HANDLER CHAIN
 
 		// CONSTRUCT DELEGATE
-		nonAPIServerConfig, err := NewOpenshiftNonAPIConfig(genericConfig, kubeInformers, kubeAPIServerConfig)
+		nonAPIServerConfig, err := NewOpenshiftNonAPIConfig(genericConfig, kubeInformers, kubeAPIServerConfig.OAuthConfig, kubeAPIServerConfig.AuthConfig)
 		if err != nil {
 			return nil, err
 		}

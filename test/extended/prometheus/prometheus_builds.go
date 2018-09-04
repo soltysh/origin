@@ -9,17 +9,16 @@ import (
 	o "github.com/onsi/gomega"
 	"github.com/prometheus/common/model"
 
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
-	buildapi "github.com/openshift/origin/pkg/build/apis/build"
+	buildv1 "github.com/openshift/api/build/v1"
 	exutil "github.com/openshift/origin/test/extended/util"
 )
 
 var (
-	execPodName, ns, host, bearerToken string
-	statsPort                          int
+	execPodName, ns, url, bearerToken string
 )
 
 var _ = g.Describe("[Feature:Prometheus][Feature:Builds] Prometheus", func() {
@@ -29,10 +28,15 @@ var _ = g.Describe("[Feature:Prometheus][Feature:Builds] Prometheus", func() {
 	)
 
 	g.BeforeEach(func() {
-		ns, host, bearerToken, statsPort = bringUpPrometheusFromTemplate(oc)
+		ns = oc.KubeFramework().Namespace.Name
+		var ok bool
+		url, bearerToken, ok = locatePrometheus(oc)
+		if !ok {
+			e2e.Skipf("Prometheus could not be located on this cluster, skipping prometheus test")
+		}
 	})
 
-	g.Describe("when installed to the cluster", func() {
+	g.Describe("when installed on the cluster", func() {
 		g.It("should start and expose a secured proxy and verify build metrics", func() {
 			const (
 				buildCountQuery = "openshift_build_total"
@@ -40,7 +44,7 @@ var _ = g.Describe("[Feature:Prometheus][Feature:Builds] Prometheus", func() {
 
 			appTemplate := exutil.FixturePath("..", "..", "examples", "jenkins", "application-template.json")
 
-			execPodName = e2e.CreateExecPodOrFail(oc.AdminKubeClient(), ns, "execpod", func(pod *v1.Pod) {
+			execPodName = e2e.CreateExecPodOrFail(oc.AdminKubeClient(), ns, "execpod", func(pod *corev1.Pod) {
 				pod.Spec.Containers[0].Image = "centos:7"
 			})
 			defer func() { oc.AdminKubeClient().Core().Pods(ns).Delete(execPodName, metav1.NewDeleteOptions(1)) }()
@@ -50,7 +54,7 @@ var _ = g.Describe("[Feature:Prometheus][Feature:Builds] Prometheus", func() {
 			// instantiating prometheus tempalte
 			var err error
 			for i := 0; i < waitForPrometheusStartSeconds; i++ {
-				err = expectURLStatusCodeExec(ns, execPodName, fmt.Sprintf("https://%s:%d", host, statsPort), 403)
+				err = expectURLStatusCodeExec(ns, execPodName, url, 403)
 				if err == nil {
 					break
 				}
@@ -59,13 +63,13 @@ var _ = g.Describe("[Feature:Prometheus][Feature:Builds] Prometheus", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			g.By("verifying a service account token is able to authenticate")
-			err = expectBearerTokenURLStatusCodeExec(ns, execPodName, fmt.Sprintf("https://%s:%d/graph", host, statsPort), bearerToken, 200)
+			err = expectBearerTokenURLStatusCodeExec(ns, execPodName, fmt.Sprintf("%s/graph", url), bearerToken, 200)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			br := startOpenShiftBuild(oc, appTemplate)
 
 			g.By("verifying build completed successfully")
-			err = exutil.WaitForBuildResult(oc.InternalBuildClient().Build().Builds(oc.Namespace()), br)
+			err = exutil.WaitForBuildResult(oc.BuildClient().BuildV1().Builds(oc.Namespace()), br)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			br.AssertSuccess()
 
@@ -74,7 +78,7 @@ var _ = g.Describe("[Feature:Prometheus][Feature:Builds] Prometheus", func() {
 			terminalTests := map[string][]metricTest{
 				buildCountQuery: {
 					metricTest{
-						labels:           map[string]string{"phase": string(buildapi.BuildPhaseComplete)},
+						labels:           map[string]string{"phase": string(buildv1.BuildPhaseComplete)},
 						greaterThanEqual: true,
 					},
 				},
@@ -119,7 +123,7 @@ func runQueries(metricTests map[string][]metricTest, oc *exutil.CLI) {
 			// and introduced at https://github.com/prometheus/client_golang/blob/master/api/prometheus/v1/api.go are vendored into
 			// openshift/origin, look to replace this homegrown http request / query param with that API
 			g.By("perform prometheus metric query " + query)
-			contents, err := getBearerTokenURLViaPod(ns, execPodName, fmt.Sprintf("https://%s:%d/api/v1/query?query=%s", host, statsPort, query), bearerToken)
+			contents, err := getBearerTokenURLViaPod(ns, execPodName, fmt.Sprintf("%s/api/v1/query?query=%s", url, query), bearerToken)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			result := prometheusResponse{}
 			json.Unmarshal([]byte(contents), &result)

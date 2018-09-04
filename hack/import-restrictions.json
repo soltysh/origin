@@ -76,8 +76,6 @@
       "github.com/openshift/origin/pkg"
     ],
     "ignoredSubTrees": [
-      "github.com/openshift/origin/pkg/apps/generated",
-      "github.com/openshift/origin/pkg/build/generated",
       "github.com/openshift/origin/pkg/image/generated",
       "github.com/openshift/origin/pkg/network/generated",
       "github.com/openshift/origin/pkg/oauth/generated",
@@ -254,7 +252,7 @@
     ],
     "allowedImportPackageRoots": [
       "vendor/k8s.io/apimachinery",
-      "github.com/openshift/origin/pkg/image/apis/image/internal",
+      "github.com/openshift/origin/pkg/image/internal",
       "github.com/openshift/origin/pkg/image/apis/image/reference",
       "github.com/openshift/origin/pkg/image/apis/image/docker10",
       "vendor/k8s.io/api",
@@ -521,7 +519,6 @@
       "vendor/github.com/davecgh/go-spew/spew",
 
       "github.com/openshift/origin/pkg/authorization/generated",
-      "github.com/openshift/origin/pkg/build/generated",
       "github.com/openshift/origin/pkg/image/apis/image/v1",
       "github.com/openshift/origin/pkg/image/generated",
       "github.com/openshift/origin/pkg/image/util",
@@ -582,7 +579,6 @@
       "github.com/openshift/origin/pkg/cmd/util/print",
       "github.com/openshift/origin/pkg/cmd/util/term",
       "github.com/openshift/origin/pkg/cmd/util/variable",
-      "github.com/openshift/origin/pkg/git",
       "github.com/openshift/origin/pkg/image/apis/image",
       "github.com/openshift/origin/pkg/image/apis/image/v1/trigger",
       "github.com/openshift/origin/pkg/image/apis/image/docker10",
@@ -635,6 +631,9 @@
       "github.com/openshift/origin/pkg/util/portutils",
       "github.com/openshift/origin/pkg/util/proc",
       "github.com/openshift/origin/pkg/version",
+
+      "vendor/github.com/openshift/library-go/pkg/network/networkapihelpers",
+
       "vendor/github.com/coreos/etcd/clientv3",
       "vendor/github.com/coreos/etcd/pkg/transport",
       "vendor/github.com/coreos/etcd/version",
@@ -648,7 +647,9 @@
       "vendor/k8s.io/kubernetes/pkg/version",
 
       "vendor/k8s.io/kubernetes/pkg/registry/rbac/reconciliation",
-      "vendor/k8s.io/kubernetes/pkg/registry/rbac/validation"
+      "vendor/k8s.io/kubernetes/pkg/registry/rbac/validation",
+
+      "vendor/github.com/openshift/library-go/pkg/git"
     ]
   },
 
