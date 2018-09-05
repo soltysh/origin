@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit d88041ea04981fdd4cceb8e9f3c64b6a3e0caf09
+%global commit 6441f958ccf54e2e0532c537d356e51c00613e69
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.25.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=61d2513 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.26.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=cd58389 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        3.11.0
-Release:        0.26.0%{?dist}
+Release:        0.27.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -480,6 +480,15 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Wed Sep 05 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.27.0
+- Release command should allow a base image to be specified
+  (ccoleman@redhat.com)
+- Strip permissions when extracting a release, and create the directory
+  (ccoleman@redhat.com)
+- Add namespaced servicebrokers, serviceclasses and serviceplans to
+  admin/edit/view ClusterRoles (marko.luksa@gmail.com)
+- ServiceCatalog: update owners (jaboyd@redhat.com)
+
 * Tue Sep 04 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.26.0
 - Fix up logic in TestEgressCIDRAllocationOffline (danw@redhat.com)
 - switch to new registry for infra images (bparees@redhat.com)
