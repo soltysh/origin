@@ -1592,7 +1592,7 @@
 		},
 		{
 			"ImportPath": "github.com/evanphx/json-patch",
-			"Rev": "ba18e35c5c1b36ef6334cad706eb681153d2d379"
+			"Rev": "f195058310bd062ea7c754a834f0ff43b4b63afb"
 		},
 		{
 			"ImportPath": "github.com/exponent-io/jsonpath",
