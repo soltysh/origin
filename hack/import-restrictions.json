@@ -528,6 +528,7 @@
       "github.com/openshift/origin/pkg/quota/generated",
       "github.com/openshift/origin/pkg/route/apis/route/v1",
       "github.com/openshift/origin/pkg/route/generated",
+      "github.com/openshift/origin/pkg/security/apis/security/v1",
       "github.com/openshift/origin/pkg/template/apis/template/v1",
       "github.com/openshift/origin/pkg/template/client/v1",
       "github.com/openshift/origin/pkg/user/generated",
@@ -564,7 +565,6 @@
       "github.com/openshift/origin/pkg/cmd/infra/builder",
       "github.com/openshift/origin/pkg/cmd/infra/deployer",
       "github.com/openshift/origin/pkg/cmd/infra/router",
-      "github.com/openshift/origin/pkg/cmd/openshift-operators/generated/clientset/versioned",
       "github.com/openshift/origin/pkg/cmd/recycle",
       "github.com/openshift/origin/pkg/cmd/server/admin",
       "github.com/openshift/origin/pkg/cmd/server/apis/config",
@@ -646,7 +646,6 @@
       "vendor/k8s.io/kubernetes/pkg/serviceaccount",
       "vendor/k8s.io/kubernetes/pkg/version",
 
-      "vendor/k8s.io/kubernetes/pkg/registry/rbac/reconciliation",
       "vendor/k8s.io/kubernetes/pkg/registry/rbac/validation",
 
       "vendor/github.com/openshift/library-go/pkg/git"

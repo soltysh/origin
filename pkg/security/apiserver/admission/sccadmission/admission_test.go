@@ -168,12 +168,19 @@ func testSCCAdmit(testCaseName string, sccs []*securityapi.SecurityContextConstr
 
 	attrs := kadmission.NewAttributesRecord(pod, nil, kapi.Kind("Pod").WithVersion("version"), pod.Namespace, pod.Name, kapi.Resource("pods").WithVersion("version"), "", kadmission.Create, &user.DefaultInfo{})
 	err := plugin.(kadmission.MutationInterface).Admit(attrs)
-
 	if shouldPass && err != nil {
-		t.Errorf("%s expected no errors but received %v", testCaseName, err)
+		t.Errorf("%s expected no mutating admission errors but received %v", testCaseName, err)
 	}
 	if !shouldPass && err == nil {
-		t.Errorf("%s expected errors but received none", testCaseName)
+		t.Errorf("%s expected mutating admission errors but received none", testCaseName)
+	}
+
+	err = plugin.(kadmission.ValidationInterface).Validate(attrs)
+	if shouldPass && err != nil {
+		t.Errorf("%s expected no validating admission errors but received %v", testCaseName, err)
+	}
+	if !shouldPass && err == nil {
+		t.Errorf("%s expected validating admission errors but received none", testCaseName)
 	}
 }
 
@@ -748,7 +755,7 @@ func TestMatchingSecurityContextConstraints(t *testing.T) {
 
 	for k, v := range testCases {
 		sccMatcher := oscc.NewDefaultSCCMatcher(lister, v.authorizer)
-		sccs, err := sccMatcher.FindApplicableSCCs(v.userInfo, v.namespace)
+		sccs, err := sccMatcher.FindApplicableSCCs(v.namespace, v.userInfo)
 		if err != nil {
 			t.Errorf("%s received error %v", k, err)
 			continue
@@ -777,7 +784,7 @@ func TestMatchingSecurityContextConstraints(t *testing.T) {
 	testAuthorizer := &sccTestAuthorizer{t: t}
 	namespace := "does-not-matter"
 	sccMatcher := oscc.NewDefaultSCCMatcher(lister, testAuthorizer)
-	sccs, err := sccMatcher.FindApplicableSCCs(userInfo, namespace)
+	sccs, err := sccMatcher.FindApplicableSCCs(namespace, userInfo)
 	if err != nil {
 		t.Fatalf("matching many sccs returned error %v", err)
 	}
