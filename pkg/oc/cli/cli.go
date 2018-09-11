@@ -24,7 +24,6 @@ import (
 	"github.com/openshift/origin/pkg/cmd/util/term"
 	"github.com/openshift/origin/pkg/oc/cli/admin"
 	"github.com/openshift/origin/pkg/oc/cli/admin/buildchain"
-	"github.com/openshift/origin/pkg/oc/cli/admin/diagnostics"
 	sync "github.com/openshift/origin/pkg/oc/cli/admin/groups/sync"
 	exipfailover "github.com/openshift/origin/pkg/oc/cli/admin/ipfailover"
 	"github.com/openshift/origin/pkg/oc/cli/buildlogs"
@@ -33,7 +32,6 @@ import (
 	"github.com/openshift/origin/pkg/oc/cli/debug"
 	configcmd "github.com/openshift/origin/pkg/oc/cli/experimental/config"
 	"github.com/openshift/origin/pkg/oc/cli/experimental/dockergc"
-	"github.com/openshift/origin/pkg/oc/cli/export"
 	"github.com/openshift/origin/pkg/oc/cli/expose"
 	"github.com/openshift/origin/pkg/oc/cli/extract"
 	"github.com/openshift/origin/pkg/oc/cli/idle"
@@ -201,7 +199,6 @@ func NewCommandCLI(name, fullName string, in io.Reader, out, errout io.Writer) *
 				kubectlwrappers.NewCmdApply(fullName, f, ioStreams),
 				kubectlwrappers.NewCmdPatch(fullName, f, ioStreams),
 				process.NewCmdProcess(fullName, f, ioStreams),
-				export.NewCmdExport(fullName, f, ioStreams),
 				extract.NewCmdExtract(fullName, f, ioStreams),
 				idle.NewCmdIdle(fullName, f, ioStreams),
 				observe.NewCmdObserve(fullName, f, ioStreams),
@@ -318,9 +315,6 @@ func newExperimentalCommand(name, fullName string, f kcmdutil.Factory, ioStreams
 	experimental.AddCommand(dockergc.NewCmdDockerGCConfig(f, fullName, "dockergc", ioStreams))
 	experimental.AddCommand(buildchain.NewCmdBuildChain(name, fullName+" "+buildchain.BuildChainRecommendedCommandName, f, ioStreams))
 	experimental.AddCommand(configcmd.NewCmdConfig(configcmd.ConfigRecommendedName, fullName+" "+configcmd.ConfigRecommendedName, f, ioStreams))
-	deprecatedDiag := diagnostics.NewCmdDiagnostics(diagnostics.DiagnosticsRecommendedName, fullName+" "+diagnostics.DiagnosticsRecommendedName, f, ioStreams)
-	deprecatedDiag.Deprecated = fmt.Sprintf(`use "oc adm %[1]s" to run diagnostics instead.`, diagnostics.DiagnosticsRecommendedName)
-	experimental.AddCommand(deprecatedDiag)
 	experimental.AddCommand(options.NewCmdOptions(ioStreams))
 
 	// these groups also live under `oc adm groups {sync,prune}` and are here only for backwards compatibility
