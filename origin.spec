@@ -64,8 +64,8 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.11.0
-Release:        0.29.0%{?dist}
+Version:        3.11.1
+Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -482,6 +482,9 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Thu Sep 12 2018 Eric Paris <eparis@redhat.com> 3.11.1-1
+- Eric custom hack to get us back alive
+
 * Thu Sep 06 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.29.0
 - Externalize oc tag (maszulik@redhat.com)
 - cluster up: create the service-ca operator signing secret
