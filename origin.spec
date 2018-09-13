@@ -509,8 +509,11 @@ fi
   e6e3e052f4aa60d0630c206d5e7885229ff956d5   - library-go: release-3.11
   (jvallejo@redhat.com)
 
-* Thu Sep 12 2018 Eric Paris <eparis@redhat.com> 3.11.1-1
+* Wed Sep 12 2018 Eric Paris <eparis@redhat.com> 3.11.1-1
 - Eric custom hack to get us back alive
+- We accidentally merged code intended for 4.0 into this branch. We reverted back
+  to before the incorrect merge and then forcibly updated the version number so
+  it would continuously move forward.
 
 * Thu Sep 06 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.29.0
 - Externalize oc tag (maszulik@redhat.com)
