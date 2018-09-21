@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 59237c35b69c6c8bf39cfe58d58cd764f3bc83ee
+%global commit 2330835af5804cece2961b7ae3c3cf2478d04b38
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.34.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=274612a5e1 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.0-0.35.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=2330835af5 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.0.0%{?dist}
+Release:        0.1.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -488,6 +488,122 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Fri Sep 21 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.1.0
+- Automatic commit of package [atomic-openshift] release [4.0.0-0.1.0] ; bump
+  origin-web-console 1046d0f8 (aos-team-art@redhat.com)
+- update oc cluster up to use openshift-controller-manager-operator
+  (deads@redhat.com)
+- hack around image not being pulled and retagged locally for CI
+  (deads@redhat.com)
+- switch to using openshift-apiserver operator (deads@redhat.com)
+- fix dind (jtanenba@redhat.com)
+- use default route hostname to access internal git server (bparees@redhat.com)
+- bump(*) (mkhan@redhat.com)
+- Update glide to tolerate osin moving into openshift org (mkhan@redhat.com)
+- make ext test need for existing cluster painfully obvious
+  (gmontero@redhat.com)
+- remove cluster up cruft (deads@redhat.com)
+- update import restrictions (jvallejo@redhat.com)
+- update some usages of imageapi utils (jvallejo@redhat.com)
+- externalize smart_merge helper (jvallejo@redhat.com)
+- externalize clusterup (jvallejo@redhat.com)
+- externalize startbuild test (jvallejo@redhat.com)
+- externalize resolve helpers (jvallejo@redhat.com)
+- externalize logsforobject (jvallejo@redhat.com)
+- Fix check to ignore the current route from the set of displaced routes. fixes
+  bugz #1624078 (smitram@gmail.com)
+- cluster-up: fix condition on bind mount (mfojtik@redhat.com)
+- externalize whoami (jvallejo@redhat.com)
+- UPSTREAM: <carry>: Node selector aware DS controller should not process
+  openshift-io/node-selector if scheduler.alpha.kubernetes.io/node-selector is
+  set. (avesh.ncsu@gmail.com)
+- make oc use smaller controller manager config (deads@redhat.com)
+- Do not process pods that have their namespaces configured with the annotation
+  key scheduler.alpha.kubernetes.io/node-selector in nodeenv admission plugin.
+  (avesh.ncsu@gmail.com)
+- switch to external controller config type (deads@redhat.com)
+- generated (deads@redhat.com)
+- bump (deads@redhat.com)
+- Extract the etcd start from intetration (maszulik@redhat.com)
+- Generated changes (maszulik@redhat.com)
+- Use 0000_ as the "ordering" prefix for now (ccoleman@redhat.com)
+- Issue #20985 Don't mount the docker/config.json if file doesn't exist
+  (kumarpraveen.nitdgp@gmail.com)
+- fix template finalizer godoc (bparees@redhat.com)
+- Use standard node roles for conformance isolation (ccoleman@redhat.com)
+- UPSTREAM: 67825: disable multiattach in vSphere (hekumar@redhat.com)
+- Fix image quota evaluators to support both internal and external resources
+  (maszulik@redhat.com)
+- switch cluster up to using openshift apiserver config (deads@redhat.com)
+- Drop oc types command (maszulik@redhat.com)
+- fix printing dc replicas (mfojtik@redhat.com)
+- URL of OKD is docs.okd.io now (lxia@redhat.com)
+- Restore graceful shutdown of DNS server (miciah.masters@gmail.com)
+- Generated changes (maszulik@redhat.com)
+- Switch admin groups commands to external (maszulik@redhat.com)
+- Change directory on docker host up configuration (diegolovison@gmail.com)
+- UPSTREAM: 68678: tighten maximum retry loop for aggregate api availability
+  (deads@redhat.com)
+- bump (deads@redhat.com)
+- pin dns (deads@redhat.com)
+- switch openshift apiserver to external config (deads@redhat.com)
+- copy types for internal/external split (deads@redhat.com)
+- add external openshift conversion (deads@redhat.com)
+- generated (deads@redhat.com)
+- UPSTREAM: 68632: allow audit policy to be loaded from any byte source
+  (deads@redhat.com)
+- Link to latest OKD docs instead of 3.9 OCP docs (mifiedle@redhat.com)
+- externalize ipfailover command (jvallejo@redhat.com)
+- externalize login command (jvallejo@redhat.com)
+- externalize new-project command (jvallejo@redhat.com)
+- Ignore errors caused by unkonwn scopes where it makes sense to do so.
+  (simo@redhat.com)
+- Remove gitserver from tree (ccoleman@redhat.com)
+- Prevent new contents from being checked in to docs dir (ccoleman@redhat.com)
+- Remove checked in docs and empty man directories (ccoleman@redhat.com)
+- Skip the disruptive suite for now (ccoleman@redhat.com)
+- Add a new `oc adm release mirror` command (ccoleman@redhat.com)
+- Pull openshift-sdn out of openshift binary (ccoleman@redhat.com)
+- Allow selective extraction of files, fix mirror mounting
+  (ccoleman@redhat.com)
+- Fork network validation from node-config (ccoleman@redhat.com)
+- Print less information when bash stacktraces exit (ccoleman@redhat.com)
+- externalize verify-signature cmd (jvallejo@redhat.com)
+- Bump to v4.0 (ccoleman@redhat.com)
+- add kube-apiserver-operator (deads@redhat.com)
+- add etcd service to list of names to sign initial certs for
+  (deads@redhat.com)
+- externalize migration commands (jvallejo@redhat.com)
+- test: Bump timeout for start deployment (mrunalp@gmail.com)
+- Debug output in `release new` is incorrect (ccoleman@redhat.com)
+- remove origin dependences from pkg/build/builder (bparees@redhat.com)
+- Improve egress IP node-offline-tracking error checking (danw@redhat.com)
+- Add more logging to deployment tests and waiting for tests to set up
+  (tnozicka@gmail.com)
+- hack: arrays in bash need to have their own line (mfojtik@redhat.com)
+- hack: copy oc to kubectl (mfojtik@redhat.com)
+- Correct a failure to replace strings (ccoleman@redhat.com)
+- bump(*) (bparees@redhat.com)
+- externalize admin node commands (jvallejo@redhat.com)
+- add default values for kubeapiserverconfig to make it easier to use
+  (deads@redhat.com)
+- update tito releasers (aos-team-art@redhat.com)
+- moving master to 4.0 (aos-team-art@redhat.com)
+- UPSTREAM: <carry>: simplify kube-controller-manager patches
+  (hekumar@redhat.com)
+- generated (deads@redhat.com)
+- bump (deads@redhat.com)
+- fix jsonpatch level so we can bump again (deads@redhat.com)
+- remove the web console proxy from hypershift (deads@redhat.com)
+- oc: fix bootstrap surfacing errors (victor@cloudflavor.io)
+- Detect that a reference mapping is incorrect in release (ccoleman@redhat.com)
+- Support setting storageClassName: "" when "" is specified by claim-class
+  (nakayamakenjiro@gmail.com)
+- UPSTREAM: 68008: apiserver: forward panic in WithTimeout filter
+  (stefan.schimanski@gmail.com)
+- UPSTREAM: 66617: Do not set cgroup parent when --cgroups-per-qos is disabled
+  (rpenta@redhat.com)
+
 * Tue Sep 11 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.0-0.35.0
 - install kubectl along with oc in rpm spec (mfojtik@redhat.com)
 - Remove semantic modifiers from image format string (ccoleman@redhat.com)
