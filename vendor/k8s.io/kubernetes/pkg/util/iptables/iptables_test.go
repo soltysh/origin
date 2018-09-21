@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"net"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -594,21 +595,21 @@ COMMIT
 func TestIPTablesWaitFlag(t *testing.T) {
 	testCases := []struct {
 		Version string
-		Result  string
+		Result  []string
 	}{
-		{"0.55.55", ""},
-		{"1.0.55", ""},
-		{"1.4.19", ""},
-		{"1.4.20", WaitString},
-		{"1.4.21", WaitString},
-		{"1.4.22", WaitSecondsString},
-		{"1.5.0", WaitSecondsString},
-		{"2.0.0", WaitSecondsString},
+		{"0.55.55", nil},
+		{"1.0.55", nil},
+		{"1.4.19", nil},
+		{"1.4.20", []string{WaitString}},
+		{"1.4.21", []string{WaitString}},
+		{"1.4.22", []string{WaitString, WaitSecondsValue}},
+		{"1.5.0", []string{WaitString, WaitSecondsValue}},
+		{"2.0.0", []string{WaitString, WaitSecondsValue}},
 	}
 
 	for _, testCase := range testCases {
 		result := getIPTablesWaitFlag(testCase.Version)
-		if strings.Join(result, "") != testCase.Result {
+		if !reflect.DeepEqual(result, testCase.Result) {
 			t.Errorf("For %s expected %v got %v", testCase.Version, testCase.Result, result)
 		}
 	}
@@ -643,7 +644,7 @@ func TestWaitFlagUnavailable(t *testing.T) {
 	if fcmd.CombinedOutputCalls != 3 {
 		t.Errorf("expected 3 CombinedOutput() calls, got %d", fcmd.CombinedOutputCalls)
 	}
-	if sets.NewString(fcmd.CombinedOutputLog[2]...).HasAny(WaitString, WaitSecondsString) {
+	if sets.NewString(fcmd.CombinedOutputLog[2]...).Has(WaitString) {
 		t.Errorf("wrong CombinedOutput() log, got %s", fcmd.CombinedOutputLog[2])
 	}
 }
@@ -678,7 +679,7 @@ func TestWaitFlagOld(t *testing.T) {
 	if !sets.NewString(fcmd.CombinedOutputLog[2]...).HasAll("iptables", WaitString) {
 		t.Errorf("wrong CombinedOutput() log, got %s", fcmd.CombinedOutputLog[2])
 	}
-	if sets.NewString(fcmd.CombinedOutputLog[2]...).HasAny(WaitSecondsString) {
+	if sets.NewString(fcmd.CombinedOutputLog[2]...).Has(WaitSecondsValue) {
 		t.Errorf("wrong CombinedOutput() log, got %s", fcmd.CombinedOutputLog[2])
 	}
 }
@@ -710,10 +711,7 @@ func TestWaitFlagNew(t *testing.T) {
 	if fcmd.CombinedOutputCalls != 3 {
 		t.Errorf("expected 3 CombinedOutput() calls, got %d", fcmd.CombinedOutputCalls)
 	}
-	if !sets.NewString(fcmd.CombinedOutputLog[2]...).HasAll("iptables", WaitSecondsString) {
-		t.Errorf("wrong CombinedOutput() log, got %s", fcmd.CombinedOutputLog[2])
-	}
-	if sets.NewString(fcmd.CombinedOutputLog[2]...).HasAny(WaitString) {
+	if !sets.NewString(fcmd.CombinedOutputLog[2]...).HasAll("iptables", WaitString, WaitSecondsValue) {
 		t.Errorf("wrong CombinedOutput() log, got %s", fcmd.CombinedOutputLog[2])
 	}
 }
@@ -1051,7 +1049,7 @@ func TestRestoreAllWait(t *testing.T) {
 	}
 
 	commandSet := sets.NewString(fcmd.CombinedOutputLog[2]...)
-	if !commandSet.HasAll("iptables-restore", WaitSecondsString, "--counters", "--noflush") {
+	if !commandSet.HasAll("iptables-restore", WaitString, WaitSecondsValue, "--counters", "--noflush") {
 		t.Errorf("wrong CombinedOutput() log, got %s", fcmd.CombinedOutputLog[2])
 	}
 
@@ -1100,8 +1098,8 @@ func TestRestoreAllWaitOldIptablesRestore(t *testing.T) {
 	if !commandSet.HasAll("iptables-restore", "--counters", "--noflush") {
 		t.Errorf("wrong CombinedOutput() log, got %s", fcmd.CombinedOutputLog[2])
 	}
-	if commandSet.HasAny(WaitSecondsString) {
-		t.Errorf("wrong CombinedOutput() log (unexpected %s option), got %s", WaitSecondsString, fcmd.CombinedOutputLog[2])
+	if commandSet.HasAll(WaitString, WaitSecondsValue) {
+		t.Errorf("wrong CombinedOutput() log (unexpected %s option), got %s", WaitString, fcmd.CombinedOutputLog[2])
 	}
 
 	if fcmd.CombinedOutputCalls != 3 {
