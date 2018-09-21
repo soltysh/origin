@@ -21,20 +21,18 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	kclientcmd "k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	aggregatorinstall "k8s.io/kube-aggregator/pkg/apis/apiregistration/install"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
-	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
+	oauthv1typedclient "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
 	userv1client "github.com/openshift/client-go/user/clientset/versioned"
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
 	"github.com/openshift/origin/pkg/cmd/util/variable"
-	oauthclientinternal "github.com/openshift/origin/pkg/oauth/generated/internalclientset"
 	"github.com/openshift/origin/pkg/oc/clusterup/coreinstall/kubeapiserver"
 	"github.com/openshift/origin/pkg/oc/clusterup/docker/dockerhelper"
 	"github.com/openshift/origin/pkg/oc/clusterup/docker/errors"
@@ -86,7 +84,6 @@ type ClusterUpConfig struct {
 	ImageTemplate variable.ImageTemplate
 	ImageTag      string
 
-	DockerMachine  string
 	PortForwarding bool
 	KubeOnly       bool
 
@@ -100,10 +97,8 @@ type ClusterUpConfig struct {
 	ServerLogLevel    int
 
 	HostVolumesDir           string
-	HostConfigDir            string
 	WriteConfig              bool
 	HostDataDir              string
-	UsePorts                 []int
 	DNSPort                  int
 	ServerIP                 string
 	AdditionalIPs            []string
@@ -120,10 +115,6 @@ type ClusterUpConfig struct {
 	openshiftHelper     *openshift.Helper
 	command             *cobra.Command
 	defaultClientConfig clientcmdapi.Config
-	isRemoteDocker      bool
-
-	usingDefaultImages         bool
-	usingDefaultOpenShiftImage bool
 
 	pullPolicy string
 
@@ -134,7 +125,6 @@ type ClusterUpConfig struct {
 
 func NewClusterUpConfig(streams genericclioptions.IOStreams) *ClusterUpConfig {
 	return &ClusterUpConfig{
-		UsePorts:       openshift.BasePorts,
 		PortForwarding: defaultPortForwarding(),
 		DNSPort:        openshift.DefaultDNSPort,
 
@@ -154,9 +144,20 @@ func NewCmdUp(name, fullName string, f genericclioptions.RESTClientGetter, strea
 		Long:    cmdUpLong,
 		Example: fmt.Sprintf(cmdUpExample, fullName),
 		Run: func(c *cobra.Command, args []string) {
-			kcmdutil.CheckErr(config.Complete(f, c))
-			kcmdutil.CheckErr(config.Validate())
-			kcmdutil.CheckErr(config.Check())
+			var err error
+
+			if err = config.Complete(f, c); err != nil {
+				PrintError(err, streams.ErrOut)
+				os.Exit(1)
+			}
+			if err = config.Validate(); err != nil {
+				PrintError(err, streams.ErrOut)
+				os.Exit(1)
+			}
+			if err = config.Check(); err != nil {
+				PrintError(err, streams.ErrOut)
+				os.Exit(1)
+			}
 			if err := config.Start(); err != nil {
 				PrintError(err, streams.ErrOut)
 				os.Exit(1)
@@ -206,8 +207,6 @@ func (c *ClusterUpConfig) Complete(f genericclioptions.RESTClientGetter, cmd *co
 	}
 
 	c.command = cmd
-
-	c.isRemoteDocker = len(os.Getenv("DOCKER_HOST")) > 0
 
 	c.ImageTemplate.Format = variable.Expand(c.ImageTemplate.Format, func(s string) (string, bool) {
 		if s == "version" {
@@ -279,9 +278,6 @@ func (c *ClusterUpConfig) Complete(f genericclioptions.RESTClientGetter, cmd *co
 		if err := os.MkdirAll(c.HostVolumesDir, 0755); err != nil {
 			return err
 		}
-	} else {
-		// Snowflake for OSX Docker for Mac
-		c.HostVolumesDir = c.RemoteDirFor("openshift.local.volumes")
 	}
 
 	c.HostPersistentVolumesDir = path.Join(c.BaseDir, "openshift.local.pv")
@@ -414,9 +410,6 @@ func (c *ClusterUpConfig) Start() error {
 	}
 	if c.WriteConfig {
 		return nil
-	}
-	if err := c.PostClusterStartupMutations(c.Out); err != nil {
-		return err
 	}
 
 	// if we're only supposed to install kube, only install kube.  Maybe later we'll add back components.
@@ -555,6 +548,9 @@ func (c *ClusterUpConfig) checkOpenShiftImage() error {
 	if err := c.DockerHelper().CheckAndPull(c.nodeImage(), c.Out); err != nil {
 		return err
 	}
+	if err := c.DockerHelper().CheckAndPull(c.hyperkubeImage(), c.Out); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -576,12 +572,12 @@ func (c *ClusterUpConfig) ensureDefaultRedirectURIs(out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	oauthClient, err := oauthclientinternal.NewForConfig(restConfig)
+	oauthClient, err := oauthv1typedclient.NewForConfig(restConfig)
 	if err != nil {
 		return err
 	}
 
-	webConsoleOAuth, err := oauthClient.Oauth().OAuthClients().Get(defaultRedirectClient, metav1.GetOptions{})
+	webConsoleOAuth, err := oauthClient.OAuthClients().Get(defaultRedirectClient, metav1.GetOptions{})
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			fmt.Fprintf(out, "Unable to find OAuthClient %q\n", defaultRedirectClient)
@@ -603,7 +599,7 @@ func (c *ClusterUpConfig) ensureDefaultRedirectURIs(out io.Writer) error {
 
 	webConsoleOAuth.RedirectURIs = append(webConsoleOAuth.RedirectURIs, developmentRedirectURI)
 
-	_, err = oauthClient.Oauth().OAuthClients().Update(webConsoleOAuth)
+	_, err = oauthClient.OAuthClients().Update(webConsoleOAuth)
 	if err != nil {
 		// announce error without interrupting remaining tasks
 		suggestedCmd := fmt.Sprintf("oc patch %s/%s -p '{%q:[%q]}'", "oauthclient", defaultRedirectClient, "redirectURIs", developmentRedirectURI)
@@ -667,24 +663,6 @@ func (c *ClusterUpConfig) updateNoProxy() {
 			c.NoProxy = append(c.NoProxy, v)
 		}
 	}
-}
-
-func (c *ClusterUpConfig) PostClusterStartupMutations(out io.Writer) error {
-	restConfig, err := c.RESTConfig()
-	if err != nil {
-		return err
-	}
-	kClient, err := kubernetes.NewForConfig(restConfig)
-	if err != nil {
-		return err
-	}
-
-	// Remove any duplicate nodes
-	if err := c.OpenShiftHelper().CheckNodes(kClient); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (c *ClusterUpConfig) imageFormat() string {
@@ -956,29 +934,4 @@ func (c *ClusterUpConfig) GetPublicHostName() string {
 		return c.PublicHostname
 	}
 	return c.ServerIP
-}
-
-func isComponentEnabled(name string, disabledByDefaultComponents sets.String, components ...string) bool {
-	hasStar := false
-	for _, ctrl := range components {
-		if ctrl == name {
-			return true
-		}
-		if ctrl == "-"+name {
-			return false
-		}
-		if ctrl == "*" {
-			hasStar = true
-		}
-	}
-	// if we get here, there was no explicit choice
-	if !hasStar {
-		// nothing on by default
-		return false
-	}
-	if disabledByDefaultComponents.Has(name) {
-		return false
-	}
-
-	return true
 }

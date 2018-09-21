@@ -26,10 +26,10 @@ import (
 	userclient "github.com/openshift/client-go/user/clientset/versioned"
 	userinformer "github.com/openshift/client-go/user/informers/externalversions"
 	"github.com/openshift/origin/pkg/admission/namespaceconditions"
+	originadmission "github.com/openshift/origin/pkg/apiserver/admission"
 	"github.com/openshift/origin/pkg/cmd/openshift-apiserver/openshiftapiserver"
 	"github.com/openshift/origin/pkg/cmd/openshift-apiserver/openshiftapiserver/configprocessing"
 	oadmission "github.com/openshift/origin/pkg/cmd/server/admission"
-	originadmission "github.com/openshift/origin/pkg/cmd/server/origin/admission"
 	"github.com/openshift/origin/pkg/image/apiserver/registryhostname"
 	imageinformer "github.com/openshift/origin/pkg/image/generated/informers/internalversion"
 	imageclient "github.com/openshift/origin/pkg/image/generated/internalclientset"
@@ -126,7 +126,7 @@ func NewOpenShiftKubeAPIServerConfigPatch(delegateAPIServer genericapiserver.Del
 		// END ADMISSION
 
 		// HANDLER CHAIN (with oauth server and web console)
-		genericConfig.BuildHandlerChainFunc, postStartHooks, err = BuildHandlerChain(genericConfig, kubeInformers, kubeAPIServerConfig.LegacyServiceServingCertSignerCABundle, kubeAPIServerConfig.OAuthConfig, kubeAPIServerConfig.UserAgentMatchingConfig)
+		genericConfig.BuildHandlerChainFunc, postStartHooks, err = BuildHandlerChain(genericConfig, kubeAPIServerConfig.OAuthConfig, kubeAPIServerConfig.UserAgentMatchingConfig, kubeAPIServerConfig.ConsolePublicURL)
 		if err != nil {
 			return nil, err
 		}

@@ -132,6 +132,9 @@ import:
 # pinned to the level that kubernetes uses.  Not sure why glide isn't matching this
 - package: github.com/sirupsen/logrus
   version: 89742aefa4b206dcf400792f3bd35b542998eb3b
+# pinned to a level that includes two fixes we need to avoid crashes
+- package: github.com/evanphx/json-patch
+  version: f195058310bd062ea7c754a834f0ff43b4b63afb
 
 # mine: specific to openshift
 # networking
@@ -149,9 +152,11 @@ import:
   version: 32a13797442ccb601b11761d74232773c1402d14
 # auth (for sally)
 - package: github.com/RangelReale/osin
+  repo:    https://github.com/openshift/osin.git
   version: 2dc1b43167692cdc89446b99b98fa9de6bff020f
 # auth (for sally)
 - package: github.com/RangelReale/osincli
+  repo:    https://github.com/openshift/osincli.git
   version: fababb0555f21315d1a34af6615a16eaab44396b
 # auth (for sally)
 - package: github.com/gorilla/sessions
@@ -185,9 +190,9 @@ import:
   version: a5c9099e2484f1551abb9433885e158610a25f4b
 - package: github.com/bcicen/go-haproxy
   version: ff5824fe38bede761b873cab6e247a530e89236a
-# keep us up to date with latest DNS security fixes
+# used to be ~v1 to keep up with fixes.  It didn't build past v1.0.8.
 - package: github.com/miekg/dns
-  version: ~v1
+  version: v1.0.8
 # etcd pins a very old version that has contention issues
 - package: github.com/google/btree
   version: master

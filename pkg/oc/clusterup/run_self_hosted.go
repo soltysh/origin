@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/user"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -17,8 +16,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kruntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer/json"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/rest"
@@ -27,11 +24,11 @@ import (
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 
 	"github.com/openshift/origin/pkg/oc/clusterup/componentinstall"
+	"github.com/openshift/origin/pkg/oc/clusterup/coreinstall/components/pivot"
 	"github.com/openshift/origin/pkg/oc/clusterup/coreinstall/kubeapiserver"
 	"github.com/openshift/origin/pkg/oc/clusterup/coreinstall/kubelet"
 	"github.com/openshift/origin/pkg/oc/clusterup/coreinstall/staticpods"
 	"github.com/openshift/origin/pkg/oc/clusterup/docker/dockerhelper"
-	"github.com/openshift/origin/pkg/oc/clusterup/docker/host"
 	"github.com/openshift/origin/pkg/oc/clusterup/manifests"
 )
 
@@ -68,10 +65,30 @@ var (
 		},
 	}
 
+	runlevelZeroLabel         = map[string]string{"openshift.io/run-level": "0"}
 	runlevelOneLabel          = map[string]string{"openshift.io/run-level": "1"}
 	runLevelOneKubeComponents = []componentInstallTemplate{
 		{
-			ComponentImage: "control-plane",
+			ComponentImage: "hypershift",
+			Template: componentinstall.Template{
+				Name:            "etcd",
+				Namespace:       "kube-system",
+				NamespaceObj:    newNamespaceBytes("kube-system", runlevelZeroLabel),
+				InstallTemplate: manifests.MustAsset("install/etcd/install.yaml"),
+			},
+		},
+		{
+			ComponentImage: "cluster-kube-apiserver-operator",
+			Template: componentinstall.Template{
+				Name:            "openshift-kube-apiserver-operator",
+				Namespace:       "openshift-core-operators",
+				NamespaceObj:    newNamespaceBytes("openshift-core-operators", runlevelZeroLabel),
+				InstallTemplate: manifests.MustAsset("install/cluster-kube-apiserver-operator/install.yaml"),
+			},
+		},
+
+		{
+			ComponentImage: "node",
 			Template: componentinstall.Template{
 				Name:            "kube-proxy",
 				Namespace:       "kube-proxy",
@@ -80,7 +97,7 @@ var (
 			},
 		},
 		{
-			ComponentImage: "control-plane",
+			ComponentImage: "node",
 			Template: componentinstall.Template{
 				Name:            "kube-dns",
 				Namespace:       "kube-dns",
@@ -101,32 +118,21 @@ var (
 	}
 	runLevelOneOpenShiftComponents = []componentInstallTemplate{
 		{
-			ComponentImage: "hypershift",
+			ComponentImage: "cluster-openshift-apiserver-operator",
 			Template: componentinstall.Template{
-				Name:            "openshift-apiserver",
-				Namespace:       "openshift-apiserver",
-				NamespaceObj:    newNamespaceBytes("openshift-apiserver", runlevelOneLabel),
-				InstallTemplate: manifests.MustAsset("install/openshift-apiserver/install.yaml"),
+				Name:            "openshift-openshift-apiserver-operator",
+				Namespace:       "openshift-core-operators",
+				NamespaceObj:    newNamespaceBytes("openshift-core-operators", runlevelOneLabel),
+				InstallTemplate: manifests.MustAsset("install/cluster-openshift-apiserver-operator/install.yaml"),
 			},
 		},
-	}
-
-	// componentsToInstall DOES NOT INSTALL IN ORDER.  They are installed separately and expected to come up
-	// in any order and self-organize into something that works.  Remember, when the whole system crashes and restarts
-	// you don't get to choose your restart order.  Plan accordingly.  No bugs or attempts at interlocks will be accepted
-	// in cluster up.
-	// TODO we can take a guess at readiness by making sure that pods in the namespace exist and all pods are healthy
-	// TODO it's not perfect, but its fairly good as a starting point.
-	componentsToInstall = []componentInstallTemplate{
 		{
-			ComponentImage: "hypershift",
+			ComponentImage: "cluster-openshift-controller-manager-operator",
 			Template: componentinstall.Template{
-				Name:              "openshift-controller-manager",
-				Namespace:         "openshift-controller-manager",
-				NamespaceObj:      newNamespaceBytes("openshift-controller-manager", nil),
-				PrivilegedSANames: []string{"openshift-controller-manager"},
-				RBACTemplate:      manifests.MustAsset("install/openshift-controller-manager/install-rbac.yaml"),
-				InstallTemplate:   manifests.MustAsset("install/openshift-controller-manager/install.yaml"),
+				Name:            "openshift-controller-manager-operator",
+				Namespace:       "openshift-core-operators",
+				NamespaceObj:    newNamespaceBytes("openshift-core-operators", runlevelOneLabel),
+				InstallTemplate: manifests.MustAsset("install/cluster-openshift-controller-manager-operator/install.yaml"),
 			},
 		},
 	}
@@ -156,13 +162,11 @@ func (c *ClusterUpConfig) StartSelfHosted(out io.Writer) error {
 	glog.V(2).Infof("started kubelet in container %q\n", kubeletContainerID)
 
 	templateSubstitutionValues := map[string]string{
-		"MASTER_CONFIG_HOST_PATH":                       configDirs.masterConfigDir,
-		"OPENSHIFT_APISERVER_CONFIG_HOST_PATH":          configDirs.openshiftAPIServerConfigDir,
-		"OPENSHIFT_CONTROLLER_MANAGER_CONFIG_HOST_PATH": configDirs.openshiftControllerConfigDir,
-		"NODE_CONFIG_HOST_PATH":                         configDirs.nodeConfigDir,
-		"KUBEDNS_CONFIG_HOST_PATH":                      configDirs.kubeDNSConfigDir,
-		"OPENSHIFT_PULL_POLICY":                         c.pullPolicy,
-		"LOGLEVEL":                                      fmt.Sprintf("%d", c.ServerLogLevel),
+		"MASTER_CONFIG_HOST_PATH":  configDirs.masterConfigDir,
+		"NODE_CONFIG_HOST_PATH":    configDirs.nodeConfigDir,
+		"KUBEDNS_CONFIG_HOST_PATH": configDirs.kubeDNSConfigDir,
+		"OPENSHIFT_PULL_POLICY":    c.pullPolicy,
+		"LOGLEVEL":                 fmt.Sprintf("%d", c.ServerLogLevel),
 	}
 
 	clientConfigBuilder, err := kclientcmd.LoadFromFile(filepath.Join(c.LocalDirFor(kubeapiserver.KubeAPIServerDirName), "admin.kubeconfig"))
@@ -182,12 +186,14 @@ func (c *ClusterUpConfig) StartSelfHosted(out io.Writer) error {
 	if err := waitForHealthyKubeAPIServer(clientConfig); err != nil {
 		return err
 	}
+	glog.Info("kube-apiserver is ready.")
+	installContext, err := componentinstall.NewComponentInstallContext(c.cliImage(), c.imageFormat(), c.pullPolicy, c.BaseDir, c.ServerLogLevel)
+	if err != nil {
+		return err
+	}
 
-	// bootstrap the service-ca operator with the legacy service-signer.crt and key.
-	err = createServiceCASigningSecret(clientConfig,
-		path.Join(c.BaseDir, "openshift-apiserver", "service-signer.crt"),
-		path.Join(c.BaseDir, "openshift-apiserver", "service-signer.key"),
-	)
+	glog.Info("Create initial config content...")
+	err = (&pivot.KubeAPIServerContent{InstallContext: installContext}).Install(c.GetDockerClient())
 	if err != nil {
 		return err
 	}
@@ -203,11 +209,6 @@ func (c *ClusterUpConfig) StartSelfHosted(out io.Writer) error {
 		templateSubstitutionValues,
 		c.GetDockerClient(),
 	)
-	if err != nil {
-		return err
-	}
-
-	installContext, err := componentinstall.NewComponentInstallContext(c.cliImage(), c.imageFormat(), c.pullPolicy, c.BaseDir, c.ServerLogLevel)
 	if err != nil {
 		return err
 	}
@@ -241,31 +242,16 @@ func (c *ClusterUpConfig) StartSelfHosted(out io.Writer) error {
 	}
 	glog.Info("openshift-apiserver available")
 
-	go watchAPIServices(aggregatorClient)
-
-	err = installComponentTemplates(
-		componentsToInstall,
-		c.ImageTemplate.Format,
-		c.BaseDir,
-		templateSubstitutionValues,
-		c.GetDockerClient(),
-	)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
 type configDirs struct {
-	masterConfigDir              string
-	openshiftAPIServerConfigDir  string
-	openshiftControllerConfigDir string
-	nodeConfigDir                string
-	kubeDNSConfigDir             string
-	podManifestDir               string
-	baseDir                      string
-	err                          error
+	masterConfigDir  string
+	nodeConfigDir    string
+	kubeDNSConfigDir string
+	podManifestDir   string
+	baseDir          string
+	err              error
 }
 
 // LocalDirFor returns a local directory path for the given component.
@@ -273,41 +259,18 @@ func (c *ClusterUpConfig) LocalDirFor(componentName string) string {
 	return filepath.Join(c.BaseDir, componentName)
 }
 
-// RemoteDirFor returns a directory path on remote host
-// DEPRECATED:
-func (c *ClusterUpConfig) RemoteDirFor(componentName string) string {
-	return filepath.Join(host.RemoteHostOriginDir, c.BaseDir, componentName)
-}
-
 func (c *ClusterUpConfig) BuildConfig() (*configDirs, error) {
 	configs := &configDirs{
-		masterConfigDir:              filepath.Join(c.BaseDir, kubeapiserver.KubeAPIServerDirName),
-		openshiftAPIServerConfigDir:  filepath.Join(c.BaseDir, kubeapiserver.OpenShiftAPIServerDirName),
-		openshiftControllerConfigDir: filepath.Join(c.BaseDir, kubeapiserver.OpenShiftControllerManagerDirName),
-		nodeConfigDir:                filepath.Join(c.BaseDir, kubelet.NodeConfigDirName),
-		kubeDNSConfigDir:             filepath.Join(c.BaseDir, kubelet.KubeDNSDirName),
-		podManifestDir:               filepath.Join(c.BaseDir, kubelet.PodManifestDirName),
+		masterConfigDir:  filepath.Join(c.BaseDir, kubeapiserver.KubeAPIServerDirName),
+		nodeConfigDir:    filepath.Join(c.BaseDir, kubelet.NodeConfigDirName),
+		kubeDNSConfigDir: filepath.Join(c.BaseDir, kubelet.KubeDNSDirName),
+		podManifestDir:   filepath.Join(c.BaseDir, kubelet.PodManifestDirName),
 	}
 
-	originalMasterConfigDir := configs.masterConfigDir
 	originalNodeConfigDir := configs.nodeConfigDir
 
 	if _, err := os.Stat(configs.masterConfigDir); os.IsNotExist(err) {
 		_, err = c.makeMasterConfig()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if _, err := os.Stat(configs.openshiftAPIServerConfigDir); os.IsNotExist(err) {
-		_, err = c.makeOpenShiftAPIServerConfig(originalMasterConfigDir)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if _, err := os.Stat(configs.openshiftControllerConfigDir); os.IsNotExist(err) {
-		_, err = c.makeOpenShiftControllerConfig(originalMasterConfigDir)
 		if err != nil {
 			return nil, err
 		}
@@ -336,10 +299,9 @@ func (c *ClusterUpConfig) BuildConfig() (*configDirs, error) {
 	}
 
 	substitutions := map[string]string{
-		"/path/to/master/config-dir":              configs.masterConfigDir,
-		"/path/to/openshift-apiserver/config-dir": configs.openshiftAPIServerConfigDir,
-		"ETCD_VOLUME":                             "emptyDir:\n",
-		"OPENSHIFT_PULL_POLICY":                   c.pullPolicy,
+		"/path/to/master/config-dir": configs.masterConfigDir,
+		"ETCD_VOLUME":                "emptyDir:\n",
+		"OPENSHIFT_PULL_POLICY":      c.pullPolicy,
 	}
 
 	if len(c.HostDataDir) > 0 {
@@ -451,14 +413,6 @@ func (c *ClusterUpConfig) makeKubeDNSConfig(nodeConfig string) (string, error) {
 	return kubelet.MakeKubeDNSConfig(nodeConfig, c.BaseDir, c.ServerIP)
 }
 
-func (c *ClusterUpConfig) makeOpenShiftAPIServerConfig(masterConfigDir string) (string, error) {
-	return kubeapiserver.MakeOpenShiftAPIServerConfig(masterConfigDir, c.BaseDir)
-}
-
-func (c *ClusterUpConfig) makeOpenShiftControllerConfig(masterConfigDir string) (string, error) {
-	return kubeapiserver.MakeOpenShiftControllerConfig(masterConfigDir, c.BaseDir)
-}
-
 // startKubelet returns the container id
 func (c *ClusterUpConfig) startKubelet(out io.Writer, masterConfigDir, nodeConfigDir, podManifestDir string, kubeletFlags []string) (string, error) {
 	dockerRoot, err := c.DockerHelper().DockerRoot()
@@ -503,14 +457,16 @@ func (c *ClusterUpConfig) startKubelet(out io.Writer, masterConfigDir, nodeConfi
 	} else if currentUser, err := user.Current(); err == nil {
 		var cfgPath string
 		cfgPath = filepath.Join(currentUser.HomeDir, ".docker", "config.json")
-		container.ContainerBinds = append(container.ContainerBinds, fmt.Sprintf("%s:/root/.docker/config.json", cfgPath))
-		glog.Infof("docker config path %s", cfgPath)
+		// First check if config file exist on the host before add it to the mounts.
+		if _, err := os.Stat(cfgPath); !os.IsNotExist(err) {
+			container.ContainerBinds = append(container.ContainerBinds, fmt.Sprintf("%s:/root/.docker/config.json", cfgPath))
+		}
 	}
 	// Kubelet needs to be able to write to
 	// /sys/devices/virtual/net/vethXXX/brport/hairpin_mode, so make this rw, not ro.
 	container.ContainerBinds = append(container.ContainerBinds, "/sys/devices/virtual/net:/sys/devices/virtual/net:rw")
 
-	container.NodeImage = c.nodeImage()
+	container.NodeImage = c.hyperkubeImage()
 	container.HTTPProxy = c.HTTPProxy
 	container.HTTPSProxy = c.HTTPSProxy
 	container.NoProxy = c.NoProxy
@@ -570,39 +526,6 @@ func waitForHealthyKubeAPIServer(clientConfig *rest.Config) error {
 	}
 
 	return err
-}
-
-func watchAPIServices(aggregatorClient aggregatorclient.Interface) {
-	watch, err := aggregatorClient.ApiregistrationV1beta1().APIServices().Watch(metav1.ListOptions{})
-	if err != nil {
-		panic(err)
-	}
-
-	watchCh := watch.ResultChan()
-	for {
-		select {
-		case watchEvent, ok := <-watchCh:
-			if !ok {
-				glog.V(5).Infof("channel closed, restablishing")
-				watch, err := aggregatorClient.ApiregistrationV1beta1().APIServices().Watch(metav1.ListOptions{})
-				if err != nil {
-					panic(err)
-				}
-				watchCh = watch.ResultChan()
-			}
-			if watchEvent.Object == nil {
-				glog.V(5).Infof("observed %q without an object", watchEvent.Type)
-				break
-			}
-			encoder := json.NewYAMLSerializer(json.DefaultMetaFactory, legacyscheme.Scheme, legacyscheme.Scheme)
-			output, err := kruntime.Encode(encoder, watchEvent.Object)
-			if err != nil {
-				utilruntime.HandleError(err)
-				continue
-			}
-			glog.V(5).Infof("observed %q with\n%v", watchEvent.Type, string(output))
-		}
-	}
 }
 
 func newNamespaceBytes(namespace string, labels map[string]string) []byte {

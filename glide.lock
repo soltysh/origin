@@ -1,5 +1,5 @@
-hash: 7a5b382ed6ecdedf7804c015b92ddfde3a8ba0d76b6ecb2780f63cb12bed72e8
-updated: 2018-09-09T17:17:44.484655868-04:00
+hash: ac6dbd6bab6de923e6faddb7966a8b9e7b56d07183369819b85ec31f37a4971c
+updated: 2018-09-20T10:36:53.295613692-04:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -8,10 +8,6 @@ imports:
   subpackages:
   - compute/metadata
   - internal
-- name: github.com/AaronO/go-git-http
-  version: 1d9485b3a98f7484772acb5f0dda28b69b958fdd
-  subpackages:
-  - auth
 - name: github.com/abbot/go-http-auth
   version: c0ef4539dfab4d21c8ef20ba2924f9fc6f186d35
 - name: github.com/alexbrainman/sspi
@@ -615,7 +611,7 @@ imports:
 - name: github.com/gorilla/mux
   version: 9e1f5955c0d22b55d9e20d6faa28589f83b2faca
 - name: github.com/gorilla/securecookie
-  version: 3a8eb0de07814569f0bdadffc60dda1668de90bd
+  version: bb1ab76598893258e90f45d8a708a2505a95af2a
 - name: github.com/gorilla/sessions
   version: a3acf13e802c358d65f249324d14ed24aac11370
 - name: github.com/gorilla/websocket
@@ -821,7 +817,7 @@ imports:
   - go-selinux
   - go-selinux/label
 - name: github.com/openshift/api
-  version: 0b3bd79a90c98650f1715c3021b8e9dcf4a7069a
+  version: 4507dcb6a81f6593aa336c5b47927cf0ae297b72
   subpackages:
   - apps
   - apps/v1
@@ -842,6 +838,8 @@ imports:
   - network/v1
   - oauth
   - oauth/v1
+  - openshiftcontrolplane
+  - openshiftcontrolplane/v1
   - operator
   - operator/v1alpha1
   - osin
@@ -978,22 +976,26 @@ imports:
   - user/informers/externalversions/user/v1
   - user/listers/user/v1
 - name: github.com/openshift/imagebuilder
-  version: 9e710ba9bcf926e020306b67633bf38b8e671da5
+  version: fbd4f31c568b767447302e08fb3531b33bcbf837
   subpackages:
   - dockerclient
   - imageprogress
   - signal
   - strslice
 - name: github.com/openshift/library-go
-  version: 22dedfb86f4c865c83437755c3e96f62e9c3c103
+  version: c45781559e320a91f9d392579bdbb757d8ebae72
   subpackages:
   - pkg/config/client
+  - pkg/config/configdefaults
   - pkg/config/helpers
   - pkg/config/leaderelection
   - pkg/controller
   - pkg/controller/controllercmd
   - pkg/crypto
   - pkg/git
+  - pkg/image/internal/digest
+  - pkg/image/internal/reference
+  - pkg/image/reference
   - pkg/network/networkapihelpers
   - pkg/operator/resource/resourceapply
   - pkg/operator/resource/resourcecread
@@ -1006,7 +1008,7 @@ imports:
   - pkg/controller/servingcert
   - pkg/controller/servingcert/cryptoextensions
 - name: github.com/openshift/source-to-image
-  version: ac6dc9858fa90b751686436fea9a951f183c79bb
+  version: 8f7dcac0d9fd3fcb97d7c251dc9dd60fe47bb101
   subpackages:
   - pkg/api
   - pkg/api/constants
@@ -1087,8 +1089,10 @@ imports:
   - client
 - name: github.com/RangelReale/osin
   version: 2dc1b43167692cdc89446b99b98fa9de6bff020f
+  repo: https://github.com/openshift/osin.git
 - name: github.com/RangelReale/osincli
   version: fababb0555f21315d1a34af6615a16eaab44396b
+  repo: https://github.com/openshift/osincli.git
 - name: github.com/renstrom/dedent
   version: 020d11c3b9c0c7a3c2efcc8e5cf5b9ef7bcea21f
 - name: github.com/robfig/cron
@@ -1521,7 +1525,7 @@ imports:
   - third_party/forked/golang/netutil
   - third_party/forked/golang/reflect
 - name: k8s.io/apiserver
-  version: 9661477daf70563d97981c06b3aa7f3277b765c9
+  version: 10f1ab2357d4fc15527540fd7d7953ba8e6c98e3
   repo: https://github.com/openshift/kubernetes-apiserver.git
   subpackages:
   - pkg/admission
@@ -1835,7 +1839,7 @@ imports:
   subpackages:
   - metrics/api/v1/types
 - name: k8s.io/kube-aggregator
-  version: 7c242b7f0eabe510ee2f4d25785b54a7fa60dab9
+  version: 660b3ce4ff19afa530c17cfa305df52a17360e09
   repo: https://github.com/openshift/kube-aggregator.git
   subpackages:
   - pkg/apis/apiregistration
@@ -1876,7 +1880,7 @@ imports:
   - pkg/util/proto/testing
   - pkg/util/proto/validation
 - name: k8s.io/kubernetes
-  version: 91becade863adc3e9a01585d027896fd1f0d12a7
+  version: 2799b210909994efea7a9098f7c31db425b77ba9
   repo: https://github.com/openshift/kubernetes.git
   subpackages:
   - cmd/controller-manager/app
@@ -2701,7 +2705,7 @@ imports:
   - pkg/client/custom_metrics
   - pkg/client/external_metrics
 - name: k8s.io/sample-apiserver
-  version: a678900f2f745168dad0fe7e7ffd678ee8b10b52
+  version: 1110eaa81bb381332df7842b5e6fc21c3bc174e5
   subpackages:
   - pkg/apis/wardle
   - pkg/apis/wardle/v1alpha1
@@ -2715,4 +2719,8 @@ imports:
   version: db5cfe13f5cc80a4990d98e2e1b0707a4d1a5394
   subpackages:
   - sortorder
-testImports: []
+testImports:
+- name: github.com/AaronO/go-git-http
+  version: 1d9485b3a98f7484772acb5f0dda28b69b958fdd
+  subpackages:
+  - auth

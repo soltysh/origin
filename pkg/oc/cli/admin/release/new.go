@@ -11,7 +11,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -56,13 +55,17 @@ func NewRelease(f kcmdutil.Factory, parentName string, streams genericclioptions
 			in the '/manifests' directory in their image. This command iterates over a set of
 			operator images and extracts those manifests into a single, ordered list of
 			Kubernetes objects that can then be iteratively updated on a cluster by the
-			cluster version operator when it is time to perform an update.
+			cluster version operator when it is time to perform an update. Manifest files are
+			renamed to '99_<image_name>_<filename>' by default, and an operator author that
+			needs to provide a global-ordered file (before or after other operators) should
+			prepend '0000_' to their filename, which instructs the release builder to not
+			assign a component prefix.
 
 			Experimental: This command is under active development and may change without notice.
 		`),
 		Example: templates.Examples(fmt.Sprintf(`
 			# Create a release from the latest origin images and push to a DockerHub repo
-			%[1]s new --from-image-stream=origin-v3.11 -n openshift --to-image docker.io/mycompany/myrepo:latest
+			%[1]s new --from-image-stream=origin-v4.0 -n openshift --to-image docker.io/mycompany/myrepo:latest
 		`, parentName)),
 		Run: func(cmd *cobra.Command, args []string) {
 			kcmdutil.CheckErr(o.Complete(f, cmd, args))
@@ -163,8 +166,6 @@ type imageData struct {
 	Directory string
 }
 
-var matchPrefix = regexp.MustCompile(`^(\d+[-_])?(.*)$`)
-
 func findStatusTagEvent(tags []imageapi.NamedTagEventList, name string) *imageapi.TagEvent {
 	for _, tag := range tags {
 		if tag.Tag != name {
@@ -250,14 +251,11 @@ func (o *NewOptions) Run() error {
 		for _, f := range files {
 			if f.IsDir() {
 				name := f.Name()
-				if matches := matchPrefix.FindStringSubmatch(name); matches != nil {
-					name = matches[2]
-				}
 				metadata[name] = imageData{Directory: filepath.Join(o.FromDirectory, f.Name())}
 				ordered = append(ordered, name)
 			}
-			if f.Name() == "images" {
-				data, err := ioutil.ReadFile(filepath.Join(o.FromDirectory, "images"))
+			if f.Name() == "image-references" {
+				data, err := ioutil.ReadFile(filepath.Join(o.FromDirectory, "image-references"))
 				if err != nil {
 					return err
 				}
@@ -343,6 +341,19 @@ func (o *NewOptions) Run() error {
 			fmt.Fprintf(o.ErrOut, "info: Manifests will be extracted to %s\n", dir)
 		}
 
+		if len(is.Spec.Tags) > 0 {
+			if err := os.MkdirAll(dir, 0770); err != nil {
+				return err
+			}
+			data, err := json.MarshalIndent(is, "", "  ")
+			if err != nil {
+				return err
+			}
+			if err := ioutil.WriteFile(filepath.Join(dir, "image-references"), data, 0640); err != nil {
+				return err
+			}
+		}
+
 		opts := extract.NewOptions(genericclioptions.IOStreams{Out: o.Out, ErrOut: o.ErrOut})
 		opts.OnlyFiles = true
 		opts.MaxPerRegistry = o.MaxPerRegistry
@@ -355,11 +366,9 @@ func (o *NewOptions) Run() error {
 			}
 		}
 
-		for _, tag := range is.Spec.Tags {
+		for i := range is.Spec.Tags {
+			tag := is.Spec.Tags[i]
 			dstDir := filepath.Join(dir, tag.Name)
-			if err := os.MkdirAll(dstDir, 0770); err != nil {
-				return err
-			}
 			src := tag.From.Name
 			ref, err := imagereference.Parse(src)
 			if err != nil {
@@ -379,7 +388,10 @@ func (o *NewOptions) Run() error {
 						glog.V(2).Infof("Image %s has no io.openshift.release.operator label, skipping", m.ImageRef)
 						return false, nil
 					}
-					fmt.Fprintf(o.Out, "Loading manifests from %s ...\n", src)
+					if err := os.MkdirAll(dstDir, 0770); err != nil {
+						return false, err
+					}
+					fmt.Fprintf(o.Out, "Loading manifests from %s: %s ...\n", tag.Name, src)
 					return true, nil
 				},
 			})
@@ -445,7 +457,7 @@ func (o *NewOptions) Run() error {
 			return err
 		}
 	default:
-		fmt.Fprintf(os.Stderr, "info: Extracting operator contents to disk without building a release artifact\n")
+		fmt.Fprintf(o.ErrOut, "info: Extracting operator contents to disk without building a release artifact\n")
 		if _, err := io.Copy(ioutil.Discard, pr); err != nil {
 			return err
 		}
@@ -470,8 +482,6 @@ type nopCloser struct {
 }
 
 func (_ nopCloser) Close() error { return nil }
-
-var hasNumberPrefix = regexp.MustCompile(`^\d+_`)
 
 // writeNestedTarHeader writes a series of nested tar headers, starting with parts[0] and joining each
 // successive part, but only if the path does not exist already.
@@ -533,9 +543,7 @@ func writePayload(w io.Writer, now time.Time, is *imageapi.ImageStream, ordered 
 			continue
 		}
 
-		transform := func(data []byte) ([]byte, error) {
-			return data, nil
-		}
+		transform := NopManifestMapper
 
 		if fi := takeFileByName(&contents, "image-references"); fi != nil {
 			path := filepath.Join(data.Directory, fi.Name())
@@ -552,8 +560,10 @@ func writePayload(w io.Writer, now time.Time, is *imageapi.ImageStream, ordered 
 			}
 			filename := fi.Name()
 
-			// give every file a unique name and ordering
-			if !hasNumberPrefix.MatchString(filename) {
+			// components that don't declare that they need to be part of the global order
+			// get put in a scoped bucket at the end. Only a few components should need to
+			// be in the global order.
+			if !strings.HasPrefix(filename, "0000_") {
 				filename = fmt.Sprintf("99_%s_%s", name, filename)
 			}
 			if count, ok := files[filename]; ok {
@@ -579,6 +589,7 @@ func writePayload(w io.Writer, now time.Time, is *imageapi.ImageStream, ordered 
 			if err := tw.WriteHeader(&tar.Header{Mode: 0444, ModTime: now, Typeflag: tar.TypeReg, Name: dst, Size: int64(len(modified))}); err != nil {
 				return nil, err
 			}
+			glog.V(6).Infof("Writing payload to %s\n%s", dst, string(modified))
 			if _, err := tw.Write(modified); err != nil {
 				return nil, err
 			}

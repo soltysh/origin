@@ -32,11 +32,11 @@ os::test::junit::declare_suite_start "cmd/admin"
 
 os::test::junit::declare_suite_start "cmd/admin/start"
 # Check failure modes of various system commands
-os::cmd::expect_failure_and_text 'openshift start network' 'you must specify a configuration file with --config'
-os::cmd::expect_failure_and_text 'openshift start network --config=${NODECONFIG} --enable=kubelet' 'the following components are not recognized: kubelet'
-os::cmd::expect_failure_and_text 'openshift start network --config=${NODECONFIG} --enable=kubelet,other' 'the following components are not recognized: kubelet, other'
-os::cmd::expect_failure_and_text 'openshift start network --config=${NODECONFIG} --disable=other' 'the following components are not recognized: other'
-os::cmd::expect_failure_and_text 'openshift start network --config=${NODECONFIG} --disable=dns,proxy,plugins' 'at least one node component must be enabled \(dns, plugins, proxy\)'
+os::cmd::expect_failure_and_text 'openshift-sdn' 'you must specify a configuration file with --config'
+os::cmd::expect_failure_and_text 'openshift-sdn --config=${NODECONFIG} --enable=kubelet' 'the following components are not recognized: kubelet'
+os::cmd::expect_failure_and_text 'openshift-sdn --config=${NODECONFIG} --enable=kubelet,other' 'the following components are not recognized: kubelet, other'
+os::cmd::expect_failure_and_text 'openshift-sdn --config=${NODECONFIG} --disable=other' 'the following components are not recognized: other'
+os::cmd::expect_failure_and_text 'openshift-sdn --config=${NODECONFIG} --disable=dns,proxy,plugins' 'at least one node component must be enabled \(dns, plugins, proxy\)'
 os::test::junit::declare_suite_end
 
 os::test::junit::declare_suite_start "cmd/admin/manage-node"
@@ -69,10 +69,10 @@ status:
     pods: \"110\"
 ' | oc create -f -"
 
-os::cmd::expect_success_and_text 'oc adm manage-node --selector= --schedulable=true' 'Ready'
-os::cmd::expect_success_and_not_text 'oc adm manage-node --selector= --schedulable=true' 'SchedulingDisabled'
+os::cmd::expect_success_and_text 'oc adm manage-node --selector= --schedulable=true' 'marked schedulable'
+os::cmd::expect_success_and_not_text 'oc adm manage-node --selector= --schedulable=true' 'marked unschedulable'
 os::cmd::expect_success_and_not_text 'oc get node -o yaml' 'unschedulable: true'
-os::cmd::expect_success_and_text 'oc adm manage-node --selector= --schedulable=false' 'SchedulingDisabled'
+os::cmd::expect_success_and_text 'oc adm manage-node --selector= --schedulable=false' 'marked unschedulable'
 os::cmd::expect_success_and_text 'oc get node -o yaml' 'unschedulable: true'
 # ensure correct serialization of podList output
 os::cmd::expect_success_and_text "oc adm manage-node --list-pods --selector= -o jsonpath='{ .kind }'" 'List'

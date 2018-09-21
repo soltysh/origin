@@ -50,6 +50,10 @@ all build:
 build-tests: build-extended-test build-integration-test build-router-e2e-test
 .PHONY: build-tests
 
+build-network:
+	hack/build-go.sh cmd/openshift-sdn cmd/sdn-cni-plugin vendor/github.com/containernetworking/plugins/plugins/ipam/host-local vendor/github.com/containernetworking/plugins/plugins/main/loopback
+.PHONY: build-network
+
 build-extended-test:
 	hack/build-go.sh test/extended/extended.test
 .PHONY: build-extended-test
@@ -97,7 +101,6 @@ verify: build
 	hack/verify-generated-informers.sh ||r=1;\
 	hack/verify-generated-openapi.sh ||r=1;\
 	hack/verify-generated-completions.sh ||r=1;\
-	hack/verify-generated-docs.sh ||r=1;\
 	hack/verify-cli-conventions.sh ||r=1;\
 	hack/verify-generated-json-codecs.sh ||r=1; \
 	hack/verify-generated-swagger-spec.sh ||r=1;\
@@ -129,7 +132,6 @@ update:
 	hack/update-generated-openapi.sh
 	$(MAKE) build
 	hack/update-generated-completions.sh
-	hack/update-generated-docs.sh
 .PHONY: update
 
 # Update all generated artifacts for the API

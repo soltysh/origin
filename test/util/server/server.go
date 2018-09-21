@@ -29,16 +29,17 @@ import (
 	kclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
+	authorizationv1typedclient "github.com/openshift/client-go/authorization/clientset/versioned/typed/authorization/v1"
+	projectv1typedclient "github.com/openshift/client-go/project/clientset/versioned/typed/project/v1"
 	"github.com/openshift/library-go/pkg/crypto"
-	authorizationclient "github.com/openshift/origin/pkg/authorization/generated/internalclientset"
 	"github.com/openshift/origin/pkg/cmd/server/admin"
 	configapi "github.com/openshift/origin/pkg/cmd/server/apis/config"
 	"github.com/openshift/origin/pkg/cmd/server/bootstrappolicy"
 	"github.com/openshift/origin/pkg/cmd/server/etcd"
+	"github.com/openshift/origin/pkg/cmd/server/etcd/etcdserver"
 	"github.com/openshift/origin/pkg/cmd/server/start"
 	cmdutil "github.com/openshift/origin/pkg/cmd/util"
 	newproject "github.com/openshift/origin/pkg/oc/cli/admin/project"
-	projectclient "github.com/openshift/origin/pkg/project/generated/internalclientset/typed/project/internalversion"
 	"github.com/openshift/origin/test/util"
 
 	// install all APIs
@@ -265,34 +266,6 @@ func CreateMasterCerts(masterArgs *start.MasterArgs) error {
 	return nil
 }
 
-func CreateNodeCerts(nodeArgs *start.NodeArgs, masterURL string) error {
-	getSignerOptions := &admin.SignerCertOptions{
-		CertFile:   admin.DefaultCertFilename(nodeArgs.MasterCertDir, "ca"),
-		KeyFile:    admin.DefaultKeyFilename(nodeArgs.MasterCertDir, "ca"),
-		SerialFile: admin.DefaultSerialFilename(nodeArgs.MasterCertDir, "ca"),
-	}
-
-	createNodeConfig := admin.NewDefaultCreateNodeConfigOptions()
-	createNodeConfig.IOStreams = genericclioptions.IOStreams{Out: os.Stdout}
-	createNodeConfig.SignerCertOptions = getSignerOptions
-	createNodeConfig.NodeConfigDir = nodeArgs.ConfigDir.Value()
-	createNodeConfig.NodeName = nodeArgs.NodeName
-	createNodeConfig.Hostnames = []string{nodeArgs.NodeName}
-	createNodeConfig.ListenAddr = nodeArgs.ListenArg.ListenAddr
-	createNodeConfig.APIServerURL = masterURL
-	createNodeConfig.APIServerCAFiles = []string{admin.DefaultCertFilename(nodeArgs.MasterCertDir, "ca")}
-	createNodeConfig.NodeClientCAFile = admin.DefaultCertFilename(nodeArgs.MasterCertDir, "ca")
-
-	if err := createNodeConfig.Validate(nil); err != nil {
-		return err
-	}
-	if _, err := createNodeConfig.CreateNodeFolder(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func MasterEtcdClients(config *configapi.MasterConfig) (*etcdclientv3.Client, error) {
 	etcd3, err := etcd.MakeEtcdClientV3(config.EtcdClientInfo)
 	if err != nil {
@@ -339,6 +312,20 @@ func StartConfiguredMasterWithOptions(masterConfig *configapi.MasterConfig) (str
 	if masterConfig.EtcdConfig != nil && len(masterConfig.EtcdConfig.StorageDir) > 0 {
 		os.RemoveAll(masterConfig.EtcdConfig.StorageDir)
 	}
+
+	// for the extraction purposes we need to start etcd manually here
+	etcdserver.RunEtcd(masterConfig.EtcdConfig)
+	etcdClient3, err := etcd.MakeEtcdClientV3(masterConfig.EtcdClientInfo)
+	if err != nil {
+		return "", err
+	}
+	defer etcdClient3.Close()
+	if err := etcd.TestEtcdClientV3(etcdClient3); err != nil {
+		return "", err
+	}
+	// and we need to ensure that StartMaster doesn't start it
+	masterConfig.EtcdConfig = nil
+
 	if err := start.NewMaster(masterConfig, true /* always needed for cluster role aggregation */, true).Start(); err != nil {
 		return "", err
 	}
@@ -543,7 +530,7 @@ func WaitForServiceAccounts(clientset kclientset.Interface, namespace string, ac
 // CreateNewProject creates a new project using the clusterAdminClient, then gets a token for the adminUser and returns
 // back a client for the admin user
 func CreateNewProject(clientConfig *restclient.Config, projectName, adminUser string) (kclientset.Interface, *restclient.Config, error) {
-	projectClient, err := projectclient.NewForConfig(clientConfig)
+	projectClient, err := projectv1typedclient.NewForConfig(clientConfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -551,16 +538,15 @@ func CreateNewProject(clientConfig *restclient.Config, projectName, adminUser st
 	if err != nil {
 		return nil, nil, err
 	}
-	authorizationClient, err := authorizationclient.NewForConfig(clientConfig)
+	authorizationClient, err := authorizationv1typedclient.NewForConfig(clientConfig)
 	if err != nil {
 		return nil, nil, err
 	}
-	authorizationInterface := authorizationClient.Authorization()
 
 	newProjectOptions := &newproject.NewProjectOptions{
 		ProjectClient:   projectClient,
 		RbacClient:      kubeExternalClient.RbacV1(),
-		SARClient:       authorizationInterface.SubjectAccessReviews(),
+		SARClient:       authorizationClient.SubjectAccessReviews(),
 		ProjectName:     projectName,
 		AdminRole:       bootstrappolicy.AdminRoleName,
 		AdminUser:       adminUser,
