@@ -4929,7 +4929,7 @@ spec:
         name: myapp
         command:
         - /bin/sleep
-        - "10"
+        - "infinity"
   triggers:
   - type: ConfigChange
 `)
@@ -12051,7 +12051,6 @@ objects:
   spec:
     tls:
       termination: edge
-      insecureEdgeTerminationPolicy: Allow
     to:
       kind: Service
       name: gitserver-tokenauth
@@ -12247,7 +12246,6 @@ objects:
   spec:
     tls:
       termination: edge
-      insecureEdgeTerminationPolicy: Allow
     to:
       kind: Service
       name: gitserver
