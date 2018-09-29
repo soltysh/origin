@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 8ed0f2c44d54cd1072c8313fe712fde01d4da4bc
+%global commit 7b284f149aa74482bc2c52d6c34073ae90478a09
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.5.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=d755c66f8f KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.6.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=e7cc342f6f KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.6.0%{?dist}
+Release:        0.7.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -488,6 +488,28 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Fri Sep 28 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.7.0
+- test: Set custom deployment template app to sleep infinity
+  (mrunalp@gmail.com)
+- Add a new simple start-local server option for quick iteration
+  (ccoleman@redhat.com)
+- oc image extract should be able to print which layer files come from
+  (ccoleman@redhat.com)
+- Fix JobSpecNode flake (maszulik@redhat.com)
+- Drop ocscheme (maszulik@redhat.com)
+- UPSTREAM: <carry>: partially revert b6fe59b835, squash during rebase with
+  b6fe59b835 (maszulik@redhat.com)
+- Generated completions (maszulik@redhat.com)
+- Deprecate output-version in import app.json (maszulik@redhat.com)
+- Add job test for oc status (maszulik@redhat.com)
+- disable git auth service token test (bparees@redhat.com)
+- Revert "use insecure for git auth testing because the CA is unpredictable"
+  (bparees@redhat.com)
+- Support `--to-dir` on release to make local iteration easier
+  (ccoleman@redhat.com)
+- UPSTREAM: 68820: Wait for events instead of just checking them in cronjob e2e
+  (maszulik@redhat.com)
+
 * Thu Sep 27 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.6.0
 - bump (deads@redhat.com)
 - generated (deads@redhat.com)
