@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 7b284f149aa74482bc2c52d6c34073ae90478a09
+%global commit 83f8de4f67c02098dcc4b5baa7e0185f11dd8c94
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.6.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=e7cc342f6f KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.7.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=2127d8baf9 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.7.0%{?dist}
+Release:        0.8.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -488,6 +488,54 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Wed Oct 03 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.8.0
+- remove unnecessary force pull in test (bparees@redhat.com)
+- make oc logs function (deads@redhat.com)
+- use common storage for image extraction in docker builds (bparees@redhat.com)
+- swithc kube-apiserver port to 6443 (deads@redhat.com)
+- cluster-up: add locks for controller manager (mfojtik@redhat.com)
+- cluster-up: remove remote docker (mfojtik@redhat.com)
+- UPSTREAM: 69300: test: Wait for pod event to show up (mrunalp@gmail.com)
+- UPSTREAM: 69291: Increase the pod start short timeout (mrunalp@gmail.com)
+- cluster-up: remove some default tests (mfojtik@redhat.com)
+- cluster-up: move lock host path to base dir (mfojtik@redhat.com)
+- extended: pull and re-tag operator images (mfojtik@redhat.com)
+- update completions (mfojtik@redhat.com)
+- fix import restrictions (mfojtik@redhat.com)
+- remove unnecessary oc cluster up bits (deads@redhat.com)
+- cluster-up: fix controller manager overrides (mfojtik@redhat.com)
+- cluster-up: fix etcd certs+keys (stefan.schimanski@gmail.com)
+- cluster-up: tell kube-apiserver operator about secrets path
+  (stefan.schimanski@gmail.com)
+- cluster-up: fix kubeconfig rendering of certs+keys
+  (stefan.schimanski@gmail.com)
+- cluster-up: create assets/auth/kubeconfig (stefan.schimanski@gmail.com)
+- cluster-up: pass hyperkube image to kube-apiserver render
+  (stefan.schimanski@gmail.com)
+- cluster-up: skim more from legacy cluster up (mfojtik@redhat.com)
+- cluster-up: add sane api to track required images (mfojtik@redhat.com)
+- cluster-up: add assets rendering (mfojtik@redhat.com)
+- cluster-up: switch etcd to static pod (stefan.schimanski@gmail.com)
+- cluster-up: remove transitional secret+configmap creation, now through
+  bootkube phase 1 (stefan.schimanski@gmail.com)
+- cluster-up: call cluster-kube-apiserver-operator render
+  (stefan.schimanski@gmail.com)
+- cluster-up: create <base-dir>/render-tls dir and use for kube-apiserver
+  secrets (stefan.schimanski@gmail.com)
+- cluster-up: use bootkube to bootstrap the kube control plane
+  (stefan.schimanski@gmail.com)
+- Remove Simo Sorce from OWNERS (mkhan@redhat.com)
+- Re-enable CSI plugin test (fabiojrb@gmail.com)
+- UPSTREAM: 69215: Fix flake in CSI plugin e2e test (fabiojrb@gmail.com)
+- Handle schema1 registries and fix various edge cases (ccoleman@redhat.com)
+- Only try mounting when on the same registry (ccoleman@redhat.com)
+- Support mirror of a release with rewrite (ccoleman@redhat.com)
+- use overlay for buildah storage (bparees@redhat.com)
+- use common storage for image content extraction (bparees@redhat.com)
+- UPSTREAM: 68980: kubelet should not create pod sandbox (decarr@redhat.com)
+- UPSTREAM: 68023: Replace git volume with configmap in emptydir wrapper
+  conflict test (mawong@redhat.com)
+
 * Fri Sep 28 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.7.0
 - test: Set custom deployment template app to sleep infinity
   (mrunalp@gmail.com)
