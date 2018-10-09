@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 96c1def00bc0a60e02cb31c42caeb3595ab95627
+%global commit 49edbcb1f28c440673a9cb2128c85704ba88d1ff
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.15.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=a53b3122f0 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.16.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=8a59bb30f1 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.16.0%{?dist}
+Release:        0.17.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -488,6 +488,19 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Oct 09 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.17.0
+- cluster-up: add scheduler operator (stefan.schimanski@gmail.com)
+- UPSTREAM: 68141: Retry attaching multipath iSCSI volumes
+  (jsafrane@redhat.com)
+- UPSTREAM: 69140: Fix iSCSI panic in DetachDisk (jsafrane@redhat.com)
+- UPSTREAM: 67140: Add wait loop for multipath devices to appear
+  (jsafrane@redhat.com)
+- UPSTREAM: 63176: Fix discovery/deletion of iscsi block devices
+  (jsafrane@redhat.com)
+- add rsync include,exclude support (jvallejo@redhat.com)
+- cluster-up: no --manifest-lock-host-path for controller manager
+  (stefan.schimanski@gmail.com)
+
 * Mon Oct 08 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.16.0
 - use namespace labels to prevent SCC usage (deads@redhat.com)
 - increase timeouts because tests on gcp run slow (bparees@redhat.com)
