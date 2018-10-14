@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 3e8b13bc2185a949c807c31a9d0b2509348ec9fe
+%global commit e05e7a8a391924e7b6a73ecb7106475df909d0f5
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.31.73 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=3e8b13b
+%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.31.74 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=e19c1e54d0
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.5.5.31.74
+Version:        3.5.5.31.75
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -586,6 +586,12 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Sun Oct 14 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.5.5.31.75-1
+- [3.5] bump(github.com/evanphx/json-patch):
+  f195058310bd062ea7c754a834f0ff43b4b63afb (eparis@redhat.com)
+- bump(github.com/evanphx/json-patch): 94e38aa1586e8a6c8a75770bddf5ff84c48a106b
+  (eparis@redhat.com)
+
 * Fri Jun 08 2018 Justin Pierce <jupierce@redhat.com> 3.5.5.31.74-1
 - 
 
