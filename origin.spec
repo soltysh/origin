@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 6f80b1079b0b2ec18559949643af75d914fb4b6b
+%global commit c2d049768069d106f0a3a942e2e932ed0db2b624
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=10+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.10.52 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.10.0+b81c8f8 OS_GIT_PATCH=52 KUBE_GIT_COMMIT=b81c8f8 KUBE_GIT_MINOR=10+ OS_GIT_COMMIT=9506203c7c KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=10+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.10.53 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.10.0+b81c8f8 OS_GIT_PATCH=53 KUBE_GIT_COMMIT=b81c8f8 KUBE_GIT_MINOR=10+ OS_GIT_COMMIT=44f03f1aa9 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -64,7 +64,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.10.53
+Version:        3.10.54
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -487,6 +487,18 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Mon Oct 15 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.10.54-1
+- UPSTREAM: 68141: Retry attaching multipath iSCSI volumes
+  (jsafrane@redhat.com)
+- UPSTREAM: 69140: Fix iSCSI panic in DetachDisk (jsafrane@redhat.com)
+- UPSTREAM: 67140: Add wait loop for multipath devices to appear
+  (jsafrane@redhat.com)
+- UPSTREAM: 63176: Fix discovery/deletion of iscsi block devices
+  (jsafrane@redhat.com)
+- UPSTREAM: 58646: Change the portworx volume attribute SupportsSELinux to
+  false (mawong@redhat.com)
+- Fix #20203 for release-3.10 branch (kumarpraveen.nitdgp@gmail.com)
+
 * Fri Oct 05 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.10.53-1
 - 
 
