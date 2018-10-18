@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit f94a8ee95eded2692bdfd20fb016380e361a918f
+%global commit 112fa047e987433b6704cbb6be753fae27353136
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.23 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=23 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=4ed94adb83 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.24 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=24 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=cc0580a9a7 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -64,7 +64,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.11.24
+Version:        3.11.25
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -488,6 +488,25 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Thu Oct 18 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.25-1
+- Issue #21153 update the console URI not to redirect 127.0.0.1
+  (kumarpraveen.nitdgp@gmail.com)
+- bump(*) (bparees@redhat.com)
+- Report errors detected by imageprogress.NewPullWriter (mitr@redhat.com)
+- Close imageprogress.NewPullWriter immediately after pulling the image
+  (mitr@redhat.com)
+- Move the NewPullWriter/outputStream initialization closer to the ImagePull
+  call (mitr@redhat.com)
+- Fix a GitHub issue URL (mitr@redhat.com)
+- Report errors detected by imageprogress writers (mitr@redhat.com)
+- Always Close the imageprogress writers (mitr@redhat.com)
+- Reinitialize pull/push options, and the progress writer objects, on each
+  attempt (mitr@redhat.com)
+- Replace the "opts" parameter to retryImageAction with "actionName"
+  (mitr@redhat.com)
+- Use a callback instead of type-unsafe opts in RetryImageAction
+  (mitr@redhat.com)
+
 * Tue Oct 16 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.24-1
 - UPSTREAM: 69300: test: Wait for pod event to show up (mrunalp@gmail.com)
 - UPSTREAM: 69291: Increase the pod start short timeout (mrunalp@gmail.com)
