@@ -314,6 +314,7 @@ func (plugin *OsdnNode) SetupSDN() (bool, error) {
 
 	// Table 100: egress network policy dispatch; edited by UpdateEgressNetworkPolicy()
 	// eg, "table=100, reg0=${tenant_id}, priority=2, ip, nw_dst=${external_cidr}, actions=drop
+	otx.AddFlow("table=100, priority=300, udp, udp_dst=%s, actions=drop", VXLAN_PORT)
 	otx.AddFlow("table=100, priority=0, actions=output:2")
 
 	// Table 110: outbound multicast filtering, updated by updateLocalMulticastFlows() in pod.go
