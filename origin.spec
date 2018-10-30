@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 6aef1f527f8f10769182915ca4e370d5c7ddf74a
+%global commit ba705a9facdea430045e544401e3371eb98f3885
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=10+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.10.65 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.10.0+b81c8f8 OS_GIT_PATCH=65 KUBE_GIT_COMMIT=b81c8f8 KUBE_GIT_MINOR=10+ OS_GIT_COMMIT=5294ffd3a6 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=10+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.10.66 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.10.0+b81c8f8 OS_GIT_PATCH=66 KUBE_GIT_COMMIT=b81c8f8 KUBE_GIT_MINOR=10+ OS_GIT_COMMIT=42e070909a KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -64,7 +64,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.10.66
+Version:        3.10.67
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -487,6 +487,13 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Mon Oct 29 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.10.67-1
+- UPSTREAM: 69565: Fixed subpath in containerized kubelet (jsafrane@redhat.com)
+- UPSTREAM: 68741: Fixed subpath cleanup when /var/lib/kubelet is a symlink
+  (jsafrane@redhat.com)
+- UPSTREAM: <carry>: Add mounter.EvalHostSymlinks (jsafrane@redhat.com)
+- UPSTREAM: <carry>: Add Nsenter.EvalSymlinks (jsafrane@redhat.com)
+
 * Fri Oct 26 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.10.66-1
 - UPSTREAM: 67825: fix vsphere multiattach (hekumar@redhat.com)
 
