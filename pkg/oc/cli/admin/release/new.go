@@ -484,6 +484,9 @@ func (o *NewOptions) Run() error {
 				Name: m.Source,
 			})
 			tag = &is.Spec.Tags[len(is.Spec.Tags)-1]
+		} else {
+			// when we override the spec, we have to reset any annotations
+			tag.Annotations = nil
 		}
 		tag.From = &corev1.ObjectReference{
 			Name: m.Destination,
@@ -555,6 +558,12 @@ func (o *NewOptions) Run() error {
 		})
 	}
 
+	if payload == nil {
+		if err := pruneUnreferencedImageStreams(o.ErrOut, is, metadata); err != nil {
+			return err
+		}
+	}
+
 	var operators []string
 	pr, pw := io.Pipe()
 	go func() {
@@ -583,7 +592,7 @@ func (o *NewOptions) Run() error {
 	case len(operators) == 0:
 		fmt.Fprintf(o.ErrOut, "warning: No operator metadata was found, no operators will be part of the release.\n")
 	default:
-		fmt.Fprintf(o.Out, "Built update image content from %d operators\n", len(operators))
+		fmt.Fprintf(o.Out, "Built release image from %d operators\n", len(operators))
 	}
 
 	return nil
@@ -633,8 +642,11 @@ func (o *NewOptions) extractManifests(is *imageapi.ImageStream, name string, met
 	}
 
 	for i := range is.Spec.Tags {
-		tag := is.Spec.Tags[i]
+		tag := &is.Spec.Tags[i]
 		dstDir := filepath.Join(dir, tag.Name)
+		if tag.From.Kind != "DockerImage" {
+			continue
+		}
 		src := tag.From.Name
 		ref, err := imagereference.Parse(src)
 		if err != nil {
@@ -650,14 +662,28 @@ func (o *NewOptions) extractManifests(is *imageapi.ImageStream, name string, met
 			LayerFilter: extract.NewPositionLayerFilter(-1),
 
 			ConditionFn: func(m *extract.Mapping, dgst digest.Digest, imageConfig *docker10.DockerImageConfig) (bool, error) {
-				if imageConfig.Config == nil || len(imageConfig.Config.Labels["io.openshift.release.operator"]) == 0 {
+				var labels map[string]string
+				if imageConfig.Config != nil {
+					labels = imageConfig.Config.Labels
+				}
+
+				if len(labels["vcs-ref"]) > 0 {
+					if tag.Annotations == nil {
+						tag.Annotations = make(map[string]string)
+					}
+					tag.Annotations["io.openshift.build.commit.id"] = labels["vcs-ref"]
+					tag.Annotations["io.openshift.build.commit.ref"] = labels["io.openshift.build.commit.ref"]
+					tag.Annotations["io.openshift.build.source-location"] = labels["vcs-url"]
+				}
+
+				if len(labels["io.openshift.release.operator"]) == 0 {
 					glog.V(2).Infof("Image %s has no io.openshift.release.operator label, skipping", m.ImageRef)
 					return false, nil
 				}
 				if err := os.MkdirAll(dstDir, 0770); err != nil {
 					return false, err
 				}
-				fmt.Fprintf(o.Out, "Loading manifests from %s: %s ...\n", tag.Name, src)
+				fmt.Fprintf(o.Out, "Loading manifests from %s: %s ...\n", tag.Name, m.ImageRef.ID)
 				return true, nil
 			},
 		})
@@ -1154,3 +1180,33 @@ func takeFileByName(files *[]os.FileInfo, name string) os.FileInfo {
 }
 
 type PayloadVerifier func(filename string, data []byte) error
+
+func pruneUnreferencedImageStreams(out io.Writer, is *imageapi.ImageStream, metadata map[string]imageData) error {
+	referenced := make(map[string]struct{})
+	for _, v := range metadata {
+		is, err := parseImageStream(filepath.Join(v.Directory, "image-references"))
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		for _, tag := range is.Spec.Tags {
+			referenced[tag.Name] = struct{}{}
+		}
+	}
+	var updated []imageapi.TagReference
+	for _, tag := range is.Spec.Tags {
+		_, ok := referenced[tag.Name]
+		if !ok {
+			glog.V(3).Infof("Excluding tag %s which is not referenced by an operator", tag.Name)
+			continue
+		}
+		updated = append(updated, tag)
+	}
+	if len(updated) != len(is.Spec.Tags) {
+		fmt.Fprintf(out, "info: Included %d referenced images into the payload\n", len(updated))
+		is.Spec.Tags = updated
+	}
+	return nil
+}
