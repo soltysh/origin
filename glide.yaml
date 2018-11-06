@@ -45,7 +45,8 @@ import:
 - package: github.com/openshift/client-go
   version: master
 - package: github.com/openshift/library-go
-  version: master
+  repo:    https://github.com/soltysh/library-go.git
+  version: rebase-1.12.2
 - package: github.com/openshift/service-serving-cert-signer
   version: master
 - package: github.com/openshift/source-to-image
