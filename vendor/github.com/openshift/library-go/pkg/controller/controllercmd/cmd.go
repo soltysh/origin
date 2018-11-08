@@ -1,6 +1,7 @@
 package controllercmd
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -13,7 +14,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apiserver/pkg/util/logs"
 
@@ -74,7 +74,7 @@ func (c *ControllerCommandConfig) NewCommand() *cobra.Command {
 				glog.Fatal(err)
 			}
 
-			if err := c.StartController(wait.NeverStop); err != nil {
+			if err := c.StartController(context.Background()); err != nil {
 				glog.Fatal(err)
 			}
 		},
@@ -86,7 +86,7 @@ func (c *ControllerCommandConfig) NewCommand() *cobra.Command {
 }
 
 // StartController runs the controller
-func (c *ControllerCommandConfig) StartController(stopCh <-chan struct{}) error {
+func (c *ControllerCommandConfig) StartController(ctx context.Context) error {
 	uncastConfig, err := c.basicFlags.ToConfigObj(configScheme, operatorv1alpha1.SchemeGroupVersion)
 	if err != nil {
 		return err
@@ -135,5 +135,5 @@ func (c *ControllerCommandConfig) StartController(stopCh <-chan struct{}) error 
 		WithKubeConfigFile(c.basicFlags.KubeConfigFile, nil).
 		WithLeaderElection(config.LeaderElection, "", c.componentName+"-lock").
 		WithServer(config.ServingInfo, config.Authentication, config.Authorization).
-		Run(stopCh)
+		Run(ctx)
 }
