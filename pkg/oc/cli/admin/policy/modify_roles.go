@@ -362,7 +362,9 @@ func (o *RoleModificationOptions) innerComplete(f kcmdutil.Factory, cmd *cobra.C
 	o.DryRun = kcmdutil.GetFlagBool(cmd, "dry-run")
 	o.Output = kcmdutil.GetFlagString(cmd, "output")
 	o.PrintObj = func(obj runtime.Object) error {
-		return kcmdutil.PrintObject(cmd, obj, o.Out)
+		// FIXME: wire new printer flags
+		// return kcmdutil.PrintObject(cmd, obj, o.Out)
+		return nil
 	}
 	o.PrintErrf = func(format string, args ...interface{}) {
 		fmt.Fprintf(o.ErrOut, format, args...)
