@@ -71,6 +71,7 @@ type SCCReviewOptions struct {
 	builder                  *resource.Builder
 	RESTClientFactory        func(mapping *meta.RESTMapping) (resource.RESTClient, error)
 	FilenameOptions          resource.FilenameOptions
+	noHeaders                bool
 	serviceAccountNames      []string // it contains user inputs it could be long sa name like system:serviceaccount:bob:default or short one
 	shortServiceAccountNames []string // it contains only short sa name for example 'bob'
 
@@ -99,7 +100,7 @@ func NewCmdSccReview(name, fullName string, f kcmdutil.Factory, streams genericc
 
 	cmd.Flags().StringSliceVarP(&o.serviceAccountNames, "serviceaccount", "z", o.serviceAccountNames, "service account in the current namespace to use as a user")
 	kcmdutil.AddFilenameOptionFlags(cmd, &o.FilenameOptions, "Filename, directory, or URL to a file identifying the resource to get from a server.")
-	kcmdutil.AddNoHeadersFlags(cmd)
+	cmd.Flags().BoolVar(&o.noHeaders, "no-headers", o.noHeaders, "When using the default output format, don't print headers (default print headers).")
 
 	o.PrintFlags.AddFlags(cmd)
 	return cmd
@@ -169,7 +170,7 @@ func (o *SCCReviewOptions) Complete(f kcmdutil.Factory, args []string, cmd *cobr
 		printFlags:     o.PrintFlags,
 		humanPrinting:  len(output) == 0 || wide,
 		humanPrintFunc: sccReviewHumanPrintFunc,
-		noHeaders:      kcmdutil.GetFlagBool(cmd, "no-headers"),
+		noHeaders:      o.noHeaders,
 	}
 
 	return nil
