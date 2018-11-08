@@ -131,7 +131,8 @@ func NewCmdAddRoleToGroup(name, fullName string, f kcmdutil.Factory, streams gen
 	cmd.Flags().StringVar(&o.RoleNamespace, "role-namespace", o.RoleNamespace, "namespace where the role is located: empty means a role defined in cluster policy")
 
 	kcmdutil.AddDryRunFlag(cmd)
-	kcmdutil.AddPrinterFlags(cmd)
+	// FIXME: wire new printer flags
+	// kcmdutil.AddPrinterFlags(cmd)
 	return cmd
 }
 
@@ -159,7 +160,8 @@ func NewCmdAddRoleToUser(name, fullName string, f kcmdutil.Factory, streams gene
 	cmd.Flags().StringSliceVarP(&o.SANames, "serviceaccount", "z", o.SANames, "service account in the current namespace to use as a user")
 
 	kcmdutil.AddDryRunFlag(cmd)
-	kcmdutil.AddPrinterFlags(cmd)
+	// FIXME: wire new printer flags
+	// kcmdutil.AddPrinterFlags(cmd)
 	return cmd
 }
 
@@ -184,7 +186,8 @@ func NewCmdRemoveRoleFromGroup(name, fullName string, f kcmdutil.Factory, stream
 	cmd.Flags().StringVar(&o.RoleNamespace, "role-namespace", o.RoleNamespace, "namespace where the role is located: empty means a role defined in cluster policy")
 
 	kcmdutil.AddDryRunFlag(cmd)
-	kcmdutil.AddPrinterFlags(cmd)
+	// FIXME: wire new printer flags
+	// kcmdutil.AddPrinterFlags(cmd)
 	return cmd
 }
 
@@ -211,7 +214,8 @@ func NewCmdRemoveRoleFromUser(name, fullName string, f kcmdutil.Factory, streams
 	cmd.Flags().StringSliceVarP(&o.SANames, "serviceaccount", "z", o.SANames, "service account in the current namespace to use as a user")
 
 	kcmdutil.AddDryRunFlag(cmd)
-	kcmdutil.AddPrinterFlags(cmd)
+	// FIXME: wire new printer flags
+	// kcmdutil.AddPrinterFlags(cmd)
 	return cmd
 }
 
@@ -235,7 +239,8 @@ func NewCmdAddClusterRoleToGroup(name, fullName string, f kcmdutil.Factory, stre
 	cmd.Flags().StringVar(&o.RoleBindingName, "rolebinding-name", o.RoleBindingName, "Name of the rolebinding to modify or create. If left empty creates a new rolebinding with a default name")
 
 	kcmdutil.AddDryRunFlag(cmd)
-	kcmdutil.AddPrinterFlags(cmd)
+	// FIXME: wire new printer flags
+	// kcmdutil.AddPrinterFlags(cmd)
 	return cmd
 }
 
@@ -261,7 +266,8 @@ func NewCmdAddClusterRoleToUser(name, fullName string, f kcmdutil.Factory, strea
 	cmd.Flags().StringSliceVarP(&o.SANames, "serviceaccount", "z", o.SANames, "service account in the current namespace to use o.SANamess a user")
 
 	kcmdutil.AddDryRunFlag(cmd)
-	kcmdutil.AddPrinterFlags(cmd)
+	// FIXME: wire new printer flags
+	// kcmdutil.AddPrinterFlags(cmd)
 	return cmd
 }
 
@@ -285,7 +291,8 @@ func NewCmdRemoveClusterRoleFromGroup(name, fullName string, f kcmdutil.Factory,
 	cmd.Flags().StringVar(&o.RoleBindingName, "rolebinding-name", o.RoleBindingName, "Name of the rolebinding to modify. If left empty it will operate on all rolebindings")
 
 	kcmdutil.AddDryRunFlag(cmd)
-	kcmdutil.AddPrinterFlags(cmd)
+	// FIXME: wire new printer flags
+	// kcmdutil.AddPrinterFlags(cmd)
 	return cmd
 }
 
@@ -311,7 +318,8 @@ func NewCmdRemoveClusterRoleFromUser(name, fullName string, f kcmdutil.Factory, 
 	cmd.Flags().StringSliceVarP(&o.SANames, "serviceaccount", "z", o.SANames, "service account in the current namespace to use as a user")
 
 	kcmdutil.AddDryRunFlag(cmd)
-	kcmdutil.AddPrinterFlags(cmd)
+	// FIXME: wire new printer flags
+	// kcmdutil.AddPrinterFlags(cmd)
 	return cmd
 }
 
