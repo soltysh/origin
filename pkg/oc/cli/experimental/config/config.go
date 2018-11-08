@@ -20,7 +20,7 @@ func NewCmdConfig(name, fullName string, f kcmdutil.Factory, streams genericclio
 		Run:   kcmdutil.DefaultSubCommandRun(streams.ErrOut),
 	}
 
-	cmd.AddCommand(NewCmdPatch(PatchRecommendedName, fullName+" "+PatchRecommendedName, f, streams))
+	cmd.AddCommand(NewCmdPatch(PatchRecommendedName, f, streams))
 
 	return cmd
 }
