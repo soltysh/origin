@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -301,7 +302,7 @@ func (o *MigrateAPIStorageOptions) save(info *resource.Info, reporter migrate.Re
 		newObject, err := o.client.
 			Resource(info.Mapping.Resource).
 			Namespace(info.Namespace).
-			Update(oldObject)
+			Update(oldObject, metav1.UpdateOptions{})
 		if err != nil {
 			return migrate.DefaultRetriable(info, err)
 		}
