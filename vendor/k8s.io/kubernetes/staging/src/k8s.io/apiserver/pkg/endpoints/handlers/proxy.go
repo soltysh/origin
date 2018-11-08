@@ -17,6 +17,8 @@ limitations under the License.
 package handlers
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -242,6 +244,20 @@ func (r *ProxyHandler) tryUpgrade(ctx request.Context, w http.ResponseWriter, re
 	}
 	defer backendConn.Close()
 
+	var rawResponse []byte
+
+	// determine the http response code from the backend by reading from rawResponse+backendConn
+	rawResponseCode, headerBytes, err := getResponseCode(io.MultiReader(bytes.NewReader(rawResponse), backendConn))
+	if err != nil {
+		glog.V(6).Infof("Proxy connection error: %v", err)
+		responsewriters.ErrorNegotiated(ctx, err, r.Serializer, gv, w, req)
+		return true
+	}
+	if len(headerBytes) > len(rawResponse) {
+		// we read beyond the bytes stored in rawResponse, update rawResponse to the full set of bytes read from the backend
+		rawResponse = headerBytes
+	}
+
 	// TODO should we use _ (a bufio.ReadWriter) instead of requestHijackedConn
 	// when copying between the client and the backend? Docker doesn't when they
 	// hijack, just for reference...
@@ -254,6 +270,17 @@ func (r *ProxyHandler) tryUpgrade(ctx request.Context, w http.ResponseWriter, re
 
 	if err = newReq.Write(backendConn); err != nil {
 		responsewriters.ErrorNegotiated(ctx, err, r.Serializer, gv, w, req)
+		return true
+	}
+
+	if rawResponseCode != http.StatusSwitchingProtocols {
+		// If the backend did not upgrade the request, finish echoing the response from the backend to the client and return, closing the connection.
+		glog.V(6).Infof("Proxy upgrade error, status code %d", rawResponseCode)
+		_, err := io.Copy(requestHijackedConn, backendConn)
+		if err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
+			glog.Errorf("Error proxying data from backend to client: %v", err)
+		}
+		// Indicate we handled the request
 		return true
 	}
 
@@ -290,4 +317,17 @@ func singleJoiningSlash(a, b string) string {
 		return a + "/" + b
 	}
 	return a + b
+}
+
+// getResponseCode reads a http response from the given reader, returns the status code,
+// the bytes read from the reader, and any error encountered
+func getResponseCode(r io.Reader) (int, []byte, error) {
+	rawResponse := bytes.NewBuffer(make([]byte, 0, 256))
+	// Save the bytes read while reading the response headers into the rawResponse buffer
+	resp, err := http.ReadResponse(bufio.NewReader(io.TeeReader(r, rawResponse)), nil)
+	if err != nil {
+		return 0, nil, err
+	}
+	// return the http status code and the raw bytes consumed from the reader in the process
+	return resp.StatusCode, rawResponse.Bytes(), nil
 }
