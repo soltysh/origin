@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/evanphx/json-patch"
@@ -17,11 +16,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/cli-runtime/pkg/genericclioptions/printers"
 	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	// "k8s.io/kubernetes/pkg/kubectl/scheme"
-	kprinters "k8s.io/kubernetes/pkg/printers"
+	"k8s.io/kubernetes/pkg/kubectl/scheme"
 
 	configapi "github.com/openshift/origin/pkg/cmd/server/apis/config"
 )
@@ -33,14 +32,17 @@ var patchTypes = map[string]types.PatchType{"json": types.JSONPatchType, "merge"
 // PatchOptions is the start of the data required to perform the operation.  As new fields are added, add them here instead of
 // referencing the cmd.Flags()
 type PatchOptions struct {
+	PrintFlags *genericclioptions.PrintFlags
+
+	Printer printers.ResourcePrinter
+
 	Filename  string
 	Patch     string
 	PatchType types.PatchType
 
 	Builder *resource.Builder
-	Printer kprinters.ResourcePrinter
 
-	Out io.Writer
+	genericclioptions.IOStreams
 }
 
 var (
@@ -50,8 +52,15 @@ var (
 		%[1]s openshift.local.config/master/master-config.yaml --patch='{"auditConfig": {"enabled": true}}'`)
 )
 
-func NewCmdPatch(name, fullName string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
-	o := &PatchOptions{Out: streams.Out}
+func NewCmdPatchOptions(streams genericclioptions.IOStreams) *PatchOptions {
+	return &PatchOptions{
+		PrintFlags: genericclioptions.NewPrintFlags("patched").WithTypeSetter(scheme.Scheme).WithDefaultOutput("yaml"),
+		IOStreams:  streams,
+	}
+}
+
+func NewCmdPatch(name string, f kcmdutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+	o := NewCmdPatchOptions(streams)
 
 	cmd := &cobra.Command{
 		Use:     name + " FILENAME -p PATCH",
@@ -67,9 +76,8 @@ func NewCmdPatch(name, fullName string, f kcmdutil.Factory, streams genericcliop
 	cmd.Flags().StringVarP(&o.Patch, "patch", "p", "", "The patch to be applied to the resource JSON file.")
 	cmd.MarkFlagRequired("patch")
 	cmd.Flags().String("type", "strategic", fmt.Sprintf("The type of patch being provided; one of %v", sets.StringKeySet(patchTypes).List()))
-	// FIXME wire new printer flags
-	// kcmdutil.AddPrinterFlags(cmd)
 
+	o.PrintFlags.AddFlags(cmd)
 	return cmd
 }
 
@@ -88,16 +96,11 @@ func (o *PatchOptions) Complete(f kcmdutil.Factory, cmd *cobra.Command, args []s
 
 	o.Builder = f.NewBuilder().Local()
 
-	// var err error
-	// decoders := []runtime.Decoder{scheme.Codecs.UniversalDeserializer(), configapi.Codecs.UniversalDeserializer(), unstructured.UnstructuredJSONScheme}
-	// FIXME wire new printer flags
-	// printOpts := kcmdutil.ExtractCmdPrintOptions(cmd, false)
-	// printOpts.OutputFormatType = "yaml"
-
-	// o.Printer, err = kprinters.GetStandardPrinter(configapi.Scheme, nil, decoders, *printOpts)
-	// if err != nil {
-	// 	return err
-	// }
+	var err error
+	o.Printer, err = o.PrintFlags.ToPrinter()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
