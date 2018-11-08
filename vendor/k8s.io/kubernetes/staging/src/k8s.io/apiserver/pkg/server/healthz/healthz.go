@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
@@ -67,7 +68,7 @@ type log struct {
 	lastVerified atomic.Value
 }
 
-func (*log) Name() string {
+func (l *log) Name() string {
 	return "log"
 }
 

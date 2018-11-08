@@ -130,9 +130,9 @@ func (c StatusSyncer) sync() error {
 	}
 
 	glog.V(4).Infof("clusterOperator %s/%s set to %v", c.clusterOperatorNamespace, c.clusterOperatorName, runtime.EncodeOrDie(unstructured.UnstructuredJSONScheme, operatorConfig))
-	_, updateErr := c.clusterOperatorClient.Update(operatorConfig)
+	_, updateErr := c.clusterOperatorClient.Update(operatorConfig, metav1.UpdateOptions{})
 	if apierrors.IsNotFound(updateErr) {
-		_, createErr := c.clusterOperatorClient.Create(operatorConfig)
+		_, createErr := c.clusterOperatorClient.Create(operatorConfig, metav1.CreateOptions{})
 		if apierrors.IsNotFound(createErr) {
 			// this means that the API isn't present.  We did not fail.  Try again later
 			glog.Infof("ClusterOperator API not created")

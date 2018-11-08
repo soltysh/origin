@@ -106,7 +106,7 @@ func NewAvailableConditionController(
 		Timeout: 5 * time.Second,
 	}
 	if proxyTransport != nil {
-		//discoveryClient.Transport = proxyTransport
+		discoveryClient.Transport = proxyTransport
 	}
 	c.discoveryClient = discoveryClient
 

@@ -1,11 +1,11 @@
 package controllercmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/golang/glog"
 
-	"k8s.io/apimachinery/pkg/util/wait"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/server/healthz"
 	"k8s.io/client-go/rest"
@@ -20,7 +20,7 @@ import (
 )
 
 // StartFunc is the function to call on leader election start
-type StartFunc func(config *rest.Config, stop <-chan struct{}) error
+type StartFunc func(config *rest.Config, ctx context.Context) error
 
 // OperatorBuilder allows the construction of an controller in optional pieces.
 type ControllerBuilder struct {
@@ -87,7 +87,7 @@ func (b *ControllerBuilder) WithInstanceIdentity(identity string) *ControllerBui
 }
 
 // Run starts your controller for you.  It uses leader election if you asked, otherwise it directly calls you
-func (b *ControllerBuilder) Run(stopCh <-chan struct{}) error {
+func (b *ControllerBuilder) Run(ctx context.Context) error {
 	clientConfig, err := b.getClientConfig()
 	if err != nil {
 		return err
@@ -114,7 +114,7 @@ func (b *ControllerBuilder) Run(stopCh <-chan struct{}) error {
 		}
 
 		go func() {
-			if err := server.PrepareRun().Run(stopCh); err != nil {
+			if err := server.PrepareRun().Run(ctx.Done()); err != nil {
 				glog.Error(err)
 			}
 			glog.Fatal("server exited")
@@ -122,7 +122,7 @@ func (b *ControllerBuilder) Run(stopCh <-chan struct{}) error {
 	}
 
 	if b.leaderElection == nil {
-		if err := b.startFunc(clientConfig, wait.NeverStop); err != nil {
+		if err := b.startFunc(clientConfig, ctx); err != nil {
 			return err
 		}
 		return fmt.Errorf("exited")
@@ -133,12 +133,12 @@ func (b *ControllerBuilder) Run(stopCh <-chan struct{}) error {
 		return err
 	}
 
-	leaderElection.Callbacks.OnStartedLeading = func(stop <-chan struct{}) {
-		if err := b.startFunc(clientConfig, stop); err != nil {
+	leaderElection.Callbacks.OnStartedLeading = func(ctx context.Context) {
+		if err := b.startFunc(clientConfig, ctx); err != nil {
 			glog.Fatal(err)
 		}
 	}
-	leaderelection.RunOrDie(leaderElection)
+	leaderelection.RunOrDie(ctx, leaderElection)
 	return fmt.Errorf("exited")
 }
 
