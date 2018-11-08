@@ -119,7 +119,10 @@ func (s *REST) Create(ctx context.Context, obj runtime.Object, createValidation 
 			config.Name,
 			rest.DefaultUpdatedObjectInfo(config),
 			rest.AdmissionToValidateObjectFunc(s.admit, attrs),
-			rest.AdmissionToValidateObjectUpdateFunc(s.admit, attrs))
+			rest.AdmissionToValidateObjectUpdateFunc(s.admit, attrs),
+			false,
+			&metav1.UpdateOptions{},
+		)
 		return err
 	})
 
