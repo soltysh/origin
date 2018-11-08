@@ -42,6 +42,7 @@ func NewNewOptions(streams genericclioptions.IOStreams) *NewOptions {
 	return &NewOptions{
 		IOStreams:      streams,
 		MaxPerRegistry: 4,
+		AlwaysInclude:  []string{"cluster-version-operator", "cli"},
 	}
 }
 
@@ -105,6 +106,7 @@ func NewRelease(f kcmdutil.Factory, parentName string, streams genericclioptions
 	flags.BoolVar(&o.SkipManifestCheck, "skip-manifest-check", o.SkipManifestCheck, "Ignore errors when an operator includes a yaml/yml/json file that is not parseable.")
 
 	flags.StringSliceVar(&o.Exclude, "exclude", o.Exclude, "A list of image names or tags to exclude. It is applied after all inputs. Comma separated or individual arguments.")
+	flags.StringSliceVar(&o.AlwaysInclude, "include", o.AlwaysInclude, "A list of image tags that should not be pruned. Excluding a tag takes precedence. Comma separated or individual arguments.")
 
 	// destination
 	flags.BoolVar(&o.DryRun, "dry-run", o.DryRun, "Skips changes to external registries via mirroring or pushing images.")
@@ -136,7 +138,8 @@ type NewOptions struct {
 	FromImageStream string
 	Namespace       string
 
-	Exclude []string
+	Exclude       []string
+	AlwaysInclude []string
 
 	ForceManifest    bool
 	ReleaseMetadata  string
@@ -230,7 +233,7 @@ func findSpecTag(tags []imageapi.TagReference, name string) *imageapi.TagReferen
 	return nil
 }
 
-type cincinnatiMetadata struct {
+type CincinnatiMetadata struct {
 	Kind string `json:"kind"`
 
 	Version  string   `json:"version"`
@@ -264,9 +267,9 @@ func (o *NewOptions) Run() error {
 		name = "0.0.1-" + now.Format("2006-01-02T150405Z")
 	}
 
-	var cm *cincinnatiMetadata
+	var cm *CincinnatiMetadata
 	if len(o.PreviousVersions) > 0 || len(o.ReleaseMetadata) > 0 || o.ForceManifest {
-		cm = &cincinnatiMetadata{Kind: "cincinnati-metadata-v0"}
+		cm = &CincinnatiMetadata{Kind: "cincinnati-metadata-v0"}
 		semverName, err := semver.Parse(name)
 		if err != nil {
 			return fmt.Errorf("when release metadata is added, the --name must be a semantic version")
@@ -559,7 +562,7 @@ func (o *NewOptions) Run() error {
 	}
 
 	if payload == nil {
-		if err := pruneUnreferencedImageStreams(o.ErrOut, is, metadata); err != nil {
+		if err := pruneUnreferencedImageStreams(o.ErrOut, is, metadata, o.AlwaysInclude); err != nil {
 			return err
 		}
 	}
@@ -866,7 +869,7 @@ func writeNestedTarHeader(tw *tar.Writer, parts []string, existing map[string]st
 	return nil
 }
 
-func writePayload(w io.Writer, now time.Time, is *imageapi.ImageStream, cm *cincinnatiMetadata, ordered []string, metadata map[string]imageData, allowMissingImages bool, verifiers []PayloadVerifier) ([]string, error) {
+func writePayload(w io.Writer, now time.Time, is *imageapi.ImageStream, cm *CincinnatiMetadata, ordered []string, metadata map[string]imageData, allowMissingImages bool, verifiers []PayloadVerifier) ([]string, error) {
 	var operators []string
 	directories := make(map[string]struct{})
 	files := make(map[string]int)
@@ -944,7 +947,7 @@ func writePayload(w io.Writer, now time.Time, is *imageapi.ImageStream, cm *cinc
 			// get put in a scoped bucket at the end. Only a few components should need to
 			// be in the global order.
 			if !strings.HasPrefix(filename, "0000_") {
-				filename = fmt.Sprintf("99_%s_%s", name, filename)
+				filename = fmt.Sprintf("0000_70_%s_%s", name, filename)
 			}
 			if count, ok := files[filename]; ok {
 				count++
@@ -993,7 +996,7 @@ func writePayload(w io.Writer, now time.Time, is *imageapi.ImageStream, cm *cinc
 	return operators, nil
 }
 
-func copyPayload(w io.Writer, now time.Time, is *imageapi.ImageStream, cm *cincinnatiMetadata, directory string, verifiers []PayloadVerifier) error {
+func copyPayload(w io.Writer, now time.Time, is *imageapi.ImageStream, cm *CincinnatiMetadata, directory string, verifiers []PayloadVerifier) error {
 	directories := make(map[string]struct{})
 
 	gw := gzip.NewWriter(w)
@@ -1181,7 +1184,7 @@ func takeFileByName(files *[]os.FileInfo, name string) os.FileInfo {
 
 type PayloadVerifier func(filename string, data []byte) error
 
-func pruneUnreferencedImageStreams(out io.Writer, is *imageapi.ImageStream, metadata map[string]imageData) error {
+func pruneUnreferencedImageStreams(out io.Writer, is *imageapi.ImageStream, metadata map[string]imageData, include []string) error {
 	referenced := make(map[string]struct{})
 	for _, v := range metadata {
 		is, err := parseImageStream(filepath.Join(v.Directory, "image-references"))
@@ -1194,6 +1197,9 @@ func pruneUnreferencedImageStreams(out io.Writer, is *imageapi.ImageStream, meta
 		for _, tag := range is.Spec.Tags {
 			referenced[tag.Name] = struct{}{}
 		}
+	}
+	for _, name := range include {
+		referenced[name] = struct{}{}
 	}
 	var updated []imageapi.TagReference
 	for _, tag := range is.Spec.Tags {
