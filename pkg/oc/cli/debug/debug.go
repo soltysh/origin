@@ -437,7 +437,7 @@ func (o *DebugOptions) RunDebug() error {
 					Follow:    true,
 				},
 				RESTClientGetter: o.RESTClientGetter,
-				ConsumeRequestFn: kcmd.DefaultConsumeRequestFn,
+				ConsumeRequestFn: kcmd.DefaultConsumeRequest,
 				IOStreams:        o.IOStreams,
 				LogsForObject:    o.LogsForObject,
 			}.RunLogs()

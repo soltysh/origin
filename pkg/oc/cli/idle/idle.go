@@ -521,7 +521,7 @@ func patchObj(obj runtime.Object, metadata metav1.Object, oldData []byte, mappin
 
 	helper := resource.NewHelper(clientForMapping, mapping)
 
-	return helper.Patch(metadata.GetNamespace(), metadata.GetName(), types.StrategicMergePatchType, patchBytes)
+	return helper.Patch(metadata.GetNamespace(), metadata.GetName(), types.StrategicMergePatchType, patchBytes, metav1.UpdateOptions{})
 }
 
 type scaleInfo struct {
