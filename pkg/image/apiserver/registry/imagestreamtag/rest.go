@@ -132,7 +132,7 @@ func (r *REST) Get(ctx context.Context, id string, options *metav1.GetOptions) (
 	return newISTag(tag, imageStream, image, false)
 }
 
-func (r *REST) Create(ctx context.Context, obj runtime.Object, createValidation rest.ValidateObjectFunc, _ bool) (runtime.Object, error) {
+func (r *REST) Create(ctx context.Context, obj runtime.Object, createValidation rest.ValidateObjectFunc, options *metav1.CreateOptions) (runtime.Object, error) {
 	istag, ok := obj.(*imageapi.ImageStreamTag)
 	if !ok {
 		return nil, kapierrors.NewBadRequest(fmt.Sprintf("obj is not an ImageStreamTag: %#v", obj))
@@ -203,7 +203,7 @@ func (r *REST) Create(ctx context.Context, obj runtime.Object, createValidation 
 	return nil, kapierrors.NewServerTimeout(imagegroup.Resource("imagestreamtags"), "create", 2)
 }
 
-func (r *REST) Update(ctx context.Context, tagName string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc) (runtime.Object, bool, error) {
+func (r *REST) Update(ctx context.Context, tagName string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc, forceAllowCreate bool, options *metav1.UpdateOptions) (runtime.Object, bool, error) {
 	name, tag, err := nameAndTag(tagName)
 	if err != nil {
 		return nil, false, err
