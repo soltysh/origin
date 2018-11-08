@@ -109,6 +109,7 @@ func NewCmdSccReview(name, fullName string, f kcmdutil.Factory, streams genericc
 type policyPrinter struct {
 	humanPrinting  bool
 	humanPrintFunc func(*resource.Info, runtime.Object, *bool, io.Writer) error
+	noHeaders      bool
 	printFlags     *genericclioptions.PrintFlags
 	info           *resource.Info
 }
