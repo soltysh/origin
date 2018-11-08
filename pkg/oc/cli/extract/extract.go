@@ -95,7 +95,8 @@ func NewCmdExtract(fullName string, f kcmdutil.Factory, streams genericclioption
 	cmd.Flags().StringSliceVarP(&o.Filenames, "filename", "f", o.Filenames, "Filename, directory, or URL to file to identify to extract the resource.")
 	cmd.MarkFlagFilename("filename")
 	cmd.Flags().StringSliceVar(&o.OnlyKeys, "keys", o.OnlyKeys, "An optional list of keys to extract (default is all keys).")
-	kcmdutil.AddPrinterFlags(cmd)
+	// FIXME wire new printer flags
+	// kcmdutil.AddPrinterFlags(cmd)
 	return cmd
 }
 

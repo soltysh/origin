@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	// "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -20,7 +20,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	kcmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/scheme"
+	// "k8s.io/kubernetes/pkg/kubectl/scheme"
 	kprinters "k8s.io/kubernetes/pkg/printers"
 
 	configapi "github.com/openshift/origin/pkg/cmd/server/apis/config"
@@ -67,7 +67,8 @@ func NewCmdPatch(name, fullName string, f kcmdutil.Factory, streams genericcliop
 	cmd.Flags().StringVarP(&o.Patch, "patch", "p", "", "The patch to be applied to the resource JSON file.")
 	cmd.MarkFlagRequired("patch")
 	cmd.Flags().String("type", "strategic", fmt.Sprintf("The type of patch being provided; one of %v", sets.StringKeySet(patchTypes).List()))
-	kcmdutil.AddPrinterFlags(cmd)
+	// FIXME wire new printer flags
+	// kcmdutil.AddPrinterFlags(cmd)
 
 	return cmd
 }
@@ -87,15 +88,16 @@ func (o *PatchOptions) Complete(f kcmdutil.Factory, cmd *cobra.Command, args []s
 
 	o.Builder = f.NewBuilder().Local()
 
-	var err error
-	decoders := []runtime.Decoder{scheme.Codecs.UniversalDeserializer(), configapi.Codecs.UniversalDeserializer(), unstructured.UnstructuredJSONScheme}
-	printOpts := kcmdutil.ExtractCmdPrintOptions(cmd, false)
-	printOpts.OutputFormatType = "yaml"
+	// var err error
+	// decoders := []runtime.Decoder{scheme.Codecs.UniversalDeserializer(), configapi.Codecs.UniversalDeserializer(), unstructured.UnstructuredJSONScheme}
+	// FIXME wire new printer flags
+	// printOpts := kcmdutil.ExtractCmdPrintOptions(cmd, false)
+	// printOpts.OutputFormatType = "yaml"
 
-	o.Printer, err = kprinters.GetStandardPrinter(configapi.Scheme, nil, decoders, *printOpts)
-	if err != nil {
-		return err
-	}
+	// o.Printer, err = kprinters.GetStandardPrinter(configapi.Scheme, nil, decoders, *printOpts)
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
