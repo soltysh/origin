@@ -244,18 +244,17 @@ func (r *ProxyHandler) tryUpgrade(ctx request.Context, w http.ResponseWriter, re
 	}
 	defer backendConn.Close()
 
-	var rawResponse []byte
+	if err = newReq.Write(backendConn); err != nil {
+		responsewriters.ErrorNegotiated(ctx, err, r.Serializer, gv, w, req)
+		return true
+	}
 
 	// determine the http response code from the backend by reading from rawResponse+backendConn
-	rawResponseCode, headerBytes, err := getResponseCode(io.MultiReader(bytes.NewReader(rawResponse), backendConn))
+	rawResponseCode, headerBytes, err := getResponseCode(backendConn)
 	if err != nil {
 		glog.V(6).Infof("Proxy connection error: %v", err)
 		responsewriters.ErrorNegotiated(ctx, err, r.Serializer, gv, w, req)
 		return true
-	}
-	if len(headerBytes) > len(rawResponse) {
-		// we read beyond the bytes stored in rawResponse, update rawResponse to the full set of bytes read from the backend
-		rawResponse = headerBytes
 	}
 
 	// TODO should we use _ (a bufio.ReadWriter) instead of requestHijackedConn
@@ -268,9 +267,12 @@ func (r *ProxyHandler) tryUpgrade(ctx request.Context, w http.ResponseWriter, re
 	}
 	defer requestHijackedConn.Close()
 
-	if err = newReq.Write(backendConn); err != nil {
-		responsewriters.ErrorNegotiated(ctx, err, r.Serializer, gv, w, req)
-		return true
+	// Forward header bytes back to client.
+	if len(headerBytes) > 0 {
+		if _, err = requestHijackedConn.Write(headerBytes); err != nil {
+			responsewriters.ErrorNegotiated(ctx, err, r.Serializer, gv, w, req)
+			return true
+		}
 	}
 
 	if rawResponseCode != http.StatusSwitchingProtocols {
