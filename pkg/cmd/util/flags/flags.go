@@ -8,42 +8,41 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	apiserverflag "k8s.io/apiserver/pkg/util/flag"
 )
 
 // Apply stores the provided arguments onto a flag set, reporting any errors
 // encountered during the process.
-func apply(args map[string][]string, flags *pflag.FlagSet, ignoreMissing bool) []error {
+func apply(args map[string][]string, flags apiserverflag.NamedFlagSets, ignoreMissing bool) []error {
 	var errs []error
 	for key, value := range args {
-		flag := flags.Lookup(key)
-		if flag == nil {
-			if !ignoreMissing {
-				errs = append(errs, field.Invalid(field.NewPath("flag"), key, "is not a valid flag"))
+		for _, fs := range flags.FlagSets {
+			flag := fs.Lookup(key)
+			if flag == nil {
+				if !ignoreMissing {
+					errs = append(errs, field.Invalid(field.NewPath("flag"), key, "is not a valid flag"))
+				}
+				continue
 			}
-			continue
-		}
-		for _, s := range value {
-			if err := flag.Value.Set(s); err != nil {
-				errs = append(errs, field.Invalid(field.NewPath(key), s, fmt.Sprintf("could not be set: %v", err)))
-				break
+			for _, s := range value {
+				if err := flag.Value.Set(s); err != nil {
+					errs = append(errs, field.Invalid(field.NewPath(key), s, fmt.Sprintf("could not be set: %v", err)))
+					break
+				}
 			}
 		}
 	}
 	return errs
 }
 
-func Resolve(args map[string][]string, fn func(*pflag.FlagSet)) []error {
-	fs := pflag.NewFlagSet("extended", pflag.ContinueOnError)
-	fn(fs)
-	return apply(args, fs, false)
+func Resolve(args map[string][]string, flagSet apiserverflag.NamedFlagSets) []error {
+	return apply(args, flagSet, false)
 }
 
 // ResolveIgnoreMissing resolves flags in the args, but does not fail on missing flags.  It silently skips those.
 // It's useful for building subsets of the full options, but validation should do a normal binding.
-func ResolveIgnoreMissing(args map[string][]string, fn func(*pflag.FlagSet)) []error {
-	fs := pflag.NewFlagSet("extended", pflag.ContinueOnError)
-	fn(fs)
-	return apply(args, fs, true)
+func ResolveIgnoreMissing(args map[string][]string, flagSet apiserverflag.NamedFlagSets) []error {
+	return apply(args, flagSet, true)
 }
 
 // ComponentFlag represents a set of enabled components used in a command line.
