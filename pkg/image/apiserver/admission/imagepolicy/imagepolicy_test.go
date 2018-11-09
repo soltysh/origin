@@ -396,7 +396,7 @@ func TestAdmissionWithoutPodSpec(t *testing.T) {
 		&kapi.Node{},
 		nil, schema.GroupVersionKind{Version: "v1", Kind: "Node"},
 		"", "node1", schema.GroupVersionResource{Version: "v1", Resource: "nodes"},
-		"", admission.Create, nil,
+		"", admission.Create, false, nil,
 	)
 	if err := p.Admit(attrs); !kerrors.IsForbidden(err) || !strings.Contains(err.Error(), "No list of images available for this object") {
 		t.Fatal(err)
