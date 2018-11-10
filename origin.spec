@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 790084174e86e1f48b0516dd69b7baa2efdc83f7
+%global commit 59edd26e2ce0b31d814a40e4f59977085aac405e
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=8+ OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.8.41 OS_GIT_TREE_STATE=clean OS_GIT_PATCH=41 KUBE_GIT_VERSION=v1.8.5+440f8d36da OS_GIT_CATALOG_VERSION=v0.1.2 KUBE_GIT_COMMIT=440f8d3 OS_GIT_COMMIT=28f7a20 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.8 ETCD_GIT_COMMIT=e211fb6
+%global os_git_vars OS_GIT_MINOR=8+ OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.8.42 OS_GIT_TREE_STATE=clean OS_GIT_PATCH=42 KUBE_GIT_VERSION=v1.8.5+440f8d36da OS_GIT_CATALOG_VERSION=v0.1.2 KUBE_GIT_COMMIT=440f8d3 OS_GIT_COMMIT=db4cf77288 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.8 ETCD_GIT_COMMIT=e211fb6
 }
 
 %if 0%{?skip_build}
@@ -68,7 +68,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.8.42
+Version:        3.8.43
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -642,6 +642,37 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Sat Nov 10 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.8.43-1
+- UPSTREAM: 00000: Verify backend upgrade (deads@redhat.com)
+- UPSTREAM: 60978: Fix use of "-w" flag to iptables-restore
+  (jtanenba@redhat.com)
+- [3.8] bump(github.com/evanphx/json-patch):
+  f195058310bd062ea7c754a834f0ff43b4b63afb (eparis@redhat.com)
+- UPSTREAM: 61294: Fix cpu cfs quota flag with pod cgroups
+  (sjenning@redhat.com)
+- UPSTREAM: opencontainers/runc: 1805: fix systemd cpu quota for -1
+  (sjenning@redhat.com)
+- [PATCH] Update custom tito tagger for new version (skuznets@redhat.com)
+- UPSTREAM: 66350: Start cloudResourceSyncsManager before getNodeAnyWay
+  (initializeModules) (jchaloup@redhat.com)
+- UPSTREAM: 63146: Remove patch retry conflict detection (jliggitt@redhat.com)
+- UPSTREAM: 65226: Put all the node address cloud provider retrival complex
+  logic into cloudResourceSyncManager (jchaloup@redhat.com)
+- Fix a crash on a certain type of unsupported NetworkPolicy (danw@redhat.com)
+- UPSTREAM: 64860:checkLimitsForResolvConf for the pod create and update events
+  instead of checking periodically (ravisantoshgudimetla@gmail.com)
+- SDN master should not guess IP addr of the node. (rpenta@redhat.com)
+- UPSTREAM: 58229: kubelet: imagegc: exempt sandbox image (sjenning@redhat.com)
+- UPSTREAM: 57020: ignore images in used by running containers when GC
+  (sjenning@redhat.com)
+- Log hack/test-go.sh into its own JUNIT_REPORT_OUTPUT location
+  (jchaloup@redhat.com)
+- Remove test reference to deleted content (ccoleman@redhat.com)
+- UPSTREAM: 63492: Close all kubelet->API connections on heartbeat failure
+  (jliggitt@redhat.com)
+- UPSTREAM: 63492: Always track kubelet -> API connections
+  (jliggitt@redhat.com)
+
 * Thu May 10 2018 Justin Pierce <jupierce@redhat.com> 3.8.42-1
 - 
 
