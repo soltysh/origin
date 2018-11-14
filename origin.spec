@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit d75605045616532f834893a7f90c830f04d5358d
+%global commit a5e851ddd6e6eda9e37c0cf4ed33a0d4a28a02a5
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.56.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=455b0dc17d KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.57.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=a473f79610 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.57.0%{?dist}
+Release:        0.58.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -472,6 +472,24 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Wed Nov 14 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.58.0
+- tests: Create a new test binary that can be used instead of extended.tests
+  (ccoleman@redhat.com)
+- tests: Remove old extended test suites and infrastructure
+  (ccoleman@redhat.com)
+- UPSTREAM: <drop>: Filter out a log message from output that blocks dry-run
+  (ccoleman@redhat.com)
+- api: Update api docs after vendor bump (ccoleman@redhat.com)
+- bump(*): Update to latest state of onsi and pkg/api (ccoleman@redhat.com)
+- Remove oc cluster up in favor of openshift/installer (lxia@redhat.com)
+- do not register the operator(and implicitly the config) scheme
+  (bparees@redhat.com)
+- Use `id -u` instead of `whoami` in local-up-master (ccoleman@redhat.com)
+- proxy: Don't allow multiple calls to switchService (cdc@redhat.com)
+- Make image API admission extended tests dockerless (obulatov@redhat.com)
+- fallback to the default builder SA secret for build pushes/pulls
+  (bparees@redhat.com)
+
 * Tue Nov 13 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.57.0
 - use origin-4.0-kubernetes-1.11.1 branch for publishing in kube forks
   (mfojtik@redhat.com)
