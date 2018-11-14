@@ -17,6 +17,7 @@ limitations under the License.
 package apiserver
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"crypto/tls"
@@ -33,11 +34,96 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"golang.org/x/net/websocket"
+	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/rest"
+	"k8s.io/kubernetes/pkg/runtime"
+	"k8s.io/kubernetes/pkg/runtime/serializer"
+	"k8s.io/kubernetes/pkg/util/httpstream"
 	utilnet "k8s.io/kubernetes/pkg/util/net"
+	"k8s.io/kubernetes/pkg/util/sets"
 )
+
+func TestProxyUpgradeErrorResponseTerminates(t *testing.T) {
+	backend := http.NewServeMux()
+	backend.Handle("/api/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Bad Request", 422)
+	}))
+	backend.Handle("/there", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("request to /there")
+	}))
+	backendServer := httptest.NewServer(backend)
+	defer backendServer.Close()
+	backendServerURL, _ := url.Parse(backendServer.URL)
+	backendServerURL.Path = "/hello"
+	scheme := api.Scheme
+	proxyHandler := &ProxyHandler{
+		//Prefix     string
+		storage: map[string]rest.Storage{
+			"bars": fakeStorage{backendServerURL: backendServerURL},
+		},
+		serializer:          serializer.NewCodecFactory(scheme),
+		context:             api.NewRequestContextMapper(),
+		requestInfoResolver: &RequestInfoResolver{APIPrefixes: sets.NewString("apis"), GrouplessAPIPrefixes: sets.NewString("api")},
+	}
+	proxy := httptest.NewServer(proxyHandler)
+	defer proxy.Close()
+	proxyURL, _ := url.Parse(proxy.URL)
+	conn, err := net.Dial("tcp", proxyURL.Host)
+	require.NoError(t, err)
+	bufferedReader := bufio.NewReader(conn)
+	// Send upgrade request resulting in an error to the proxy server
+	req, _ := http.NewRequest("GET", "/apis/foo/v1/bars/abc/proxy", nil)
+	req.Header.Set(httpstream.HeaderConnection, httpstream.HeaderUpgrade)
+	require.NoError(t, req.Write(conn))
+	resp, err := http.ReadResponse(bufferedReader, nil)
+	require.NoError(t, err)
+	_, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	resp.Body.Close()
+	// Send another request
+	req, _ = http.NewRequest("GET", "/there", nil)
+	require.NoError(t, req.Write(conn))
+	time.Sleep(time.Second)
+	conn.SetReadDeadline(time.Now().Add(time.Second))
+	resp, err = http.ReadResponse(bufferedReader, nil)
+	require.Error(t, err)
+}
+
+type fakeRequestInfoResolver struct{}
+
+func (fakeRequestInfoResolver) NewRequestInfo(req *http.Request) (*RequestInfo, error) {
+	return &RequestInfo{
+		IsResourceRequest: true,
+		Path:              req.URL.Path,
+		Verb:              req.Method,
+		APIPrefix:         "/apis",
+		APIGroup:          "foo",
+		APIVersion:        "v1",
+		Namespace:         "",
+		Resource:          "bars/proxy",
+		Subresource:       "proxy",
+		Name:              "abc",
+		Parts:             []string{"bars", "abc"},
+	}, nil
+}
+
+type fakeStorage struct {
+	backendServerURL *url.URL
+}
+
+func (fakeStorage) New() runtime.Object {
+	return nil
+}
+func (s fakeStorage) ResourceLocation(ctx api.Context, id string) (remoteLocation *url.URL, transport http.RoundTripper, err error) {
+	url := *s.backendServerURL
+	url.Path = "api"
+	return &url, http.DefaultTransport, nil
+}
 
 func TestProxyRequestContentLengthAndTransferEncoding(t *testing.T) {
 	chunk := func(data []byte) []byte {

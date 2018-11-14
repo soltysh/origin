@@ -17,6 +17,9 @@ limitations under the License.
 package rest
 
 import (
+	"bufio"
+	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httputil"
@@ -25,13 +28,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/glog"
+	"github.com/mxk/go-flowrate/flowrate"
 	"k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/util/httpstream"
 	"k8s.io/kubernetes/pkg/util/net"
 	"k8s.io/kubernetes/pkg/util/proxy"
-
-	"github.com/golang/glog"
-	"github.com/mxk/go-flowrate/flowrate"
 )
 
 // UpgradeAwareProxyHandler is a handler for proxy requests that may require an upgrade
@@ -138,25 +140,58 @@ func (h *UpgradeAwareProxyHandler) tryUpgrade(w http.ResponseWriter, req *http.R
 	}
 	defer backendConn.Close()
 
-	requestHijackedConn, _, err := w.(http.Hijacker).Hijack()
-	if err != nil {
-		h.Responder.Error(err)
-		return true
-	}
-	defer requestHijackedConn.Close()
-
 	newReq, err := http.NewRequest(req.Method, h.Location.String(), req.Body)
 	if err != nil {
 		h.Responder.Error(err)
 		return true
 	}
 	newReq.Header = req.Header
-
 	if err = newReq.Write(backendConn); err != nil {
 		h.Responder.Error(err)
 		return true
 	}
 
+	// determine the http response code from the backend by reading from backendConn
+	rawResponseCode, headerBytes, err := getResponseCode(backendConn)
+	if err != nil {
+		glog.V(6).Infof("Proxy connection error: %v", err)
+		h.Responder.Error(fmt.Errorf("Proxy connection error: %v", err))
+		return true
+	}
+
+	// Once the connection is hijacked, the ErrorResponder will no longer work, so
+	// hijacking should be the last step in the upgrade.
+	requestHijacker, ok := w.(http.Hijacker)
+	if !ok {
+		h.Responder.Error(fmt.Errorf("request connection cannot be hijacked: %T", w))
+		return true
+	}
+	requestHijackedConn, _, err := requestHijacker.Hijack()
+	if err != nil {
+		h.Responder.Error(fmt.Errorf("error hijacking request connection: %v", err))
+		return true
+	}
+	defer requestHijackedConn.Close()
+
+	// Forward raw response bytes back to client.
+	if len(headerBytes) > 0 {
+		if _, err = requestHijackedConn.Write(headerBytes); err != nil {
+			h.Responder.Error(fmt.Errorf("error hijacking request connection: %v", err))
+			return true
+		}
+	}
+	if rawResponseCode != http.StatusSwitchingProtocols {
+		// If the backend did not upgrade the request, finish echoing the response from the backend to the client and return, closing the connection.
+		glog.V(6).Infof("Proxy upgrade error, status code %d", rawResponseCode)
+		_, err := io.Copy(requestHijackedConn, backendConn)
+		if err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
+			glog.Errorf("Error proxying data from backend to client: %v", err)
+		}
+		// Indicate we handled the request
+		return true
+	}
+
+	// Proxy the connection.
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 
@@ -209,6 +244,19 @@ func (h *UpgradeAwareProxyHandler) defaultProxyTransport(url *url.URL, internalT
 	return &corsRemovingTransport{
 		RoundTripper: rewritingTransport,
 	}
+}
+
+// getResponseCode reads a http response from the given reader, returns the status code,
+// the bytes read from the reader, and any error encountered
+func getResponseCode(r io.Reader) (int, []byte, error) {
+	rawResponse := bytes.NewBuffer(make([]byte, 0, 256))
+	// Save the bytes read while reading the response headers into the rawResponse buffer
+	resp, err := http.ReadResponse(bufio.NewReader(io.TeeReader(r, rawResponse)), nil)
+	if err != nil {
+		return 0, nil, err
+	}
+	// return the http status code and the raw bytes consumed from the reader in the process
+	return resp.StatusCode, rawResponse.Bytes(), nil
 }
 
 // corsRemovingTransport is a wrapper for an internal transport. It removes CORS headers
