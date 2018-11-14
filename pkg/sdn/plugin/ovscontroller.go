@@ -176,9 +176,10 @@ func (oc *ovsController) SetupOVS(clusterNetworkCIDR, serviceNetworkCIDR, localS
 
 	// Table 100: egress network policy dispatch; edited by UpdateEgressNetworkPolicy()
 	// eg, "table=100, reg0=${tenant_id}, priority=2, ip, nw_dst=${external_cidr}, actions=drop
-	otx.AddFlow("table=100, priority=0, actions=output:2")
+	otx.AddFlow("table=100, priority=300,udp,udp_dst=%s,actions=drop", VXLAN_PORT)
 	otx.AddFlow("table=100, priority=%d,tcp,tcp_dst=53,nw_dst=%s,actions=output:2", osapi.EgressNetworkPolicyMaxRules+1, nodeIP)
 	otx.AddFlow("table=100, priority=%d,udp,udp_dst=53,nw_dst=%s,actions=output:2", osapi.EgressNetworkPolicyMaxRules+1, nodeIP)
+	otx.AddFlow("table=100, priority=0, actions=output:2")
 
 	// Table 110: outbound multicast filtering, updated by UpdateLocalMulticastFlows()
 	// eg, "table=110, priority=100, reg0=${tenant_id}, actions=goto_table:111
