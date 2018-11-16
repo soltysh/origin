@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 02e5b30318666eb247b2f464002fffc7a8e697ea
+%global commit ab51c79d0a2c8d2f06915864ae7f524cdffd18d1
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_VERSION='' OS_GIT_COMMIT='' OS_GIT_MAJOR='' OS_GIT_MINOR='' OS_GIT_TREE_STATE=''
+%global os_git_vars OS_GIT_TREE_STATE=clean OS_GIT_VERSION=v3.3.1.46.43 OS_GIT_COMMIT=ab51c79d0a OS_GIT_MAJOR=3 OS_GIT_MINOR=3+
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -46,7 +46,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.3.1.46.43
+Version:        3.3.1.46.44
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -562,6 +562,16 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Fri Nov 16 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.3.1.46.44
+- UPSTREAM: 00000: Verify backend upgrade (deads@redhat.com)
+- Don't allow pods to send VXLAN packets out of the SDN (danw@redhat.com)
+- [3.3] bump(github.com/evanphx/json-patch):
+  f195058310bd062ea7c754a834f0ff43b4b63afb (eparis@redhat.com)
+- bump(github.com/evanphx/json-patch): 94e38aa1586e8a6c8a75770bddf5ff84c48a106b
+  (eparis@redhat.com)
+- Replace 'docker' with 'container' (sdodson@redhat.com)
+- Use 3.4 tito/lib configuration (smunilla@redhat.com)
+
 * Fri May 11 2018 Justin Pierce <jupierce@redhat.com> 3.3.1.46.43
 - 
 
