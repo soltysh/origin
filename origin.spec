@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 83ba7508f7b1a37beb218243706c1c82b6e95e6c
+%global commit a2f875c617312c17705b7e3150ca7143d2e5922f
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.66.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=73e268f46d KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.67.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=f563664316 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.67.0%{?dist}
+Release:        0.68.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -472,6 +472,14 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Thu Nov 22 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.68.0
+- Set --cert-dir for kube-controller-manager in test-cmd (maszulik@redhat.com)
+- Generated (mkhan@redhat.com)
+- UPSTREAM: 71273: only update the apiservice status if the status has changed
+  (deads@redhat.com)
+- Bump github.com/openshift/service-serving-cert-signer (mkhan@redhat.com)
+- bump(*) (mkhan@redhat.com)
+
 * Wed Nov 21 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.67.0
 - Fix an incorrect error message on SDN restart (danw@redhat.com)
 - mute project cache evalution error (deads@redhat.com)
