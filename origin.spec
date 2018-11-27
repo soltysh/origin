@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 92b82782f30418ae06ad2667fb5bd12f0f640677
+%global commit 7e6fc97aefd5aec4241a680a5c79b42a5a66a99c
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.74.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=5dbec20227 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.75.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=c531bde9a7 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.75.0%{?dist}
+Release:        0.76.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -472,6 +472,17 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Nov 27 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.76.0
+- Increase the default test timeout to 15m (ccoleman@redhat.com)
+- run test builds in parallel (bparees@redhat.com)
+- servingInfo is not required for sdn configuration (ccoleman@redhat.com)
+- generate: OpenAPI changes from serving cert status generate: OpenAPI changes
+  for operator status (ccoleman@redhat.com)
+- Update docker registryclient consumers to use the go context
+  (ccoleman@redhat.com)
+- bump(*): Pick up correct version of docker/distribution (ccoleman@redhat.com)
+- Sync path of mountPath in host-path-example (lxia@redhat.com)
+
 * Tue Nov 27 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.75.0
 - UPSTREAM: 71318: apiserver: set glog as etcdclient logger
   (stefan.schimanski@gmail.com)
