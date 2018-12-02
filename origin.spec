@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 67dad9b58c2221dcb78043a4365c442915dc1b6a
+%global commit efd155ce10a0d87b52396f2a04496d746be4ceb3
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.31.81 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=67dad9b58c
+%global os_git_vars OS_GIT_MINOR=5+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.5.5.31.82 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=efd155ce10
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.5.5.31.82
+Version:        3.5.5.31.83
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -586,6 +586,10 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Sun Dec 02 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.5.5.31.83-1
+- UPSTREAM: 44962: Remove misleading error from CronJob controller when it
+  can't find parent UID (maszulik@redhat.com)
+
 * Sun Nov 25 2018 AOS Automation Release Team <aos-team-art@redhat.com> 3.5.5.31.82-1
 - 
 
