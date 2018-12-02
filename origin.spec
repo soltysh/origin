@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit a64e341bc0ec8c73887e0ee8fda0cdbeeee20f65
+%global commit 36770d05ccf8db4395120030579b9b5e414b631f
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.79.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4c42ab9df OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=d4c42ab9df KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.80.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+2ffbcca55c OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=2ffbcca55c KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.80.0%{?dist}
+Release:        0.81.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -472,6 +472,15 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Sun Dec 02 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.81.0
+- skip timestamps in build log output check (bparees@redhat.com)
+- re-enable cgroup quota checking build tests (bparees@redhat.com)
+- Slightly new format string for default release command (ccoleman@redhat.com)
+- only check for exceeding of ServerThreshold if the current row is a server
+  (michael@amazee.com)
+- Router: add disable namespace check test for host_admitter with wildcard and
+  non-wildcard routes (smitram@gmail.com)
+
 * Sat Dec 01 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.80.0
 - Add bootstrap kube:admin OAuth user (mkhan@redhat.com)
 - Default to using cluster-version-operator as the base payload layer
