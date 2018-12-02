@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 2d5f29cedfb6606e8ddfbfee36b68c4c4063151c
+%global commit a64e341bc0ec8c73887e0ee8fda0cdbeeee20f65
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.78.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=fde07ac7eb KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.79.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4c42ab9df OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=d4c42ab9df KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.79.0%{?dist}
+Release:        0.80.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -472,6 +472,21 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Sat Dec 01 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.80.0
+- Add bootstrap kube:admin OAuth user (mkhan@redhat.com)
+- Default to using cluster-version-operator as the base payload layer
+  (ccoleman@redhat.com)
+- Don't error out for now when events are detected (ccoleman@redhat.com)
+- Revert "run test builds in parallel" (bparees@redhat.com)
+- Revert "handle start build failure in test" (bparees@redhat.com)
+- ResourceQuota secret test is flaky, disable (ccoleman@redhat.com)
+- Record the OpenShift commit version with Kube (ccoleman@redhat.com)
+- Ensure `oc image info` works with manifest lists (ccoleman@redhat.com)
+- add unit test for ensureSecret() (johnkim76@gmail.com)
+- replace empty string check with len() (johnkim76@gmail.com)
+- allow empty string values for non-generated parameters (johnkim76@gmail.com)
+- Fix some bugs in the networkpolicy migration script (danw@redhat.com)
+
 * Sat Dec 01 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.79.0
 - Jenkins is registering global ginkgo hooks, must be scoped
   (ccoleman@redhat.com)
