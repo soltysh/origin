@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 36770d05ccf8db4395120030579b9b5e414b631f
+%global commit 511f7f66cc43c5beba02f2f54b6ab6e4a1486312
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.80.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+2ffbcca55c OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=2ffbcca55c KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.81.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+3ab0fd0a63 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=3ab0fd0a63 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.81.0%{?dist}
+Release:        0.82.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -472,6 +472,20 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Mon Dec 03 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.82.0
+- The workqueue for image extract can hang when downloads are very slow
+  (ccoleman@redhat.com)
+- Wire through signal bound stopCh to API servers for graceful shutdown
+  (stefan.schimanski@gmail.com)
+- We're going to remove openshift_build_info from the router when split
+  (ccoleman@redhat.com)
+- Set readiness checks on test routers (ccoleman@redhat.com)
+- When mirroring, ensure the payload image location is updated
+  (ccoleman@redhat.com)
+- Reorganize router code so that it only depends on code in libraries
+  (ccoleman@redhat.com)
+- Update e2e tests for 4.0 conventions (ccoleman@redhat.com)
+
 * Sun Dec 02 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.81.0
 - skip timestamps in build log output check (bparees@redhat.com)
 - re-enable cgroup quota checking build tests (bparees@redhat.com)
