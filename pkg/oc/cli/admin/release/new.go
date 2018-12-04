@@ -53,6 +53,8 @@ func NewRelease(f kcmdutil.Factory, parentName string, streams genericclioptions
 		Use:   "new [SRC=DST ...]",
 		Short: "Create a new OpenShift release",
 		Long: templates.LongDesc(`
+			Build a new OpenShift release image that will update a cluster
+
 			OpenShift uses long-running active management processes called "operators" to
 			keep the cluster running and manage component lifecycle. This command
 			composes a set of images and operator definitions into a single update payload
@@ -271,6 +273,10 @@ func (o *NewOptions) Run() error {
 	}
 
 	var cm *CincinnatiMetadata
+	// TODO: remove this once all code creates semantic versions
+	if _, err := semver.Parse(name); err == nil {
+		o.ForceManifest = true
+	}
 	if len(o.PreviousVersions) > 0 || len(o.ReleaseMetadata) > 0 || o.ForceManifest {
 		cm = &CincinnatiMetadata{Kind: "cincinnati-metadata-v0"}
 		semverName, err := semver.Parse(name)
@@ -916,13 +922,13 @@ func writePayload(w io.Writer, now time.Time, is *imageapi.ImageStream, cm *Cinc
 		return nil, err
 	}
 
-	// write cincinnati metadata to release-manifests/cincinnati
+	// write cincinnati metadata to release-manifests/release-metadata
 	if cm != nil {
 		data, err := json.MarshalIndent(cm, "", "  ")
 		if err != nil {
 			return nil, err
 		}
-		if err := tw.WriteHeader(&tar.Header{Mode: 0444, ModTime: now, Typeflag: tar.TypeReg, Name: path.Join(append(append([]string{}, parts...), "cincinnati")...), Size: int64(len(data))}); err != nil {
+		if err := tw.WriteHeader(&tar.Header{Mode: 0444, ModTime: now, Typeflag: tar.TypeReg, Name: path.Join(append(append([]string{}, parts...), "release-metadata")...), Size: int64(len(data))}); err != nil {
 			return nil, err
 		}
 		if _, err := tw.Write(data); err != nil {
@@ -1049,13 +1055,13 @@ func copyPayload(w io.Writer, now time.Time, is *imageapi.ImageStream, cm *Cinci
 	}
 
 	// write cincinnati if passed to us
-	takeFileByName(&contents, "cincinnati")
+	takeFileByName(&contents, "release-metadata")
 	if cm != nil {
 		data, err := json.MarshalIndent(cm, "", "  ")
 		if err != nil {
 			return err
 		}
-		if err := tw.WriteHeader(&tar.Header{Mode: 0444, ModTime: now, Typeflag: tar.TypeReg, Name: path.Join(append(append([]string{}, parts...), "cincinnati")...), Size: int64(len(data))}); err != nil {
+		if err := tw.WriteHeader(&tar.Header{Mode: 0444, ModTime: now, Typeflag: tar.TypeReg, Name: path.Join(append(append([]string{}, parts...), "release-metadata")...), Size: int64(len(data))}); err != nil {
 			return err
 		}
 		if _, err := tw.Write(data); err != nil {
