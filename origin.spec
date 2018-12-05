@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit d214c6d860fa5dc6c711b98186dbd33a899caa60
+%global commit 4449c76dceb35545366244cdacd351bc7a370b3e
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.82.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+b4e4ec8965 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=b4e4ec8965 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.83.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+bb6b3c16ab OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=bb6b3c16ab KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.83.0%{?dist}
+Release:        0.84.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -472,6 +472,14 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Wed Dec 05 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.84.0
+- Add `oc adm upgrade` to display available updates or trigger an update
+  (ccoleman@redhat.com)
+- add build+deploy conformance test to smoke (bparees@redhat.com)
+- add jenkins e2e suite to play nice with openshift-tests (gmontero@redhat.com)
+- Load release info from the cluster when possible (ccoleman@redhat.com)
+- Use a more portable shell invocation (crawford@redhat.com)
+
 * Tue Dec 04 2018 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.83.0
 - wire cluster-info cmd (jvallejo@redhat.com)
 - UPSTREAM: 00000: Verify backend upgrade (deads@redhat.com)
