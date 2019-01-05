@@ -106,6 +106,10 @@ func (p *cniPlugin) skelCmdAdd(args *skel.CmdArgs) error {
 	if err != nil {
 		return err
 	}
+	err = p.maybeSetupMacvlan(args)
+	if err != nil {
+		return err
+	}
 	return result.Print()
 }
 
