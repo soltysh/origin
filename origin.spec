@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 2e4640a8e5192c997e3bbe708bf3ef392bcc6fa0
+%global commit 0af69743a9ca52e8832bf1f1426ddb76dc7bba1a
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.129.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+34c7cd47a4 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=34c7cd47a4 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.130.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+61d3a16e30 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=61d3a16e30 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.130.0%{?dist}
+Release:        0.131.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -468,6 +468,28 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Wed Jan 09 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.131.0
+- remove the oc adm registry command (bparees@redhat.com)
+- speed up another chunk of build tests (bparees@redhat.com)
+- HACKING.md: fix typo (stefan.schimanski@gmail.com)
+- tests: print openshift-* subprocess launch errors
+  (stefan.schimanski@gmail.com)
+- pkg/version: set versionFromGit to 'unknown' value for debugging in IDE
+  (stefan.schimanski@gmail.com)
+- stop looking at legacy clusteoperator objects (bparees@redhat.com)
+- speed up generic s2i+docker test builds (bparees@redhat.com)
+- speed up valuefrom env var build tests (bparees@redhat.com)
+- speed up templateinstance readiness tests (bparees@redhat.com)
+- speed up SCC/root build tests (bparees@redhat.com)
+- Remove the smoke-4 suite and add new suites for scalability
+  (ccoleman@redhat.com)
+- Make the multicast extended test resilient to packet loss (danw@redhat.com)
+- sdn-cni-plugin: don't add a special-case route for the dns ip
+  (cdc@redhat.com)
+- sdn: fix metrics port (listen on 10253) (cdc@redhat.com)
+- sdn: clean up entrypoint, remove DNS, watch config file (cdc@redhat.com)
+- Re-enable emptydir test, no longer uses git volume (mawong@redhat.com)
+
 * Tue Jan 08 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.130.0
 - 
 
