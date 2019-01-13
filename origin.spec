@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 13a0318576fce0db1b866e77b26b86919d631e5b
+%global commit 8772d47d65355a684094f373a63d33ff69adc51d
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.136.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+5a425be338 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=5a425be338 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.137.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+0caf54584e OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=0caf54584e KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.137.0%{?dist}
+Release:        0.138.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -469,6 +469,27 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Sun Jan 13 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.138.0
+- add customresourcevalidator_test (sanchezl@redhat.com)
+- Add a node-logs command in oc adm that views the journal and files
+  (ccoleman@redhat.com)
+- Support openshift-test profiling like all the other binaries
+  (maszulik@redhat.com)
+- Add `--file` to image extraction to simplify getting single files
+  (ccoleman@redhat.com)
+- UPSTREAM: <carry>: Expose a simple journald shim on the kubelet logs endpoint
+  (ccoleman@redhat.com)
+- We have to wait for the controller to observe our requested change
+  (ccoleman@redhat.com)
+- Move image and release functions to use Validate() correctly
+  (ccoleman@redhat.com)
+- Add `--image-for` and `--output` to `oc adm release info`
+  (ccoleman@redhat.com)
+- Display more accurate not found errors from image info (ccoleman@redhat.com)
+- build - Stage policy.json for Buildah (adam.kaplan@redhat.com)
+- return error (sanchezl@redhat.com)
+- add easy pattern for customresource validation (deads@redhat.com)
+
 * Fri Jan 11 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.137.0
 - Set up 1.12.4 branch publishing (maszulik@redhat.com)
 - UPSTREAM: 72744: delete as much content from a namespace as possible
