@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 63047c6b6890aba005c5f27fce30ae848830ff66
+%global commit 71322f805707bec61452598ecfc22ed0dd200ef3
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.142.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+45269a004c OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=45269a004c KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.143.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+6d694a697e OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=6d694a697e KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.143.0%{?dist}
+Release:        0.144.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -469,6 +469,42 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Jan 22 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.144.0
+- Watch Additional Trusted CAs from build.config CRD (adam.kaplan@redhat.com)
+- UPSTREAM: 73139: Pass the test if an event is not delivered
+  (jsafrane@redhat.com)
+- Return decoding errors of non-legacy config types
+  (stefan.schimanski@gmail.com)
+- Allow releases that continue to point to the original source location
+  (ccoleman@redhat.com)
+- oc adm release new should prefer openshift scoped git labels
+  (ccoleman@redhat.com)
+- Escape newlines in monitor events for all code paths (ccoleman@redhat.com)
+- e2e: Add a test verifying OLM is working properly by listing its resources
+  (vdinh@redhat.com)
+- no longer validate existence of wildfly imagestream as part of switching
+  openshift namespace samples to rhel (gmontero@redhat.com)
+- regenerate openapi (mfojtik@redhat.com)
+- Revert #21694, most components are not behaving properly
+  (ccoleman@redhat.com)
+- `oc adm upgrade` should allow a user to clear their requested version
+  (ccoleman@redhat.com)
+- add delay to de-intermingle buildah/container output (bparees@redhat.com)
+- admission: validate project config (mfojtik@redhat.com)
+- bump(*): bring openshift/api changes (mfojtik@redhat.com)
+- improve deprecation message for non-ca adm cmds (jvallejo@redhat.com)
+- Allow --unify=false for journal (ccoleman@redhat.com)
+- Add telemetry e2e test and more prometheus e2e tests (ccoleman@redhat.com)
+- move from openshift/jenkins imagestream to test imagestream that forces use
+  of centos (gmontero@redhat.com)
+- oc adm release new doesn't replace correctly for leading characters
+  (ccoleman@redhat.com)
+- Wait at end of deployer tests to catch log output (ccoleman@redhat.com)
+- remove unnecessary TODO file (pgier@redhat.com)
+- make resources match standard resource strings (deads@redhat.com)
+- Auto gen code (nakayamakenjiro@gmail.com)
+- Update custom func in completion (nakayamakenjiro@gmail.com)
+
 * Thu Jan 17 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.143.0
 - set the QPS ratchet correctly (deads@redhat.com)
 - Make DynamicProvisioner serial because it consumes a lot of AWS quota
