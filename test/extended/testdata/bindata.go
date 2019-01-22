@@ -994,7 +994,10 @@ func testExtendedTestdataBuildsBuildPruningSuccessfulPipelineYaml() (*asset, err
 
 var _testExtendedTestdataBuildsBuildQuotaS2iBinAssemble = []byte(`#!/bin/sh
 
-
+# Seeing issues w/ buildah log output being intermingled with the container
+# output, so adding a sleep in an attempt to let the buildah log output
+# stop before the container output starts
+sleep 10
 echo -n MEMORY= && cat /sys/fs/cgroup/memory/memory.limit_in_bytes
 echo -n MEMORYSWAP= && cat /sys/fs/cgroup/memory/memory.memsw.limit_in_bytes
 
@@ -4934,11 +4937,11 @@ spec:
       - -c
       - |
         set -e
-        sleep 15  # give tests time to set up
         openshift-deploy --until=50%
         echo Halfway
         openshift-deploy
         echo Finished
+        sleep 15  # give tests time to observe logs
   template:
     metadata:
       labels:
@@ -5754,8 +5757,8 @@ spec:
           - /bin/bash
           - -c
           - |
-            sleep 15  # give tests time to setup
             echo 'test pre hook executed'
+            sleep 15  # give tests time to record logs
   template:
     metadata:
       labels:
