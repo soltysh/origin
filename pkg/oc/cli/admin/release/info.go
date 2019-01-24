@@ -59,7 +59,7 @@ func NewInfo(f kcmdutil.Factory, parentName string, streams genericclioptions.IO
 	flags := cmd.Flags()
 	flags.StringVar(&o.From, "changes-from", o.From, "Show changes from this image to the requested image.")
 	flags.BoolVar(&o.ShowCommit, "commits", o.ShowCommit, "Display information about the source an image was created with.")
-	flags.BoolVar(&o.ShowPullSpec, "pullspecs", o.ShowCommit, "Display the pull spec of each image instead of the digest.")
+	flags.BoolVar(&o.ShowPullSpec, "pullspecs", o.ShowPullSpec, "Display the pull spec of each image instead of the digest.")
 	flags.StringVar(&o.ImageFor, "image-for", o.ImageFor, "Print the pull spec of the specified image or an error if it does not exist.")
 	flags.StringVarP(&o.Output, "output", "o", o.Output, "Display the release info in an alternative format: json")
 	return cmd
@@ -95,9 +95,9 @@ func (o *InfoOptions) Complete(f kcmdutil.Factory, cmd *cobra.Command, args []st
 			}
 			return fmt.Errorf("info expects one argument, or a connection to a 4.0 OpenShift server: %v", err)
 		}
-		image := cv.Status.Desired.Payload
+		image := cv.Status.Desired.Image
 		if len(image) == 0 && cv.Spec.DesiredUpdate != nil {
-			image = cv.Spec.DesiredUpdate.Payload
+			image = cv.Spec.DesiredUpdate.Image
 		}
 		if len(image) == 0 {
 			return fmt.Errorf("the server is not reporting a release image at this time, please specify an image to view")
