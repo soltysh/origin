@@ -31,7 +31,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/kubernetes/pkg/cloudprovider"
-	"k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig"
+	kubeletconfig "k8s.io/kubernetes/pkg/kubelet/apis/config"
 	"k8s.io/kubernetes/pkg/kubemark"
 )
 
@@ -92,6 +92,7 @@ type TestContextType struct {
 	GatherLogsSizes                   bool
 	GatherMetricsAfterTest            string
 	GatherSuiteMetricsAfterTest       bool
+	MaxNodesToGather                  int
 	AllowGatheringProfiles            bool
 	// If set to 'true' framework will gather ClusterAutoscaler metrics when gathering them for other components.
 	IncludeClusterAutoscalerMetrics bool
@@ -99,6 +100,8 @@ type TestContextType struct {
 	OutputPrintType string
 	// NodeSchedulableTimeout is the timeout for waiting for all nodes to be schedulable.
 	NodeSchedulableTimeout time.Duration
+	// SystemDaemonsetStartupTimeout is the timeout for waiting for all system daemonsets to be ready.
+	SystemDaemonsetStartupTimeout time.Duration
 	// CreateTestingNS is responsible for creating namespace used for executing e2e tests.
 	// It accepts namespace base name, which will be prepended with e2e prefix, kube client
 	// and labels to be applied to a namespace.
@@ -207,6 +210,7 @@ func RegisterCommonFlags() {
 
 	flag.StringVar(&TestContext.GatherKubeSystemResourceUsageData, "gather-resource-usage", "false", "If set to 'true' or 'all' framework will be monitoring resource usage of system all add-ons in (some) e2e tests, if set to 'master' framework will be monitoring master node only, if set to 'none' of 'false' monitoring will be turned off.")
 	flag.BoolVar(&TestContext.GatherLogsSizes, "gather-logs-sizes", false, "If set to true framework will be monitoring logs sizes on all machines running e2e tests.")
+	flag.IntVar(&TestContext.MaxNodesToGather, "max-nodes-to-gather-from", 20, "The maximum number of nodes to gather extended info from on test failure.")
 	flag.StringVar(&TestContext.GatherMetricsAfterTest, "gather-metrics-at-teardown", "false", "If set to 'true' framework will gather metrics from all components after each test. If set to 'master' only master component metrics would be gathered.")
 	flag.BoolVar(&TestContext.GatherSuiteMetricsAfterTest, "gather-suite-metrics-at-teardown", false, "If set to true framwork will gather metrics from all components after the whole test suite completes.")
 	flag.BoolVar(&TestContext.AllowGatheringProfiles, "allow-gathering-profiles", true, "If set to true framework will allow to gather CPU/memory allocation pprof profiles from the master.")
@@ -231,7 +235,7 @@ func RegisterCommonFlags() {
 	flag.StringVar(&TestContext.SystemdServices, "systemd-services", "docker", "The comma separated list of systemd services the framework will dump logs for.")
 	flag.StringVar(&TestContext.ImageServiceEndpoint, "image-service-endpoint", "", "The image service endpoint of cluster VM instances.")
 	flag.StringVar(&TestContext.DockershimCheckpointDir, "dockershim-checkpoint-dir", "/var/lib/dockershim/sandbox", "The directory for dockershim to store sandbox checkpoints.")
-	flag.StringVar(&TestContext.KubernetesAnywherePath, "kubernetes-anywhere-path", "/workspace/kubernetes-anywhere", "Which directory kubernetes-anywhere is installed to.")
+	flag.StringVar(&TestContext.KubernetesAnywherePath, "kubernetes-anywhere-path", "/workspace/k8s.io/kubernetes-anywhere", "Which directory kubernetes-anywhere is installed to.")
 }
 
 // Register flags specific to the cluster e2e test suite.
@@ -277,6 +281,7 @@ func RegisterClusterFlags() {
 	flag.IntVar(&TestContext.MinStartupPods, "minStartupPods", 0, "The number of pods which we need to see in 'Running' state with a 'Ready' condition of true, before we try running tests. This is useful in any cluster which needs some base pod-based services running before it can be used.")
 	flag.DurationVar(&TestContext.SystemPodsStartupTimeout, "system-pods-startup-timeout", 10*time.Minute, "Timeout for waiting for all system pods to be running before starting tests.")
 	flag.DurationVar(&TestContext.NodeSchedulableTimeout, "node-schedulable-timeout", 30*time.Minute, "Timeout for waiting for all nodes to be schedulable.")
+	flag.DurationVar(&TestContext.SystemDaemonsetStartupTimeout, "system-daemonsets-startup-timeout", 5*time.Minute, "Timeout for waiting for all system daemonsets to be ready.")
 	flag.StringVar(&TestContext.UpgradeTarget, "upgrade-target", "ci/latest", "Version to upgrade to (e.g. 'release/stable', 'release/latest', 'ci/latest', '0.19.1', '0.19.1-669-gabac8c8') if doing an upgrade test.")
 	flag.StringVar(&TestContext.EtcdUpgradeStorage, "etcd-upgrade-storage", "", "The storage version to upgrade to (either 'etcdv2' or 'etcdv3') if doing an etcd upgrade test.")
 	flag.StringVar(&TestContext.EtcdUpgradeVersion, "etcd-upgrade-version", "", "The etcd binary version to upgrade to (e.g., '3.0.14', '2.3.7') if doing an etcd upgrade test.")
@@ -339,7 +344,7 @@ func createKubeConfig(clientCfg *restclient.Config) *clientcmdapi.Config {
 	config := clientcmdapi.NewConfig()
 
 	credentials := clientcmdapi.NewAuthInfo()
-	credentials.Token = clientCfg.BearerToken
+	credentials.TokenFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 	credentials.ClientCertificate = clientCfg.TLSClientConfig.CertFile
 	if len(credentials.ClientCertificate) == 0 {
 		credentials.ClientCertificateData = clientCfg.TLSClientConfig.CertData

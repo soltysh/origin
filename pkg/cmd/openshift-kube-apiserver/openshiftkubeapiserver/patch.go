@@ -72,7 +72,7 @@ func NewOpenShiftKubeAPIServerConfigPatch(delegateAPIServer genericapiserver.Del
 
 		// AUTHORIZER
 		genericConfig.RequestInfoResolver = configprocessing.OpenshiftRequestInfoResolver()
-		authorizer := NewAuthorizer(internalInformers, kubeInformers)
+		authorizer := NewAuthorizer(kubeInformers)
 		genericConfig.Authorization.Authorizer = authorizer
 		// END AUTHORIZER
 
@@ -128,7 +128,7 @@ func NewOpenShiftKubeAPIServerConfigPatch(delegateAPIServer genericapiserver.Del
 		// END ADMISSION
 
 		// HANDLER CHAIN (with oauth server and web console)
-		genericConfig.BuildHandlerChainFunc, postStartHooks, err = BuildHandlerChain(genericConfig, kubeAPIServerConfig.OAuthConfig, kubeAPIServerConfig.UserAgentMatchingConfig, kubeAPIServerConfig.ConsolePublicURL)
+		genericConfig.BuildHandlerChainFunc, postStartHooks, err = BuildHandlerChain(genericConfig, kubeAPIServerConfig.OAuthConfig, kubeAPIServerConfig.AuthConfig, kubeAPIServerConfig.UserAgentMatchingConfig, kubeAPIServerConfig.ConsolePublicURL)
 		if err != nil {
 			return nil, err
 		}
