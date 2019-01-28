@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 0453c4592299274ae7120a4ac963330c0e49b6cb
+%global commit 5da2f3e42ab3a644c1da842eeaae5e81e42198d5
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.147.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+5b509ef6b2 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=5b509ef6b2 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.148.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+0acd15062c OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=0acd15062c KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.148.0%{?dist}
+Release:        0.149.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -468,6 +468,95 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Mon Jan 28 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.149.0
+- Prevent internal OAuth server from running when using external
+  (mkhan@redhat.com)
+- publishing: get rid of origin-4.0 to kube 1.11 rules (mfojtik@redhat.com)
+- openshift-tests will skip printing info about nodes and pods
+  (ccoleman@redhat.com)
+- UPSTREAM: 71493: Allow logs for nodes and pods to be suppressed
+  (ccoleman@redhat.com)
+- hack/cherry-pick should support selectors still (ccoleman@redhat.com)
+- UPSTREAM: 73277: Ignore GOAWAY errors (ccoleman@redhat.com)
+- Correctly disable volume limit test (ccoleman@redhat.com)
+- Temporarily disable flaky volume test (ccoleman@redhat.com)
+- Update publisher bot for the master branch (maszulik@redhat.com)
+- UPSTREAM: 72118: Fixed clearing of devicePath after UnmountDevice
+  (mawong@redhat.com)
+- UPSTREAM: 69895: Reduce cardinality of admission metrics
+  (ccoleman@redhat.com)
+- Bump allowed flake number for openshift/conformance/parallel to 15
+  (maszulik@redhat.com)
+- Optimize annotating tests with labels, make test suite debuggable
+  (ccoleman@redhat.com)
+- Temporarily disable tests requiring kubelet 1.12 (maszulik@redhat.com)
+- Update skipped extended tests (maszulik@redhat.com)
+- tnozicka: temporary solution for post-hooks in deployments
+  (maszulik@redhat.com)
+- Fixes in extended tests (maszulik@redhat.com)
+- Generated changes (maszulik@redhat.com)
+- Update version file (maszulik@redhat.com)
+- Fixes in integration tests (mfojtik@redhat.com)
+- Update allowed API groups and bootstrap policy (maszulik@redhat.com)
+- Update import-restrictions.json (maszulik@redhat.com)
+- OpenAPI generation fixes (maszulik@redhat.com)
+- Extend request timeout for image import tests (maszulik@redhat.com)
+- RBAC policy test changes (maszulik@redhat.com)
+- Drop old kubectl plugins (maszulik@redhat.com)
+- Fixes in test-cmd (maszulik@redhat.com)
+- Add missing versioned polymorphic helpers (maszulik@redhat.com)
+- Update election with the new endpoint registry (maszulik@redhat.com)
+- Remove empty pkg/volume (maszulik@redhat.com)
+- Fix seralization tests (maszulik@redhat.com)
+- Osinserver wiring (maszulik@redhat.com)
+- Template servicebroker wiring (maszulik@redhat.com)
+- Network controller wiring (maszulik@redhat.com)
+- Kube API wiring (maszulik@redhat.com)
+- Controller manager wiring (maszulik@redhat.com)
+- OpenShift API wiring (maszulik@redhat.com)
+- Update storage interfaces (maszulik@redhat.com)
+- Add dryRun to NewAttributesRecord (maszulik@redhat.com)
+- metrics API changes (maszulik@redhat.com)
+- Fix conversions in image, deployments and server config (maszulik@redhat.com)
+- Drop fast-path conversions (maszulik@redhat.com)
+- watch.Until -> watchtools.UntilWithoutRetry move (maszulik@redhat.com)
+- Boring changes (maszulik@redhat.com)
+- Fix printer flags leftovers (maszulik@redhat.com)
+- UPSTREAM: <drop>: Filter out a log message from output that blocks dry-run
+  (ccoleman@redhat.com)
+- UPSTREAM: 71048: Fixes flaky tests for kubectl port-forward
+  (maszulik@redhat.com)
+- UPSTREAM: 73174: Run injector as privileged pod (maszulik@redhat.com)
+- UPSTREAM: 73139: Pass the test if an event is not delivered
+  (jsafrane@redhat.com)
+- UPSTREAM: 72744: delete as much content from a namespace as possible
+  (deads@redhat.com)
+- UPSTREAM: <carry>: require good status on discovery check (deads@redhat.com)
+- UPSTREAM: 72856: Fix nil panic propagation (maszulik@redhat.com)
+- UPSTREAM: <carry>: Expose a simple journald shim on the kubelet logs endpoint
+  (ccoleman@redhat.com)
+- bump(k8s.io/kubernetes): origin-4.0-kubernetes-1.12.4 (maszulik@redhat.com)
+- Update glide.yaml for 1.12.4 (maszulik@redhat.com)
+- Remove tags from .gitignore (maszulik@redhat.com)
+- pre-rebase package cleanup - docker-related (maszulik@redhat.com)
+- Drop atomic-registry example (maszulik@redhat.com)
+- pre-rebase package cleanup (maszulik@redhat.com)
+- Drop openshift start and openshift-node-config commands (maszulik@redhat.com)
+- UPSTREAM: 73035: make api-resource discovery errors non-fatal
+  (jvallejo@redhat.com)
+- update generated swaggerspec (jvallejo@redhat.com)
+- re-enable explain.sh tests (jvallejo@redhat.com)
+- wire openapi aggregator (jvallejo@redhat.com)
+- UPSTREAM: <carry>: add RemoveOpenAPIData method to genericapiserver
+  (jvallejo@redhat.com)
+- UPSTREAM: 68663: When node got proxy settings like "http_proxy=xxx".
+  (jvallejo@redhat.com)
+- oc: test SCC binding via RBAC (mkhan@redhat.com)
+- UPSTREAM: <carry>: oc: allow easy binding to SCC via RBAC (mkhan@redhat.com)
+- UPSTREAM: 69008: improve pleg error msg when it has never been successful
+  (sjenning@redhat.com)
+- Typo fix (gunnar.morling@googlemail.com)
+
 * Fri Jan 25 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.148.0
 - Deployment test is too aggressive on start timing (ccoleman@redhat.com)
 - Synchronize access to shared data in commands with concurrency
