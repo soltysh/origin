@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 5da2f3e42ab3a644c1da842eeaae5e81e42198d5
+%global commit 96985c4bbd9c37ce1378a277ec7b608b912d2773
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.148.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+0acd15062c OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=0acd15062c KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.149.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+c434c3e9e9 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=c434c3e9e9 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.149.0%{?dist}
+Release:        0.150.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -468,6 +468,17 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Jan 29 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.150.0
+- UPSTREAM: 70263: Remove subPath tests from host_path.go (ken-
+  oomichi@wx.jp.nec.com)
+- oc login: use system roots when necessary (mkhan@redhat.com)
+- oc: http.NewRequest use http.Method* enums (mkhan@redhat.com)
+- publishing: add rules for 3.11 branch to track 1.11.1 kube
+  (mfojtik@redhat.com)
+- UPSTREAM: 70939: Use more precise Skipf() locations in tests
+  (ccoleman@redhat.com)
+- handle named certificates with no explicit names (sanchezl@redhat.com)
+
 * Mon Jan 28 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.149.0
 - Prevent internal OAuth server from running when using external
   (mkhan@redhat.com)
