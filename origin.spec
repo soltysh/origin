@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 24af28f6ed6c411fdc8948ea2ca2f705c839426d
+%global commit b11a016c178bad92d907bd40aee64449ce0ac80c
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.152.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+e662e7653c OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=e662e7653c KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.153.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+594c160063 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=594c160063 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.153.0%{?dist}
+Release:        0.154.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -468,6 +468,40 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Fri Feb 01 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.154.0
+- UPSTREAM: <carry>: update informer and lister gen for Features
+  (deads@redhat.com)
+- UPSTREAM: 73603: TestCreatePodSandbox_RuntimeClass should not expect
+  RunPodSandbox when runtime class is not found (sjenning@redhat.com)
+- oc: update oc admin top to conform to K8S 1.12 (rphillips@redhat.com)
+- moved denyAllIdp logic from operator to oauthserver (somalley@redhat.com)
+- generate openapi (mfojtik@redhat.com)
+- UPSTREAM: <drop>: Filter out a log message from output that blocks dry-run
+  (ccoleman@redhat.com)
+- UPSTREAM: 71048: Fixes flaky tests for kubectl port-forward
+  (maszulik@redhat.com)
+- UPSTREAM: 73174: Run injector as privileged pod (maszulik@redhat.com)
+- UPSTREAM: 73139: Pass the test if an event is not delivered
+  (jsafrane@redhat.com)
+- UPSTREAM: 72744: delete as much content from a namespace as possible
+  (deads@redhat.com)
+- UPSTREAM: <carry>: require good status on discovery check (deads@redhat.com)
+- UPSTREAM: 72856: Fix nil panic propagation (maszulik@redhat.com)
+- UPSTREAM: <carry>: Expose a simple journald shim on the kubelet logs endpoint
+  (ccoleman@redhat.com)
+- bump(*): bump deps (mfojtik@redhat.com)
+- test/extended: Wait for DC to be seen by DC controller (tnozicka@redhat.com)
+- disable image verify test for out of date containers/image (deads@redhat.com)
+- UPSTREAM: <carry>: remove the aggregator oapi handling (deads@redhat.com)
+- update tests for oapi removal (deads@redhat.com)
+- remove oapi (deads@redhat.com)
+- dump samples operator CR, pod on wait imagestream complaints
+  (gmontero@redhat.com)
+- adjust stream wait time to account for increased content with switch to
+  ocp/rhel samples in 4.0 (gmontero@redhat.com)
+- revert 5ee0dfc; use operator installed jenkins imagestream as is
+  (gmontero@redhat.com)
+
 * Thu Jan 31 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.153.0
 - UPSTREAM: <carry>: don't double pluralize features (deads@redhat.com)
 - Add better loggin to deployerPodInvariantChecker (tnozicka@redhat.com)
