@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit b11a016c178bad92d907bd40aee64449ce0ac80c
+%global commit 675cab9a21bcb73e510bc853b2e3d84d05544dc1
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.153.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+594c160063 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=594c160063 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.154.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+e9860b7c72 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=e9860b7c72 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.154.0%{?dist}
+Release:        0.155.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -468,6 +468,24 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Sun Feb 03 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.155.0
+- better gate image ecosystem (consolidate logic, factor in 4.0 behavior)
+  (gmontero@redhat.com)
+- reenable test for missing build-args (bparees@redhat.com)
+- re-enable build metrics test (bparees@redhat.com)
+- Allow redirects to assetPublicURL from logout (mkhan@redhat.com)
+- Remove openshift-web-console OAuth client (mkhan@redhat.com)
+- Update set post-commit (cdaley@redhat.com)
+- When overriding a payload image, skip the fast path check
+  (ccoleman@redhat.com)
+- Remove dead code in OAuth server (mkhan@redhat.com)
+- builds - Generate Registry Configurations (adam.kaplan@redhat.com)
+- UPSTREAM: 73516: Wait for post-hooks to run before checking the healthz
+  output (mfojtik@redhat.com)
+- Add VIPERCONFIG to initProvider for openshift-tests (sejug@redhat.com)
+- kube-apiserver: wire long running processes (mfojtik@redhat.com)
+- UPSTREAM: 70805: Fix a CloudProvider-vs-nodeIP edge case (danw@redhat.com)
+
 * Fri Feb 01 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.154.0
 - UPSTREAM: <carry>: update informer and lister gen for Features
   (deads@redhat.com)
