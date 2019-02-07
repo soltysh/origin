@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 2abef4458eb257ae008c505f82af9033f9993402
+%global commit 5533ea57fbd53bdb492597f8e8fca0c2a9c83fc4
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.163.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+4b3ae7a257 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=4b3ae7a257 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.164.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+871c7aa2f4 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=871c7aa2f4 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.164.0%{?dist}
+Release:        0.165.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -468,6 +468,16 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Thu Feb 07 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.165.0
+- add sjenning to top level approvers (deads@redhat.com)
+- serialize groupified versions of config from integration tests
+  (deads@redhat.com)
+- switch to groupified admission config (deads@redhat.com)
+- tolerate old names for admission plugins to ratchet the change
+  (deads@redhat.com)
+- segregate old groups for admission (deads@redhat.com)
+- properly prefix all admission plugins (deads@redhat.com)
+
 * Thu Feb 07 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.164.0
 - 
 
