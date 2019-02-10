@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 006904e988684b6fc975d1c79e74c039fb226f74
+%global commit 37109b991665e58e6caed764f8915542e9bb0cae
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.166.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+29921293a7 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=29921293a7 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.167.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+a078a6bc3a OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=a078a6bc3a KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.167.0%{?dist}
+Release:        0.168.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -468,6 +468,16 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Sun Feb 10 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.168.0
+- Wire CORS to openshift-osinserver command (mkhan@redhat.com)
+- UPSTREAM: 65636: fix --local panic in set commands (maszulik@redhat.com)
+- remove juanvallejo from OWNERS files (jvallejo@redhat.com)
+- add newline to oc process output (verschueren.bram@gmail.com)
+- UPSTREAM: 68655: Allow cordon and drain of multiple nodes
+  (ccoleman@redhat.com)
+- Fix deployerPodInvariantChecker error string (tnozicka@redhat.com)
+- Remove search registries config for builds (adam.kaplan@redhat.com)
+
 * Fri Feb 08 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.167.0
 - 
 
