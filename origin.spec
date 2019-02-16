@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 782cf60c5317d382a3aa1a4e4463d5f3886bfe57
+%global commit f6abf4ad64ac3f2877a7919e24516594f74b48b9
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.173.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+5067dc66d6 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=5067dc66d6 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.174.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+5dcb0d0454 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=5dcb0d0454 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.174.0%{?dist}
+Release:        0.175.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -468,6 +468,16 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Sat Feb 16 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.175.0
+- Display status about cluster operator in the monitor (ccoleman@redhat.com)
+- e2e: Test that all operators are stable (ccoleman@redhat.com)
+- UPSTREAM: 70821: Fix flake in plugin watcher (hekumar@redhat.com)
+- generated (adam.kaplan@redhat.com)
+- bump(*): (adam.kaplan@redhat.com)
+- Re-enable volume limit tests (hekumar@redhat.com)
+- Allow an administrator to debug a node by launching a tools pod on that node
+  (ccoleman@redhat.com)
+
 * Fri Feb 15 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.174.0
 - simplify and test admission plugin chain configuration (deads@redhat.com)
 - UPSTREAM: 73928: Fix PVC protection e2es when default storage class is
