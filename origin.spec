@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit f6abf4ad64ac3f2877a7919e24516594f74b48b9
+%global commit 4e919f1047c5a900e349ec26c46c18c210addc10
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.174.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+5dcb0d0454 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=5dcb0d0454 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.175.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+d94b47e707 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=d94b47e707 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.175.0%{?dist}
+Release:        0.176.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -468,6 +468,43 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Sun Feb 17 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.176.0
+- Add git to the test image to ensure we can perform new-app tests
+  (ccoleman@redhat.com)
+- Temporarily mark the router prometheus metrics test as flaky
+  (ccoleman@redhat.com)
+- New core dockerfiles based on RHEL7/UBI7 minimal image (ccoleman@redhat.com)
+- update test to configure blocked registries properly (bparees@redhat.com)
+- builds - Configure Runtime Registries from image.config.openshift.io
+  (adam.kaplan@redhat.com)
+- Read Additional CAs from image.config.openshift.io (adam.kaplan@redhat.com)
+- Generated changes (maszulik@redhat.com)
+- Move oc adm node-logs to  pkg/oc/cli/admin/node/ package
+  (maszulik@redhat.com)
+- Remove oc adm manage-node (maszulik@redhat.com)
+- Remove oc adm ipfailover (maszulik@redhat.com)
+- Remove oc adm create-node-config (maszulik@redhat.com)
+- Remove oc adm router (maszulik@redhat.com)
+- When adding the same manifest 3 or more times, prevent duplicates
+  (ccoleman@redhat.com)
+- UPSTREAM: 73995: Use correct server url in dynamic provisioning tests
+  (mawong@redhat.com)
+- UPSTREAM: 73962: Fix glusterfs e2e not using correct storageclass
+  (mawong@redhat.com)
+- release: Allow version strings to be replaced during release creation
+  (ccoleman@redhat.com)
+- Keep the Dockerfile up to date with a build version (ccoleman@redhat.com)
+- Generated changes (maszulik@redhat.com)
+- Introduce -A as a shorthand for --all-namespaces in oc (maszulik@redhat.com)
+- Update fixtures (tnozicka@redhat.com)
+- UPSTREAM: 72006: Introduce -A as a shorthand for --all-namespaces in kubectl
+  (maszulik@redhat.com)
+- add "pull" action to docker registry client context (jvallejo@redhat.com)
+- Explicitly let deployers create ImageStreamTags (it used to be implied by
+  "update") (tnozicka@redhat.com)
+- Revert "tnozicka: temporary solution for post-hooks in deployments"
+  (tnozicka@redhat.com)
+
 * Sat Feb 16 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.175.0
 - Display status about cluster operator in the monitor (ccoleman@redhat.com)
 - e2e: Test that all operators are stable (ccoleman@redhat.com)
