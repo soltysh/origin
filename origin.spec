@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 6752f7c6c73237c9bcc3ec4510a46c7719d7b9c9
+%global commit 157509f21f1f7558db5f2269fc3d99dc8132f724
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=10+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.10.115 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.10.0+b81c8f8 OS_GIT_PATCH=115 KUBE_GIT_COMMIT=b81c8f8 KUBE_GIT_MINOR=10+ OS_GIT_COMMIT=56ed209828 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=10+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.10.116 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.10.0+b81c8f8 OS_GIT_PATCH=116 KUBE_GIT_COMMIT=b81c8f8 KUBE_GIT_MINOR=10+ OS_GIT_COMMIT=1f83a305b5 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -64,7 +64,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.10.116
+Version:        3.10.117
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -487,6 +487,12 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Thu Feb 21 2019 AOS Automation Release Team <aos-team-art@redhat.com> 3.10.117-1
+- Fix issue where wildcard routes get 503s intermittently. As part of the
+  resync processing, wildcard routes get a "HostAlreadyClaimed" error and then
+  later as part of the same event processing flow, the route gets re-added.
+  This results in a temporary outage (route returns 503s). (smitram@gmail.com)
+
 * Tue Feb 19 2019 AOS Automation Release Team <aos-team-art@redhat.com> 3.10.116-1
 - 
 
