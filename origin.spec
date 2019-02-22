@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 544bef7049248fd895a2943d2f3a1d796c47caff
+%global commit 7e2e569c3ae52d6d46c48affa1e35e721cea60bc
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.178.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+7ae20a083f OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=7ae20a083f KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.179.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+8a9f10f85c OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=8a9f10f85c KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.179.0%{?dist}
+Release:        0.180.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -468,6 +468,15 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Thu Feb 21 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.180.0
+- generated (deads@redhat.com)
+- prevent deleting features.config.openshift.io to close the loophole
+  (deads@redhat.com)
+- add features.config.openshift.io validation to disallow changing away from
+  techpreview (deads@redhat.com)
+- Wrap IDP transports with DebugWrappers (mkhan@redhat.com)
+- bump (deads@redhat.com)
+
 * Wed Feb 20 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.179.0
 - release: Create a list of allowed versions that are strongly controlled
   (ccoleman@redhat.com)
