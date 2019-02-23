@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 10909991bec02c26d2afc854801f6609dfe7d71f
+%global commit 8b5f41d98519d4d4ab8f593151361ef9d20ebab9
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.95 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=33eed6ef6a
+%global os_git_vars OS_GIT_MINOR=7+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.7.96 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_GIT_CATALOG_VERSION=v0.1.2 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=a32a4084df
 }
 
 %if 0%{?skip_build}
@@ -58,7 +58,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.7.96
+Version:        3.7.97
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -654,6 +654,20 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Fri Feb 22 2019 AOS Automation Release Team <aos-team-art@redhat.com> 3.7.97-1
+- OVS test: Validate stdin values to bundle() call (rpenta@redhat.com)
+- Revert https://github.com/openshift/origin/pull/19346 (rpenta@redhat.com)
+- Fix fake ovs transaction to support ovs controller testing
+  (rpenta@redhat.com)
+- Changed ovs.Transaction from pseudo to real atomic transaction
+  (rpenta@redhat.com)
+- Use BoundedFrequencyRunner to limit the rate of NetworkPolicy updates
+  (danw@redhat.com)
+- Added internal bundle() method to ovsExec interface (rpenta@redhat.com)
+- ovs: add default 30s timeout to ovs-vsctl operations (dcbw@redhat.com)
+- log OVS commands at level 4 (danw@redhat.com)
+- OVS parser fixups (danw@redhat.com)
+
 * Thu Feb 21 2019 AOS Automation Release Team <aos-team-art@redhat.com> 3.7.96-1
 - 
 
