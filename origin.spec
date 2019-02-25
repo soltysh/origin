@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 71c73222bded42e522f7753edfe7551ddbc5c662
+%global commit a44cfcb0a0e8a4d4f634e717343f5ed476311a3c
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.183.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+838889960b OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=838889960b KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.184.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+40cdd9374a OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=40cdd9374a KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.0.0
-Release:        0.184.0%{?dist}
+Release:        0.185.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -468,6 +468,16 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Mon Feb 25 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.185.0
+- UPSTREAM: 74478: Ignore sticky gid filemode bit on unit test
+  (ccoleman@redhat.com)
+- UPSTREAM: 74244: kube-aggregator: fix typo aggregator_unavailable_api{server
+  -> service}_gauge (stefan.schimanski@gmail.com)
+- Use BoundedFrequencyRunner to limit the rate of NetworkPolicy updates
+  (danw@redhat.com)
+- Fix the wrong doc - builder has move to https://github.com/openshift/builder
+  - fix wrong package and method name of cmdutil (linzm2@xiaopeng.com)
+
 * Sun Feb 24 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.184.0
 - oc login: HEAD issuer for x509 cert check (mkhan@redhat.com)
 - Fix typo in oc adm upgrade message (vrutkovs@redhat.com)
