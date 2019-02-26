@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 23d3377198d71c3aa5f43ca15e0a9f262366ee1d
+%global commit aa4366c299f4353aaec8547b31fcaa0d4215a594
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.185.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+c32b7d9c37 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=c32b7d9c37 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.1 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+3387f32c7a OS_GIT_PATCH=1 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=3387f32c7a KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -64,7 +64,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        4.0.1
+Version:        4.0.2
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -468,6 +468,19 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Mon Feb 25 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.2-1
+- fix testrootredirect since we use the upstream index now (deads@redhat.com)
+- UPSTREAM: 74532: CRD server wait for CRDs to sync before reporting healthy
+  (deads@redhat.com)
+- switch imagepolicy admission to use external api and default the config
+  (bparees@redhat.com)
+- test/extended: refactor external DNS test (ironcladlou@gmail.com)
+- UPSTREAM: 74094: Use delayed binding for resize tests (hekumar@redhat.com)
+- UPSTREAM: 73818: Enable volume resize tests to run by default
+  (hekumar@redhat.com)
+- UPSTREAM: 73892: Report more consistent container start/stop/kill events
+  (ccoleman@redhat.com)
+
 * Mon Feb 25 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.1-1
 - Set origin release to 1 (aos-team-art@redhat.com)
 - Add default proxy env vars to whitelist (cdaley@redhat.com)
