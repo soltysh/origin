@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit aa4366c299f4353aaec8547b31fcaa0d4215a594
+%global commit bcd0ddb8c81836ca1501dcaa98d883f5d43fc1d8
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.1 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+3387f32c7a OS_GIT_PATCH=1 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=3387f32c7a KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.2 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+5de8ec3e74 OS_GIT_PATCH=2 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=5de8ec3e74 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -64,7 +64,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        4.0.2
+Version:        4.0.3
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -468,6 +468,28 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Feb 26 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.3-1
+- UPSTREAM: 00000: wait for CRD discovery to be successful once before
+  reporting success (deads@redhat.com)
+- UPSTREAM: 74587: discovery: fill group and version in resource list
+  (stefan.schimanski@gmail.com)
+- bump(k8s.io/kube-openapi): 1fddd894a3d3e4eb9f4a20d5849e44102f30a419
+  (stefan.schimanski@gmail.com)
+- UPSTREAM: <carry>: Filter CRD schemata to survive
+  https://github.com/kubernetes/kube-openapi/pull/143
+  (stefan.schimanski@gmail.com)
+- UPSTREAM: <carry>: enable CRD openapi always (maszulik@redhat.com)
+- UPSTREAM: 71192: Publish CRD openapi (maszulik@redhat.com)
+- UPSTREAM: 74067: apiextensions-apiserver: make API helpers reusable
+  (maszulik@redhat.com)
+- UPSTREAM: 74029: Add missing VisitArbitrary methods in kubectl explain
+  (maszulik@redhat.com)
+- Build OSTree using baked SELinux policy (jonathan@jlebon.com)
+- NodeName was being cleared for `oc debug node/X` instead of set
+  (ccoleman@redhat.com)
+- UPSTREAM: 73894: Print the involved object in the event table
+  (ccoleman@redhat.com)
+
 * Mon Feb 25 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.2-1
 - fix testrootredirect since we use the upstream index now (deads@redhat.com)
 - UPSTREAM: 74532: CRD server wait for CRDs to sync before reporting healthy
