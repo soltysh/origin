@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit a44cfcb0a0e8a4d4f634e717343f5ed476311a3c
+%global commit bfc40553ce8a57ada1e75f680d1bb4ee1a9b032d
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.184.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+40cdd9374a OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=40cdd9374a KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.185.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+67dbcfee23 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=67dbcfee23 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.1.0
-Release:        0.0.0%{?dist}
+Release:        0.1.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -468,6 +468,58 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Wed Feb 27 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.1.0-0.1.0
+- UPSTREAM: 0000: retry on discovery errors in crd-discovery-available post-
+  start hook (mfojtik@redhat.com)
+- If the git log is empty don't error out from `release info --changelog`
+  (ccoleman@redhat.com)
+- Git 1.8.1 (default in el7) does not support `-C` (ccoleman@redhat.com)
+- Poll in bootstrap user e2e test (mkhan@redhat.com)
+- UPSTREAM: 74617: make audit metadata work for custom resources
+  (deads@redhat.com)
+- UPSTREAM: 74416: apiserver: add --minimal-shutdown-duration to delay until
+  endpoint convergence (stefan.schimanski@gmail.com)
+- UPSTREAM: 00000: wait for CRD discovery to be successful once before
+  reporting success (deads@redhat.com)
+- UPSTREAM: 74587: discovery: fill group and version in resource list
+  (stefan.schimanski@gmail.com)
+- bump(k8s.io/kube-openapi): 1fddd894a3d3e4eb9f4a20d5849e44102f30a419
+  (stefan.schimanski@gmail.com)
+- UPSTREAM: <carry>: Filter CRD schemata to survive
+  https://github.com/kubernetes/kube-openapi/pull/143
+  (stefan.schimanski@gmail.com)
+- UPSTREAM: <carry>: enable CRD openapi always (maszulik@redhat.com)
+- UPSTREAM: 71192: Publish CRD openapi (maszulik@redhat.com)
+- UPSTREAM: 74067: apiextensions-apiserver: make API helpers reusable
+  (maszulik@redhat.com)
+- UPSTREAM: 74029: Add missing VisitArbitrary methods in kubectl explain
+  (maszulik@redhat.com)
+- `oc adm release info --changelog` should clone if necessary
+  (ccoleman@redhat.com)
+- Update releasers.conf (aos-team-art@redhat.com)
+- bump version (aos-team-art@redhat.com)
+- fix testrootredirect since we use the upstream index now (deads@redhat.com)
+- UPSTREAM: 74532: CRD server wait for CRDs to sync before reporting healthy
+  (deads@redhat.com)
+- switch imagepolicy admission to use external api and default the config
+  (bparees@redhat.com)
+- test/extended: refactor external DNS test (ironcladlou@gmail.com)
+- Build OSTree using baked SELinux policy (jonathan@jlebon.com)
+- NodeName was being cleared for `oc debug node/X` instead of set
+  (ccoleman@redhat.com)
+- Add default proxy env vars to whitelist (cdaley@redhat.com)
+- UPSTREAM: 74094: Use delayed binding for resize tests (hekumar@redhat.com)
+- UPSTREAM: 73818: Enable volume resize tests to run by default
+  (hekumar@redhat.com)
+- UPSTREAM: <carry>: openapi: half encoding costs (stefan.schimanski@gmail.com)
+- UPSTREAM: 71573:  Correctly Clear conntrack entry on endpoint changes when
+  using nodeport (jtanenba@redhat.com)
+- UPSTREAM: 73892: Report more consistent container start/stop/kill events
+  (ccoleman@redhat.com)
+- UPSTREAM: 73894: Print the involved object in the event table
+  (ccoleman@redhat.com)
+- update external examples (bparees@redhat.com)
+
 * Mon Feb 25 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.0-0.185.0
 - UPSTREAM: 74478: Ignore sticky gid filemode bit on unit test
   (ccoleman@redhat.com)
