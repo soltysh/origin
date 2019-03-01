@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 927dd6f7d3c6c17cf7ef5058d23b5f5adeaf4d48
+%global commit d42ad9160c4a64d353e73254c87a56940c57315f
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.7 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+4d2404619a OS_GIT_PATCH=7 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=4d2404619a KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.8 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+2192129ae9 OS_GIT_PATCH=8 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=2192129ae9 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -64,7 +64,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        4.0.8
+Version:        4.0.9
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -468,6 +468,47 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Fri Mar 01 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.9-1
+- Ensure clone works without `-C` for release extraction (ccoleman@redhat.com)
+- UPSTREAM: 71192: Publish CRD openapi - squash (stefan.schimanski@gmail.com)
+- UPSTREAM: 71192: Publish CRD openapi - squash (stefan.schimanski@gmail.com)
+- UPSTREAM: 00000: fix: wait for CRD discovery to be successful once before
+  reporting success (stefan.schimanski@gmail.com)
+- UPSTREAM: revert: 74587: discovery: fill group and version in resource list"
+  (stefan.schimanski@gmail.com)
+- Remove unused pkg/cmd/server/election (stefan.schimanski@gmail.com)
+- UPSTREAM: 74668: kube-apiserver: don't create endpoints before being ready
+  (stefan.schimanski@gmail.com)
+- add some advice to 'oc debug' for debugging nodes (deads@redhat.com)
+- UPSTREAM: 74524: Don't fail if iface is being used by iSCSI session
+  (fbertina@redhat.com)
+- UPSTREAM: 74636: Remove reflector metrics as they currently cause a memory
+  leak (rphillips@redhat.com)
+- UPSTREAM: 00000: wait for CRD discovery to be successful once before
+  reporting success (deads@redhat.com)
+- UPSTREAM: 0000: retry on discovery errors in crd-discovery-available post-
+  start hook (mfojtik@redhat.com)
+- If the git log is empty don't error out from `release info --changelog`
+  (ccoleman@redhat.com)
+- Git 1.8.1 (default in el7) does not support `-C` (ccoleman@redhat.com)
+- Poll in bootstrap user e2e test (mkhan@redhat.com)
+- UPSTREAM: 74617: make audit metadata work for custom resources
+  (deads@redhat.com)
+- UPSTREAM: 74416: apiserver: add --minimal-shutdown-duration to delay until
+  endpoint convergence (stefan.schimanski@gmail.com)
+- Bug 1470006 - Replace all kubectl in oc adm top pod/node examples
+  (maszulik@redhat.com)
+- UPSTREAM: 74306: Fix scanning of failed targets (jsafrane@redhat.com)
+- Fix deads2k typo in features OWNERS (mkhan@redhat.com)
+- Wire loginURL to token request endpoint (mkhan@redhat.com)
+- Update import restrictions for new command (mkhan@redhat.com)
+- Add cmd/openshift-integrated-oauth-server as compile target
+  (mkhan@redhat.com)
+- Add openshift-integrated-oauth-server command (mkhan@redhat.com)
+- UPSTREAM: <carry>: openapi: half encoding costs (stefan.schimanski@gmail.com)
+- update external examples (bparees@redhat.com)
+- Test coformance from 1.12 for Kube (ccoleman@redhat.com)
+
 * Fri Mar 01 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.8-1
 - 
 
