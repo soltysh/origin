@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit bfc40553ce8a57ada1e75f680d1bb4ee1a9b032d
+%global commit 43da69277b59ff73008feb7630c6ef27c5fcafa6
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.0-0.185.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+67dbcfee23 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=67dbcfee23 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=1+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.1.0-0.1.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+83fbb908d6 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=83fbb908d6 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -65,7 +65,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.1.0
-Release:        0.1.0%{?dist}
+Release:        0.2.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -468,6 +468,39 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Fri Mar 01 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.1.0-0.2.0
+- Bug 1666583 - improve image layer size output when size info not available
+  (jvallejo@redhat.com)
+- Ensure clone works without `-C` for release extraction (ccoleman@redhat.com)
+- Require OsinServerConfig in OAuth server binary (mkhan@redhat.com)
+- UPSTREAM: 71192: Publish CRD openapi - squash (stefan.schimanski@gmail.com)
+- UPSTREAM: 71192: Publish CRD openapi - squash (stefan.schimanski@gmail.com)
+- UPSTREAM: 00000: fix: wait for CRD discovery to be successful once before
+  reporting success (stefan.schimanski@gmail.com)
+- UPSTREAM: revert: 74587: discovery: fill group and version in resource list"
+  (stefan.schimanski@gmail.com)
+- Remove unused pkg/cmd/server/election (stefan.schimanski@gmail.com)
+- UPSTREAM: 74668: kube-apiserver: don't create endpoints before being ready
+  (stefan.schimanski@gmail.com)
+- add some advice to 'oc debug' for debugging nodes (deads@redhat.com)
+- UPSTREAM: 74524: Don't fail if iface is being used by iSCSI session
+  (fbertina@redhat.com)
+- UPSTREAM: 74636: Remove reflector metrics as they currently cause a memory
+  leak (rphillips@redhat.com)
+- UPSTREAM: 00000: wait for CRD discovery to be successful once before
+  reporting success (deads@redhat.com)
+- Bug 1470006 - Replace all kubectl in oc adm top pod/node examples
+  (maszulik@redhat.com)
+- UPSTREAM: 74306: Fix scanning of failed targets (jsafrane@redhat.com)
+- Fix deads2k typo in features OWNERS (mkhan@redhat.com)
+- Wire loginURL to token request endpoint (mkhan@redhat.com)
+- Update import restrictions for new command (mkhan@redhat.com)
+- Add cmd/openshift-integrated-oauth-server as compile target
+  (mkhan@redhat.com)
+- Add openshift-integrated-oauth-server command (mkhan@redhat.com)
+- Test coformance from 1.12 for Kube (ccoleman@redhat.com)
+- docs/rebase.md: fix word typo (p@ctriple.cn)
+
 * Wed Feb 27 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.1.0-0.1.0
 - UPSTREAM: 0000: retry on discovery errors in crd-discovery-available post-
   start hook (mfojtik@redhat.com)
