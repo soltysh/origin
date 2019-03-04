@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 3825430bdd4041cd19e736511cd4539501e010be
+%global commit c4eeadb410537ce62fd30339f99048475e14e25d
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.89 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=89 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=4ac8668bfb KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.90 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=90 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=2143def64f KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -64,7 +64,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.11.90
+Version:        3.11.91
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -488,6 +488,10 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Sun Mar 03 2019 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.91-1
+- UPSTREAM: 74524: Don't fail if iface is being used by iSCSI session
+  (fbertina@redhat.com)
+
 * Thu Feb 28 2019 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.90-1
 - Fix OS_GIT_MAJOR: unbound variable (obulatov@redhat.com)
 - UPSTREAM: 74306: Fix scanning of failed targets (jsafrane@redhat.com)
