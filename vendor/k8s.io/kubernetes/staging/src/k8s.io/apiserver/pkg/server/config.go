@@ -18,7 +18,6 @@ package server
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"net"
 	"net/http"
@@ -32,6 +31,7 @@ import (
 	"github.com/go-openapi/spec"
 	"github.com/golang/glog"
 	"github.com/pborman/uuid"
+	"k8s.io/apiserver/pkg/server/certs"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -62,7 +62,6 @@ import (
 	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/client-go/informers"
 	restclient "k8s.io/client-go/rest"
-	certutil "k8s.io/client-go/util/cert"
 	openapicommon "k8s.io/kube-openapi/pkg/common"
 
 	// install apis
@@ -206,15 +205,14 @@ type SecureServingInfo struct {
 	// Listener is the secure server network listener.
 	Listener net.Listener
 
-	// Cert is the main server cert which is used if SNI does not match. Cert must be non-nil and is
-	// allowed to be in SNICerts.
-	Cert *tls.Certificate
-
-	// SNICerts are the TLS certificates by name used for SNI.
-	SNICerts map[string]*tls.Certificate
-
 	// ClientCA is the certificate bundle for all the signers that you'll recognize for incoming client certificates
-	ClientCA *x509.CertPool
+	ClientCA certs.CABundleFileReferences
+
+	DefaultCertificate certs.CertKeyFileReference
+	NameToCertificate  map[string]*certs.CertKeyFileReference
+
+	// LoopbackCert holds the special certificate that we create for loopback connections
+	LoopbackCert *tls.Certificate
 
 	// MinTLSVersion optionally overrides the minimum TLS version supported.
 	// Values are from tls package constants (https://golang.org/pkg/crypto/tls/#pkg-constants).
@@ -236,6 +234,10 @@ type AuthenticationInfo struct {
 	// If this is true, a basic auth challenge is returned on authentication failure
 	// TODO(roberthbailey): Remove once the server no longer supports http basic auth.
 	SupportsBasicAuth bool
+
+	// DynamicReloadFns are post-start hooks used to dynamically refresh authentication information.
+	// Only the authencation builder knows how to wire them and only this level of code knows how apply them.
+	DynamicReloadFns map[string]PostStartHookFunc
 }
 
 type AuthorizationInfo struct {
@@ -317,16 +319,7 @@ func DefaultSwaggerConfig() *swagger.Config {
 func (c *AuthenticationInfo) ApplyClientCert(clientCAFile string, servingInfo *SecureServingInfo) error {
 	if servingInfo != nil {
 		if len(clientCAFile) > 0 {
-			clientCAs, err := certutil.CertsFromFile(clientCAFile)
-			if err != nil {
-				return fmt.Errorf("unable to load client CA file: %v", err)
-			}
-			if servingInfo.ClientCA == nil {
-				servingInfo.ClientCA = x509.NewCertPool()
-			}
-			for _, cert := range clientCAs {
-				servingInfo.ClientCA.AddCert(cert)
-			}
+			servingInfo.ClientCA.CABundles = append(servingInfo.ClientCA.CABundles, clientCAFile)
 		}
 	}
 
@@ -499,6 +492,16 @@ func (c completedConfig) New(name string, delegationTarget DelegationTarget) (*G
 		})
 		if err != nil {
 			return nil, err
+		}
+	}
+
+	// often, authentication config is passed through multiple delegated apiservers.  If the authentication
+	// dynamic reloads themselves conflict, we only need to register the first one because there is only one authentication
+	// chain.  In any case where you may need more than one, you should always deconflict the names as we have
+	// in kube-apiserver's authentication chain versus the generic delegated one
+	for name, dynamicReloadFn := range c.Authentication.DynamicReloadFns {
+		if !s.isPostStartHookRegistered(name) {
+			s.AddPostStartHookOrDie(name, dynamicReloadFn)
 		}
 	}
 
