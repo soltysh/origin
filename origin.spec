@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit e268aada53a27b7cba51e4267d035dad207a1d8a
+%global commit 291e66aee01162f23f6a124b8db6eea78fe7ccaa
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.15 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+5952ba78a1 OS_GIT_PATCH=15 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=5952ba78a1 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.16 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+cc640d895d OS_GIT_PATCH=16 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=cc640d895d KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -64,7 +64,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        4.0.16
+Version:        4.0.17
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -468,6 +468,48 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Tue Mar 05 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.17-1
+- UPSTREAM: 00000: cert comments (deads@redhat.com)
+- UPSTREAM: 00000: dynamically reload aggregator cert (deads@redhat.com)
+- UPSTREAM: 74959: track poststarthook registration stacks for debugging
+  (deads@redhat.com)
+- support dynamic cert reloading (deads@redhat.com)
+- UPSTREAM: 00000: add dynamic client cert reloading (deads@redhat.com)
+- UPSTREAM: 74956: make delegating authorization use protobuf client
+  (mfojtik@redhat.com)
+- openshift-apiserver: set openshift apiserver config defaults for legacy
+  config (mfojtik@redhat.com)
+- release: Add newlines to descriptions in changelog (ccoleman@redhat.com)
+- UPSTREAM: 00000: clean up dynamic certs to enable client-ca reloading
+  (deads@redhat.com)
+- TEMP: Disabling build cluster config tests (adam.kaplan@redhat.com)
+- UPSTREAM: 00000: Split dynamic cert handling apart from config
+  (stefan.schimanski@gmail.com)
+- explain UPSTREAM: 00000: (deads@redhat.com)
+- UPSTREAM: 72245: Add AWS Custom Endpoint capability
+  (steve.ingram@ampsight.com)
+- Update openapi spec (stefan.schimanski@gmail.com)
+- UPSTREAM: 74804: apiextensions: add nullable support to OpenAPI v3
+  validations (stefan.schimanski@gmail.com)
+- Write image-references to disk after all metadata is fetched
+  (ccoleman@redhat.com)
+- Tolerate error messages from git 1.8.1 in extract (ccoleman@redhat.com)
+- Bug 1684368 - Use proper deletion propagation policy when removing
+  deployments (maszulik@redhat.com)
+- UPSTREAM: 00000: add dynamic certificate reloading (deads@redhat.com)
+- UPSTREAM: 74806: src/k8s.io/apiserver: Increase cert expiration histogram
+  resolution (IndenML@gmail.com)
+- Bug 1666583 - improve image layer size output when size info not available
+  (jvallejo@redhat.com)
+- Require OsinServerConfig in OAuth server binary (mkhan@redhat.com)
+- Fix bug 1278683 (lxia@redhat.com)
+- Initialize NetworkPolicy which-namespaces-are-in-use properly on restart
+  (danw@redhat.com)
+- Clean up NetworkPolicies on NetNamespace deletion (danw@redhat.com)
+- contrib: systemd: fix systemd accounting (sjenning@redhat.com)
+- UPSTREAM: 70580: PV Controller: fix recycling (tsmetana@redhat.com)
+- docs/rebase.md: fix word typo (p@ctriple.cn)
+
 * Mon Mar 04 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.16-1
 - 
 
