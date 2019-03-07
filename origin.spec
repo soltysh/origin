@@ -10,12 +10,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 2a194a0f02b26b623bb2d8884c05f9fe0f47ae5f
+%global commit bfe12b5df65972982c412afb6510a721a4484355
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.17 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+c59b02e83a OS_GIT_PATCH=17 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=c59b02e83a KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.18 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+bb06843c5a OS_GIT_PATCH=18 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=bb06843c5a KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -57,7 +57,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        4.0.18
+Version:        4.0.19
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -232,6 +232,52 @@ done
 %endif
 
 %changelog
+* Thu Mar 07 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.19-1
+- Fix URL ( bug 1686322 ) (lxia@redhat.com)
+- update project node selector to remove project dependency (deads@redhat.com)
+- remove runonceduration dependency on projects (deads@redhat.com)
+- remove clusterresourceoverride dependency on projects (deads@redhat.com)
+- remove project dependency from imagepolicy admission plugin
+  (deads@redhat.com)
+- project admission isn't required on the kube-apiserver (deads@redhat.com)
+- skip openshift admission on default namespace (deads@redhat.com)
+- Remove old RPMs and the Dockerfiles that depend on them (ccoleman@redhat.com)
+- UPSTREAM: 74804: apiextensions: add nullable support to OpenAPI v3
+  validations (stefan.schimanski@gmail.com)
+- fix(kubeadmission): default RestrictSubjectBindings admission plugin to on
+  (evb@redhat.com)
+- UPSTREAM: 75037: Fix panic in kubectl cp command (maszulik@redhat.com)
+- UPSTREAM: 72376: Filter resources logged by e2e ns debugging
+  (ccoleman@redhat.com)
+- Strip binaries by default, debug use is not common (ccoleman@redhat.com)
+- UPSTREAM: 69430: Populate ClientCA in delegating auth setup
+  (deads@redhat.com)
+- UPSTREAM: 00000: prevent loading empty certs (deads@redhat.com)
+- UPSTREAM: 73758: kubelet: set low oom_score_adj for containers in critical
+  pods (sjenning@redhat.com)
+- UPSTREAM: 74222: kubelet: return mirror pod in GetActivePods()
+  (rkrawitz@redhat.com)
+- Add adambkaplan as DevEx approver (adam.kaplan@redhat.com)
+- UPSTREAM: 74755: Revert kubelet to default to ttl cache secret/configmap
+  (rkrawitz@redhat.com)
+- UPSTREAM: 73599: Add ps1 to windows executable extensions
+  (maszulik@redhat.com)
+- UPSTREAM: 73469: Added windows executable extensions to Kubectl plugins
+  (maszulik@redhat.com)
+- Bug 1564849 - Fix oc command suggestions in new-app (maszulik@redhat.com)
+- check for and report sync errors properly (bparees@redhat.com)
+- Add soltysh to test approvers (maszulik@redhat.com)
+- Bug  1665357 - update oc registry info help message (maszulik@redhat.com)
+- Bug 1558935 - Replace kubectl name in long description of oc commands
+  (maszulik@redhat.com)
+- Don't override kubelet volume path (jsafrane@redhat.com)
+- Drop duplicate copy of NetworkPolicy tests (danw@gnome.org)
+- Remove unneeded SA waiting in every single test (tnozicka@redhat.com)
+- Wait for new project to be fully provisioned in extended tests
+  (tnozicka@redhat.com)
+- Fix incorrect validation message in sccadmission (replace psp with scc)
+  (marko.luksa@gmail.com)
+
 * Wed Mar 06 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.18-1
 - 
 
