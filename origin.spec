@@ -10,12 +10,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit bfe12b5df65972982c412afb6510a721a4484355
+%global commit 5c238f27574c72b8f554ad80c080b4431d49d5e3
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.18 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+bb06843c5a OS_GIT_PATCH=18 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=bb06843c5a KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.19 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+6eb5ba962f OS_GIT_PATCH=19 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=6eb5ba962f KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -57,7 +57,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        4.0.19
+Version:        4.0.20
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -232,6 +232,25 @@ done
 %endif
 
 %changelog
+* Fri Mar 08 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.20-1
+- Add scheduling CRD validation (ravisantoshgudimetla@gmail.com)
+- prevent deletion of config.openshift.io resources (sanchezl@redhat.com)
+- Generated changes (maszulik@redhat.com)
+- UPSTREAM: 69902: integration test for dynamic audit (parital only needed
+  tools) (maszulik@redhat.com)
+- UPSTREAM: 74000: Limit the number of operations in a single json patch to be
+  10,000 (maszulik@redhat.com)
+- UPSTREAM: 73805: Adding a limit on the size of request body the apiserver
+  will decode for write operations (maszulik@redhat.com)
+- UPSTREAM: 73713: Importing the latest json patch and set the accumulated copy
+  size limit (maszulik@redhat.com)
+- bump(*): the remaining bits (maszulik@redhat.com)
+- bump(github.com/evanphx/json-patch): 5858425f75500d40c52783dce87d085a483ce135
+  (maszulik@redhat.com)
+- bump(k8s.io/kube-*): update all kube-related repos to point to our forks with
+  appropriate versions (maszulik@redhat.com)
+- Do not set empty volume directory (hekumar@redhat.com)
+
 * Thu Mar 07 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.19-1
 - Fix URL ( bug 1686322 ) (lxia@redhat.com)
 - update project node selector to remove project dependency (deads@redhat.com)
