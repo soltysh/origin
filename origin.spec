@@ -10,12 +10,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 5c238f27574c72b8f554ad80c080b4431d49d5e3
+%global commit f31eb9d6b80b4fa74593ebff4199ecc95f0aa010
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.19 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+6eb5ba962f OS_GIT_PATCH=19 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=6eb5ba962f KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.20 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+b15fb95ac3 OS_GIT_PATCH=20 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=b15fb95ac3 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -57,7 +57,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        4.0.20
+Version:        4.0.21
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -232,6 +232,13 @@ done
 %endif
 
 %changelog
+* Sat Mar 09 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.21-1
+- UPSTREAM: <carry>: add FeaturesList and DNSList to pluralExceptions
+  (rphillips@redhat.com)
+- Bug 1684397: Remove custom build template (adam.kaplan@redhat.com)
+- test/extended/prom: use coreos-pull-secret for pullsecret
+  (abhinav.dahiya@redhat.com)
+
 * Fri Mar 08 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.20-1
 - Add scheduling CRD validation (ravisantoshgudimetla@gmail.com)
 - prevent deletion of config.openshift.io resources (sanchezl@redhat.com)
