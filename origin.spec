@@ -10,12 +10,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit f31eb9d6b80b4fa74593ebff4199ecc95f0aa010
+%global commit ab4a829b80c8f648538ce4fde4f7663ae6299353
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.20 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+b15fb95ac3 OS_GIT_PATCH=20 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=b15fb95ac3 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=0+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.0.21 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+a770a886a1 OS_GIT_PATCH=21 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=a770a886a1 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -57,7 +57,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        4.0.21
+Version:        4.0.22
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -232,6 +232,16 @@ done
 %endif
 
 %changelog
+* Sun Mar 10 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.22-1
+- Display more debug info and wait longer for upgrade test
+  (ccoleman@redhat.com)
+- Suppress monitor output per test when only running a few tests
+  (ccoleman@redhat.com)
+- release: Fetch the target repo instead of '--all' (ccoleman@redhat.com)
+- Generated (mkhan@redhat.com)
+- bump(*) (mkhan@redhat.com)
+- Remove SSCS from origin 4.0 (mkhan@redhat.com)
+
 * Sat Mar 09 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.0.21-1
 - UPSTREAM: <carry>: add FeaturesList and DNSList to pluralExceptions
   (rphillips@redhat.com)
