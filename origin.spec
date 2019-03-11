@@ -10,12 +10,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 721e30ab4339c1672501fd47a3c177c623da8af1
+%global commit e76ea7a16a6c816f86572c9585444eb8ad0827f3
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=1+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.1.0-0.2.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+449d33d9ee OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=449d33d9ee KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=1+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.1.0-0.3.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+2af9d25aef OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=2af9d25aef KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -58,7 +58,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.1.0
-Release:        0.3.0%{?dist}
+Release:        0.4.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -232,6 +232,99 @@ done
 %endif
 
 %changelog
+* Mon Mar 11 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.1.0-0.4.0
+- Increase the upgrade suite timeout longer (ccoleman@redhat.com)
+- Display more debug info and wait longer for upgrade test
+  (ccoleman@redhat.com)
+- Suppress monitor output per test when only running a few tests
+  (ccoleman@redhat.com)
+- release: Fetch the target repo instead of '--all' (ccoleman@redhat.com)
+- Generated (mkhan@redhat.com)
+- bump(*) (mkhan@redhat.com)
+- Remove SSCS from origin 4.0 (mkhan@redhat.com)
+- UPSTREAM: <carry>: add FeaturesList and DNSList to pluralExceptions
+  (rphillips@redhat.com)
+- Add scheduling CRD validation (ravisantoshgudimetla@gmail.com)
+- prevent deletion of config.openshift.io resources (sanchezl@redhat.com)
+- Bug 1684397: Remove custom build template (adam.kaplan@redhat.com)
+- Generated changes (maszulik@redhat.com)
+- UPSTREAM: 69902: integration test for dynamic audit (parital only needed
+  tools) (maszulik@redhat.com)
+- UPSTREAM: 74000: Limit the number of operations in a single json patch to be
+  10,000 (maszulik@redhat.com)
+- UPSTREAM: 73805: Adding a limit on the size of request body the apiserver
+  will decode for write operations (maszulik@redhat.com)
+- UPSTREAM: 73713: Importing the latest json patch and set the accumulated copy
+  size limit (maszulik@redhat.com)
+- bump(*): the remaining bits (maszulik@redhat.com)
+- bump(github.com/evanphx/json-patch): 5858425f75500d40c52783dce87d085a483ce135
+  (maszulik@redhat.com)
+- bump(k8s.io/kube-*): update all kube-related repos to point to our forks with
+  appropriate versions (maszulik@redhat.com)
+- test/extended/prom: use coreos-pull-secret for pullsecret
+  (abhinav.dahiya@redhat.com)
+- Do not set empty volume directory (hekumar@redhat.com)
+- Fix URL ( bug 1686322 ) (lxia@redhat.com)
+- update project node selector to remove project dependency (deads@redhat.com)
+- remove runonceduration dependency on projects (deads@redhat.com)
+- remove clusterresourceoverride dependency on projects (deads@redhat.com)
+- remove project dependency from imagepolicy admission plugin
+  (deads@redhat.com)
+- project admission isn't required on the kube-apiserver (deads@redhat.com)
+- skip openshift admission on default namespace (deads@redhat.com)
+- Remove old RPMs and the Dockerfiles that depend on them (ccoleman@redhat.com)
+- UPSTREAM: 74804: apiextensions: add nullable support to OpenAPI v3
+  validations (stefan.schimanski@gmail.com)
+- fix(kubeadmission): default RestrictSubjectBindings admission plugin to on
+  (evb@redhat.com)
+- UPSTREAM: 75037: Fix panic in kubectl cp command (maszulik@redhat.com)
+- UPSTREAM: 72376: Filter resources logged by e2e ns debugging
+  (ccoleman@redhat.com)
+- Strip binaries by default, debug use is not common (ccoleman@redhat.com)
+- UPSTREAM: 69430: Populate ClientCA in delegating auth setup
+  (deads@redhat.com)
+- UPSTREAM: 00000: prevent loading empty certs (deads@redhat.com)
+- UPSTREAM: 73758: kubelet: set low oom_score_adj for containers in critical
+  pods (sjenning@redhat.com)
+- UPSTREAM: 00000: cert comments (deads@redhat.com)
+- UPSTREAM: 00000: dynamically reload aggregator cert (deads@redhat.com)
+- UPSTREAM: 74222: kubelet: return mirror pod in GetActivePods()
+  (rkrawitz@redhat.com)
+- Add adambkaplan as DevEx approver (adam.kaplan@redhat.com)
+- UPSTREAM: 74959: track poststarthook registration stacks for debugging
+  (deads@redhat.com)
+- support dynamic cert reloading (deads@redhat.com)
+- UPSTREAM: 00000: add dynamic client cert reloading (deads@redhat.com)
+- UPSTREAM: 74956: make delegating authorization use protobuf client
+  (mfojtik@redhat.com)
+- release: Add newlines to descriptions in changelog (ccoleman@redhat.com)
+- UPSTREAM: 00000: clean up dynamic certs to enable client-ca reloading
+  (deads@redhat.com)
+- UPSTREAM: 74755: Revert kubelet to default to ttl cache secret/configmap
+  (rkrawitz@redhat.com)
+- UPSTREAM: 73599: Add ps1 to windows executable extensions
+  (maszulik@redhat.com)
+- UPSTREAM: 73469: Added windows executable extensions to Kubectl plugins
+  (maszulik@redhat.com)
+- UPSTREAM: 00000: Split dynamic cert handling apart from config
+  (stefan.schimanski@gmail.com)
+- Bug 1564849 - Fix oc command suggestions in new-app (maszulik@redhat.com)
+- check for and report sync errors properly (bparees@redhat.com)
+- Add soltysh to test approvers (maszulik@redhat.com)
+- Bug  1665357 - update oc registry info help message (maszulik@redhat.com)
+- Bug 1558935 - Replace kubectl name in long description of oc commands
+  (maszulik@redhat.com)
+- Don't override kubelet volume path (jsafrane@redhat.com)
+- Initialize NetworkPolicy which-namespaces-are-in-use properly on restart
+  (danw@redhat.com)
+- Clean up NetworkPolicies on NetNamespace deletion (danw@redhat.com)
+- Drop duplicate copy of NetworkPolicy tests (danw@gnome.org)
+- Remove unneeded SA waiting in every single test (tnozicka@redhat.com)
+- Wait for new project to be fully provisioned in extended tests
+  (tnozicka@redhat.com)
+- Fix incorrect validation message in sccadmission (replace psp with scc)
+  (marko.luksa@gmail.com)
+
 * Tue Mar 05 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.1.0-0.3.0
 - openshift-apiserver: set openshift apiserver config defaults for legacy
   config (mfojtik@redhat.com)
