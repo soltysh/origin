@@ -43,12 +43,8 @@ var (
 	// these are admission plugins that cannot be applied until after the openshiftapiserver apiserver starts.
 	SkipRunLevelOnePlugins = sets.NewString(
 		"authorization.openshift.io/RestrictSubjectBindings",
-		"autoscaling.openshift.io/ClusterResourceOverride",
-		"autoscaling.openshift.io/RunOnceDuration",
 		imagepolicyapiv1.PluginName, // "image.openshift.io/ImagePolicy"
-		"project.openshift.io/ProjectRequestLimit",
 		"quota.openshift.io/ClusterResourceQuota",
-		"scheduling.openshift.io/OriginPodNodeEnvironment",
 		"security.openshift.io/SecurityContextConstraint",
 		"security.openshift.io/SCCExecRestrictions",
 	)
@@ -99,7 +95,6 @@ func NewDefaultOffPluginsFunc(kubeDefaultOffAdmission sets.String) func() sets.S
 		kubeOff := sets.NewString(kubeDefaultOffAdmission.UnsortedList()...)
 		kubeOff.Delete(additionalDefaultOnPlugins.List()...)
 		kubeOff.Delete(openshiftAdmissionPluginsForKube...)
-		kubeOff.Insert("authorization.openshift.io/RestrictSubjectBindings")
 		return kubeOff
 	}
 }

@@ -192,6 +192,7 @@ func (s *DelegatingAuthenticationOptions) ApplyTo(c *server.AuthenticationInfo, 
 	}
 
 	// configure AuthenticationInfo config
+	cfg.ClientCAFile = s.ClientCert.ClientCA
 	if err = c.ApplyClientCert(s.ClientCert.ClientCA, servingInfo); err != nil {
 		return fmt.Errorf("unable to load client CA file: %v", err)
 	}
@@ -201,7 +202,7 @@ func (s *DelegatingAuthenticationOptions) ApplyTo(c *server.AuthenticationInfo, 
 	}
 
 	// create authenticator
-	authenticator, securityDefinitions, err := cfg.New()
+	authenticator, securityDefinitions, dynamicReloadFuncs, err := cfg.New()
 	if err != nil {
 		return err
 	}
@@ -210,6 +211,15 @@ func (s *DelegatingAuthenticationOptions) ApplyTo(c *server.AuthenticationInfo, 
 		openAPIConfig.SecurityDefinitions = securityDefinitions
 	}
 	c.SupportsBasicAuth = false
+	if c.DynamicReloadFns == nil {
+		c.DynamicReloadFns = map[string]server.PostStartHookFunc{}
+	}
+	for k, dynamicReloadFn := range dynamicReloadFuncs {
+		c.DynamicReloadFns[k] = func(context server.PostStartHookContext) error {
+			go dynamicReloadFn(context.StopCh)
+			return nil
+		}
+	}
 
 	return nil
 }

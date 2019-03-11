@@ -741,7 +741,7 @@ func urlForRepoAndCommit(repo, commit string) string {
 func urlForRepoAndCommitRange(repo, from, to string) string {
 	if strings.HasPrefix(repo, urlGithubPrefix) {
 		if u, err := url.Parse(repo); err == nil {
-			u.Path = path.Join(u.Path, "changes", fmt.Sprintf("%s...%s", from, to))
+			u.Path = path.Join(u.Path, "compare", fmt.Sprintf("%s...%s", from, to))
 			return u.String()
 		}
 	}
@@ -968,11 +968,13 @@ func describeChangelog(out, errOut io.Writer, diff *ReleaseDiff, dir string) err
 		# %s
 
 		Created: %s
+
 		Image Digest: %s
+
 	`, diff.To.PreferredName(), diff.To.References.CreationTimestamp.UTC(), "`"+diff.To.Digest+"`"))
 
 	if release, ok := diff.To.References.Annotations[annotationReleaseFromRelease]; ok {
-		fmt.Fprintf(out, "Promoted from %s\n", release)
+		fmt.Fprintf(out, "Promoted from %s\n\n", release)
 	}
 	fmt.Fprintln(out)
 	fmt.Fprintf(out, "## Changes from %s\n\n", diff.From.PreferredName())
@@ -1258,7 +1260,7 @@ func commitsForRepo(dir string, change CodeChange, out, errOut io.Writer) (*url.
 	if err != nil {
 		return nil, nil, err
 	}
-	commits, err := mergeLogForRepo(g, change.From, change.To)
+	commits, err := mergeLogForRepo(g, change.Repo, change.From, change.To)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Could not load commits for %s: %v", change.Repo, err)
 	}
