@@ -10,12 +10,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit e76ea7a16a6c816f86572c9585444eb8ad0827f3
+%global commit fe745172dbb35a2a7d5d44adce04313f6cb86157
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=1+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.1.0-0.3.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+2af9d25aef OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=2af9d25aef KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=1+ OS_GIT_MAJOR=4 OS_GIT_VERSION=v4.1.0 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.12.4+5d8f7b3703 OS_GIT_PATCH=0 KUBE_GIT_COMMIT=f21fc98 KUBE_GIT_MINOR=12+ OS_GIT_COMMIT=5d8f7b3703 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -58,7 +58,7 @@ Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
 Version:        4.1.0
-Release:        0.4.0%{?dist}
+Release:        0.5.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
@@ -232,6 +232,27 @@ done
 %endif
 
 %changelog
+* Wed Mar 13 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.1.0-0.5.0
+- UPSTREAM: 75264: Optimize authorization service account check
+  (ccoleman@redhat.com)
+- UPSTREAM: 75223: kubelet: include init containers when determining pod QoS
+  (sjenning@redhat.com)
+- deploymentconfig: log update conflicts using higher log level in controller
+  (mfojtik@redhat.com)
+- sdn: clarify SDN startup log message (dcbw@redhat.com)
+- Simplify the host root message (ccoleman@redhat.com)
+- Remove stale skydns/dnsmasq DNS implementation (rpenta@redhat.com)
+- bump(*): remove skydns dep (rpenta@redhat.com)
+- UPSTREAM: 74969: Fix client-go fake client example flake (tnozicka@gmail.com)
+- UPSTREAM: 74422: (Partial pick) Update client callers to use explicit
+  versions (tnozicka@redhat.com)
+- Bug 1682978: Verify builder version is reported (adam.kaplan@redhat.com)
+- Move DeploymentConfigs to common manifest reading (tnozicka@redhat.com)
+- Add generic manifest reader for extended tests (tnozicka@redhat.com)
+- Add extended tests scheme (tnozicka@redhat.com)
+- UPSTREAM: 70647: Always run untag when removing docker image
+  (sjenning@redhat.com)
+
 * Mon Mar 11 2019 AOS Automation Release Team <aos-team-art@redhat.com> 4.1.0-0.4.0
 - Increase the upgrade suite timeout longer (ccoleman@redhat.com)
 - Display more debug info and wait longer for upgrade test
