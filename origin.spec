@@ -58,8 +58,8 @@
 %{!?release: %global release 1}
 
 Name:           %{package_name}
-Version:        %{version}
-Release:        %{release}%{package_dist}
+Version:        4.1.0
+Release:        0.1.0%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
 URL:            https://%{import_path}
