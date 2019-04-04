@@ -729,6 +729,10 @@ func (mounter *Mounter) SafeMakeDir(pathname string, base string, perm os.FileMo
 	return doSafeMakeDir(pathname, base, perm)
 }
 
+func (mounter *Mounter) EvalHostSymlinks(pathname string) (string, error) {
+	return filepath.EvalSymlinks(pathname)
+}
+
 // This implementation is shared between Linux and NsEnterMounter
 func doSafeMakeDir(pathname string, base string, perm os.FileMode) error {
 	glog.V(4).Infof("Creating directory %q within base %q", pathname, base)
@@ -1027,3 +1031,4 @@ func IsMountPointMatch(mp MountPoint, dir string) bool {
 	deletedDir := fmt.Sprintf("%s\\040(deleted)", dir)
 	return ((mp.Path == dir) || (mp.Path == deletedDir))
 }
+

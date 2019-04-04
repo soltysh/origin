@@ -19,6 +19,7 @@ limitations under the License.
 package mount
 
 import (
+	"errors"
 	"os"
 )
 
@@ -85,4 +86,8 @@ func (mounter *Mounter) CleanSubPaths(podDir string, volumeName string) error {
 
 func (mounter *Mounter) SafeMakeDir(pathname string, base string, perm os.FileMode) error {
 	return nil
+}
+
+func (mounter *Mounter) EvalHostSymlinks(pathname string) (string, error) {
+	return "", errors.New("not implemented")
 }

@@ -329,3 +329,49 @@ func (mounter *NsenterMounter) PrepareSafeSubpath(subPath Subpath) (newHostPath 
 func (mounter *NsenterMounter) SafeMakeDir(pathname string, base string, perm os.FileMode) error {
 	return doSafeMakeDir(pathname, base, perm)
 }
+
+func (mounter *NsenterMounter) EvalHostSymlinks(pathname string) (string, error) {
+	return mounter.EvalHostSymlinksOptional(pathname, true)
+}
+
+// EvalSymlinks returns the path name on the host after evaluating symlinks on the
+// host.
+// mustExist makes EvalSymlinks to return error when the path does not
+// exist. When it's false, it evaluates symlinks of the existing part and
+// blindly adds the non-existing part:
+// pathname: /mnt/volume/non/existing/directory
+//     /mnt/volume exists
+//                non/existing/directory does not exist
+// -> It resolves symlinks in /mnt/volume to say /mnt/foo and returns
+//    /mnt/foo/non/existing/directory.
+//
+// BEWARE! EvalSymlinks is not able to detect symlink loops with mustExist=false!
+// If /tmp/link is symlink to /tmp/link, EvalSymlinks(/tmp/link/foo) returns /tmp/link/foo.
+//
+// Backported from commit ad8df911eed3f4d76bc3f7a140b56bbf57c3c859
+func (mounter *NsenterMounter) EvalHostSymlinksOptional(pathname string, mustExist bool) (string, error) {
+	args := []string{
+		"--mount=/rootfs/proc/1/ns/mnt",
+		"--",
+		"realpath",
+	}
+	if mustExist {
+		// "realpath -e: all components of the path must exist"
+		args = append(args, "-e", pathname)
+	} else {
+		// "realpath -m: no path components need exist or be a directory"
+		args = append(args, "-m", pathname)
+	}
+	glog.V(5).Infof("realpath command: %v %v", nsenterPath, args)
+	exec := exec.New()
+	outputBytes, err := exec.Command(nsenterPath, args...).CombinedOutput()
+	if len(outputBytes) != 0 {
+		glog.V(5).Infof("Output of realpath %s: %v", pathname, string(outputBytes))
+	}
+	if err != nil {
+		glog.Infof("failed to resolve symbolic links on %s: %v", pathname, err)
+		return "", err
+	}
+	return strings.TrimSpace(string(outputBytes)), nil
+}
+
