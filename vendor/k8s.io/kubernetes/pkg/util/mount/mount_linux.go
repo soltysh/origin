@@ -996,9 +996,14 @@ func isNotDirErr(err error) bool {
 // It is more extensive than IsLikelyNotMountPoint
 // and it detects bind mounts in linux
 func IsReallyNotMountPoint(mounter Interface, file string) (bool, error) {
+	// Resolve any symlinks in file, kernel would do the same and use the resolved path in /proc/mounts
+	resolvedFile, err := mounter.EvalHostSymlinks(file)
+	if err != nil {
+		return true, err
+	}
 	// IsLikelyNotMountPoint provides a quick check
 	// to determine whether file IS A mountpoint
-	notMnt, notMntErr := mounter.IsLikelyNotMountPoint(file)
+	notMnt, notMntErr := mounter.IsLikelyNotMountPoint(resolvedFile)
 	if notMntErr != nil && os.IsPermission(notMntErr) {
 		// We were not allowed to do the simple stat() check, e.g. on NFS with
 		// root_squash. Fall back to /proc/mounts check below.
@@ -1019,7 +1024,7 @@ func IsReallyNotMountPoint(mounter Interface, file string) (bool, error) {
 		return notMnt, mountPointsErr
 	}
 	for _, mp := range mountPoints {
-		if IsMountPointMatch(mp, file) {
+		if IsMountPointMatch(mp, resolvedFile) {
 			notMnt = false
 			break
 		}
