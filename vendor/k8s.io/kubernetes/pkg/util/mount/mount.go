@@ -72,6 +72,9 @@ type Interface interface {
 	// newHostPath - location of prepared subPath. It should be used instead of
 	// hostName when running the container.
 	PrepareSafeSubpath(subPath Subpath) (newHostPath string, err error)
+	// EvalHostSymlinks returns the path name after evaluating symlinks.
+	// Will operate in the host mount namespace if kubelet is running in a container.
+	EvalHostSymlinks(pathname string) (string, error)
 }
 
 type Subpath struct {

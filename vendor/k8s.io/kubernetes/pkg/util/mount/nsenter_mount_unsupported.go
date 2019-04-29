@@ -19,6 +19,7 @@ limitations under the License.
 package mount
 
 import (
+	"errors"
 	"os"
 )
 
@@ -68,4 +69,8 @@ func (*NsenterMounter) PrepareSafeSubpath(subPath Subpath) (newHostPath string, 
 
 func (*NsenterMounter) CleanSubPaths(podDir string, volumeName string) error {
 	return nil
+}
+
+func (*NsenterMounter) EvalHostSymlinks(pathname string) (string, error) {
+	return "", errors.New("not implemented")
 }
