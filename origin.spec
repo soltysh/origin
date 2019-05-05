@@ -21,12 +21,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 62b7b3914fec665bde17d02ede2072e317e4c990
+%global commit 054722cc6c528f444774d6241ad743005f92c1ab
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.162 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=62b7b3914f
+%global os_git_vars OS_GIT_MINOR=6+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.6.173.0.163 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose OS_GIT_COMMIT=054722cc6c
 }
 
 %if 0%{?fedora} || 0%{?epel}
@@ -52,7 +52,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.6.173.0.163
+Version:        3.6.173.0.164
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -642,6 +642,12 @@ fi
 %{_bindir}/hyperkube
 
 %changelog
+* Sun May 05 2019 AOS Automation Release Team <aos-team-art@redhat.com> 3.6.173.0.164-1
+- UPSTREAM: 69565: Fixed subpath in containerized kubelet (jsafrane@redhat.com)
+- UPSTREAM: 68741: Fixed subpath cleanup when /var/lib/kubelet is a symlink
+  (jsafrane@redhat.com)
+- UPSTREAM: <carry>: Add mounter.EvalHostSymlinks (jsafrane@redhat.com)
+
 * Sun Apr 28 2019 AOS Automation Release Team <aos-team-art@redhat.com> 3.6.173.0.163-1
 - 
 
