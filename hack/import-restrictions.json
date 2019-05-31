@@ -201,15 +201,13 @@
     "allowedImportPackageRoots": [
       "vendor/k8s.io/apimachinery",
       "vendor/k8s.io/api",
-      "vendor/github.com/openshift/api",
-      "github.com/openshift/origin/pkg/api/apihelpers"
+      "vendor/github.com/openshift/api"
     ],
     "allowedImportPackages": [
       "vendor/k8s.io/kubernetes/pkg/apis/core",
       "vendor/k8s.io/kubernetes/pkg/apis/core/v1",
       "vendor/k8s.io/kubernetes/pkg/apis/rbac",
-      "vendor/k8s.io/kubernetes/pkg/apis/rbac/v1",
-      "vendor/k8s.io/kubernetes/pkg/api/legacyscheme"
+      "vendor/k8s.io/kubernetes/pkg/apis/rbac/v1"
     ]
   },
 
@@ -222,6 +220,7 @@
       "vendor/k8s.io/apimachinery",
       "vendor/k8s.io/api",
       "vendor/github.com/openshift/api",
+      "vendor/github.com/openshift/library-go",
       "github.com/openshift/origin/pkg/api/apihelpers"
     ],
     "allowedImportPackages": [
@@ -426,7 +425,6 @@
       "github.com/openshift/origin/pkg/authorization/authorizer/scope",
       "github.com/openshift/origin/pkg/oauth/apis/oauth/validation",
       "github.com/openshift/origin/pkg/oauth/scope",
-      "github.com/openshift/origin/pkg/oauth/urls",
       "github.com/openshift/origin/pkg/cmd/server/apis/config",
       "github.com/openshift/origin/pkg/cmd/server/apis/config/install",
       "github.com/openshift/origin/pkg/cmd/server/apis/config/latest",
@@ -461,7 +459,6 @@
       "vendor/github.com/openshift/client-go",
       "vendor/github.com/openshift/library-go",
       "vendor/github.com/openshift/source-to-image",
-      "vendor/github.com/RangelReale/osincli",
       "vendor/github.com/spf13/cobra",
       "vendor/github.com/spf13/pflag",
       "vendor/golang.org",
@@ -499,7 +496,6 @@
     "allowedImportPackages": [
       "github.com/openshift/origin/pkg/api/legacy",
       "github.com/openshift/origin/pkg/api",
-      "github.com/openshift/origin/pkg/api/apihelpers",
       "github.com/openshift/origin/pkg/api/imagereferencemutators",
       "github.com/openshift/origin/pkg/api/install",
       "github.com/openshift/origin/pkg/api/legacygroupification",
@@ -538,7 +534,6 @@
       "github.com/openshift/origin/pkg/image/trigger/annotations",
       "github.com/openshift/origin/pkg/network",
       "github.com/openshift/origin/pkg/oauth/apis/oauth",
-      "github.com/openshift/origin/pkg/oauth/urls",
       "github.com/openshift/origin/pkg/oauth/util",
       "github.com/openshift/origin/pkg/printers/internalversion",
       "github.com/openshift/origin/pkg/project/apis/project",
