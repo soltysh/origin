@@ -246,13 +246,13 @@
       "github.com/openshift/origin/pkg/image/apis/image/v1"
     ],
     "allowedImportPackageRoots": [
-      "vendor/k8s.io/apimachinery",
-      "github.com/openshift/origin/pkg/image/internal",
-      "github.com/openshift/origin/pkg/image/apis/image/reference",
+      "github.com/openshift/origin/pkg/api/apihelpers",
       "github.com/openshift/origin/pkg/image/apis/image/docker10",
+      "github.com/openshift/origin/pkg/image/internal",
       "vendor/k8s.io/api",
+      "vendor/k8s.io/apimachinery",
       "vendor/github.com/openshift/api",
-      "github.com/openshift/origin/pkg/api/apihelpers"
+      "vendor/github.com/openshift/library-go"
     ],
     "allowedImportPackages": [
       "vendor/k8s.io/kubernetes/pkg/apis/core",
@@ -496,7 +496,6 @@
       "github.com/openshift/origin/pkg/api",
       "github.com/openshift/origin/pkg/api/imagereferencemutators",
       "github.com/openshift/origin/pkg/api/install",
-      "github.com/openshift/origin/pkg/api/legacygroupification",
       "github.com/openshift/origin/pkg/apps/apis/apps",
       "github.com/openshift/origin/pkg/apps/apis/apps/install",
       "github.com/openshift/origin/pkg/apps/util/test",
@@ -507,7 +506,6 @@
       "github.com/openshift/origin/pkg/build/apis/build",
       "github.com/openshift/origin/pkg/build/apis/build/install",
       "github.com/openshift/origin/pkg/build/buildapihelpers",
-      "github.com/openshift/origin/pkg/build/client",
       "github.com/openshift/origin/pkg/build/client/v1",
       "github.com/openshift/origin/pkg/build/util",
       "github.com/openshift/origin/pkg/bulk",
@@ -523,7 +521,6 @@
       "github.com/openshift/origin/pkg/image/apis/image",
       "github.com/openshift/origin/pkg/image/apis/image/v1/trigger",
       "github.com/openshift/origin/pkg/image/apis/image/docker10",
-      "github.com/openshift/origin/pkg/image/apis/image/reference",
       "github.com/openshift/origin/pkg/image/dockerlayer",
       "github.com/openshift/origin/pkg/image/dockerlayer/add",
       "github.com/openshift/origin/pkg/image/importer/dockerv1client",
@@ -545,7 +542,6 @@
       "github.com/openshift/origin/pkg/template/templateprocessing",
       "github.com/openshift/origin/pkg/unidling/api",
       "github.com/openshift/origin/pkg/unidling/util",
-      "github.com/openshift/origin/pkg/util/netutils",
       "github.com/openshift/origin/pkg/util/parallel",
       "github.com/openshift/origin/pkg/version",
 
