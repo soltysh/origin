@@ -16,8 +16,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openshift/origin/test/util/server/deprecated_openshift/openshift-controller-manager"
-
 	etcdclientv3 "github.com/coreos/etcd/clientv3"
 	"github.com/openshift/library-go/pkg/assets/create"
 	"k8s.io/klog"
@@ -43,7 +41,6 @@ import (
 	authorizationv1typedclient "github.com/openshift/client-go/authorization/clientset/versioned/typed/authorization/v1"
 	projectv1typedclient "github.com/openshift/client-go/project/clientset/versioned/typed/project/v1"
 	"github.com/openshift/library-go/pkg/crypto"
-
 	"github.com/openshift/origin/pkg/api/legacy"
 	openshiftapiserver "github.com/openshift/origin/pkg/cmd/openshift-apiserver"
 	openshiftcontrollermanager "github.com/openshift/origin/pkg/cmd/openshift-controller-manager"
@@ -55,8 +52,10 @@ import (
 	newproject "github.com/openshift/origin/pkg/oc/cli/admin/project"
 	"github.com/openshift/origin/test/util"
 	"github.com/openshift/origin/test/util/server/deprecated_openshift/configconversion"
+	"github.com/openshift/origin/test/util/server/deprecated_openshift/deprecatedclient"
 	"github.com/openshift/origin/test/util/server/deprecated_openshift/etcd"
 	"github.com/openshift/origin/test/util/server/deprecated_openshift/etcd/etcdserver"
+	"github.com/openshift/origin/test/util/server/deprecated_openshift/openshift-controller-manager"
 	"github.com/openshift/origin/test/util/server/deprecated_openshift/start"
 
 	_ "k8s.io/kubernetes/pkg/apis/core/install"
@@ -418,11 +417,11 @@ var configGroupVersioner = schema.GroupVersions([]schema.GroupVersion{
 
 func startKubernetesAPIServer(masterConfig *configapi.MasterConfig, clientConfig *restclient.Config, stopCh <-chan struct{}) error {
 	// TODO: replace this with a default which produces the new configs
-	uncastExternalMasterConfig, err := configapi.Scheme.ConvertToVersion(masterConfig, configGroupVersioner)
+	uncastExternalMasterConfig, err := configconversion.Scheme.ConvertToVersion(masterConfig, configGroupVersioner)
 	if err != nil {
 		return err
 	}
-	legacyConfigCodec := configapi.Codecs.LegacyCodec(
+	legacyConfigCodec := configconversion.Codecs.LegacyCodec(
 		legacyconfigv1.LegacySchemeGroupVersion,
 		schema.GroupVersion{Group: "autoscaling.openshift.io", Version: "v1"},
 		schema.GroupVersion{Group: "image.openshift.io", Version: "v1"},
@@ -481,11 +480,11 @@ func startKubernetesAPIServer(masterConfig *configapi.MasterConfig, clientConfig
 
 func startOpenShiftAPIServer(masterConfig *configapi.MasterConfig, clientConfig *restclient.Config, stopCh <-chan struct{}) error {
 	// TODO: replace this with a default which produces the new configs
-	uncastExternalMasterConfig, err := configapi.Scheme.ConvertToVersion(masterConfig, configGroupVersioner)
+	uncastExternalMasterConfig, err := configconversion.Scheme.ConvertToVersion(masterConfig, configGroupVersioner)
 	if err != nil {
 		return err
 	}
-	legacyConfigCodec := configapi.Codecs.LegacyCodec(
+	legacyConfigCodec := configconversion.Codecs.LegacyCodec(
 		legacyconfigv1.LegacySchemeGroupVersion,
 		schema.GroupVersion{Group: "autoscaling.openshift.io", Version: "v1"},
 		schema.GroupVersion{Group: "image.openshift.io", Version: "v1"},
@@ -699,17 +698,17 @@ func startKubernetesControllers(masterConfig *configapi.MasterConfig, adminKubeC
 }
 
 func startOpenShiftControllers(masterConfig *configapi.MasterConfig) error {
-	privilegedLoopbackConfig, err := configapi.GetClientConfig(masterConfig.MasterClients.OpenShiftLoopbackKubeConfig, masterConfig.MasterClients.OpenShiftLoopbackClientConnectionOverrides)
+	privilegedLoopbackConfig, err := deprecatedclient.GetClientConfig(masterConfig.MasterClients.OpenShiftLoopbackKubeConfig, masterConfig.MasterClients.OpenShiftLoopbackClientConnectionOverrides)
 	if err != nil {
 		return err
 	}
 
 	// TODO: replace this with a default which produces the new configs
-	uncastExternalMasterConfig, err := configapi.Scheme.ConvertToVersion(masterConfig, configGroupVersioner)
+	uncastExternalMasterConfig, err := configconversion.Scheme.ConvertToVersion(masterConfig, configGroupVersioner)
 	if err != nil {
 		return err
 	}
-	legacyConfigCodec := configapi.Codecs.LegacyCodec(
+	legacyConfigCodec := configconversion.Codecs.LegacyCodec(
 		legacyconfigv1.LegacySchemeGroupVersion,
 		schema.GroupVersion{Group: "autoscaling.openshift.io", Version: "v1"},
 		schema.GroupVersion{Group: "image.openshift.io", Version: "v1"},
