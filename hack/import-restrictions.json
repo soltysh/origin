@@ -502,7 +502,6 @@
       "github.com/openshift/origin/pkg/build/util",
       "github.com/openshift/origin/pkg/client/config",
       "github.com/openshift/origin/pkg/cmd/flagtypes",
-      "github.com/openshift/origin/pkg/cmd/infra/deployer",
       "github.com/openshift/origin/pkg/cmd/server/admin",
       "github.com/openshift/origin/pkg/cmd/server/apis/config",
       "github.com/openshift/origin/pkg/cmd/server/apis/config/install",
@@ -531,7 +530,6 @@
       "github.com/openshift/origin/pkg/template/templateprocessing",
       "github.com/openshift/origin/pkg/unidling/api",
       "github.com/openshift/origin/pkg/unidling/util",
-      "github.com/openshift/origin/pkg/util/parallel",
       "github.com/openshift/origin/pkg/version",
 
       "vendor/github.com/coreos/etcd/clientv3",
