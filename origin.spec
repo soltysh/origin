@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit e82d8139a77c2650bbfbf245a0d6492729b51437
+%global commit ab3f0093c710f6da4fda2f51699d43870ca24b21
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=10+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.10.155 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.10.0+b81c8f8 OS_GIT_PATCH=155 KUBE_GIT_COMMIT=b81c8f8 KUBE_GIT_MINOR=10+ OS_GIT_COMMIT=b48424b05f KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=10+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.10.156 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.10.0+b81c8f8 OS_GIT_PATCH=156 KUBE_GIT_COMMIT=b81c8f8 KUBE_GIT_MINOR=10+ OS_GIT_COMMIT=d00ae1106f KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.access.redhat.com/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -64,7 +64,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.10.156
+Version:        3.10.157
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -487,6 +487,14 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Fri Jul 26 2019 AOS Automation Release Team <aos-team-art@redhat.com> 3.10.157-1
+- Use openshift controller image from dockerhub in integration
+  (maszulik@redhat.com)
+- Disable broken test: DISABLEDTestRegistryClientAPIv1 (slaznick@redhat.com)
+- hack: make verify commits work against correct branch (sjenning@redhat.com)
+- Fix egress monitoring for some rare corner cases. (danw@redhat.com)
+- travis: fetch tags to ensure OS_GIT_MAJOR is set (dcbw@redhat.com)
+
 * Wed Jul 24 2019 AOS Automation Release Team <aos-team-art@redhat.com> 3.10.156-1
 - 
 
