@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit b309f703f685fa8e521fb7ed3631d5a2749c0bad
+%global commit 77b181122a5d3b17bfd29121bf4105b43b7d0af3
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.135 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=135 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=d63b5a2447 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.136 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=136 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=8ed8df8706 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -64,7 +64,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.11.136
+Version:        3.11.137
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -488,6 +488,67 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Sun Aug 18 2019 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.137-1
+- udpate build-local-images, use 3.11 tag (more stable) (gmontero@redhat.com)
+- Show proper error when deployer acceptor watch fails (tnozicka@redhat.com)
+- bumps evanphx/json-patch (lukasz.szaszkiewicz@gmail.com)
+- UPSTREAM: <77069>: openshift: Update vendors (jchaloup@redhat.com)
+- UPSTREAM: 77069: openshift: Cleanup interfaces and add unit tests
+  (jchaloup@redhat.com)
+- UPSTREAM: 77069: openshift: Cleanup codes that not required any more
+  (jchaloup@redhat.com)
+- UPSTREAM: 77069: openshift: Replace vmss update API with instance-level
+  update API (jchaloup@redhat.com)
+- UPSTREAM: 77069: openshift: Upgrade compute API to version 2019-03-01
+  (jchaloup@redhat.com)
+- UPSTREAM: 76759: openshift: Fix Azure SLB support for multiple backend pools
+  (jchaloup@redhat.com)
+- UPSTREAM: 76487: openshift: Increase default maximumLoadBalancerRuleCount to
+  250 (jchaloup@redhat.com)
+- UPSTREAM: 75333: openshift: Allow disable outbound snat when Azure standard
+  load balancer is used (jchaloup@redhat.com)
+- UPSTREAM: 75314: openshift: Ensure Azure load balancer cleaned up on 404 or
+  403 (jchaloup@redhat.com)
+- UPSTREAM: 75107: openshift: Adding a check to make sure UseInstanceMetadata
+  flag is true to get data from metadata. (jchaloup@redhat.com)
+- UPSTREAM: 74490: openshift: add timeout in GetVolumeLimits operation
+  (jchaloup@redhat.com)
+- UPSTREAM: 74490: openshift: remove get azure accounts in the init process set
+  timeout for get azure account operation (jchaloup@redhat.com)
+- UPSTREAM: 74593: openshift: add retry for detach azure disk
+  (jchaloup@redhat.com)
+- UPSTREAM: 72268: openshift: fix race condition when attach azure disk in vmss
+  (jchaloup@redhat.com)
+- UPSTREAM: 71942: openshift: add VMSize info in attach/detach azure disk
+  (jchaloup@redhat.com)
+- UPSTREAM: 71778: openshift: Fix Azure node's internal IP address
+  (jchaloup@redhat.com)
+- UPSTREAM: 70518: openshift: Ensure orphan public IPs deleted
+  (jchaloup@redhat.com)
+- UPSTREAM: 70638: openshift: fix detach azure disk issue by clean vm cache
+  (jchaloup@redhat.com)
+- UPSTREAM: 70638: openshift: fix azure disk attach/detach failed forever issue
+  (jchaloup@redhat.com)
+- UPSTREAM: 70638: openshift: remove retry operation on attach/detach disk
+  (jchaloup@redhat.com)
+- UPSTREAM: 70400: openshift: Improve Azure instance metadata handling
+  (jchaloup@redhat.com)
+- UPSTREAM: 68182: openshift: support cross resource group for azure file
+  (jchaloup@redhat.com)
+- UPSTREAM: 69202: openshift: Add fallbacks for getting node IP from Azure IMDS
+  (jchaloup@redhat.com)
+- UPSTREAM: 69065: openshift: Add unit tests for getting vmss node IP
+  (jchaloup@redhat.com)
+- UPSTREAM: 69065: Get public IP for Azure vmss nodes (jchaloup@redhat.com)
+- UPSTREAM: 69020: openshift: Support setting azure LB idle timeout
+  (jchaloup@redhat.com)
+- UPSTREAM: 68611: openshift: Fix potential panic when getting azure load
+  balancer status (jchaloup@redhat.com)
+- UPSTREAM: 78991: log stale cache Info not Warning Bug 1731187
+  (jottofar@redhat.com)
+- UPSTREAM: 69313: kubelet: fix cri-o when using unix prefix
+  (sjenning@redhat.com)
+
 * Sun Aug 04 2019 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.136-1
 - 
 
