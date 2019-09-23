@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"k8s.io/kubernetes/pkg/kubectl/util/templates"
+	"k8s.io/kubectl/pkg/util/templates"
 	"k8s.io/kubernetes/test/e2e/lifecycle"
 	"k8s.io/kubernetes/test/e2e/upgrades"
 
@@ -24,7 +24,9 @@ var upgradeSuites = []*ginkgo.TestSuite{
 		Description: templates.LongDesc(`
 		Run all tests.
 		`),
-		Matches: func(name string) bool { return strings.Contains(name, "[Feature:ClusterUpgrade]") },
+		Matches: func(name string) bool {
+			return strings.Contains(name, "[Feature:ClusterUpgrade]") && strings.Contains(name, "[Suite:openshift]")
+		},
 
 		Init: func(opt map[string]string) error {
 			for k, v := range opt {

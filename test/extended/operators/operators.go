@@ -3,6 +3,7 @@ package operators
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -57,11 +58,6 @@ var _ = g.Describe("[Feature:Platform][Smoke] Managed cluster should", func() {
 			cv := objx.Map(obj.UnstructuredContent())
 			lastErr = nil
 			lastCV = cv
-			payload := cv.Get("status.current.payload").String()
-			if len(payload) == 0 {
-				e2e.Logf("ClusterVersion has no current payload version")
-				return false, nil
-			}
 			if cond := condition(cv, "Progressing"); cond.Get("status").String() != "False" {
 				e2e.Logf("ClusterVersion is still progressing: %s", cond.Get("message").String())
 				return false, nil
@@ -174,6 +170,9 @@ var _ = g.Describe("[Feature:Platform] Managed cluster should", func() {
 	defer g.GinkgoRecover()
 
 	g.It("have operators on the cluster version", func() {
+		if len(os.Getenv("TEST_UNSUPPORTED_ALLOW_VERSION_SKEW")) > 0 {
+			e2e.Skipf("Test is disabled to allow cluster components to have different versions")
+		}
 		cfg, err := e2e.LoadConfig()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		c := configclient.NewForConfigOrDie(cfg)

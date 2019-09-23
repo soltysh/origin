@@ -3,6 +3,7 @@ package builds
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	g "github.com/onsi/ginkgo"
+	o "github.com/onsi/gomega"
 	buildv1 "github.com/openshift/api/build/v1"
 	imagev1 "github.com/openshift/api/image/v1"
 	exutil "github.com/openshift/origin/test/extended/util"
@@ -44,6 +46,8 @@ func TestWebhook(t g.GinkgoTInterface, oc *exutil.CLI) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
+	// Bug #1752581: reduce number of URLs per test case
+	// OCP 4.2 tests on GCP had high flake levels because namespaces took too long to tear down
 	tests := []struct {
 		Name       string
 		Payload    string
@@ -56,8 +60,6 @@ func TestWebhook(t g.GinkgoTInterface, oc *exutil.CLI) {
 			HeaderFunc: genericHeaderFunc,
 			URLs: []string{
 				"/apis/build.openshift.io/v1/namespaces/" + oc.Namespace() + "/buildconfigs/pushbuild/webhooks/secret200/generic",
-				"/apis/build.openshift.io/v1/namespaces/" + oc.Namespace() + "/buildconfigs/pushbuild/webhooks/secret201/generic",
-				"/apis/build.openshift.io/v1/namespaces/" + oc.Namespace() + "/buildconfigs/pushbuild/webhooks/secret202/generic",
 			},
 		},
 		{
@@ -66,8 +68,6 @@ func TestWebhook(t g.GinkgoTInterface, oc *exutil.CLI) {
 			HeaderFunc: githubHeaderFunc,
 			URLs: []string{
 				"/apis/build.openshift.io/v1/namespaces/" + oc.Namespace() + "/buildconfigs/pushbuild/webhooks/secret100/github",
-				"/apis/build.openshift.io/v1/namespaces/" + oc.Namespace() + "/buildconfigs/pushbuild/webhooks/secret101/github",
-				"/apis/build.openshift.io/v1/namespaces/" + oc.Namespace() + "/buildconfigs/pushbuild/webhooks/secret102/github",
 			},
 		},
 		{
@@ -76,8 +76,6 @@ func TestWebhook(t g.GinkgoTInterface, oc *exutil.CLI) {
 			HeaderFunc: gitlabHeaderFunc,
 			URLs: []string{
 				"/apis/build.openshift.io/v1/namespaces/" + oc.Namespace() + "/buildconfigs/pushbuild/webhooks/secret300/gitlab",
-				"/apis/build.openshift.io/v1/namespaces/" + oc.Namespace() + "/buildconfigs/pushbuild/webhooks/secret301/gitlab",
-				"/apis/build.openshift.io/v1/namespaces/" + oc.Namespace() + "/buildconfigs/pushbuild/webhooks/secret302/gitlab",
 			},
 		},
 		{
@@ -86,37 +84,32 @@ func TestWebhook(t g.GinkgoTInterface, oc *exutil.CLI) {
 			HeaderFunc: bitbucketHeaderFunc,
 			URLs: []string{
 				"/apis/build.openshift.io/v1/namespaces/" + oc.Namespace() + "/buildconfigs/pushbuild/webhooks/secret400/bitbucket",
-				"/apis/build.openshift.io/v1/namespaces/" + oc.Namespace() + "/buildconfigs/pushbuild/webhooks/secret401/bitbucket",
-				"/apis/build.openshift.io/v1/namespaces/" + oc.Namespace() + "/buildconfigs/pushbuild/webhooks/secret402/bitbucket",
 			},
 		},
 	}
 
 	for _, test := range tests {
+		g.By(fmt.Sprintf("testing %s webhooks", test.Name))
 		for _, s := range test.URLs {
 			// trigger build event sending push notification
 			clusterAdminClientConfig := oc.AdminConfig()
 
+			g.By("executing the webhook to get the build object")
 			body := postFile(clusterAdminBuildClient.RESTClient(), test.HeaderFunc, test.Payload, clusterAdminClientConfig.Host+s, http.StatusOK, t, oc)
-			if len(body) == 0 {
-				t.Fatalf("%s: Webhook did not return expected Build object.", test.Name)
-			}
+			o.Expect(body).NotTo(o.BeEmpty())
 
+			g.By("Unmarshalling the build object")
 			returnedBuild := &buildv1.Build{}
 			err := json.Unmarshal(body, returnedBuild)
-			if err != nil {
-				t.Fatalf("%s: Unable to unmarshal returned body into a Build object: %v", test.Name, err)
-			}
+			o.Expect(err).NotTo(o.HaveOccurred())
 
+			g.By("checking that the build exists")
 			actual, err := clusterAdminBuildClient.Builds(oc.Namespace()).Get(returnedBuild.Name, metav1.GetOptions{})
-			if err != nil {
-				t.Errorf("Created build not found in cluster: %v", err)
-			}
+			o.Expect(err).NotTo(o.HaveOccurred())
 
+			g.By("checking that we found the correct build")
 			// There should only be one trigger on these builds.
-			if actual.Spec.TriggeredBy[0].Message != returnedBuild.Spec.TriggeredBy[0].Message {
-				t.Fatalf("%s: Webhook returned incorrect build.", test.Name)
-			}
+			o.Expect(actual.Spec.TriggeredBy[0].Message).To(o.Equal(returnedBuild.Spec.TriggeredBy[0].Message))
 		}
 	}
 }
@@ -169,10 +162,10 @@ func TestWebhookGitHubPushWithImage(t g.GinkgoTInterface, oc *exutil.CLI) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
+	// Bug #1752581: reduce number of URLs per test case
+	// OCP 4.2 tests on GCP had high flake levels because namespaces took too long to tear down
 	for _, s := range []string{
 		"/apis/build.openshift.io/v1/namespaces/" + oc.Namespace() + "/buildconfigs/pushbuild/webhooks/secret100/github",
-		"/apis/build.openshift.io/v1/namespaces/" + oc.Namespace() + "/buildconfigs/pushbuild/webhooks/secret101/github",
-		"/apis/build.openshift.io/v1/namespaces/" + oc.Namespace() + "/buildconfigs/pushbuild/webhooks/secret102/github",
 	} {
 
 		// trigger build event sending push notification
@@ -307,10 +300,10 @@ func TestWebhookGitHubPing(t g.GinkgoTInterface, oc *exutil.CLI) {
 	}
 	defer watch.Stop()
 
+	// Bug #1752581: reduce number of URLs per test case
+	// OCP 4.2 tests on GCP had high flake levels because namespaces took too long to tear down
 	for _, s := range []string{
 		"/apis/build.openshift.io/v1/namespaces/" + oc.Namespace() + "/buildconfigs/pushbuild/webhooks/secret101/github",
-		"/apis/build.openshift.io/v1/namespaces/" + oc.Namespace() + "/buildconfigs/pushbuild/webhooks/secret100/github",
-		"/apis/build.openshift.io/v1/namespaces/" + oc.Namespace() + "/buildconfigs/pushbuild/webhooks/secret102/github",
 	} {
 		// trigger build event sending push notification
 		clusterAdminClientConfig := oc.AdminConfig()

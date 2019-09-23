@@ -26,7 +26,6 @@ import (
 	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
-	reale2e "k8s.io/kubernetes/test/e2e"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/testfiles"
 	"k8s.io/kubernetes/test/e2e/generated"
@@ -47,27 +46,15 @@ var (
 
 var TestContext *e2e.TestContextType = &e2e.TestContext
 
-// init initialize the extended testing suite.
-// You can set these environment variables to configure extended tests:
-// KUBECONFIG - Path to kubeconfig containing embedded authinfo
-// TEST_REPORT_DIR - If set, JUnit output will be written to this directory for each test
-// TEST_REPORT_FILE_NAME - If set, will determine the name of the file that JUnit output is written to
-func Init() {
-	flag.StringVar(&syntheticSuite, "suite", "", "DEPRECATED: Optional suite selector to filter which tests are run. Use focus.")
-	reale2e.ViperizeFlags(reale2e.GetViperConfig())
-	e2e.HandleFlags()
-	InitTest()
-}
-
 func InitStandardFlags() {
-	e2e.RegisterCommonFlags()
-	e2e.RegisterClusterFlags()
+	e2e.RegisterCommonFlags(flag.CommandLine)
+	e2e.RegisterClusterFlags(flag.CommandLine)
 
 	// replaced by a bare import above.
 	//e2e.RegisterStorageFlags()
 }
 
-func InitTest() {
+func InitTest(dryRun bool) {
 	InitDefaultEnvironmentVariables()
 	// interpret synthetic input in `--ginkgo.focus` and/or `--ginkgo.skip`
 	ginkgo.BeforeEach(checkSyntheticInput)
@@ -90,10 +77,12 @@ func InitTest() {
 	// load and set the host variable for kubectl
 	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(&clientcmd.ClientConfigLoadingRules{ExplicitPath: TestContext.KubeConfig}, &clientcmd.ConfigOverrides{})
 	cfg, err := clientConfig.ClientConfig()
-	if err != nil {
+	if err != nil && !dryRun { // we don't need the host when doing a dryrun
 		FatalErr(err)
 	}
-	TestContext.Host = cfg.Host
+	if cfg != nil {
+		TestContext.Host = cfg.Host
+	}
 
 	reportFileName = os.Getenv("TEST_REPORT_FILE_NAME")
 	if reportFileName == "" {
@@ -143,10 +132,26 @@ func ExecuteTest(t ginkgo.GinkgoTestingT, suite string) {
 }
 
 func AnnotateTestSuite() {
+	testRenamer := newGinkgoTestRenamerFromGlobals(e2e.TestContext.Provider, getNetworkSkips())
+
+	ginkgo.WalkTests(testRenamer.maybeRenameTest)
+}
+
+func getNetworkSkips() []string {
+	out, err := e2e.KubectlCmd("get", "network.operator.openshift.io", "cluster", "--template", "{{.spec.defaultNetwork.type}}{{if .spec.defaultNetwork.openshiftSDNConfig}} {{.spec.defaultNetwork.type}}/{{.spec.defaultNetwork.openshiftSDNConfig.mode}}{{end}}").CombinedOutput()
+	if err != nil {
+		e2e.Logf("Could not get network operator configuration: not adding any plugin-specific skips")
+		return nil
+	}
+	return strings.Split(string(out), " ")
+}
+
+func newGinkgoTestRenamerFromGlobals(provider string, networkSkips []string) *ginkgoTestRenamer {
 	var allLabels []string
 	matches := make(map[string]*regexp.Regexp)
 	stringMatches := make(map[string][]string)
 	excludes := make(map[string]*regexp.Regexp)
+
 	for label, items := range testMaps {
 		sort.Strings(items)
 		allLabels = append(allLabels, label)
@@ -169,69 +174,92 @@ func AnnotateTestSuite() {
 	}
 	sort.Strings(allLabels)
 
-	if e2e.TestContext.Provider != "" {
-		excludedTests = append(excludedTests, fmt.Sprintf(`\[Skipped:%s\]`, e2e.TestContext.Provider))
+	if provider != "" {
+		excludedTests = append(excludedTests, fmt.Sprintf(`\[Skipped:%s\]`, provider))
 	}
+	for _, network := range networkSkips {
+		excludedTests = append(excludedTests, fmt.Sprintf(`\[Skipped:Network/%s\]`, network))
+	}
+	klog.Infof("openshift-tests excluded test regex is %q", strings.Join(excludedTests, `|`))
 	excludedTestsFilter := regexp.MustCompile(strings.Join(excludedTests, `|`))
 
-	ginkgo.WalkTests(func(name string, node types.TestNode) {
-		labels := ""
-		for {
-			count := 0
-			for _, label := range allLabels {
-				if strings.Contains(name, label) {
+	return &ginkgoTestRenamer{
+		allLabels:     allLabels,
+		stringMatches: stringMatches,
+		matches:       matches,
+		excludes:      excludes,
+
+		excludedTestsFilter: excludedTestsFilter,
+	}
+}
+
+type ginkgoTestRenamer struct {
+	allLabels     []string
+	stringMatches map[string][]string
+	matches       map[string]*regexp.Regexp
+	excludes      map[string]*regexp.Regexp
+
+	excludedTestsFilter *regexp.Regexp
+}
+
+func (r *ginkgoTestRenamer) maybeRenameTest(name string, node types.TestNode) {
+	labels := ""
+	for {
+		count := 0
+		for _, label := range r.allLabels {
+			if strings.Contains(name, label) {
+				continue
+			}
+
+			var hasLabel bool
+			for _, segment := range r.stringMatches[label] {
+				hasLabel = strings.Contains(name, segment)
+				if hasLabel {
+					break
+				}
+			}
+			if !hasLabel {
+				if re := r.matches[label]; re != nil {
+					hasLabel = r.matches[label].MatchString(name)
+				}
+			}
+
+			if hasLabel {
+				// TODO: remove when we no longer need it
+				if re, ok := r.excludes[label]; ok && re.MatchString(name) {
 					continue
 				}
+				count++
+				labels += " " + label
+				name += " " + label
+			}
+		}
+		if count == 0 {
+			break
+		}
+	}
 
-				var hasLabel bool
-				for _, segment := range stringMatches[label] {
-					hasLabel = strings.Contains(name, segment)
-					if hasLabel {
-						break
-					}
-				}
-				if !hasLabel {
-					if re := matches[label]; re != nil {
-						hasLabel = matches[label].MatchString(name)
-					}
-				}
-
-				if hasLabel {
-					// TODO: remove when we no longer need it
-					if re, ok := excludes[label]; ok && re.MatchString(name) {
-						continue
-					}
-					count++
-					labels += " " + label
-					name += " " + label
-				}
-			}
-			if count == 0 {
-				break
-			}
+	if !r.excludedTestsFilter.MatchString(name) {
+		isSerial := strings.Contains(name, "[Serial]")
+		isConformance := strings.Contains(name, "[Conformance]")
+		switch {
+		case isSerial && isConformance:
+			node.SetText(node.Text() + " [Suite:openshift/conformance/serial/minimal]")
+		case isSerial:
+			node.SetText(node.Text() + " [Suite:openshift/conformance/serial]")
+		case isConformance:
+			node.SetText(node.Text() + " [Suite:openshift/conformance/parallel/minimal]")
+		default:
+			node.SetText(node.Text() + " [Suite:openshift/conformance/parallel]")
 		}
-		if !excludedTestsFilter.MatchString(name) {
-			isSerial := strings.Contains(name, "[Serial]")
-			isConformance := strings.Contains(name, "[Conformance]")
-			switch {
-			case isSerial && isConformance:
-				node.SetText(node.Text() + " [Suite:openshift/conformance/serial/minimal]")
-			case isSerial:
-				node.SetText(node.Text() + " [Suite:openshift/conformance/serial]")
-			case isConformance:
-				node.SetText(node.Text() + " [Suite:openshift/conformance/parallel/minimal]")
-			default:
-				node.SetText(node.Text() + " [Suite:openshift/conformance/parallel]")
-			}
-		}
-		if strings.Contains(node.CodeLocation().FileName, "/origin/test/") && !strings.Contains(node.Text(), "[Suite:openshift") {
-			node.SetText(node.Text() + " [Suite:openshift]")
-		}
-		if strings.Contains(node.CodeLocation().FileName, "/kubernetes/test/e2e/") {
-			node.SetText(node.Text() + " [Suite:k8s]")
-		}
-		node.SetText(node.Text() + labels)
-	})
+	}
+	if strings.Contains(node.CodeLocation().FileName, "/origin/test/") && !strings.Contains(node.Text(), "[Suite:openshift") {
+		node.SetText(node.Text() + " [Suite:openshift]")
+	}
+	if strings.Contains(node.CodeLocation().FileName, "/kubernetes/test/e2e/") {
+		node.SetText(node.Text() + " [Suite:k8s]")
+	}
+	node.SetText(node.Text() + labels)
 }
 
 // ProwGCPSetup makes sure certain required env vars are available in the case
@@ -334,6 +362,7 @@ var (
 			`\[Feature:DynamicAudit\]`,     // off by default.  sig-master
 
 			`\[NodeAlphaFeature:VolumeSubpathEnvExpansion\]`, // flag gate is off
+			`\[Feature:IPv6DualStack.*\]`,
 		},
 		// tests for features that are not implemented in openshift
 		"[Disabled:Unimplemented]": {
@@ -346,11 +375,11 @@ var (
 			`Kubernetes Dashboard`,            // Not installed by default (also probably slow image pull)
 			`\[Feature:ServiceLoadBalancer\]`, // Not enabled yet
 			`\[Feature:RuntimeClass\]`,        // disable runtimeclass tests in 4.1 (sig-pod/sjenning@redhat.com)
-			`\[Feature:CustomResourceWebhookConversion\]`, // webhook conversion is off by default.  sig-master/@sttts
 
-			`NetworkPolicy between server and client should allow egress access on one named port`, // not yet implemented
-
-			`should proxy to cadvisor`, // we don't expose cAdvisor port directly for security reasons
+			`NetworkPolicy.*egress`,     // not supported
+			`NetworkPolicy.*named port`, // not yet implemented
+			`enforce egress policy`,     // not support
+			`should proxy to cadvisor`,  // we don't expose cAdvisor port directly for security reasons
 		},
 		// tests that rely on special configuration that we do not yet support
 		"[Disabled:SpecialConfig]": {
@@ -393,14 +422,36 @@ var (
 			`should be rejected when no endpoints exist`,                                 // https://bugzilla.redhat.com/show_bug.cgi?id=1711605
 			`PreemptionExecutionPath runs ReplicaSets to verify preemption running path`, // https://bugzilla.redhat.com/show_bug.cgi?id=1711606
 			`TaintBasedEvictions`,                                                        // https://bugzilla.redhat.com/show_bug.cgi?id=1711608
+			// TODO(workloads): reenable
+			`SchedulerPreemption`,
 
 			`\[Driver: iscsi\]`, // https://bugzilla.redhat.com/show_bug.cgi?id=1711627
 
 			`\[Driver: nfs\] \[Testpattern: Dynamic PV \(default fs\)\] provisioning should access volume from different nodes`, // https://bugzilla.redhat.com/show_bug.cgi?id=1711688
 
+			// Test fails on platforms that use LoadBalancerService and HostNetwork endpoint publishing strategy
+			`\[Conformance\]\[Area:Networking\]\[Feature:Router\] The HAProxy router should set Forwarded headers appropriately`, // https://bugzilla.redhat.com/show_bug.cgi?id=1752646
+
 			// requires a 1.14 kubelet, enable when rhcos is built for 4.2
 			"when the NodeLease feature is enabled",
 			"RuntimeClass should reject",
+
+			// TODO(node): configure the cri handler for the runtime class to make this work
+			"should run a Pod requesting a RuntimeClass with a configured handler",
+			"should reject a Pod requesting a RuntimeClass with conflicting node selector",
+			"should run a Pod requesting a RuntimeClass with scheduling",
+
+			// TODO(sdn): reenable when openshift/sdn is rebased to 1.16
+			`Services should implement service.kubernetes.io/headless`,
+
+			// TODO(sdn): test pod fails to connect in 1.16
+			`should allow ingress access from updated pod`,
+
+			// TODO(storage): fix the use of SSH into the node
+			`volumeMode should not mount / map unused volumes in a pod`,
+
+			// TODO(workload): reactivate when oc is rebased
+			`should support exec using resource/name`,
 		},
 		// tests that may work, but we don't support them
 		"[Disabled:Unsupported]": {
@@ -422,6 +473,9 @@ var (
 		"[Flaky]": {
 			`Job should run a job to completion when tasks sometimes fail and are not locally restarted`, // seems flaky, also may require too many resources
 			`openshift mongodb replication creating from a template`,                                     // flaking on deployment
+
+			// TODO(node): test works when run alone, but not in the suite in CI
+			`\[Feature:HPA\] Horizontal pod autoscaling \(scale resource: CPU\) \[sig-autoscaling\] ReplicationController light Should scale from 1 pod to 2 pods`,
 		},
 		// tests that must be run without competition
 		"[Serial]": {
@@ -437,7 +491,7 @@ var (
 
 			`Should be able to support the 1\.7 Sample API Server using the current Aggregator`, // down apiservices break other clients today https://bugzilla.redhat.com/show_bug.cgi?id=1623195
 
-			`\[HPA\] Horizontal pod autoscaling \(scale resource: Custom Metrics from Stackdriver\)`, // down custom metrics apiservices break other clients
+			`\[Feature:HPA\] Horizontal pod autoscaling \(scale resource: CPU\) \[sig-autoscaling\] ReplicationController light Should scale from 1 pod to 2 pods`,
 		},
 		"[Skipped:azure]": {
 			"Networking should provide Internet connection for containers", // Azure does not allow ICMP traffic to internet.
@@ -491,6 +545,33 @@ var (
 
 			// https://bugzilla.redhat.com/show_bug.cgi?id=1745720
 			`\[sig-storage\] CSI Volumes \[Driver: pd.csi.storage.gke.io\]\[Serial\]`,
+
+			// https://bugzilla.redhat.com/show_bug.cgi?id=1749882
+			`\[sig-storage\] CSI Volumes CSI Topology test using GCE PD driver \[Serial\]`,
+
+			// https://bugzilla.redhat.com/show_bug.cgi?id=1751367
+			`gce-localssd-scsi-fs`,
+
+			// https://bugzilla.redhat.com/show_bug.cgi?id=1750851
+			// should be serial if/when it's re-enabled
+			`\[HPA\] Horizontal pod autoscaling \(scale resource: Custom Metrics from Stackdriver\)`,
+		},
+		// tests that don't pass under openshift-sdn but that are expected to pass
+		// with other network plugins (particularly ovn-kubernetes)
+		"[Skipped:Network/OpenShiftSDN]": {
+			`NetworkPolicy between server and client should allow egress access on one named port`, // not yet implemented
+		},
+		// tests that don't pass under openshift-sdn multitenant mode
+		"[Skipped:Network/OpenShiftSDN/Multitenant]": {
+			`\[Feature:NetworkPolicy\]`, // not compatible with multitenant mode
+			`\[sig-network\] Services should preserve source pod IP for traffic thru service cluster IP`, // known bug, not planned to be fixed
+		},
+		// tests that don't pass under OVN Kubernetes
+		"[Skipped:Network/OVNKubernetes]": {
+			`\[sig-network\] Services should be able to switch session affinity for NodePort service`,            // https://jira.coreos.com/browse/SDN-510
+			`\[sig-network\] Services should be able to switch session affinity for service with type clusterIP`, // https://jira.coreos.com/browse/SDN-510
+			`\[sig-network\] Services should have session affinity work for NodePort service`,                    // https://jira.coreos.com/browse/SDN-510
+			`\[sig-network\] Services should have session affinity work for service with type clusterIP`,         // https://jira.coreos.com/browse/SDN-510
 		},
 		"[Suite:openshift/scalability]": {},
 		// tests that replace the old test-cmd script

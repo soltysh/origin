@@ -9,6 +9,7 @@ import (
 
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
+	"k8s.io/kubernetes/test/e2e/framework/pod"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -33,17 +34,6 @@ var _ = g.Describe("[Conformance][Area:Networking][Feature:Router]", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		metricsIP, err = exutil.WaitForRouterInternalIP(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-
-		if routerIP != metricsIP {
-			// On 4.x clusters, there's couple of bugs to fix before
-			// we can enable this test:
-			//  1. Selector on router-internal-default service
-			//  2. There is a weird 10.131.0.1 IP in the mix which
-			//     shows up as the client ip and not the node IP.
-			// Dec 17 17:03:32.836: Unexpected header: '10.131.0.1' (expected 10.0.139.23); All headers: http.Header{"User-Agent":[]string{"curl/7.61.0"}, "Accept":[]string{"*/*"}, "X-Forwarded-Host":[]string{"router-headers.example.com"}, "X-Forwarded-Port":[]string{"80"}, "X-Forwarded-Proto":[]string{"http"}, "Forwarded":[]string{"for=10.131.0.1;host=router-headers.example.com;proto=http;proto-version="}, "X-Forwarded-For":[]string{"10.131.0.1"}}
-			g.Skip("skipped on 4.0 clusters")
-			return
-		}
 	})
 
 	g.Describe("The HAProxy router", func() {
@@ -116,7 +106,7 @@ var _ = g.Describe("[Conformance][Area:Networking][Feature:Router]", func() {
 })
 
 func dumpRouterHeadersLogs(oc *exutil.CLI, name string) {
-	log, _ := e2e.GetPodLogs(oc.AdminKubeClient(), oc.KubeFramework().Namespace.Name, "router-headers", "router")
+	log, _ := pod.GetPodLogs(oc.AdminKubeClient(), oc.KubeFramework().Namespace.Name, "router-headers", "router")
 	e2e.Logf("Weighted Router test %s logs:\n %s", name, log)
 }
 

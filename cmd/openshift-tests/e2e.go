@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/kubernetes/pkg/kubectl/util/templates"
+	"k8s.io/kubectl/pkg/util/templates"
 
 	"github.com/openshift/origin/pkg/test/ginkgo"
 
@@ -42,16 +42,6 @@ var staticSuites = []*ginkgo.TestSuite{
 		Matches: func(name string) bool {
 			return strings.Contains(name, "[Suite:openshift/conformance/serial")
 		},
-	},
-	{
-		Name: "openshift/conformance/multitenant",
-		Description: templates.LongDesc(`
-		Only the portion of the openshift/conformance test suite that applies to the openshift-sdn multitenant plugin.
-		`),
-		Matches: func(name string) bool {
-			return !strings.Contains(name, "[Feature:NetworkPolicy]") && strings.Contains(name, "[Suite:openshift/conformance/")
-		},
-		Parallelism: 30,
 	},
 	{
 		Name: "openshift/disruptive",

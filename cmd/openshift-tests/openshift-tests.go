@@ -20,7 +20,7 @@ import (
 	utilflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/kubectl/util/templates"
+	"k8s.io/kubectl/pkg/util/templates"
 	reale2e "k8s.io/kubernetes/test/e2e"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/storage/external"
@@ -124,9 +124,10 @@ func newRunCommand() *cobra.Command {
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return mirrorToFile(opt, func() error {
-				if err := initProvider(opt.Provider); err != nil {
+				if err := initProvider(opt.Provider, opt.DryRun); err != nil {
 					return err
 				}
+
 				e2e.AfterReadingAllFlags(exutil.TestContext)
 				e2e.TestContext.DumpLogsOnFailure = true
 				exutil.TestContext.DumpLogsOnFailure = true
@@ -187,7 +188,7 @@ func newRunUpgradeCommand() *cobra.Command {
 					}
 				}
 
-				if err := initProvider(opt.Provider); err != nil {
+				if err := initProvider(opt.Provider, opt.DryRun); err != nil {
 					return err
 				}
 				e2e.AfterReadingAllFlags(exutil.TestContext)
@@ -221,7 +222,7 @@ func newRunTestCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := initProvider(os.Getenv("TEST_PROVIDER")); err != nil {
+			if err := initProvider(os.Getenv("TEST_PROVIDER"), testOpt.DryRun); err != nil {
 				return err
 			}
 			if err := initUpgrade(os.Getenv("TEST_SUITE_OPTIONS")); err != nil {
@@ -268,12 +269,13 @@ func bindOptions(opt *testginkgo.Options, flags *pflag.FlagSet) {
 	flags.StringVar(&opt.JUnitDir, "junit-dir", opt.JUnitDir, "The directory to write test reports to.")
 	flags.StringVar(&opt.Provider, "provider", opt.Provider, "The cluster infrastructure provider. Will automatically default to the correct value.")
 	flags.StringVarP(&opt.TestFile, "file", "f", opt.TestFile, "Create a suite from the newline-delimited test names in this file.")
+	flags.StringVar(&opt.Regex, "run", opt.Regex, "Regular expression of tests to run.")
 	flags.StringVarP(&opt.OutFile, "output-file", "o", opt.OutFile, "Write all test output to this file.")
 	flags.DurationVar(&opt.Timeout, "timeout", opt.Timeout, "Set the maximum time a test can run before being aborted. This is read from the suite by default, but will be 10 minutes otherwise.")
 	flags.BoolVar(&opt.IncludeSuccessOutput, "include-success", opt.IncludeSuccessOutput, "Print output from successful tests.")
 }
 
-func initProvider(provider string) error {
+func initProvider(provider string, dryRun bool) error {
 	// record the exit error to the output file
 	if err := decodeProviderTo(provider, exutil.TestContext); err != nil {
 		return err
@@ -292,7 +294,7 @@ func initProvider(provider string) error {
 	//exutil.TestContext.LoggingSoak.MilliSecondsBetweenWaves = 5000
 
 	exutil.AnnotateTestSuite()
-	exutil.InitTest()
+	exutil.InitTest(dryRun)
 	gomega.RegisterFailHandler(ginkgo.Fail)
 
 	// TODO: infer SSH keys from the cluster

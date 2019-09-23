@@ -209,7 +209,6 @@ var globalClusterReaderGroups = sets.NewString("system:cluster-readers", "system
 var globalDeploymentConfigGetterUsers = sets.NewString(
 	"system:serviceaccount:kube-system:generic-garbage-collector",
 	"system:serviceaccount:kube-system:namespace-controller",
-	"system:serviceaccount:kube-system:clusterrole-aggregation-controller",
 )
 
 type resourceAccessReviewTest struct {
@@ -333,6 +332,10 @@ func (test localResourceAccessReviewTest) run() {
 			actualUsersToCheck := sets.NewString()
 			for _, curr := range actualResponse.UsersSlice {
 				if strings.HasPrefix(curr, "system:serviceaccount:openshift-") {
+					continue
+				}
+				// skip the ci provisioner to pass gcp: ci-provisioner@openshift-gce-devel-ci.iam.gserviceaccount.com
+				if strings.HasPrefix(curr, "ci-provisioner@") {
 					continue
 				}
 				actualUsersToCheck.Insert(curr)
