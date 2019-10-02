@@ -17,12 +17,12 @@
 # %commit and %os_git_vars are intended to be set by tito custom builders provided
 # in the .tito/lib directory. The values in this spec file will not be kept up to date.
 %{!?commit:
-%global commit 776515824029424ae884942abe6333424cbba590
+%global commit 516184bf5037c4f20d2323603c02aab3e7311962
 }
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 # os_git_vars needed to run hack scripts during rpm builds
 %{!?os_git_vars:
-%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.145 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=145 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=ce32edc0e4 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
+%global os_git_vars OS_GIT_MINOR=11+ OS_GIT_MAJOR=3 OS_GIT_VERSION=v3.11.146 OS_GIT_TREE_STATE=clean OS_BUILD_LDFLAGS_DEFAULT_IMAGE_STREAMS=rhel7 KUBE_GIT_VERSION=v1.11.0+d4cacc0 OS_GIT_PATCH=146 KUBE_GIT_COMMIT=d4cacc0 KUBE_GIT_MINOR=11+ OS_GIT_COMMIT=1efd101d29 KUBE_GIT_MAJOR=1 OS_IMAGE_PREFIX=registry.redhat.io/openshift3/ose ETCD_GIT_VERSION=v3.2.16-0-g121edf0 ETCD_GIT_COMMIT=121edf0
 }
 
 %if 0%{?skip_build}
@@ -64,7 +64,7 @@
 Name:           atomic-openshift
 # Version is not kept up to date and is intended to be set by tito custom
 # builders provided in the .tito/lib directory of this project
-Version:        3.11.146
+Version:        3.11.147
 Release:        1%{?dist}
 Summary:        Open Source Container Management by Red Hat
 License:        ASL 2.0
@@ -488,6 +488,28 @@ if [ "$1" -eq 0 ] ; then
 fi
 
 %changelog
+* Wed Oct 02 2019 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.147-1
+- toggle ssh parameters if ssh-auth source secret includes a known_hosts
+  setting (gmontero@redhat.com)
+- UPSTREAM: 77661: Kubelet status manager sync the status of local pods
+  (rphillips@redhat.com)
+- Don't log messages at SDN startup about already-dead pods (danw@redhat.com)
+- Initializing runningPods on SDN bootup for 4.x (aconstan@redhat.com)
+- Fix pod teardown, by looking up ovsdb column by correct name
+  (danw@redhat.com)
+- Consistently refer to OVS database columns using "_" rather than "-"
+  (danw@redhat.com)
+- Change ovs.Find to return multiple columns (danw@redhat.com)
+- Reattach pods to OVS if needed on restart (danw@redhat.com)
+- Fix panic on empty external-ids (danw@redhat.com)
+- UPSTREAM: 79391: Don't use strategic merge patch on Node.Status.Addresses
+  (danw@redhat.com)
+-  bump(github.com/google/cadvisor): 087e94f7f4d628ac57e427d292607984dde59041
+  (sjenning@redhat.com)
+- bump(*) (sjenning@redhat.com)
+- glide: point github.com/apcera/gssapi dep to openshift fork
+  (sjenning@redhat.com)
+
 * Thu Sep 12 2019 AOS Automation Release Team <aos-team-art@redhat.com> 3.11.146-1
 - 
 
