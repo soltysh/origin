@@ -7,8 +7,8 @@
 %global import_path github.com/openshift/origin
 
 %global golang_version 1.12
-# %commit and %os_git_vars are intended to be set by tito custom builders provided
-# in the .tito/lib directory. The values in this spec file will not be kept up to date.
+# commit and os_git_vars are intended to be set by the build system.
+# NOTE: The values in this spec file will not be kept up to date.
 %{!?commit:
 %global commit 5d8f3e101b55f057e28fb415a5b0867149e816c3
 }
@@ -46,18 +46,10 @@
 %endif
 %{!?make_redistributable: %global make_redistributable %{need_redistributable_set}}
 
-%if "%{dist}" == ".el7aos"
-%global package_name openshift
-%global product_name OpenShift
-%else
-%global package_name openshift
-%global product_name OpenShift
-%endif
-
-%{!?version: %global version 0.0.1}
+%{!?version: %global version 4.0.0}
 %{!?release: %global release 1}
 
-Name:           %{package_name}
+Name:           openshift
 Version:        4.3.0
 Release:        201909302346%{?dist}
 Summary:        Open Source Container Management by Red Hat
@@ -79,7 +71,7 @@ BuildRequires:  golang >= %{golang_version}
 BuildRequires:  krb5-devel
 BuildRequires:  rsync
 
-#
+# TODO: Add alternative to tito here to gather and inject Bundled Provides into specfile.
 # The following Bundled Provides entries are populated automatically by the
 # OpenShift tito custom builder found here:
 #   https://github.com/openshift/origin/blob/master/.tito/lib/origin/builder/
@@ -99,13 +91,13 @@ Kubernetes allowing you to safely host many different applications and workloads
 on a unified cluster.
 
 %package hyperkube
-Summary:        %{product_name} Kubernetes server commands
+Summary:        OpenShift Kubernetes server commands
 Requires:       util-linux
 Requires:       socat
 Requires:       iptables
-Provides:       hyperkube
-Provides:       atomic-openshift-hyperkube
-Provides:       atomic-openshift-node
+Provides:       hyperkube = %{version}
+Obsoletes:      atomic-openshift-hyperkube <= %{version}
+Obsoletes:      atomic-openshift-node <= %{version}
 
 %description hyperkube
 %{summary}
