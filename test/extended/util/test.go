@@ -180,7 +180,7 @@ func newGinkgoTestRenamerFromGlobals(provider string, networkSkips []string) *gi
 	for _, network := range networkSkips {
 		excludedTests = append(excludedTests, fmt.Sprintf(`\[Skipped:Network/%s\]`, network))
 	}
-	klog.Infof("openshift-tests excluded test regex is %q", strings.Join(excludedTests, `|`))
+	klog.V(4).Infof("openshift-tests excluded test regex is %q", strings.Join(excludedTests, `|`))
 	excludedTestsFilter := regexp.MustCompile(strings.Join(excludedTests, `|`))
 
 	return &ginkgoTestRenamer{
@@ -358,8 +358,9 @@ var (
 			`\[Feature:Initializers\]`,     // admission controller disabled
 			`\[Feature:TTLAfterFinished\]`, // flag gate is off
 			`\[Feature:GPUDevicePlugin\]`,  // GPU node needs to be available
-			`\[Feature:ExpandCSIVolumes\]`, // off by default .  sig-storage
-			`\[Feature:DynamicAudit\]`,     // off by default.  sig-master
+			`\[sig-scheduling\] GPUDevicePluginAcrossRecreate \[Feature:Recreate\]`, // GPU node needs to be available
+			`\[Feature:ExpandCSIVolumes\]`,                                          // off by default .  sig-storage
+			`\[Feature:DynamicAudit\]`,                                              // off by default.  sig-master
 
 			`\[NodeAlphaFeature:VolumeSubpathEnvExpansion\]`, // flag gate is off
 			`\[Feature:IPv6DualStack.*\]`,
@@ -422,6 +423,7 @@ var (
 			`should be rejected when no endpoints exist`,                                 // https://bugzilla.redhat.com/show_bug.cgi?id=1711605
 			`PreemptionExecutionPath runs ReplicaSets to verify preemption running path`, // https://bugzilla.redhat.com/show_bug.cgi?id=1711606
 			`TaintBasedEvictions`,                                                        // https://bugzilla.redhat.com/show_bug.cgi?id=1711608
+			`recreate nodes and ensure they function upon restart`,                       // https://bugzilla.redhat.com/show_bug.cgi?id=1756428
 			// TODO(workloads): reenable
 			`SchedulerPreemption`,
 
