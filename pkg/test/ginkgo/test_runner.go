@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"sync"
 	"syscall"
@@ -274,6 +275,12 @@ func recordTestResultInMonitor(testRunResult *testRunResultHandle, monitorRecord
 	})
 }
 
+func stripAndQuote(name string) string {
+	suiteRE := regexp.MustCompile(`\[Suite:.*\]`)
+	newName := suiteRE.ReplaceAllString(name, "")
+	return regexp.QuoteMeta(strings.TrimSpace(newName))
+}
+
 // RunTestInNewProcess runs a test case in a different process and returns a result
 func (c *commandContext) RunTestInNewProcess(ctx context.Context, test *testCase) *testRunResult {
 	ret := &testRunResult{
@@ -288,7 +295,19 @@ func (c *commandContext) RunTestInNewProcess(ctx context.Context, test *testCase
 	}
 
 	ret.start = time.Now()
-	command := exec.Command(os.Args[0], "run-test", test.name)
+	// command := exec.Command(os.Args[0], "run-test", test.name)
+	args := []string{
+		"--flake-attempts=3",
+		"--timeout=24h",
+		"--nodes=30",
+		"--no-color",
+		fmt.Sprintf("--focus='%s'", stripAndQuote(test.name)),
+		"--progress",
+		"--no-color",
+		"--output-interceptor-mode=none",
+		"./origin-e2e.test",
+	}
+	command := exec.Command("./ginkgo", args...)
 	command.Env = append(os.Environ(), c.env...)
 
 	timeout := c.timeout
