@@ -1,9 +1,12 @@
 all: build
 .PHONY: all
 
+build:
+	hack/build-go.sh
+.PHONY: build
+
 # Include the library makefile
 include $(addprefix ./vendor/github.com/openshift/build-machinery-go/make/, \
-	golang.mk \
 	targets/openshift/bindata.mk \
 	targets/openshift/images.mk \
 	targets/openshift/deps.mk \
