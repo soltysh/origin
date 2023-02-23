@@ -3,10 +3,6 @@ package extended
 //go:generate go run -mod vendor ./util/annotate -- ./util/annotate/generated/zz_generated.annotations.go
 
 import (
-	// openshift/kubernetes defines the set of kube tests that should be included
-
-	_ "k8s.io/kubernetes/openshift-hack/e2e"
-
 	_ "github.com/openshift/origin/test/extended/adminack"
 	_ "github.com/openshift/origin/test/extended/apiserver"
 	_ "github.com/openshift/origin/test/extended/authentication"
