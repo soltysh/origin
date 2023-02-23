@@ -1,8 +1,6 @@
 package ginkgo
 
 import (
-	"math/rand"
-
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/ginkgo/v2/types"
 
@@ -33,8 +31,5 @@ func testsForSuite() ([]*testCase, error) {
 	if len(errs) > 0 {
 		return nil, errors.NewAggregate(errs)
 	}
-	suiteConfig, _ := ginkgo.GinkgoConfiguration()
-	r := rand.New(rand.NewSource(suiteConfig.RandomSeed))
-	r.Shuffle(len(tests), func(i, j int) { tests[i], tests[j] = tests[j], tests[i] })
 	return tests, nil
 }

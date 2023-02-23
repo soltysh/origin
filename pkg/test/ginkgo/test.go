@@ -12,10 +12,11 @@ import (
 )
 
 type testCase struct {
-	name      string
-	spec      types.TestSpec
-	locations []types.CodeLocation
-	apigroups []string
+	name       string
+	binaryName string
+	spec       types.TestSpec
+	locations  []types.CodeLocation
+	apigroups  []string
 
 	// identifies which tests can be run in parallel (ginkgo runs suites linearly)
 	testExclusion string
